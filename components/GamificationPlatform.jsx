@@ -6,7 +6,8 @@ import {
   Zap, ChevronRight, Check, X, Users, Award, Sparkles, 
   Bell, Flame, ChevronDown, ChevronUp, User, Home, Menu, Copy, 
   Map, HelpCircle, Play, RotateCcw, Clock, CheckCircle,
-  Lock, Timer, ArrowRight, XCircle, TrendingUp, Calendar, CircleDollarSign, Dices, Music, Brain, Globe
+  Lock, Timer, ArrowRight, XCircle, TrendingUp, Calendar, CircleDollarSign, Dices, Music, Brain, Globe,
+  Camera, Wallet
 } from 'lucide-react';
 
 // ============================================================================
@@ -150,28 +151,28 @@ void main(){
 
     // Set static uniforms — cyberpunk dark theme
     const hexToRgb = h => [parseInt(h.slice(1,3),16)/255, parseInt(h.slice(3,5),16)/255, parseInt(h.slice(5,7),16)/255];
-    const c1 = hexToRgb('#FF8C00'); // bright orange
-    const c2 = hexToRgb('#1a0a00'); // near black warm
-    const c3 = hexToRgb('#F97316'); // vivid orange
+    const c1 = hexToRgb('#1a0e2e'); // deep indigo-black
+    const c2 = hexToRgb('#0a0612'); // near black cool
+    const c3 = hexToRgb('#2d1b4e'); // muted plum
     gl.uniform3f(u.uColor1, c1[0], c1[1], c1[2]);
     gl.uniform3f(u.uColor2, c2[0], c2[1], c2[2]);
     gl.uniform3f(u.uColor3, c3[0], c3[1], c3[2]);
-    gl.uniform1f(u.uTimeSpeed, 0.25);
+    gl.uniform1f(u.uTimeSpeed, 0.15);
     gl.uniform1f(u.uColorBalance, 0.0);
-    gl.uniform1f(u.uWarpStrength, 1.0);
-    gl.uniform1f(u.uWarpFrequency, 5.0);
-    gl.uniform1f(u.uWarpSpeed, 2.0);
-    gl.uniform1f(u.uWarpAmplitude, 50.0);
+    gl.uniform1f(u.uWarpStrength, 0.6);
+    gl.uniform1f(u.uWarpFrequency, 3.0);
+    gl.uniform1f(u.uWarpSpeed, 1.0);
+    gl.uniform1f(u.uWarpAmplitude, 80.0);
     gl.uniform1f(u.uBlendAngle, 0.0);
-    gl.uniform1f(u.uBlendSoftness, 0.05);
-    gl.uniform1f(u.uRotationAmount, 500.0);
-    gl.uniform1f(u.uNoiseScale, 2.0);
-    gl.uniform1f(u.uGrainAmount, 0.1);
+    gl.uniform1f(u.uBlendSoftness, 0.15);
+    gl.uniform1f(u.uRotationAmount, 300.0);
+    gl.uniform1f(u.uNoiseScale, 1.5);
+    gl.uniform1f(u.uGrainAmount, 0.06);
     gl.uniform1f(u.uGrainScale, 2.0);
     gl.uniform1f(u.uGrainAnimated, 1.0);
-    gl.uniform1f(u.uContrast, 1.5);
+    gl.uniform1f(u.uContrast, 1.2);
     gl.uniform1f(u.uGamma, 1.0);
-    gl.uniform1f(u.uSaturation, 1.0);
+    gl.uniform1f(u.uSaturation, 0.7);
     gl.uniform2f(u.uCenterOffset, 0.0, 0.0);
     gl.uniform1f(u.uZoom, 0.9);
 
@@ -4860,6 +4861,222 @@ export default function GamificationPlatform() {
   const [showConfetti, setShowConfetti] = useState(false);
   const [coinBounce, setCoinBounce] = useState(false);
 
+  // ============================================================================
+  // REWARD ANIMATION SYSTEM
+  // ============================================================================
+  const rewardCanvasRef = useRef(null);
+  const rewardParticlesRef = useRef([]);
+  const rewardAnimFrameRef = useRef(null);
+  const [rewardOverlay, setRewardOverlay] = useState(null); // { type, rewards, source }
+  const [flyingCoins, setFlyingCoins] = useState([]);
+  const [screenFlash, setScreenFlash] = useState(null); // 'gold' | 'cyan' | 'white'
+  const [screenShake, setScreenShake] = useState(false);
+  const [rollingNumbers, setRollingNumbers] = useState([]); // [{id, value, x, y, color}]
+  const flyIdRef = useRef(0);
+  const rollIdRef = useRef(0);
+
+  // Particle engine — renders themed particles on canvas
+  const spawnParticles = useCallback((x, y, count, config = {}) => {
+    const { type = 'coin', spread = 120, speed = 4, gravity = 0.12, life = 80, size = 8 } = config;
+    const emojis = { coin: '🪙', gem: '💚', diamond: '💎', star: '⭐', fire: '🔥', sparkle: '✨' };
+    const colors = { coin: '#EAB308', gem: '#10B981', diamond: '#3B82F6', star: '#FBBF24', fire: '#F97316', sparkle: '#E0E7FF' };
+    for (let i = 0; i < count; i++) {
+      const angle = (Math.random() - 0.5) * (spread * Math.PI / 180);
+      const vel = speed * (0.5 + Math.random() * 0.8);
+      rewardParticlesRef.current.push({
+        x, y,
+        vx: Math.sin(angle) * vel * (Math.random() > 0.5 ? 1 : -1),
+        vy: -Math.cos(angle) * vel - Math.random() * 2,
+        life: life + Math.random() * 30,
+        maxLife: life + Math.random() * 30,
+        size: size * (0.6 + Math.random() * 0.6),
+        rotation: Math.random() * 360,
+        rotSpeed: (Math.random() - 0.5) * 12,
+        emoji: emojis[type] || '✨',
+        color: colors[type] || '#FBBF24',
+        gravity,
+        type,
+      });
+    }
+    if (!rewardAnimFrameRef.current) startParticleLoop();
+  }, []);
+
+  const startParticleLoop = useCallback(() => {
+    const canvas = rewardCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const dpr = window.devicePixelRatio || 1;
+
+    const loop = () => {
+      canvas.width = window.innerWidth * dpr;
+      canvas.height = window.innerHeight * dpr;
+      canvas.style.width = window.innerWidth + 'px';
+      canvas.style.height = window.innerHeight + 'px';
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+
+      const particles = rewardParticlesRef.current;
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy += p.gravity;
+        p.vx *= 0.99;
+        p.rotation += p.rotSpeed;
+        p.life--;
+
+        const alpha = Math.min(1, p.life / (p.maxLife * 0.3));
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.translate(p.x, p.y);
+        ctx.rotate((p.rotation * Math.PI) / 180);
+        ctx.font = `${p.size}px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(p.emoji, 0, 0);
+        ctx.restore();
+
+        if (p.life <= 0) particles.splice(i, 1);
+      }
+
+      if (particles.length > 0) {
+        rewardAnimFrameRef.current = requestAnimationFrame(loop);
+      } else {
+        rewardAnimFrameRef.current = null;
+      }
+    };
+    rewardAnimFrameRef.current = requestAnimationFrame(loop);
+  }, []);
+
+  // Screen flash effect
+  const triggerFlash = useCallback((color = 'gold') => {
+    setScreenFlash(color);
+    setTimeout(() => setScreenFlash(null), 400);
+  }, []);
+
+  // Screen shake effect
+  const triggerShake = useCallback(() => {
+    setScreenShake(true);
+    setTimeout(() => setScreenShake(false), 400);
+  }, []);
+
+  // Floating number pop-up from a point
+  const spawnFloatingNumber = useCallback((text, x, y, color = '#EAB308') => {
+    const id = ++rollIdRef.current;
+    setRollingNumbers(prev => [...prev, { id, text, x, y, color }]);
+    setTimeout(() => setRollingNumbers(prev => prev.filter(r => r.id !== id)), 900);
+  }, []);
+
+  // Currency fly-to-header animation
+  const spawnFlyingCoin = useCallback((fromX, fromY, type = 'coin') => {
+    const emojis = { coin: '🪙', gem: '💚', diamond: '💎' };
+    const targets = { coin: '.currency-coin-target', gem: '.currency-gem-target', diamond: '.currency-diamond-target' };
+    const targetEl = document.querySelector(targets[type]);
+    const toX = targetEl ? targetEl.getBoundingClientRect().left + 12 : window.innerWidth / 2;
+    const toY = targetEl ? targetEl.getBoundingClientRect().top + 12 : 30;
+    const count = type === 'coin' ? 6 : 3;
+    for (let i = 0; i < count; i++) {
+      const id = ++flyIdRef.current;
+      const delay = i * 80;
+      const startX = fromX + (Math.random() - 0.5) * 40;
+      const startY = fromY + (Math.random() - 0.5) * 40;
+      setTimeout(() => {
+        setFlyingCoins(prev => [...prev, { id, emoji: emojis[type], fromX: startX, fromY: startY, toX, toY }]);
+        setTimeout(() => {
+          setFlyingCoins(prev => prev.filter(c => c.id !== id));
+          setCoinBounce(true);
+          setTimeout(() => setCoinBounce(false), 300);
+        }, 700);
+      }, delay);
+    }
+  }, []);
+
+  // Master reward trigger — composes all effects based on tier
+  const triggerReward = useCallback((tier, sourceEl, rewards = {}) => {
+    const rect = sourceEl?.getBoundingClientRect?.() || { left: window.innerWidth / 2, top: window.innerHeight / 2, width: 0, height: 0 };
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+
+    if (tier === 'small') {
+      // Tier 1: ~1.2s — quick burst + fly-to-header + floating numbers
+      spawnParticles(cx, cy, 12, { type: 'coin', spread: 160, speed: 6, life: 30, gravity: 0.2 });
+      spawnParticles(cx, cy, 6, { type: 'sparkle', spread: 200, speed: 4, life: 25, size: 10, gravity: 0.15 });
+      if (rewards.coins) {
+        spawnFlyingCoin(cx, cy, 'coin');
+        spawnFloatingNumber(`+${rewards.coins}`, cx, cy - 20, '#EAB308');
+      }
+      if (rewards.gems) {
+        setTimeout(() => spawnFlyingCoin(cx, cy, 'gem'), 150);
+        spawnFloatingNumber(`+${rewards.gems}`, cx + 40, cy - 20, '#10B981');
+      }
+      if (rewards.xp) spawnFloatingNumber(`+${rewards.xp} XP`, cx - 40, cy - 20, '#22D3EE');
+    }
+    else if (tier === 'medium') {
+      // Tier 2: ~2.2s — burst + flash + short confetti shower
+      triggerFlash('gold');
+      spawnParticles(cx, cy, 22, { type: 'coin', spread: 180, speed: 7, life: 40, gravity: 0.18 });
+      spawnParticles(cx, cy, 10, { type: 'star', spread: 240, speed: 5, life: 35, size: 12, gravity: 0.15 });
+      spawnParticles(cx, cy, 8, { type: 'sparkle', spread: 360, speed: 4, life: 30, size: 10, gravity: 0.12 });
+      if (rewards.coins) {
+        spawnFlyingCoin(cx, cy, 'coin');
+        spawnFloatingNumber(`+${rewards.coins}`, cx, cy - 30, '#EAB308');
+      }
+      if (rewards.gems) {
+        setTimeout(() => spawnFlyingCoin(cx, cy, 'gem'), 200);
+        spawnFloatingNumber(`+${rewards.gems}`, cx + 50, cy - 30, '#10B981');
+      }
+      if (rewards.diamonds) {
+        setTimeout(() => spawnFlyingCoin(cx, cy, 'diamond'), 350);
+        spawnFloatingNumber(`+${rewards.diamonds}`, cx - 50, cy - 30, '#3B82F6');
+      }
+      if (rewards.xp) spawnFloatingNumber(`+${rewards.xp} XP`, cx, cy - 60, '#22D3EE');
+      // Short confetti shower — 15 particles over 0.6s, each lives ~1.2s
+      for (let i = 0; i < 15; i++) {
+        setTimeout(() => {
+          spawnParticles(Math.random() * window.innerWidth, -10, 1, {
+            type: ['coin', 'star', 'sparkle'][Math.floor(Math.random() * 3)],
+            spread: 30, speed: 2, gravity: 0.14, life: 65, size: 13
+          });
+        }, i * 40);
+      }
+    }
+    else if (tier === 'big') {
+      // Tier 3: ~3s — full celebration, everything wraps by 3s
+      triggerFlash('gold');
+      triggerShake();
+      // Initial burst — high speed, moderate life so they scatter fast and fade
+      spawnParticles(cx, cy, 35, { type: 'coin', spread: 360, speed: 9, life: 45, gravity: 0.2 });
+      spawnParticles(cx, cy, 18, { type: 'star', spread: 360, speed: 7, life: 40, size: 14, gravity: 0.18 });
+      spawnParticles(cx, cy, 14, { type: 'sparkle', spread: 360, speed: 6, life: 35, size: 12, gravity: 0.15 });
+      // Firework bursts — tighter timing, shorter life
+      setTimeout(() => spawnParticles(window.innerWidth * 0.3, window.innerHeight * 0.3, 14, { type: 'star', spread: 360, speed: 6, life: 35, size: 12, gravity: 0.18 }), 300);
+      setTimeout(() => spawnParticles(window.innerWidth * 0.7, window.innerHeight * 0.25, 14, { type: 'sparkle', spread: 360, speed: 6, life: 35, size: 12, gravity: 0.18 }), 550);
+      // Currency fly
+      if (rewards.coins) {
+        spawnFlyingCoin(cx, cy, 'coin');
+        spawnFloatingNumber(`+${rewards.coins}`, cx, cy - 30, '#EAB308');
+      }
+      if (rewards.gems) {
+        setTimeout(() => spawnFlyingCoin(cx, cy, 'gem'), 250);
+        spawnFloatingNumber(`+${rewards.gems}`, cx + 50, cy - 30, '#10B981');
+      }
+      if (rewards.diamonds) {
+        setTimeout(() => spawnFlyingCoin(cx, cy, 'diamond'), 450);
+        spawnFloatingNumber(`+${rewards.diamonds}`, cx - 50, cy - 30, '#3B82F6');
+      }
+      if (rewards.xp) spawnFloatingNumber(`+${rewards.xp} XP`, cx, cy - 70, '#22D3EE');
+      // Confetti rain — 25 particles over 1s, each lives ~1.1s, heavier gravity pulls them down naturally
+      for (let i = 0; i < 25; i++) {
+        setTimeout(() => {
+          spawnParticles(Math.random() * window.innerWidth, -10, 1, {
+            type: ['coin', 'star', 'sparkle', 'fire'][Math.floor(Math.random() * 4)],
+            spread: 35, speed: 2.5, gravity: 0.16, life: 60, size: 15
+          });
+        }, i * 40);
+      }
+    }
+  }, [spawnParticles, spawnFlyingCoin, spawnFloatingNumber, triggerFlash, triggerShake]);
+
   // Avatar options
   const AVATARS = [
     '😎', '🤩', '😈', '👻', '🤖', '👽', '🦁', '🐯', '🦊', '🐺',
@@ -5222,7 +5439,58 @@ export default function GamificationPlatform() {
       .glow-pulse { animation: pulseGlow 2.5s ease-in-out infinite; }
       .glow-border { animation: borderGlow 3s ease-in-out infinite; }
       .progress-animated { animation: progressFill 1s cubic-bezier(0.22, 1, 0.36, 1) both; }
-      
+
+      /* ===== REWARD ANIMATION SYSTEM ===== */
+      @keyframes rewardScreenFlash {
+        0% { opacity: 0.6; }
+        100% { opacity: 0; }
+      }
+      @keyframes rewardScreenShake {
+        0%, 100% { transform: translate(0, 0); }
+        10% { transform: translate(-4px, -2px); }
+        20% { transform: translate(4px, 2px); }
+        30% { transform: translate(-3px, 1px); }
+        40% { transform: translate(3px, -1px); }
+        50% { transform: translate(-2px, 2px); }
+        60% { transform: translate(2px, -2px); }
+        70% { transform: translate(-1px, 1px); }
+        80% { transform: translate(1px, -1px); }
+      }
+      @keyframes rewardFloatUp {
+        0% { opacity: 0; transform: translateY(0) scale(0.5); }
+        15% { opacity: 1; transform: translateY(-8px) scale(1.3); }
+        50% { opacity: 1; transform: translateY(-25px) scale(1.05); }
+        100% { opacity: 0; transform: translateY(-55px) scale(0.85); }
+      }
+      @keyframes rewardFlyTo {
+        0% { opacity: 1; transform: translate(0, 0) scale(1); }
+        50% { opacity: 1; transform: translate(var(--fly-dx-half), var(--fly-dy-half)) scale(1.3); }
+        100% { opacity: 0; transform: translate(var(--fly-dx), var(--fly-dy)) scale(0.3); }
+      }
+      @keyframes rewardHeaderPulse {
+        0% { transform: scale(1); filter: brightness(1); }
+        50% { transform: scale(1.15); filter: brightness(1.5); }
+        100% { transform: scale(1); filter: brightness(1); }
+      }
+      .reward-screen-flash {
+        position: fixed; inset: 0; z-index: 9999; pointer-events: none;
+        animation: rewardScreenFlash 0.4s ease-out forwards;
+      }
+      .reward-screen-flash-gold { background: radial-gradient(ellipse at center, rgba(234,179,8,0.3) 0%, rgba(234,179,8,0) 70%); }
+      .reward-screen-flash-cyan { background: radial-gradient(ellipse at center, rgba(6,182,212,0.3) 0%, rgba(6,182,212,0) 70%); }
+      .reward-screen-flash-white { background: radial-gradient(ellipse at center, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0) 70%); }
+      .reward-shake { animation: rewardScreenShake 0.4s ease-out; }
+      .reward-float-number {
+        position: fixed; z-index: 10000; pointer-events: none;
+        font-weight: 900; font-size: 24px; text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+        animation: rewardFloatUp 0.9s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+      }
+      .reward-flying-coin {
+        position: fixed; z-index: 10000; pointer-events: none; font-size: 20px;
+        animation: rewardFlyTo 0.7s cubic-bezier(0.32, 0, 0.67, 0) forwards;
+      }
+      .reward-header-pulse { animation: rewardHeaderPulse 0.4s ease; }
+
       .hover-lift {
         transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.25s ease;
       }
@@ -5706,7 +5974,7 @@ export default function GamificationPlatform() {
   ];
 
   return (
-    <div className="flex h-screen text-white overflow-hidden">
+    <div className={`flex h-screen text-white overflow-hidden ${screenShake ? 'reward-shake' : ''}`}>
       {/* Animated gradient background */}
       <div style={{ position: 'fixed', inset: 0, zIndex: 0 }}>
         <AnimatedGradientBG />
@@ -5743,6 +6011,47 @@ export default function GamificationPlatform() {
           })}
         </div>
       )}
+
+      {/* Reward Animation Canvas */}
+      <canvas
+        ref={rewardCanvasRef}
+        className="fixed inset-0 pointer-events-none"
+        style={{ zIndex: 9998 }}
+      />
+
+      {/* Screen Flash Overlay */}
+      {screenFlash && (
+        <div className={`reward-screen-flash reward-screen-flash-${screenFlash}`} />
+      )}
+
+      {/* Floating Numbers */}
+      {rollingNumbers.map(n => (
+        <div
+          key={n.id}
+          className="reward-float-number"
+          style={{ left: n.x, top: n.y, color: n.color }}
+        >
+          {n.text}
+        </div>
+      ))}
+
+      {/* Flying Coins to Header */}
+      {flyingCoins.map(c => (
+        <div
+          key={c.id}
+          className="reward-flying-coin"
+          style={{
+            left: c.fromX,
+            top: c.fromY,
+            '--fly-dx': `${c.toX - c.fromX}px`,
+            '--fly-dy': `${c.toY - c.fromY}px`,
+            '--fly-dx-half': `${(c.toX - c.fromX) * 0.3}px`,
+            '--fly-dy-half': `${(c.toY - c.fromY) * 0.5 - 60}px`,
+          }}
+        >
+          {c.emoji}
+        </div>
+      ))}
 
       {/* Notification Toast - Smooth slide */}
       {notif && (
@@ -6086,92 +6395,91 @@ export default function GamificationPlatform() {
       )}
 
       {/* Sidebar */}
-      <aside className={`${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 fixed md:sticky md:top-0 top-0 left-0 z-40 w-64 h-full md:h-screen flex-shrink-0 transition-transform duration-300 overflow-y-auto border-r-0`} style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' }}>
-        <div className="p-4">
+      <aside className={`${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 fixed md:sticky md:top-0 top-0 left-0 z-40 w-56 h-full md:h-screen flex-shrink-0 transition-transform duration-300 overflow-y-auto`} style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch', background: 'rgba(8,6,18,0.92)', borderRight: '1px solid rgba(255,255,255,0.06)' }}>
+        <div className="p-3.5">
           {/* Logo */}
-          <div className="flex items-center gap-3 mb-6 p-3 rounded-xl" style={{ background: 'rgba(5,10,20,0.95)', border: '2px solid rgba(255,255,255,0.12)', boxShadow: '0 4px 12px rgba(0,0,0,0.6)' }}>
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-400 via-orange-500 to-red-500 flex items-center justify-center font-black text-lg shadow-lg shadow-orange-500/30">
+          <div className="flex items-center gap-2.5 mb-5 px-3 py-2.5">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 via-orange-500 to-red-500 flex items-center justify-center font-black text-sm shadow-lg shadow-orange-500/20">
               100x
             </div>
             <div>
-              <div className="font-bold text-lg">100xBet</div>
-              <div className="text-xs text-cyan-400">REWARDS</div>
+              <div className="font-bold text-base leading-tight">100xBet</div>
+              <div className="text-[10px] text-cyan-400 font-bold tracking-wider">REWARDS</div>
             </div>
           </div>
 
           {/* User Profile Card */}
-          <div className="mb-6 p-3 rounded-xl" style={{ background: 'rgba(5,10,20,0.95)', border: '2px solid rgba(255,255,255,0.12)', boxShadow: '0 4px 16px rgba(0,0,0,0.6)' }}>
-            <div className="flex items-center gap-3">
+          <div className="mb-5 p-3 rounded-2xl" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+            <div className="flex items-center gap-2.5">
               <button
                 type="button"
                 onClick={() => setShowAvatarSelector(true)}
-                className="relative w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center text-xl hover:scale-105 transition-transform group"
+                className="relative w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center text-lg hover:scale-105 transition-transform group flex-shrink-0"
               >
                 {user.avatar}
                 <div className="absolute inset-0 bg-black/50 rounded-xl opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                  <span className="text-xs">Edit</span>
+                  <span className="text-[9px]">Edit</span>
                 </div>
               </button>
-              <button 
-                type="button" 
+              <button
+                type="button"
                 onClick={() => setTab('profile')}
-                className="flex-1 text-left"
+                className="flex-1 text-left min-w-0"
               >
-                <div className="font-bold">Player1</div>
-                <div className="text-xs text-cyan-300">{level.icon} {level.name}</div>
+                <div className="font-bold text-sm truncate">Player1</div>
+                <div className="text-[11px] text-gray-500">{level.icon} {level.name}</div>
               </button>
             </div>
-            <div className="mt-2 h-2 bg-cyan-900/30 rounded-full overflow-hidden">
-              <div 
-                className="h-full bg-gradient-to-r from-cyan-400 to-blue-500 rounded-full progress-animated" 
-                style={{ width: `${xpProgress}%` }} 
+            <div className="mt-2.5 h-1.5 bg-white/5 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-cyan-400 to-blue-500 rounded-full progress-animated"
+                style={{ width: `${xpProgress}%` }}
               />
             </div>
-            <div className="text-xs text-gray-400 mt-1">
+            <div className="text-[10px] text-gray-500 mt-1 font-medium">
               {user.xp} / {nextLevel?.xp || 'MAX'} XP
             </div>
           </div>
 
           {/* Navigation */}
-          <nav className="space-y-1.5">
+          <nav className="space-y-0.5">
             {tabs.map(t => {
               const Icon = t.icon;
               const active = tab === t.id;
+              const hasNotif = (t.id === 'daily' && user.streak > 0) || (t.id === 'missions' && user.missionsComplete.length === 0) || (t.id === 'store');
               return (
-                <button 
-                  key={t.id} 
-                  type="button" 
-                  onClick={() => { setTab(t.id); setMobileMenuOpen(false); }} 
-                  className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left transition-all duration-200 relative overflow-hidden ${active ? 'text-white font-black' : 'text-gray-300 hover:text-white font-bold'}`}
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => { setTab(t.id); setMobileMenuOpen(false); }}
+                  className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-left transition-all duration-200 relative group ${active ? 'text-white font-bold' : 'text-gray-400 hover:text-white hover:bg-white/[0.06] font-medium'}`}
                   style={active ? {
-                    background: 'linear-gradient(135deg, #0891B2 0%, #0E7490 100%)',
-                    boxShadow: '0 4px 0 #164E63, 0 0 20px rgba(6,182,212,0.3), inset 0 1px 0 rgba(255,255,255,0.15)',
-                    border: '2px solid rgba(34,211,238,0.5)',
+                    background: 'linear-gradient(135deg, rgba(6,182,212,0.15) 0%, rgba(6,182,212,0.08) 100%)',
+                    borderLeft: '3px solid #22D3EE',
                   } : {
-                    background: 'rgba(5,10,20,0.95)',
-                    border: '2px solid rgba(255,255,255,0.15)',
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.04)',
+                    borderLeft: '3px solid transparent',
                   }}
-                  onMouseEnter={e => { if (!active) { e.currentTarget.style.background = 'rgba(6,182,212,0.25)'; e.currentTarget.style.borderColor = 'rgba(6,182,212,0.5)'; }}}
-                  onMouseLeave={e => { if (!active) { e.currentTarget.style.background = 'rgba(5,10,20,0.95)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)'; }}}
                 >
-                  <Icon className={`w-5 h-5 ${active ? 'text-white' : ''}`} />
-                  <span className="text-[15px]">{t.label}</span>
+                  <Icon className={`w-[18px] h-[18px] transition-all duration-200 ${active ? 'text-cyan-400' : 'group-hover:text-cyan-300 group-hover:scale-110'}`} />
+                  <span className="text-[13px]">{t.label}</span>
+                  {hasNotif && !active && (
+                    <span className="ml-auto w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
+                  )}
                 </button>
               );
             })}
           </nav>
 
           {/* Demo Controls */}
-          <div className="mt-6 p-4 rounded-2xl" style={{ background: 'rgba(5,10,20,0.95)', border: '2px solid rgba(255,255,255,0.12)', boxShadow: '0 4px 12px rgba(0,0,0,0.6)' }}>
-            <div className="flex items-center gap-2 text-xs text-cyan-400 mb-3">
-              <Sparkles className="w-4 h-4" />
-              <span className="font-bold">DEMO CONTROLS</span>
+          <div className="mt-5 p-3 rounded-xl" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}>
+            <div className="flex items-center gap-1.5 text-[10px] text-gray-500 mb-2.5 uppercase tracking-wider font-bold">
+              <Sparkles className="w-3 h-3" />
+              <span>Demo</span>
             </div>
-            <div className="grid grid-cols-2 gap-2">
-              <button 
-                type="button" 
-                onClick={() => {
+            <div className="grid grid-cols-2 gap-1.5">
+              <button
+                type="button"
+                onClick={(e) => {
                   addCoins(100);
                   addXP(50);
                   setUser(u => ({ ...u, deposits: u.deposits + 100 }));
@@ -6179,46 +6487,50 @@ export default function GamificationPlatform() {
                   trackQuest('coinsEarned', { amount: 100 });
                   trackQuest('xpEarned', { amount: 100 });
                   trackMission('xpEarned', { amount: 50 });
+                  triggerReward('small', e.currentTarget, { coins: 100, xp: 50 });
                   showNotif('+100K + 50XP!');
-                }} 
-                className="py-2 bg-green-600 hover:bg-green-700 rounded-lg text-xs font-bold transition-all duration-200 hover:scale-105 active:scale-95"
+                }}
+                className="py-1.5 bg-green-600/20 hover:bg-green-600/30 text-green-400 rounded-lg text-[10px] font-bold transition-all active:scale-95"
               >
                 +Deposit
               </button>
-              <button 
-                type="button" 
-                onClick={() => {
+              <button
+                type="button"
+                onClick={(e) => {
                   addXP(5);
                   setUser(u => ({ ...u, bets: u.bets + 1 }));
                   trackMission('betPlaced');
                   trackMission('xpEarned', { amount: 5 });
+                  triggerReward('small', e.currentTarget, { xp: 5 });
                   showNotif('+1 Bet!');
-                }} 
-                className="py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-xs font-bold transition-all duration-200 hover:scale-105 active:scale-95"
+                }}
+                className="py-1.5 bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 rounded-lg text-[10px] font-bold transition-all active:scale-95"
               >
                 +Bet
               </button>
-              <button 
-                type="button" 
-                onClick={() => {
+              <button
+                type="button"
+                onClick={(e) => {
                   addCoins(50);
                   addXP(15);
                   setUser(u => ({ ...u, wins: u.wins + 1 }));
                   trackMission('betWon');
                   trackMission('xpEarned', { amount: 15 });
+                  triggerReward('small', e.currentTarget, { coins: 50, xp: 15 });
                   showNotif('+Win!');
-                }} 
-                className="py-2 bg-yellow-600 hover:bg-yellow-700 rounded-lg text-xs font-bold transition-all duration-200 hover:scale-105 active:scale-95"
+                }}
+                className="py-1.5 bg-yellow-600/20 hover:bg-yellow-600/30 text-yellow-400 rounded-lg text-[10px] font-bold transition-all active:scale-95"
               >
                 +Win
               </button>
-              <button 
-                type="button" 
-                onClick={() => {
+              <button
+                type="button"
+                onClick={(e) => {
                   addXP(100);
+                  triggerReward('small', e.currentTarget, { xp: 100 });
                   showNotif('+100 XP!');
-                }} 
-                className="py-2 bg-cyan-600 hover:bg-cyan-700 rounded-lg text-xs font-bold transition-all duration-200 hover:scale-105 active:scale-95"
+                }}
+                className="py-1.5 bg-cyan-600/20 hover:bg-cyan-600/30 text-cyan-400 rounded-lg text-[10px] font-bold transition-all active:scale-95"
               >
                 +100 XP
               </button>
@@ -6238,51 +6550,51 @@ export default function GamificationPlatform() {
       {/* Main Content */}
       <main className="content-contrast flex-1 min-w-0 h-full overflow-y-auto relative z-10" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
         {/* Header */}
-        <header className="p-4 sticky top-0 z-20">
+        <header className="px-4 py-3 sticky top-0 z-20" style={{ background: 'rgba(8,6,18,0.75)', backdropFilter: 'blur(16px)', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
           <div className="flex items-center justify-between max-w-7xl mx-auto">
             {/* Mobile Menu Button */}
-            <button 
-              type="button" 
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)} 
-              className="md:hidden p-2 hover:bg-cyan-500/15 rounded-lg"
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="md:hidden p-2 hover:bg-white/5 rounded-lg"
             >
-              <Menu className="w-6 h-6" />
+              <Menu className="w-5 h-5" />
             </button>
-            
-            {/* Spacer for centering on desktop */}
-            <div className="hidden md:block w-32"></div>
 
-            {/* Currency Display - Big, solid, unmissable */}
-            <div className="flex items-center justify-center gap-3 flex-1 md:flex-none">
-              <button type="button" onClick={() => setShowBuyModal('coins')} className={`group flex items-center gap-3 px-5 py-3 rounded-2xl transition-all duration-200 hover:scale-105 hover:brightness-110 active:scale-95 cursor-pointer ${coinBounce ? 'anim-coin-bounce' : ''}`} style={{ background: 'linear-gradient(135deg, #2a1f00 0%, #1a1200 100%)', border: '2px solid #b8860b', boxShadow: '0 0 18px rgba(234,179,8,0.25), 0 4px 12px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.1)' }}>
-                <img src={CURRENCY_ICONS.coin} alt="" className="w-9 h-9 object-contain" />
-                <span className="font-black text-2xl text-yellow-400 tabular-nums min-w-[2ch]">{user.kwacha.toLocaleString()}</span>
-                <span className="w-8 h-8 rounded-lg flex items-center justify-center text-black font-black text-xl bg-yellow-500 group-hover:bg-yellow-400 transition-colors shadow-md">+</span>
+            {/* Spacer for centering on desktop */}
+            <div className="hidden md:block w-24"></div>
+
+            {/* Currency Display — compact pill style */}
+            <div className="flex items-center justify-center gap-2 flex-1 md:flex-none">
+              <button type="button" onClick={() => setShowBuyModal('coins')} className={`currency-coin-target group flex items-center gap-2 px-3.5 py-2 rounded-xl transition-all duration-200 hover:scale-[1.03] active:scale-95 cursor-pointer ${coinBounce ? 'anim-coin-bounce' : ''}`} style={{ background: 'rgba(234,179,8,0.08)', border: '1px solid rgba(234,179,8,0.2)' }}>
+                <img src={CURRENCY_ICONS.coin} alt="" className="w-6 h-6 object-contain" />
+                <span className="font-bold text-lg text-yellow-400 tabular-nums">{user.kwacha.toLocaleString()}</span>
+                <span className="w-5 h-5 rounded-md flex items-center justify-center text-yellow-900 font-bold text-xs bg-yellow-500/80 group-hover:bg-yellow-400 transition-colors">+</span>
               </button>
-              <button type="button" onClick={() => setShowBuyModal('gems')} className="group flex items-center gap-3 px-5 py-3 rounded-2xl transition-all duration-200 hover:scale-105 hover:brightness-110 active:scale-95 cursor-pointer" style={{ background: 'linear-gradient(135deg, #002a15 0%, #001a0d 100%)', border: '2px solid #059669', boxShadow: '0 0 18px rgba(16,185,129,0.25), 0 4px 12px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.1)' }}>
-                <img src={CURRENCY_ICONS.gem} alt="" className="w-9 h-9 object-contain" />
-                <span className="font-black text-2xl text-green-400 tabular-nums min-w-[2ch]">{user.gems}</span>
-                <span className="w-8 h-8 rounded-lg flex items-center justify-center text-black font-black text-xl bg-emerald-500 group-hover:bg-emerald-400 transition-colors shadow-md">+</span>
+              <button type="button" onClick={() => setShowBuyModal('gems')} className="currency-gem-target group flex items-center gap-2 px-3.5 py-2 rounded-xl transition-all duration-200 hover:scale-[1.03] active:scale-95 cursor-pointer" style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)' }}>
+                <img src={CURRENCY_ICONS.gem} alt="" className="w-6 h-6 object-contain" />
+                <span className="font-bold text-lg text-emerald-400 tabular-nums">{user.gems}</span>
+                <span className="w-5 h-5 rounded-md flex items-center justify-center text-emerald-900 font-bold text-xs bg-emerald-500/80 group-hover:bg-emerald-400 transition-colors">+</span>
               </button>
-              <button type="button" onClick={() => setShowBuyModal('diamonds')} className="hidden sm:flex group items-center gap-3 px-5 py-3 rounded-2xl transition-all duration-200 hover:scale-105 hover:brightness-110 active:scale-95 cursor-pointer" style={{ background: 'linear-gradient(135deg, #001a2e 0%, #000e1a 100%)', border: '2px solid #2563eb', boxShadow: '0 0 18px rgba(59,130,246,0.25), 0 4px 12px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.1)' }}>
-                <img src={CURRENCY_ICONS.diamond} alt="" className="w-9 h-9 object-contain" />
-                <span className="font-black text-2xl text-blue-400 tabular-nums min-w-[2ch]">{user.diamonds}</span>
-                <span className="w-8 h-8 rounded-lg flex items-center justify-center text-black font-black text-xl bg-blue-500 group-hover:bg-blue-400 transition-colors shadow-md">+</span>
+              <button type="button" onClick={() => setShowBuyModal('diamonds')} className="currency-diamond-target hidden sm:flex group items-center gap-2 px-3.5 py-2 rounded-xl transition-all duration-200 hover:scale-[1.03] active:scale-95 cursor-pointer" style={{ background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)' }}>
+                <img src={CURRENCY_ICONS.diamond} alt="" className="w-6 h-6 object-contain" />
+                <span className="font-bold text-lg text-blue-400 tabular-nums">{user.diamonds}</span>
+                <span className="w-5 h-5 rounded-md flex items-center justify-center text-blue-900 font-bold text-xs bg-blue-500/80 group-hover:bg-blue-400 transition-colors">+</span>
               </button>
             </div>
 
             {/* Right Side */}
-            <div className="flex items-center gap-3">
-              <div className="hidden lg:flex items-center gap-2">
-                <div className="text-right">
-                  <div className="text-xs text-gray-400">Level {level.level}</div>
-                  <div className="font-bold text-cyan-400">{level.name}</div>
+            <div className="flex items-center gap-2.5">
+              <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-xl" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                <div className="text-xl">{level.icon}</div>
+                <div>
+                  <div className="text-[10px] text-gray-500 leading-tight">Lvl {level.level}</div>
+                  <div className="font-bold text-xs text-cyan-400 leading-tight">{level.name}</div>
                 </div>
-                <div className="text-3xl anim-float">{level.icon}</div>
               </div>
-              <button type="button" className="relative p-2 hover:bg-cyan-500/15 rounded-lg">
-                <Bell className="w-6 h-6" />
-                <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full text-xs flex items-center justify-center font-bold">
+              <button type="button" className="relative p-2 hover:bg-white/5 rounded-lg transition-colors">
+                <Bell className="w-5 h-5 text-gray-400" />
+                <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 rounded-full text-[9px] flex items-center justify-center font-bold">
                   3
                 </span>
               </button>
@@ -6296,69 +6608,114 @@ export default function GamificationPlatform() {
           {/* OVERVIEW TAB */}
           {/* ============================================================= */}
           {tab === 'overview' && (
-            <div className="space-y-6">
-              {/* Welcome Banner */}
-              <div className="relative overflow-hidden rounded-3xl group">
-                <img src={IMAGES.welcomeBanner} alt="" className="w-full h-52 object-cover transition-transform duration-700 group-hover:scale-105" />
-                <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/40 to-transparent flex items-center p-8">
-                  <div>
-                    <h1 className="text-4xl font-black mb-2 tracking-tight">Welcome back! 👋</h1>
-                    <p className="text-white/80 mb-4 text-lg">Ready to win big today?</p>
-                    <div className="flex items-center gap-3 flex-wrap">
-                      <div className="flex items-center gap-2 px-4 py-2 bg-white/20 rounded-xl backdrop-blur-sm">
-                        <Flame className="w-5 h-5 text-orange-400" />
-                        <span className="font-bold">{user.streak} day streak</span>
-                      </div>
-                      <div className="flex items-center gap-2 px-4 py-2 bg-white/20 rounded-xl backdrop-blur-sm">
-                        <Zap className="w-5 h-5 text-yellow-400" />
-                        <span className="font-bold">{user.xp.toLocaleString()} XP</span>
-                      </div>
+            <div className="space-y-5">
+              {/* === PRIORITY ACTION STRIP — What should the user do RIGHT NOW? === */}
+              {!user.dailyClaimed && (
+                <div className="rounded-2xl overflow-hidden" style={{ background: 'linear-gradient(135deg, rgba(34,197,94,0.1) 0%, rgba(16,185,129,0.05) 100%)', border: '1px solid rgba(34,197,94,0.2)' }}>
+                  <div className="flex items-center gap-4 p-4">
+                    <div className="w-12 h-12 rounded-xl bg-green-500/15 flex items-center justify-center flex-shrink-0">
+                      <Gift className="w-6 h-6 text-green-400" />
                     </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-bold text-sm text-green-400">Your daily reward is waiting!</div>
+                      <div className="text-xs text-gray-400 mt-0.5">Day {user.dailyDay} of 7 — {user.streak} day streak {user.streak >= 3 ? '🔥' : ''}</div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const r = DAILY_REWARDS[user.dailyDay - 1];
+                        addCoins(r.kwacha);
+                        if (r.gems) addGems(r.gems);
+                        if (r.diamonds) addDiamonds(r.diamonds);
+                        addXP(20);
+                        setUser(u => ({
+                          ...u,
+                          dailyClaimed: true,
+                          dailyDay: u.dailyDay >= 7 ? 1 : u.dailyDay + 1,
+                          dailyTasksDone: [...new Set([...u.dailyTasksDone, 'claim'])]
+                        }));
+                        trackMission('dailyClaimed');
+                        trackMission('xpEarned', { amount: 20 });
+                        trackQuest('dailyClaimed', {});
+                        trackQuest('xpEarned', { amount: 20 });
+                        showNotif(`🎉 +${r.kwacha} Coins!`);
+                      }}
+                      className="px-6 py-2.5 rounded-xl font-bold text-sm text-black flex-shrink-0 btn-3d btn-3d-green"
+                    >
+                      Collect Now
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* === WELCOME + STATS STRIP === */}
+              <div className="flex items-center justify-between">
+                <div>
+                  <h1 className="text-2xl font-black tracking-tight">Welcome back! 👋</h1>
+                  <p className="text-gray-500 text-sm mt-0.5">Here's what's happening today</p>
+                </div>
+                <div className="hidden sm:flex items-center gap-2">
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold" style={{ background: 'rgba(249,115,22,0.08)', border: '1px solid rgba(249,115,22,0.15)' }}>
+                    <Flame className="w-3.5 h-3.5 text-orange-400" />
+                    <span className="text-orange-400">{user.streak}d streak</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold" style={{ background: 'rgba(234,179,8,0.08)', border: '1px solid rgba(234,179,8,0.15)' }}>
+                    <Zap className="w-3.5 h-3.5 text-yellow-400" />
+                    <span className="text-yellow-400">{user.xp.toLocaleString()} XP</span>
                   </div>
                 </div>
               </div>
 
-              {/* Quick Actions - 3 Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* === HERO ACTIONS — 3 Cards with clear hierarchy === */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
                 {/* Daily Reward Card */}
-                <div className="rounded-3xl overflow-hidden card-interactive transition-all group">
-                  <div className="relative h-44 overflow-hidden">
-                    <img src={IMAGES.dailyGift} alt="" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
-                    <button 
-                      type="button" 
-                      onClick={() => setActiveTutorial('daily')} 
-                      className="absolute top-3 left-3 p-2 bg-black/50 hover:bg-black/70 rounded-full"
+                <div className="rounded-2xl overflow-hidden transition-all group" style={{ background: 'rgba(10,15,25,0.85)', border: '1px solid rgba(255,255,255,0.06)', boxShadow: '0 2px 12px rgba(0,0,0,0.3)' }}>
+                  <div className="relative h-36 overflow-hidden">
+                    <img src={IMAGES.dailyGift} alt="" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#0a0f19] via-transparent to-transparent" />
+                    <button
+                      type="button"
+                      onClick={() => setActiveTutorial('daily')}
+                      className="absolute top-2.5 left-2.5 p-1.5 bg-black/40 hover:bg-black/60 rounded-lg transition-colors"
                     >
-                      <HelpCircle className="w-5 h-5" />
+                      <HelpCircle className="w-3.5 h-3.5 text-white/60" />
                     </button>
                     {!user.dailyClaimed && (
-                      <span className="absolute top-3 right-3 px-3 py-1 bg-green-500 rounded-full text-sm font-bold glow-pulse">
-                        CLAIM!
+                      <span className="absolute top-2.5 right-2.5 px-2 py-0.5 bg-green-500 rounded-md text-[10px] font-bold tracking-wider uppercase glow-pulse">
+                        Ready
                       </span>
                     )}
                     {user.dailyClaimed && (
                       <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                        <img src={`${IMG_BASE}/green_bubble.jpg`} alt="" className="w-32 h-32 object-cover rounded-full anim-check-pop" style={{ mixBlendMode: "screen" }} />
+                        <img src={`${IMG_BASE}/green_bubble.jpg`} alt="" className="w-24 h-24 object-cover rounded-full anim-check-pop" style={{ mixBlendMode: "screen" }} />
                       </div>
                     )}
                   </div>
-                  <div className="p-4">
-                    <div className="font-bold text-lg mb-1">
-                      {user.dailyClaimed ? 'Claimed Today!' : 'Daily Reward'}
+                  <div className="p-3.5">
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="font-bold text-sm">
+                        {user.dailyClaimed ? '✓ Claimed Today' : 'Daily Reward'}
+                      </div>
+                      <div className="text-[10px] text-gray-500 font-medium">Day {user.dailyDay}/7</div>
                     </div>
-                    <div className="text-sm text-gray-400 mb-3">Day {user.dailyDay} of 7</div>
+                    {/* Day progress dots */}
+                    <div className="flex gap-1 mb-3">
+                      {[1,2,3,4,5,6,7].map(d => (
+                        <div key={d} className={`h-1 flex-1 rounded-full ${d < user.dailyDay ? 'bg-green-500' : d === user.dailyDay ? (user.dailyClaimed ? 'bg-green-500' : 'bg-cyan-400') : 'bg-white/5'}`} />
+                      ))}
+                    </div>
                     {!user.dailyClaimed && (
-                      <button 
-                        type="button" 
-                        onClick={() => {
+                      <button
+                        type="button"
+                        onClick={(e) => {
                           const r = DAILY_REWARDS[user.dailyDay - 1];
                           addCoins(r.kwacha);
                           if (r.gems) addGems(r.gems);
                           if (r.diamonds) addDiamonds(r.diamonds);
                           addXP(20);
-                          setUser(u => ({ 
-                            ...u, 
-                            dailyClaimed: true, 
+                          setUser(u => ({
+                            ...u,
+                            dailyClaimed: true,
                             dailyDay: u.dailyDay >= 7 ? 1 : u.dailyDay + 1,
                             dailyTasksDone: [...new Set([...u.dailyTasksDone, 'claim'])]
                           }));
@@ -6366,216 +6723,216 @@ export default function GamificationPlatform() {
                           trackMission('xpEarned', { amount: 20 });
                           trackQuest('dailyClaimed', {});
                           trackQuest('xpEarned', { amount: 20 });
+                          triggerReward('medium', e.currentTarget, { coins: r.kwacha, gems: r.gems, diamonds: r.diamonds, xp: 20 });
                           showNotif(`🎉 +${r.kwacha} Coins!`);
-                        }} 
-                        className="w-full py-3.5 rounded-2xl font-black text-lg tracking-wide btn-3d btn-3d-green"
+                        }}
+                        className="w-full py-2.5 rounded-xl font-bold text-sm btn-3d btn-3d-green"
                       >
-                        Claim!
+                        Collect Reward
                       </button>
                     )}
                   </div>
                 </div>
 
-                {/* Wheel Card */}
-                <div onClick={() => playGame('wheel')} className="rounded-3xl overflow-hidden card-interactive transition-all group cursor-pointer">
-                  <div className="relative h-44 overflow-hidden">
-                    <img src={IMAGES.wheel} alt="" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
-                    <button 
-                      type="button" 
-                      onClick={(e) => { e.stopPropagation(); setActiveTutorial('wheel'); }} 
-                      className="absolute top-3 left-3 p-2 bg-black/50 hover:bg-black/70 rounded-full"
+                {/* Spin Wheel Card */}
+                <div onClick={() => playGame('wheel')} className="rounded-2xl overflow-hidden transition-all group cursor-pointer" style={{ background: 'rgba(10,15,25,0.85)', border: '1px solid rgba(255,255,255,0.06)', boxShadow: '0 2px 12px rgba(0,0,0,0.3)' }}>
+                  <div className="relative h-36 overflow-hidden">
+                    <img src={IMAGES.wheel} alt="" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#0a0f19] via-transparent to-transparent" />
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); setActiveTutorial('wheel'); }}
+                      className="absolute top-2.5 left-2.5 p-1.5 bg-black/40 hover:bg-black/60 rounded-lg transition-colors"
                     >
-                      <HelpCircle className="w-5 h-5" />
+                      <HelpCircle className="w-3.5 h-3.5 text-white/60" />
                     </button>
                     {user.gamePlays.wheel > 0 && (
-                      <span className="absolute top-3 right-3 px-3 py-1 bg-cyan-500 rounded-full text-sm font-bold">
+                      <span className="absolute top-2.5 right-2.5 px-2 py-0.5 bg-cyan-500 rounded-md text-[10px] font-bold tracking-wider">
                         {user.gamePlays.wheel} FREE
                       </span>
                     )}
                   </div>
-                  <div className="p-4">
-                    <div className="font-black text-xl mb-1">Spin Wheel</div>
-                    <div className="text-sm text-gray-400 mb-3">{user.gamePlays.wheel} spins left</div>
-                    <div className="w-full py-3.5 rounded-2xl font-black text-lg tracking-wide btn-3d btn-3d-purple text-center">
-                      Play!
+                  <div className="p-3.5">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="font-bold text-sm">Spin & Win</div>
+                      <div className="text-[10px] text-gray-500 font-medium">{user.gamePlays.wheel} spins left</div>
+                    </div>
+                    <div className="w-full py-2.5 rounded-xl font-bold text-sm btn-3d btn-3d-purple text-center">
+                      Spin Now →
                     </div>
                   </div>
                 </div>
 
                 {/* Predictions Card */}
-                <div onClick={() => setTab('predictions')} className="rounded-3xl overflow-hidden card-interactive transition-all group cursor-pointer">
-                  <div className="relative h-44 overflow-hidden">
-                    <img src={IMAGES.soccerBall} alt="" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
-                    <button 
-                      type="button" 
-                      onClick={(e) => { e.stopPropagation(); setActiveTutorial('predictions'); }} 
-                      className="absolute top-3 left-3 p-2 bg-black/50 hover:bg-black/70 rounded-full"
+                <div onClick={() => setTab('predictions')} className="rounded-2xl overflow-hidden transition-all group cursor-pointer" style={{ background: 'rgba(10,15,25,0.85)', border: '1px solid rgba(255,255,255,0.06)', boxShadow: '0 2px 12px rgba(0,0,0,0.3)' }}>
+                  <div className="relative h-36 overflow-hidden">
+                    <img src={IMAGES.soccerBall} alt="" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#0a0f19] via-transparent to-transparent" />
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); setActiveTutorial('predictions'); }}
+                      className="absolute top-2.5 left-2.5 p-1.5 bg-black/40 hover:bg-black/60 rounded-lg transition-colors"
                     >
-                      <HelpCircle className="w-5 h-5" />
+                      <HelpCircle className="w-3.5 h-3.5 text-white/60" />
                     </button>
-                    <span className="absolute top-3 right-3 px-3 py-1 bg-blue-500 rounded-full text-sm font-bold">
-                      {MATCHES.length} LIVE
+                    <span className="absolute top-2.5 right-2.5 flex items-center gap-1 px-2 py-0.5 bg-red-500/90 rounded-md text-[10px] font-bold tracking-wider">
+                      <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" /> {MATCHES.length} LIVE
                     </span>
                   </div>
-                  <div className="p-4">
-                    <div className="font-black text-xl mb-1">Predictions</div>
-                    <div className="text-sm text-gray-400 mb-3">{MATCHES.length} matches available</div>
-                    <div className="w-full py-3.5 rounded-2xl font-black text-lg tracking-wide btn-3d btn-3d-blue text-center">
-                      Predict!
+                  <div className="p-3.5">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="font-bold text-sm">Match Predictions</div>
+                      <div className="text-[10px] text-gray-500 font-medium">{MATCHES.length} matches</div>
+                    </div>
+                    <div className="w-full py-2.5 rounded-xl font-bold text-sm btn-3d btn-3d-blue text-center">
+                      Predict & Earn →
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Jackpot Banner */}
-              <button 
-                type="button" 
-                onClick={() => setTab('minigames')} 
-                className="w-full rounded-3xl overflow-hidden hover:opacity-90 transition-opacity"
+              {/* === JACKPOT BANNER — slimmer === */}
+              <button
+                type="button"
+                onClick={() => setTab('minigames')}
+                className="w-full rounded-2xl overflow-hidden hover:brightness-110 transition-all group"
               >
-                <img src={IMAGES.jackpotBanner} alt="" className="w-full h-44 object-cover" />
+                <div className="relative">
+                  <img src={IMAGES.jackpotBanner} alt="" className="w-full h-32 object-cover" />
+                  <div className="absolute inset-0 bg-gradient-to-r from-black/30 to-transparent flex items-center pl-6">
+                    <div className="flex items-center gap-3">
+                      <Gamepad2 className="w-6 h-6 text-yellow-400" />
+                      <span className="font-bold text-sm text-white/80 group-hover:text-white transition-colors">Explore 10+ minigames →</span>
+                    </div>
+                  </div>
+                </div>
               </button>
 
-              {/* Missions Section */}
-              <div>
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-xl font-bold">Missions</h2>
-                    <button 
-                      type="button" 
-                      onClick={() => setActiveTutorial('missions')} 
-                      className="p-1 hover:bg-white/10 rounded-full"
-                    >
-                      <HelpCircle className="w-5 h-5 text-cyan-400" />
-                    </button>
-                  </div>
-                  <button 
-                    type="button" 
-                    onClick={() => setTab('missions')} 
-                    className="text-cyan-400 hover:text-cyan-300 flex items-center gap-1"
+              {/* === DAILY HUB PROMO — Compact progress card === */}
+              {(() => {
+                const dtCount = [
+                  user.dailyTasksDone.includes('trivia'),
+                  (user.dailyFreeSpinsUsed || []).length > 0,
+                  (user.dailyCoinBonusClaims || 0) > 0,
+                ].filter(Boolean).length;
+                const dtAll = dtCount >= 3;
+                const todayCat = DAILY_CAT_INFO[DAILY_CAT_ROTATION[new Date().getDay() === 0 ? 6 : new Date().getDay() - 1]] || DAILY_CAT_INFO.general;
+                const CatIcon = todayCat.Icon || Target;
+                return (
+                  <div
+                    onClick={() => setTab('daily')}
+                    className="rounded-2xl p-3.5 cursor-pointer transition-all group"
+                    style={{ background: 'rgba(10,15,25,0.7)', border: dtAll ? '1px solid rgba(34,197,94,0.2)' : '1px solid rgba(255,255,255,0.06)' }}
                   >
-                    All <ChevronRight className="w-4 h-4" />
-                  </button>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {[...getDailyMissions(), ...PERMANENT_MISSIONS].filter(m => !user.missionsComplete.includes(m.id)).slice(0, 3).map(m => (
-                    <button key={m.id} type="button" onClick={() => setSelectedMission(m)} className="rounded-3xl overflow-hidden card-interactive transition-all card-interactive group text-left">
-                      <div className="relative h-40 overflow-hidden">
-                        <img src={IMAGES[m.image]} alt="" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
-                        {m.difficulty && (
-                          <div className={`absolute top-0 right-4 ${DIFFICULTY_CONFIG[m.difficulty].color} px-2 py-1 rounded-b-lg text-xs font-bold shadow-md`}>
-                            {DIFFICULTY_CONFIG[m.difficulty].label}
-                          </div>
-                        )}
-                        {m.hot && (
-                          <span className="absolute top-3 left-3 px-2 py-1 bg-red-500 rounded-lg text-sm font-bold">
-                            🔥 HOT
-                          </span>
-                        )}
+                    <div className="flex items-center gap-3">
+                      <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${dtAll ? 'bg-green-500/12' : 'bg-cyan-500/8'}`}>
+                        {dtAll ? <CheckCircle className="w-4.5 h-4.5 text-green-400" /> : <Gift className="w-4.5 h-4.5 text-cyan-400" />}
                       </div>
-                      <div className="p-4">
-                        <div className="font-bold text-lg mb-1">{m.name}</div>
-                        <div className="text-sm text-gray-400 mb-3">{m.desc}</div>
-                        <div className="flex items-center gap-3">
-                          <span className="text-yellow-400 font-bold">🪙 {m.reward.kwacha}</span>
-                          {m.reward.gems && (
-                            <span className="text-green-400 font-bold">💚 {m.reward.gems}</span>
-                          )}
+                      <div className="flex-1 min-w-0">
+                        <div className="font-bold text-xs">Daily Hub</div>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          {['trivia','freespin','coinbonus'].map((t, i) => (
+                            <div key={t} className={`w-1.5 h-1.5 rounded-full transition-colors ${[
+                              user.dailyTasksDone.includes('trivia'),
+                              (user.dailyFreeSpinsUsed || []).length > 0,
+                              (user.dailyCoinBonusClaims || 0) > 0,
+                            ][i] ? 'bg-green-400' : 'bg-gray-700'}`} />
+                          ))}
+                          <span className={`text-[10px] font-bold ml-0.5 ${dtAll ? 'text-green-400' : 'text-gray-500'}`}>
+                            {dtAll ? 'All done! Claim bonus' : !user.dailyTasksDone.includes('trivia') ? <span className="flex items-center gap-1"><CatIcon className="w-3 h-3" /> {todayCat.name} trivia + spins</span> : `${dtCount}/3 tasks`}
+                          </span>
                         </div>
                       </div>
-                    </button>
-                  ))}
+                      <ChevronRight className="w-4 h-4 text-gray-600 group-hover:text-cyan-400 transition-colors" />
+                    </div>
+                    <div className="h-1 bg-white/[0.03] rounded-full overflow-hidden mt-2.5">
+                      <div className="h-full rounded-full transition-all duration-700" style={{
+                        width: `${(dtCount / 3) * 100}%`,
+                        background: dtAll ? 'linear-gradient(90deg,#22c55e,#10b981)' : 'linear-gradient(90deg,#22D3EE,#06B6D4)',
+                      }} />
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* === MISSIONS SECTION — Compact horizontal scroll === */}
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <Target className="w-4 h-4 text-cyan-400" />
+                    <h2 className="text-base font-bold">Active Missions</h2>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setTab('missions')}
+                    className="text-xs text-gray-500 hover:text-cyan-400 flex items-center gap-0.5 transition-colors font-medium"
+                  >
+                    View all <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {[...getDailyMissions(), ...PERMANENT_MISSIONS].filter(m => !user.missionsComplete.includes(m.id)).slice(0, 3).map(m => {
+                    const prog = user.missionProgress[m.id] || 0;
+                    const pctM = Math.min(100, Math.round((prog / m.target) * 100));
+                    return (
+                      <button key={m.id} type="button" onClick={() => setSelectedMission(m)} className="rounded-2xl overflow-hidden transition-all group text-left" style={{ background: 'rgba(10,15,25,0.7)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                        <div className="relative h-28 overflow-hidden">
+                          <img src={IMAGES[m.image]} alt="" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                          <div className="absolute inset-0 bg-gradient-to-t from-[#0a0f19] to-transparent" />
+                          {m.difficulty && (
+                            <div className={`absolute top-2 right-2 ${DIFFICULTY_CONFIG[m.difficulty].color} px-1.5 py-0.5 rounded-md text-[9px] font-bold shadow-md`}>
+                              {DIFFICULTY_CONFIG[m.difficulty].label}
+                            </div>
+                          )}
+                        </div>
+                        <div className="p-3">
+                          <div className="font-bold text-xs mb-1 truncate">{m.name}</div>
+                          {/* Mission progress bar */}
+                          <div className="h-1 bg-white/5 rounded-full overflow-hidden mb-2">
+                            <div className="h-full bg-gradient-to-r from-cyan-400 to-blue-500 rounded-full transition-all" style={{ width: `${pctM}%` }} />
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2 text-[10px]">
+                              <span className="text-yellow-400 font-bold">🪙 {m.reward.kwacha}</span>
+                              {m.reward.gems && <span className="text-green-400 font-bold">💚 {m.reward.gems}</span>}
+                            </div>
+                            <span className="text-[9px] text-gray-500 font-medium">{prog}/{m.target}</span>
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
-
-                {/* Daily Hub Promo */}
-                {(() => {
-                  const dtCount = [
-                    user.dailyTasksDone.includes('trivia'),
-                    (user.dailyFreeSpinsUsed || []).length > 0,
-                    (user.dailyCoinBonusClaims || 0) > 0,
-                  ].filter(Boolean).length;
-                  const dtAll = dtCount >= 3;
-                  const todayCat = DAILY_CAT_INFO[DAILY_CAT_ROTATION[new Date().getDay() === 0 ? 6 : new Date().getDay() - 1]] || DAILY_CAT_INFO.general;
-                  const CatIcon = todayCat.Icon || Target;
-                  return (
-                    <div 
-                      onClick={() => setTab('daily')} 
-                      className="match-card p-4 cursor-pointer hover:border-cyan-500/30 transition-all group"
-                      style={{ border: dtAll ? '1px solid rgba(34,197,94,0.25)' : '1px solid rgba(6,182,212,0.2)' }}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${dtAll ? 'bg-green-500/12' : 'bg-cyan-500/10'}`}>
-                          {dtAll ? <CheckCircle className="w-6 h-6 text-green-400" /> : <Gift className="w-6 h-6 text-cyan-400" />}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="font-bold text-sm">Daily Hub</div>
-                          <div className="flex items-center gap-2 mt-0.5">
-                            {['trivia','freespin','coinbonus'].map((t, i) => (
-                              <div key={t} className={`w-2 h-2 rounded-full transition-colors ${[
-                                user.dailyTasksDone.includes('trivia'),
-                                (user.dailyFreeSpinsUsed || []).length > 0,
-                                (user.dailyCoinBonusClaims || 0) > 0,
-                              ][i] ? 'bg-green-400' : 'bg-gray-600'}`} />
-                            ))}
-                            <span className={`text-xs font-bold ml-1 ${dtAll ? 'text-green-400' : 'text-cyan-400'}`}>
-                              {dtAll ? 'All done! Claim bonus' : !user.dailyTasksDone.includes('trivia') ? <span className="flex items-center gap-1"><CatIcon className="w-3 h-3" /> {todayCat.name} trivia + free spins</span> : `${dtCount}/3 tasks — earn bonus rewards`}
-                            </span>
-                          </div>
-                        </div>
-                        <ChevronRight className="w-5 h-5 text-gray-500 group-hover:text-cyan-400 transition-colors" />
-                      </div>
-                      <div className="h-1.5 bg-black/40 rounded-full overflow-hidden mt-3">
-                        <div className="h-full rounded-full transition-all duration-700" style={{
-                          width: `${(dtCount / 3) * 100}%`,
-                          background: dtAll ? 'linear-gradient(90deg,#22c55e,#10b981)' : 'linear-gradient(90deg,#22D3EE,#06B6D4)',
-                        }} />
-                      </div>
-                    </div>
-                  );
-                })()}
-
-              {/* Featured Store Section */}
+              {/* === FEATURED STORE — Compact === */}
               <div>
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
-                    <h2 className="text-2xl font-black tracking-tight">Featured Store</h2>
-                    <button 
-                      type="button" 
-                      onClick={() => setActiveTutorial('store')} 
-                      className="p-1 hover:bg-white/10 rounded-full"
-                    >
-                      <HelpCircle className="w-5 h-5 text-cyan-400" />
-                    </button>
+                    <Store className="w-4 h-4 text-amber-400" />
+                    <h2 className="text-base font-bold">Rewards Store</h2>
                   </div>
-                  <button 
-                    type="button" 
-                    onClick={() => setTab('store')} 
-                    className="text-cyan-400 hover:text-cyan-300 flex items-center gap-1"
+                  <button
+                    type="button"
+                    onClick={() => setTab('store')}
+                    className="text-xs text-gray-500 hover:text-cyan-400 flex items-center gap-0.5 transition-colors font-medium"
                   >
-                    All <ChevronRight className="w-4 h-4" />
+                    Browse all <ChevronRight className="w-3.5 h-3.5" />
                   </button>
                 </div>
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                   {STORE_ITEMS.filter(i => i.featured || i.isNew).slice(0, 4).map(item => (
-                    <div key={item.id} className="rounded-xl overflow-hidden card-interactive group">
-                      <div className="relative h-32 overflow-hidden">
-                        <img src={IMAGES[item.image]} alt="" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                    <div key={item.id} className="rounded-xl overflow-hidden group transition-all" style={{ background: 'rgba(10,15,25,0.7)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                      <div className="relative h-24 overflow-hidden">
+                        <img src={IMAGES[item.image]} alt="" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-[#0a0f19] to-transparent" />
                         {item.isNew && (
-                          <span className="absolute top-2 right-2 px-2 py-1 bg-green-500 rounded text-xs font-bold">
-                            NEW
-                          </span>
-                        )}
-                        {item.featured && (
-                          <span className="absolute top-2 left-2 px-2 py-1 bg-amber-500 rounded text-xs font-bold">
-                            ⭐
-                          </span>
+                          <span className="absolute top-1.5 right-1.5 px-1.5 py-0.5 bg-green-500 rounded text-[9px] font-bold">NEW</span>
                         )}
                       </div>
-                      <div className="p-3">
-                        <div className="font-bold truncate">{item.name}</div>
-                        <div className="text-yellow-400 font-bold">🪙 {item.price.kwacha}</div>
+                      <div className="p-2.5">
+                        <div className="font-bold text-xs truncate mb-0.5">{item.name}</div>
+                        <div className="text-yellow-400 font-bold text-[10px]">🪙 {item.price.kwacha}</div>
                       </div>
                     </div>
                   ))}
@@ -7251,7 +7608,21 @@ export default function GamificationPlatform() {
           {/* ============================================================= */}
           {/* VIP TAB */}
           {/* ============================================================= */}
-          {tab === 'vip' && (
+          {tab === 'vip' && (() => {
+            const currentTierIdx = VIP_TIERS.findIndex(t => t.name === vip.name);
+            const nextTier = VIP_TIERS[currentTierIdx + 1];
+            const prevMin = vip.min;
+            const nextMin = nextTier ? nextTier.min : vip.min;
+            const tierProgress = nextTier ? Math.min(100, ((user.deposits - prevMin) / (nextMin - prevMin)) * 100) : 100;
+            const tierColors = {
+              'Standard': { from: 'from-gray-500/20', to: 'to-slate-600/20', border: 'border-gray-500/40', glow: 'shadow-gray-500/20', accent: 'text-gray-300', bar: 'from-gray-400 to-slate-500' },
+              'Bronze': { from: 'from-amber-700/20', to: 'to-orange-800/20', border: 'border-amber-600/40', glow: 'shadow-amber-600/20', accent: 'text-amber-400', bar: 'from-amber-600 to-orange-500' },
+              'Silver': { from: 'from-gray-300/15', to: 'to-slate-400/15', border: 'border-gray-300/40', glow: 'shadow-gray-300/20', accent: 'text-gray-200', bar: 'from-gray-300 to-slate-400' },
+              'Gold': { from: 'from-yellow-500/20', to: 'to-amber-500/20', border: 'border-yellow-400/50', glow: 'shadow-yellow-500/30', accent: 'text-yellow-400', bar: 'from-yellow-400 to-amber-500' },
+              'Platinum': { from: 'from-blue-400/15', to: 'to-indigo-500/15', border: 'border-blue-400/40', glow: 'shadow-blue-400/20', accent: 'text-blue-300', bar: 'from-blue-400 to-indigo-500' },
+              'Diamond': { from: 'from-cyan-400/20', to: 'to-blue-500/20', border: 'border-cyan-300/50', glow: 'shadow-cyan-400/30', accent: 'text-cyan-300', bar: 'from-cyan-300 to-blue-500' },
+            };
+            return (
             <div className="space-y-6">
               <div className="flex items-center gap-4">
                 <img src={IMAGES.crown} alt="" className="w-14 h-14 rounded-xl object-cover" />
@@ -7259,35 +7630,108 @@ export default function GamificationPlatform() {
                   <h1 className="text-3xl font-black tracking-tight">VIP Club</h1>
                   <p className="text-gray-400">Exclusive benefits for loyal players</p>
                 </div>
-                <button 
-                  type="button" 
-                  onClick={() => setActiveTutorial('vip')} 
+                <button
+                  type="button"
+                  onClick={() => setActiveTutorial('vip')}
                   className="ml-auto p-2 bg-cyan-600/20 hover:bg-cyan-600/40 rounded-xl"
                 >
                   <HelpCircle className="w-5 h-5" />
                 </button>
               </div>
-              <div className="bg-gradient-to-r from-cyan-600/20 to-blue-600/20 rounded-2xl p-6 border border-cyan-500/40 glow-border">
-                <div className="flex items-center gap-4">
-                  <div className="text-5xl anim-float">{vip.icon}</div>
-                  <div>
-                    <div className="text-2xl font-black">{vip.name}</div>
-                    <div className="text-cyan-300">{vip.cashback}% Cashback on losses</div>
+
+              {/* Current Tier Hero Card */}
+              <div className={`relative overflow-hidden rounded-2xl p-6 border ${tierColors[vip.name]?.border || 'border-cyan-500/40'} glow-border`} style={{ background: `linear-gradient(135deg, rgba(6,182,212,0.12) 0%, rgba(59,130,246,0.08) 50%, rgba(139,92,246,0.06) 100%)` }}>
+                <div className="absolute top-0 right-0 w-40 h-40 opacity-10 text-[120px] -mt-4 -mr-4 pointer-events-none">{vip.icon}</div>
+                <div className="flex items-center gap-5 relative z-10">
+                  <div className="text-6xl anim-float drop-shadow-lg" style={{ filter: 'drop-shadow(0 0 12px rgba(6,182,212,0.4))' }}>{vip.icon}</div>
+                  <div className="flex-1">
+                    <div className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-0.5">Current Tier</div>
+                    <div className={`text-3xl font-black ${tierColors[vip.name]?.accent || 'text-cyan-300'}`}>{vip.name}</div>
+                    <div className="text-gray-300 mt-1">{vip.cashback}% Cashback on losses</div>
+                    {nextTier && (
+                      <div className="mt-3">
+                        <div className="flex items-center justify-between text-xs mb-1.5">
+                          <span className="text-gray-400">Progress to {nextTier.name}</span>
+                          <span className={`font-bold ${tierColors[nextTier.name]?.accent || 'text-cyan-300'}`}>K{user.deposits.toLocaleString()} / K{nextTier.min.toLocaleString()}</span>
+                        </div>
+                        <div className="h-2.5 bg-black/40 rounded-full overflow-hidden">
+                          <div className={`h-full bg-gradient-to-r ${tierColors[nextTier.name]?.bar || 'from-cyan-400 to-blue-500'} rounded-full transition-all duration-1000`} style={{ width: `${tierProgress}%` }} />
+                        </div>
+                      </div>
+                    )}
+                    {!nextTier && (
+                      <div className="mt-3 text-sm text-cyan-300 font-bold flex items-center gap-2">
+                        <Sparkles className="w-4 h-4" /> Maximum tier reached!
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
+
+              {/* VIP Tiers Grid */}
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                {VIP_TIERS.map(tier => (
-                  <div key={tier.name} className={`rounded-2xl p-4 border card-interactive transition-all duration-300 ${tier.name === vip.name ? 'border-cyan-400/60 bg-cyan-500/10 glow-pulse' : 'border-cyan-500/30'}`}>
-                    <div className="text-4xl mb-2">{tier.icon}</div>
-                    <div className="font-bold">{tier.name}</div>
-                    <div className="text-sm text-gray-400">K{tier.min}+ deposits</div>
-                    <div className="text-sm text-green-400 mt-2">{tier.cashback}% cashback</div>
+                {VIP_TIERS.map((tier, idx) => {
+                  const isCurrent = tier.name === vip.name;
+                  const isLocked = idx > currentTierIdx;
+                  const isUnlocked = idx < currentTierIdx;
+                  const colors = tierColors[tier.name];
+                  return (
+                    <div
+                      key={tier.name}
+                      className={`relative overflow-hidden rounded-2xl p-5 border transition-all duration-500 hover:scale-[1.03] ${
+                        isCurrent
+                          ? `${colors.border} bg-gradient-to-br ${colors.from} ${colors.to} shadow-lg ${colors.glow} glow-pulse ring-1 ring-white/10`
+                          : isUnlocked
+                            ? `${colors.border} bg-gradient-to-br ${colors.from} ${colors.to} opacity-80`
+                            : 'border-white/10 bg-white/[0.03]'
+                      }`}
+                    >
+                      {isCurrent && (
+                        <div className="absolute top-2 right-2 px-2 py-0.5 bg-cyan-500/30 rounded-full text-[10px] font-bold text-cyan-300 uppercase tracking-wider">
+                          Current
+                        </div>
+                      )}
+                      {isUnlocked && (
+                        <div className="absolute top-2 right-2 text-green-400">
+                          <CheckCircle className="w-4 h-4" />
+                        </div>
+                      )}
+                      {isLocked && (
+                        <div className="absolute top-2 right-2 text-gray-600">
+                          <Lock className="w-4 h-4" />
+                        </div>
+                      )}
+                      <div className={`text-4xl mb-3 ${isLocked ? 'opacity-40 grayscale' : ''}`} style={!isLocked ? { filter: `drop-shadow(0 0 8px rgba(255,255,255,0.15))` } : {}}>{tier.icon}</div>
+                      <div className={`font-bold text-lg ${isLocked ? 'text-gray-500' : colors.accent}`}>{tier.name}</div>
+                      <div className={`text-sm mt-1 ${isLocked ? 'text-gray-600' : 'text-gray-400'}`}>K{tier.min.toLocaleString()}+ deposits</div>
+                      <div className={`text-sm font-bold mt-2 ${isLocked ? 'text-gray-600' : 'text-green-400'}`}>{tier.cashback}% cashback</div>
+                      {isCurrent && <div className="absolute inset-0 rounded-2xl pointer-events-none" style={{ boxShadow: 'inset 0 0 30px rgba(6,182,212,0.08)' }} />}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* VIP Benefits */}
+              <div className="match-card p-5">
+                <h3 className="font-bold text-lg mb-4 flex items-center gap-2"><Crown className="w-5 h-5 text-yellow-400" /> VIP Benefits</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div className="flex items-start gap-3 p-3 rounded-xl bg-white/[0.03]">
+                    <div className="w-10 h-10 rounded-lg bg-green-500/15 flex items-center justify-center text-green-400 flex-shrink-0"><TrendingUp className="w-5 h-5" /></div>
+                    <div><div className="font-bold text-sm">Cashback</div><div className="text-xs text-gray-400">Get % back on losses automatically</div></div>
                   </div>
-                ))}
+                  <div className="flex items-start gap-3 p-3 rounded-xl bg-white/[0.03]">
+                    <div className="w-10 h-10 rounded-lg bg-yellow-500/15 flex items-center justify-center text-yellow-400 flex-shrink-0"><Gift className="w-5 h-5" /></div>
+                    <div><div className="font-bold text-sm">Exclusive Rewards</div><div className="text-xs text-gray-400">VIP-only store items & bonuses</div></div>
+                  </div>
+                  <div className="flex items-start gap-3 p-3 rounded-xl bg-white/[0.03]">
+                    <div className="w-10 h-10 rounded-lg bg-cyan-500/15 flex items-center justify-center text-cyan-400 flex-shrink-0"><Zap className="w-5 h-5" /></div>
+                    <div><div className="font-bold text-sm">Priority Support</div><div className="text-xs text-gray-400">Fast-track customer service</div></div>
+                  </div>
+                </div>
               </div>
             </div>
-          )}
+            );
+          })()}
 
           {/* ============================================================= */}
           {/* STORE TAB */}
@@ -7532,14 +7976,23 @@ export default function GamificationPlatform() {
           {/* ============================================================= */}
           {tab === 'quests' && (
             <div className="space-y-5">
-              <div className="flex items-center gap-4">
-                <img src={IMAGES.questMap} alt="" className="w-14 h-14 rounded-xl object-cover" />
-                <div>
-                  <h1 className="text-3xl font-black tracking-tight">Quests</h1>
-                  <p className="text-gray-400 text-sm">Multi-step adventures for bigger rewards!</p>
+              {/* Header */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'rgba(168,85,247,0.1)', border: '1px solid rgba(168,85,247,0.15)' }}>
+                    <Map className="w-5 h-5 text-purple-400" />
+                  </div>
+                  <div>
+                    <h1 className="text-xl font-black tracking-tight">Quest Log</h1>
+                    <p className="text-gray-500 text-xs">Complete steps to unlock big rewards</p>
+                  </div>
+                </div>
+                <div className="text-[10px] text-gray-500 font-medium px-2.5 py-1 rounded-lg" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)' }}>
+                  {QUESTS.filter(q => user.questsComplete.includes(q.id)).length}/{QUESTS.length} done
                 </div>
               </div>
 
+              {/* Quest Cards */}
               {QUESTS.map(quest => {
                 const isComplete = user.questsComplete.includes(quest.id);
                 const stepsComplete = quest.steps.filter(s => (user.questProgress[s.id] || 0) >= s.target).length;
@@ -7549,50 +8002,95 @@ export default function GamificationPlatform() {
 
                 return (
                   <button key={quest.id} type="button" onClick={() => setSelectedQuest(quest)}
-                    className={`w-full text-left rounded-3xl overflow-hidden border transition-all duration-300 hover:scale-[1.01] active:scale-[0.99] ${
-                      isComplete ? 'bg-green-500/5 border-green-500/20 hover:border-green-500/40' :
-                      canClaim ? 'bg-gradient-to-r from-green-500/10 to-emerald-500/10 border-green-500/40 hover:border-green-400/60 shadow-lg shadow-green-500/10' :
-                      'bg-black/40 border-cyan-500/30 hover:border-cyan-500/40'
-                    }`}>
+                    className="w-full text-left rounded-2xl overflow-hidden transition-all duration-300 hover:scale-[1.005] active:scale-[0.998] group"
+                    style={{
+                      background: isComplete ? 'rgba(34,197,94,0.04)' : canClaim ? 'linear-gradient(135deg, rgba(34,197,94,0.08), rgba(16,185,129,0.04))' : 'rgba(10,15,25,0.8)',
+                      border: isComplete ? '1px solid rgba(34,197,94,0.15)' : canClaim ? '1px solid rgba(34,197,94,0.3)' : '1px solid rgba(255,255,255,0.06)',
+                      boxShadow: canClaim ? '0 0 20px rgba(34,197,94,0.08)' : '0 2px 12px rgba(0,0,0,0.2)',
+                    }}>
+
                     <div className="flex items-stretch">
                       {/* Left Image */}
-                      <div className="relative w-28 flex-shrink-0">
-                        <img src={IMAGES[quest.image]} alt="" className="w-full h-full object-cover" />
-                        <div className="absolute inset-0 bg-gradient-to-r from-transparent to-[#0a1520]/90" />
-                      </div>
-                      {/* Right Info */}
-                      <div className="flex-1 p-4 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${quest.diffColor}`}>{quest.difficulty}</span>
-                          {isComplete && <span className="text-xs text-green-400 font-bold">✅ Complete</span>}
-                          {canClaim && <span className="text-xs text-green-400 font-bold animate-pulse">🎉 Claim!</span>}
-                        </div>
-                        <h3 className="font-black text-base mb-1">{quest.name}</h3>
-                        <p className="text-xs text-gray-500 mb-2.5 line-clamp-1">{quest.desc}</p>
-                        {/* Progress */}
-                        <div className="flex items-center gap-2 mb-2">
-                          <div className="flex-1 h-1.5 bg-black/50 rounded-full overflow-hidden">
-                            <div className="h-full rounded-full transition-all duration-500" style={{
-                              width: `${isComplete ? 100 : pct}%`,
-                              background: isComplete ? '#22c55e' : 'linear-gradient(90deg, #a855f7, #ec4899)'
-                            }} />
+                      <div className="relative w-32 flex-shrink-0 overflow-hidden">
+                        <img src={IMAGES[quest.image]} alt="" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-transparent to-[#0a0f19]" />
+                        {/* Completion overlay */}
+                        {isComplete && (
+                          <div className="absolute inset-0 bg-green-900/30 flex items-center justify-center">
+                            <CheckCircle className="w-8 h-8 text-green-400 drop-shadow-lg" />
                           </div>
-                          <span className={`text-xs font-bold ${isComplete ? 'text-green-400' : 'text-gray-500'}`}>{stepsComplete}/{quest.steps.length}</span>
-                        </div>
-                        {/* Rewards */}
-                        <div className="flex items-center gap-3 text-xs">
-                          <span className="text-yellow-400 font-bold">🪙{quest.reward.kwacha}</span>
-                          <span className="text-green-400 font-bold">💚{quest.reward.gems}</span>
-                          <span className="text-cyan-400 font-bold">⚡{quest.xp}</span>
-                        </div>
+                        )}
                       </div>
-                      <div className="flex items-center pr-3">
-                        <ChevronRight className={`w-5 h-5 ${isComplete ? 'text-green-500/50' : 'text-gray-600'}`} />
+
+                      {/* Quest Info */}
+                      <div className="flex-1 p-4 min-w-0">
+                        <div className="flex items-center gap-2 mb-1.5">
+                          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider ${quest.diffColor}`}>{quest.difficulty}</span>
+                          {canClaim && (
+                            <span className="text-[9px] text-green-400 font-bold px-1.5 py-0.5 rounded bg-green-500/10 animate-pulse uppercase tracking-wider">
+                              Ready to claim
+                            </span>
+                          )}
+                        </div>
+                        <h3 className="font-bold text-sm mb-0.5">{quest.name}</h3>
+                        <p className="text-[11px] text-gray-500 mb-3 line-clamp-1">{quest.desc}</p>
+
+                        {/* Step indicators */}
+                        <div className="flex gap-1.5 mb-3">
+                          {quest.steps.map((step, si) => {
+                            const stepDone = (user.questProgress[step.id] || 0) >= step.target;
+                            const stepProg = Math.min(100, Math.round(((user.questProgress[step.id] || 0) / step.target) * 100));
+                            return (
+                              <div key={step.id} className="flex-1 relative">
+                                <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.04)' }}>
+                                  <div className="h-full rounded-full transition-all duration-500" style={{
+                                    width: `${isComplete ? 100 : stepProg}%`,
+                                    background: stepDone || isComplete ? '#22c55e' : 'linear-gradient(90deg, #a855f7, #ec4899)'
+                                  }} />
+                                </div>
+                                <div className={`text-center text-[8px] mt-0.5 font-medium ${stepDone || isComplete ? 'text-green-500' : 'text-gray-600'}`}>
+                                  Step {si + 1}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        {/* Rewards row */}
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2.5 text-[10px]">
+                            <span className="text-yellow-400 font-bold flex items-center gap-0.5">🪙 {quest.reward.kwacha}</span>
+                            <span className="text-green-400 font-bold flex items-center gap-0.5">💚 {quest.reward.gems}</span>
+                            <span className="text-cyan-400 font-bold flex items-center gap-0.5">⚡ {quest.xp} XP</span>
+                          </div>
+                          <div className="flex items-center gap-1.5 text-[10px] text-gray-500 font-medium">
+                            {stepsComplete}/{quest.steps.length}
+                            <ChevronRight className="w-3.5 h-3.5 text-gray-600 group-hover:text-cyan-400 transition-colors" />
+                          </div>
+                        </div>
                       </div>
                     </div>
+
+                    {/* Claim bar */}
+                    {canClaim && (
+                      <div className="px-4 pb-3">
+                        <div className="w-full py-2 rounded-lg font-bold text-xs text-center btn-3d btn-3d-green">
+                          Claim Quest Reward →
+                        </div>
+                      </div>
+                    )}
                   </button>
                 );
               })}
+
+              {/* Empty state hint */}
+              {QUESTS.length === 0 && (
+                <div className="text-center py-16 text-gray-600">
+                  <Map className="w-10 h-10 mx-auto mb-3 text-gray-700" />
+                  <div className="font-bold text-sm">No quests available</div>
+                  <div className="text-xs mt-1">Check back later for new adventures</div>
+                </div>
+              )}
             </div>
           )}
 
@@ -7672,39 +8170,72 @@ export default function GamificationPlatform() {
                   <p className="text-gray-400">Top players this week</p>
                 </div>
               </div>
-              {/* Top 3 Podium */}
-              <div className="flex justify-center items-end gap-4 mb-8">
-                {[
-                  { n: 'BetKing', k: 12350, i: '🥈' },
-                  { n: 'ProGamer', k: 15420, i: '👑' },
-                  { n: 'LuckyAce', k: 9870, i: '🥉' }
-                ].map((p, i) => (
-                  <div key={p.n} className={`text-center ${i === 1 ? 'order-2' : i === 0 ? 'order-1 mt-8' : 'order-3 mt-8'}`}>
-                    <div className={`w-20 h-20 rounded-full flex items-center justify-center text-4xl mb-2 mx-auto transition-transform duration-500 hover:scale-110 ${i === 1 ? 'bg-gradient-to-br from-yellow-400 to-amber-600 w-24 h-24 shadow-lg shadow-yellow-500/50 anim-float' : 'bg-gradient-to-br from-gray-400 to-gray-600'}`}>
-                      {p.i}
+
+              {/* Top 3 Podium — Enhanced */}
+              <div className="relative rounded-2xl p-8 pb-4 overflow-hidden" style={{ background: 'linear-gradient(180deg, rgba(234,179,8,0.06) 0%, rgba(0,0,0,0.2) 100%)' }}>
+                <div className="flex justify-center items-end gap-6 md:gap-10 mb-4">
+                  {[
+                    { n: 'BetKing', k: 12350, i: '🥈', rank: 2, color: 'from-gray-300 to-slate-500', glow: 'rgba(148,163,184,0.3)', barH: 'h-20', size: 'w-20 h-20 text-3xl' },
+                    { n: 'ProGamer', k: 15420, i: '👑', rank: 1, color: 'from-yellow-400 to-amber-600', glow: 'rgba(234,179,8,0.5)', barH: 'h-28', size: 'w-28 h-28 text-5xl' },
+                    { n: 'LuckyAce', k: 9870, i: '🥉', rank: 3, color: 'from-amber-600 to-orange-800', glow: 'rgba(217,119,6,0.3)', barH: 'h-16', size: 'w-20 h-20 text-3xl' }
+                  ].map((p) => (
+                    <div key={p.n} className="flex flex-col items-center" style={{ order: p.rank === 1 ? 2 : p.rank === 2 ? 1 : 3 }}>
+                      {/* Avatar */}
+                      <div className="relative mb-3">
+                        {p.rank === 1 && (
+                          <div className="absolute -top-5 left-1/2 -translate-x-1/2 text-3xl anim-float z-10" style={{ filter: 'drop-shadow(0 0 8px rgba(234,179,8,0.6))' }}>👑</div>
+                        )}
+                        <div
+                          className={`${p.size} rounded-full bg-gradient-to-br ${p.color} flex items-center justify-center transition-transform duration-500 hover:scale-110 ring-2 ring-white/20`}
+                          style={{ boxShadow: `0 0 24px ${p.glow}, 0 0 48px ${p.glow}` }}
+                        >
+                          {p.i}
+                        </div>
+                      </div>
+                      {/* Name + Score */}
+                      <div className="font-bold text-sm md:text-base">{p.n}</div>
+                      <div className={`font-bold text-sm ${p.rank === 1 ? 'text-yellow-400' : p.rank === 2 ? 'text-gray-300' : 'text-amber-500'}`}>{p.k.toLocaleString()}</div>
+                      {/* Podium Bar */}
+                      <div className={`${p.barH} w-20 md:w-24 mt-3 rounded-t-xl bg-gradient-to-t ${p.color} opacity-30`} />
                     </div>
-                    <div className="font-bold">{p.n}</div>
-                    <div className="text-yellow-400 font-bold">{p.k.toLocaleString()}</div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-              {/* Rankings List */}
+
+              {/* Rankings List — Enhanced */}
               <div className="space-y-2">
                 {[
                   { r: 1, n: 'ProGamer', k: 15420 },
                   { r: 2, n: 'BetKing', k: 12350 },
                   { r: 3, n: 'LuckyAce', k: 9870 },
                   { r: 4, n: 'Player1', k: user.kwacha, u: true },
-                  { r: 5, n: 'WinMaster', k: 700 }
-                ].map(p => (
-                  <div key={p.r} className={`flex items-center gap-4 p-4 rounded-xl transition-all duration-300 hover:scale-[1.01] ${p.u ? 'bg-cyan-500/15 border border-cyan-500/40 glow-border' : 'bg-black/20'}`}>
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${p.r === 1 ? 'bg-yellow-500' : p.r === 2 ? 'bg-gray-400' : p.r === 3 ? 'bg-amber-700' : 'bg-black/20'}`}>
-                      {p.r}
+                  { r: 5, n: 'WinMaster', k: 700 },
+                  { r: 6, n: 'CasinoKid', k: 520 },
+                  { r: 7, n: 'SpinLord', k: 310 },
+                  { r: 8, n: 'DiceMaster', k: 180 }
+                ].map(p => {
+                  const maxK = 15420;
+                  const barWidth = Math.max(5, (p.k / maxK) * 100);
+                  return (
+                    <div key={p.r} className={`group flex items-center gap-4 p-4 rounded-xl transition-all duration-300 hover:scale-[1.01] relative overflow-hidden ${p.u ? 'bg-cyan-500/15 border border-cyan-500/40 glow-border' : 'bg-black/20 hover:bg-black/30'}`}>
+                      {/* Background bar */}
+                      <div
+                        className={`absolute left-0 top-0 h-full transition-all duration-700 ${p.r === 1 ? 'bg-yellow-500/10' : p.r === 2 ? 'bg-gray-400/8' : p.r === 3 ? 'bg-amber-600/8' : p.u ? 'bg-cyan-500/10' : 'bg-white/[0.02]'}`}
+                        style={{ width: `${barWidth}%` }}
+                      />
+                      <div className={`relative z-10 w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-all duration-300 ${
+                        p.r === 1 ? 'bg-gradient-to-br from-yellow-400 to-amber-600 shadow-lg shadow-yellow-500/30 text-yellow-900' :
+                        p.r === 2 ? 'bg-gradient-to-br from-gray-300 to-slate-500 shadow-lg shadow-gray-400/20 text-gray-800' :
+                        p.r === 3 ? 'bg-gradient-to-br from-amber-600 to-orange-800 shadow-lg shadow-amber-600/20 text-amber-100' :
+                        'bg-white/10 text-gray-400'
+                      }`}>
+                        {p.r <= 3 ? ['🥇','🥈','🥉'][p.r-1] : p.r}
+                      </div>
+                      <div className="flex-1 font-bold relative z-10">{p.n} {p.u && <span className="text-xs text-cyan-400 ml-1">(You)</span>}</div>
+                      <div className={`relative z-10 font-bold ${p.r === 1 ? 'text-yellow-400' : p.r === 2 ? 'text-gray-300' : p.r === 3 ? 'text-amber-500' : p.u ? 'text-cyan-400' : 'text-gray-400'}`}>{p.k.toLocaleString()}</div>
                     </div>
-                    <div className="flex-1 font-bold">{p.n}</div>
-                    <div className="text-yellow-400 font-bold">{p.k.toLocaleString()}</div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
@@ -7712,63 +8243,127 @@ export default function GamificationPlatform() {
           {/* ============================================================= */}
           {/* PROFILE TAB */}
           {/* ============================================================= */}
-          {tab === 'profile' && (
+          {tab === 'profile' && (() => {
+            const winRate = user.bets > 0 ? Math.round((user.wins / user.bets) * 100) : 0;
+            const profileStats = [
+              { label: 'Bets Placed', value: user.bets, icon: Target, color: 'yellow', gradient: 'from-yellow-500/15 to-amber-500/10', border: 'border-yellow-500/20' },
+              { label: 'Bets Won', value: user.wins, icon: Trophy, color: 'green', gradient: 'from-green-500/15 to-emerald-500/10', border: 'border-green-500/20' },
+              { label: 'Games Played', value: user.gamesPlayed, icon: Gamepad2, color: 'cyan', gradient: 'from-cyan-500/15 to-blue-500/10', border: 'border-cyan-500/20' },
+              { label: 'Missions Done', value: user.missionsComplete.length, icon: CheckCircle, color: 'purple', gradient: 'from-purple-500/15 to-violet-500/10', border: 'border-purple-500/20' },
+            ];
+            return (
             <div className="space-y-6">
-              <div className="bg-gradient-to-r from-cyan-600/20 to-blue-600/20 rounded-2xl p-6 border border-cyan-500/40 glow-border">
-                <div className="flex items-center gap-4">
-                  <button
-                    type="button"
-                    onClick={() => setShowAvatarSelector(true)}
-                    className="relative w-20 h-20 rounded-2xl bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center text-4xl hover:scale-105 transition-all duration-300 group shadow-lg shadow-cyan-500/30"
-                  >
-                    {user.avatar}
-                    <div className="absolute inset-0 bg-black/50 rounded-2xl opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                      <span className="text-sm font-bold">Change</span>
+              {/* Profile Hero Card */}
+              <div className="relative overflow-hidden rounded-2xl border border-cyan-500/30" style={{ background: 'linear-gradient(135deg, rgba(6,182,212,0.12) 0%, rgba(59,130,246,0.08) 50%, rgba(139,92,246,0.06) 100%)' }}>
+                <div className="absolute inset-0 opacity-5" style={{ backgroundImage: 'radial-gradient(circle at 80% 20%, rgba(6,182,212,0.4) 0%, transparent 50%)' }} />
+                <div className="relative p-6">
+                  <div className="flex items-center gap-5">
+                    <button
+                      type="button"
+                      onClick={() => setShowAvatarSelector(true)}
+                      className="relative w-24 h-24 rounded-2xl bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center text-5xl hover:scale-105 transition-all duration-300 group shadow-lg shadow-cyan-500/30 ring-2 ring-cyan-400/30"
+                    >
+                      {user.avatar}
+                      <div className="absolute inset-0 bg-black/50 rounded-2xl opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                        <Camera className="w-6 h-6" />
+                      </div>
+                    </button>
+                    <div className="flex-1">
+                      <h2 className="text-3xl font-black">Player1</h2>
+                      <div className="text-cyan-300 flex items-center gap-2 mt-0.5">
+                        <span className="text-lg">{level.icon}</span>
+                        <span className="font-bold">{level.name}</span>
+                        <span className="text-gray-400">•</span>
+                        <span className="text-gray-300">{user.xp.toLocaleString()} XP</span>
+                      </div>
+                      {/* XP Progress Bar */}
+                      <div className="mt-3 max-w-sm">
+                        <div className="flex items-center justify-between text-xs mb-1">
+                          <span className="text-gray-400">Level {level.level}</span>
+                          <span className="text-cyan-400 font-bold">{nextLevel ? `${user.xp} / ${nextLevel.xp} XP` : 'MAX LEVEL'}</span>
+                        </div>
+                        <div className="h-2 bg-black/40 rounded-full overflow-hidden">
+                          <div className="h-full bg-gradient-to-r from-cyan-400 to-blue-500 rounded-full transition-all duration-1000 progress-animated" style={{ width: `${xpProgress}%` }} />
+                        </div>
+                      </div>
                     </div>
-                  </button>
-                  <div>
-                    <h2 className="text-2xl font-black">Player1</h2>
-                    <div className="text-cyan-300">{level.icon} {level.name} • {user.xp.toLocaleString()} XP</div>
+                  </div>
+                  {/* Quick Info Badges */}
+                  <div className="flex flex-wrap gap-2 mt-4">
+                    <div className="px-3 py-1.5 rounded-lg bg-white/[0.05] border border-white/10 text-xs font-bold flex items-center gap-1.5">
+                      {vip.icon} <span className="text-gray-300">VIP: {vip.name}</span>
+                    </div>
+                    <div className="px-3 py-1.5 rounded-lg bg-white/[0.05] border border-white/10 text-xs font-bold flex items-center gap-1.5">
+                      <Flame className="w-3.5 h-3.5 text-orange-400" /> <span className="text-gray-300">{user.streak}d Streak</span>
+                    </div>
+                    {winRate > 0 && (
+                      <div className="px-3 py-1.5 rounded-lg bg-white/[0.05] border border-white/10 text-xs font-bold flex items-center gap-1.5">
+                        <TrendingUp className="w-3.5 h-3.5 text-green-400" /> <span className="text-gray-300">{winRate}% Win Rate</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
+
+              {/* Stats Grid — Enhanced */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="bg-black/60 rounded-xl p-4 border border-white/10 text-center">
-                  <div className="text-2xl font-bold text-yellow-400">{user.bets}</div>
-                  <div className="text-gray-400">Bets Placed</div>
-                </div>
-                <div className="bg-black/60 rounded-xl p-4 border border-white/10 text-center">
-                  <div className="text-2xl font-bold text-green-400">{user.wins}</div>
-                  <div className="text-gray-400">Bets Won</div>
-                </div>
-                <div className="bg-black/60 rounded-xl p-4 border border-white/10 text-center">
-                  <div className="text-2xl font-bold text-cyan-400">{user.gamesPlayed}</div>
-                  <div className="text-gray-400">Games Played</div>
-                </div>
-                <div className="bg-black/60 rounded-xl p-4 border border-white/10 text-center">
-                  <div className="text-2xl font-bold text-cyan-300">{user.missionsComplete.length}</div>
-                  <div className="text-gray-400">Missions Done</div>
+                {profileStats.map(stat => {
+                  const Icon = stat.icon;
+                  return (
+                    <div key={stat.label} className={`relative overflow-hidden rounded-xl p-4 border ${stat.border} bg-gradient-to-br ${stat.gradient} transition-all duration-300 hover:scale-[1.03]`}>
+                      <div className="absolute top-3 right-3 opacity-10">
+                        <Icon className="w-10 h-10" />
+                      </div>
+                      <Icon className={`w-5 h-5 text-${stat.color}-400 mb-2`} />
+                      <div className={`text-3xl font-black text-${stat.color}-400`}>{stat.value}</div>
+                      <div className="text-gray-400 text-sm mt-0.5">{stat.label}</div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Wallet — Enhanced */}
+              <div className="match-card p-5">
+                <h3 className="font-bold text-lg mb-4 flex items-center gap-2"><Wallet className="w-5 h-5 text-cyan-400" /> Wallet</h3>
+                <div className="space-y-3">
+                  {[
+                    { icon: CURRENCY_ICONS.coin, name: 'Kwacha (Coins)', value: user.kwacha, color: 'text-yellow-400', bg: 'bg-yellow-500/10', border: 'border-yellow-500/20' },
+                    { icon: CURRENCY_ICONS.gem, name: 'Gems', value: user.gems, color: 'text-green-400', bg: 'bg-green-500/10', border: 'border-green-500/20' },
+                    { icon: CURRENCY_ICONS.diamond, name: 'Diamonds', value: user.diamonds, color: 'text-blue-400', bg: 'bg-blue-500/10', border: 'border-blue-500/20' },
+                  ].map(c => (
+                    <div key={c.name} className={`flex items-center justify-between p-3 rounded-xl ${c.bg} border ${c.border} transition-all duration-300 hover:scale-[1.01]`}>
+                      <span className="flex items-center gap-3">
+                        <img src={c.icon} alt="" className="w-9 h-9 object-contain" />
+                        <span className="font-medium">{c.name}</span>
+                      </span>
+                      <span className={`${c.color} font-bold text-xl tabular-nums`}>{c.value.toLocaleString()}</span>
+                    </div>
+                  ))}
                 </div>
               </div>
+
+              {/* Achievements Preview */}
               <div className="match-card p-5">
-                <h3 className="font-bold text-lg mb-4">Wallet</h3>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="flex items-center gap-3"><img src={CURRENCY_ICONS.coin} alt="" className="w-8 h-8 object-contain" /> Coins</span>
-                    <span className="text-yellow-400 font-bold text-xl">{user.kwacha.toLocaleString()}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="flex items-center gap-3"><img src={CURRENCY_ICONS.gem} alt="" className="w-8 h-8 object-contain" /> Gems</span>
-                    <span className="text-green-400 font-bold text-xl">{user.gems}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="flex items-center gap-3"><img src={CURRENCY_ICONS.diamond} alt="" className="w-8 h-8 object-contain" /> Diamonds</span>
-                    <span className="text-blue-400 font-bold text-xl">{user.diamonds}</span>
-                  </div>
+                <h3 className="font-bold text-lg mb-4 flex items-center gap-2"><Award className="w-5 h-5 text-yellow-400" /> Achievements</h3>
+                <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
+                  {[
+                    { icon: '🎯', name: 'First Bet', done: user.bets > 0 },
+                    { icon: '🏆', name: 'First Win', done: user.wins > 0 },
+                    { icon: '🎮', name: 'Gamer', done: user.gamesPlayed >= 5 },
+                    { icon: '🔥', name: '3d Streak', done: user.streak >= 3 },
+                    { icon: '💰', name: 'Rich', done: user.kwacha >= 1000 },
+                    { icon: '⭐', name: 'Collector', done: user.missionsComplete.length >= 5 },
+                  ].map(a => (
+                    <div key={a.name} className={`text-center p-3 rounded-xl border transition-all duration-300 ${a.done ? 'bg-yellow-500/10 border-yellow-500/30 hover:scale-105' : 'bg-white/[0.02] border-white/5 opacity-40 grayscale'}`}>
+                      <div className="text-2xl mb-1">{a.icon}</div>
+                      <div className="text-[10px] font-bold text-gray-300">{a.name}</div>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
-          )}
+            );
+          })()}
         </div>
       </main>
     </div>
