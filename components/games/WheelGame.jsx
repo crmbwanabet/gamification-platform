@@ -66,7 +66,7 @@ export default function WheelGame({ onClose, onWin, playsLeft, closing }) {
   };
 
   return (
-    <div className={`fixed inset-0 bg-black/95 flex items-center justify-center z-[70] p-4 ${closing ? "anim-backdrop-close" : "anim-fade-in"}`} onClick={onClose}>
+    <div className={`fixed inset-0 bg-[#1a0d26]/95 flex items-center justify-center z-[70] p-4 ${closing ? "anim-backdrop-close" : "anim-fade-in"}`} onClick={onClose}>
       {showTutorial && <TutorialModal tutorialKey="wheel" onClose={() => setShowTutorial(false)} />}
 
       {/* Screen Flash on Win */}
@@ -101,11 +101,11 @@ export default function WheelGame({ onClose, onWin, playsLeft, closing }) {
         </div>
       )}
 
-      <div className={`bg-gradient-to-b from-[#0a1520] to-[#030810] rounded-3xl max-w-md w-full p-6 border-0 shadow-2xl shadow-cyan-900/50 ${closing ? "anim-modal-close" : "anim-scale-in"}`} onClick={(e) => e.stopPropagation()}>
+      <div className={`bg-gradient-to-b from-[#0a1520] to-[#030810] rounded-3xl max-w-md w-full p-6 border-0 shadow-2xl shadow-purple-900/50 ${closing ? "anim-modal-close" : "anim-scale-in"}`} onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
           <button type="button" onClick={() => setShowTutorial(true)} className="p-2 hover:bg-white/10 rounded-full transition-colors">
-            <HelpCircle className="w-6 h-6 text-cyan-400" />
+            <HelpCircle className="w-6 h-6 text-purple-400" />
           </button>
           <h2 className="text-2xl font-bold flex items-center gap-2">
             <span className="text-3xl">🎡</span> Wheel of Fortune
@@ -336,7 +336,7 @@ export default function WheelGame({ onClose, onWin, playsLeft, closing }) {
         {result && (
           <div
             className="text-center p-6 bg-gradient-to-r from-green-500/20 via-emerald-500/20 to-green-500/20 rounded-2xl border border-green-500/50"
-            style={{ animation: 'resultZoom 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both' }}
+            style={{ animation: 'resultZoom 0.5s cubic-bezier(0.25, 1, 0.5, 1) both' }}
           >
             <div className="w-24 h-24 mx-auto mb-3" style={{ animation: 'float 2s ease-in-out infinite' }}>
               <img src={WHEEL_IMAGES[result.image]} alt="" className="w-full h-full object-contain drop-shadow-lg" />

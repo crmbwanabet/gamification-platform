@@ -55,11 +55,11 @@ function StopClockGame({ onClose, onWin, closing }) {
   const dialRotation = (currentNum / 100) * 360;
 
   return (
-    <div className={`fixed inset-0 bg-black/95 flex items-center justify-center z-[70] p-4 ${closing ? "anim-backdrop-close" : "anim-fade-in"}`} onClick={onClose}>
+    <div className={`fixed inset-0 bg-[#1a0d26]/95 flex items-center justify-center z-[70] p-4 ${closing ? "anim-backdrop-close" : "anim-fade-in"}`} onClick={onClose}>
       <div className={`bg-gradient-to-b from-[#0a1520] to-[#030810] rounded-3xl max-w-md w-full p-6 border-0 ${closing ? "anim-modal-close" : "anim-scale-in"}`} onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
           <button type="button" onClick={() => setShowTutorial(true)} className="p-2 hover:bg-white/10 rounded-full">
-            <HelpCircle className="w-6 h-6 text-cyan-400" />
+            <HelpCircle className="w-6 h-6 text-purple-400" />
           </button>
           <h2 className="text-2xl font-bold">⏱️ Stop the Clock</h2>
           <button type="button" onClick={onClose} className="p-2 hover:bg-white/10 rounded-full">
@@ -140,7 +140,7 @@ function StopClockGame({ onClose, onWin, closing }) {
           <button
             type="button"
             onClick={startSpin}
-            className="w-full py-4 rounded-xl font-bold text-lg bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 shadow-lg shadow-cyan-500/30 hover:scale-[1.02] active:scale-95 transition-all"
+            className="w-full py-4 rounded-xl font-bold text-lg bg-gradient-to-r from-purple-500 to-purple-700 hover:from-purple-600 hover:to-purple-800 shadow-lg shadow-purple-500/30 hover:scale-[1.02] active:scale-95 transition-all"
           >
             ⏱️ Start Clock!
           </button>
@@ -157,7 +157,7 @@ function StopClockGame({ onClose, onWin, closing }) {
         )}
 
         {gameState === 'stopped' && (
-          <div className="text-center" style={{ animation: 'resultZoom 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both' }}>
+          <div className="text-center" style={{ animation: 'resultZoom 0.5s cubic-bezier(0.25, 1, 0.5, 1) both' }}>
             <div className="flex items-center justify-center gap-6 mb-3">
               <div className="text-center">
                 <div className="text-sm text-gray-400">Target</div>
@@ -177,7 +177,7 @@ function StopClockGame({ onClose, onWin, closing }) {
             <button
               type="button"
               onClick={() => { setGameState('ready'); setCurrentNum(0); setTargetNum(null); setStoppedNum(null); }}
-              className="px-8 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 rounded-xl font-bold"
+              className="px-8 py-3 bg-gradient-to-r from-purple-500 to-purple-700 hover:from-purple-600 hover:to-purple-800 rounded-xl font-bold"
             >
               Try Again ⏱️
             </button>
@@ -195,8 +195,8 @@ function StopClockGame({ onClose, onWin, closing }) {
               <div className="text-yellow-400 font-bold">±5</div>
               <div className="text-white font-bold">200</div>
             </div>
-            <div className="bg-cyan-500/10 rounded-lg p-2 border-0">
-              <div className="text-cyan-400 font-bold">±10</div>
+            <div className="bg-purple-500/10 rounded-lg p-2 border-0">
+              <div className="text-purple-400 font-bold">±10</div>
               <div className="text-white font-bold">100</div>
             </div>
           </div>

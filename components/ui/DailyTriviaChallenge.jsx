@@ -79,24 +79,24 @@ export default function DailyTriviaChallenge({ user, onAnswer, onNavigate }) {
     const baseReward = finalResults.reduce((sum, r, i) => sum + (r ? DAILY_DIFFICULTY[i].reward : 0), 0);
     const totalCoins = Math.floor((baseReward + (finalPerfect ? DAILY_PERFECT_BONUS.coins : 0)) * streakMult);
     return (
-      <div className="dh-hero-card overflow-hidden" style={{ border: finalPerfect ? '1.5px solid rgba(255,215,0,.3)' : '1.5px solid rgba(6,182,212,.2)' }}>
+      <div className="dh-hero-card overflow-hidden" style={{ border: finalPerfect ? '1.5px solid rgba(255,215,0,.3)' : '1.5px solid rgba(147,51,234,.2)' }}>
         <div className="p-5">
           <div className="flex items-center gap-3 mb-4">
-            <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${finalPerfect ? 'bg-amber-500/15' : 'bg-cyan-500/10'}`}>
-              {finalPerfect ? <Trophy className="w-6 h-6 text-amber-400" /> : finalCorrect > 0 ? <Target className="w-6 h-6 text-cyan-400" /> : <XCircle className="w-6 h-6 text-gray-500" />}
+            <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${finalPerfect ? 'bg-amber-500/15' : 'bg-purple-500/10'}`}>
+              {finalPerfect ? <Trophy className="w-6 h-6 text-amber-400" /> : finalCorrect > 0 ? <Target className="w-6 h-6 text-purple-400" /> : <XCircle className="w-6 h-6 text-gray-500" />}
             </div>
             <div className="flex-1">
               <div className="font-bold text-sm">
                 {finalPerfect ? 'Perfect Score!' : finalCorrect > 0 ? 'Today\'s Trivia — Done' : 'Today\'s Trivia — Done'}
               </div>
-              <div className={`text-xs ${finalPerfect ? 'text-amber-400' : finalCorrect > 0 ? 'text-cyan-400' : 'text-gray-500'}`}>
+              <div className={`text-xs ${finalPerfect ? 'text-amber-400' : finalCorrect > 0 ? 'text-purple-400' : 'text-gray-500'}`}>
                 {finalPerfect
                   ? `+${totalCoins} Coins + ${DAILY_PERFECT_BONUS.gems} Gems earned`
                   : finalCorrect > 0
                     ? `${finalCorrect}/3 Correct — +${totalCoins} Coins earned`
                     : '0/3 — Better luck tomorrow!'
                 }
-                {streakMult > 1 && <span className="text-cyan-400 ml-1">({streakMult}x streak)</span>}
+                {streakMult > 1 && <span className="text-purple-400 ml-1">({streakMult}x streak)</span>}
               </div>
             </div>
           </div>
@@ -146,11 +146,11 @@ export default function DailyTriviaChallenge({ user, onAnswer, onNavigate }) {
       <div className="px-5 pt-4 pb-3 flex items-center justify-between" style={{ borderBottom: `1px solid ${diff.border}` }}>
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: diff.bg }}>
-            {catInfo.Icon ? <catInfo.Icon className="w-5 h-5" style={{ color: catInfo.color }} /> : <Target className="w-5 h-5 text-cyan-400" />}
+            {catInfo.Icon ? <catInfo.Icon className="w-5 h-5" style={{ color: catInfo.color }} /> : <Target className="w-5 h-5 text-purple-400" />}
           </div>
           <div>
             <div className="font-bold text-sm flex items-center gap-2">
-              <Target className="w-3.5 h-3.5 text-cyan-400" /> Daily Trivia
+              <Target className="w-3.5 h-3.5 text-purple-400" /> Daily Trivia
               <span className="px-2 py-0.5 rounded-md text-[10px] font-black tracking-wider" style={{ background: diff.bg, color: diff.color, border: `1px solid ${diff.border}` }}>
                 {diff.label.toUpperCase()}
               </span>
@@ -193,7 +193,7 @@ export default function DailyTriviaChallenge({ user, onAnswer, onNavigate }) {
           {q.options.map((opt, i) => {
             const isCorrect = opt === q.a;
             const isSelected = opt === selected;
-            let classes = 'bg-black/30 border border-white/8 hover:border-cyan-500/30 hover:bg-cyan-500/8';
+            let classes = 'bg-black/30 border border-white/8 hover:border-purple-500/30 hover:bg-purple-500/8';
             let extraStyle = {};
             if (showAnswer) {
               if (isCorrect) { classes = 'dt-correct border-2'; extraStyle = { background: 'rgba(34,197,94,.12)', borderColor: 'rgba(34,197,94,.5)', boxShadow: '0 0 15px rgba(34,197,94,.15)' }; }

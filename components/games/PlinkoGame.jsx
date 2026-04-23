@@ -501,12 +501,12 @@ function PlinkoGame({ onClose, onWin, closing }) {
   const hasActivity = totalSpent > 0;
 
   return (
-    <div className={`fixed inset-0 bg-black/95 flex items-center justify-center z-[70] p-4 ${closing ? "anim-backdrop-close" : "anim-fade-in"}`} onClick={onClose}>
+    <div className={`fixed inset-0 bg-[#1a0d26]/95 flex items-center justify-center z-[70] p-4 ${closing ? "anim-backdrop-close" : "anim-fade-in"}`} onClick={onClose}>
       <div className={`bg-gradient-to-b from-[#0a1520] to-[#030810] rounded-3xl max-w-md w-full p-4 border-0 max-h-[95vh] overflow-y-auto ${closing ? "anim-modal-close" : "anim-scale-in"}`} onClick={(e) => e.stopPropagation()} style={{ scrollbarWidth: 'none' }}>
         {/* Header */}
         <div className="flex items-center justify-between mb-2">
           <button type="button" onClick={() => setShowTutorial(true)} className="p-1.5 hover:bg-white/10 rounded-full">
-            <HelpCircle className="w-5 h-5 text-cyan-400" />
+            <HelpCircle className="w-5 h-5 text-purple-400" />
           </button>
           <h2 className="text-xl font-black tracking-tight">🔮 Plinko Drop</h2>
           <button type="button" onClick={onClose} className="p-1.5 hover:bg-white/10 rounded-full">
@@ -544,7 +544,7 @@ function PlinkoGame({ onClose, onWin, closing }) {
               <button key={w} type="button" disabled={activeBalls > 0}
                 onClick={() => setWager(w)}
                 className={`px-2 py-1 rounded-md text-[11px] font-black transition-all ${wager === w
-                  ? 'bg-cyan-500/30 text-cyan-400 border border-cyan-500/40'
+                  ? 'bg-purple-500/30 text-purple-400 border border-purple-500/40'
                   : 'text-gray-500 hover:text-gray-300'
                 }`}
               >{w}🪙</button>
@@ -593,7 +593,7 @@ function PlinkoGame({ onClose, onWin, closing }) {
             {lastResult.type === 'bomb' && <div className="text-base font-black text-red-400">💣 BOOM! Lost wager</div>}
             {lastResult.type === 'obstacle' && <div className="text-base font-black text-red-400">💥 Hit obstacle!</div>}
             {lastResult.type === 'win' && lastResult.prize > 0 && (
-              <div className={`text-base font-black ${lastResult.prize >= 50 ? 'text-yellow-400' : 'text-cyan-400'}`}>
+              <div className={`text-base font-black ${lastResult.prize >= 50 ? 'text-yellow-400' : 'text-purple-400'}`}>
                 +{lastResult.prize}🪙
               </div>
             )}
@@ -603,14 +603,14 @@ function PlinkoGame({ onClose, onWin, closing }) {
         {/* Buttons */}
         <div className="mt-2 flex gap-2">
           <button type="button" onClick={dropBall} disabled={autoDropping}
-            className="flex-1 py-3 rounded-xl font-black text-sm transition-all bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 shadow-lg shadow-cyan-500/25 hover:scale-[1.02] active:scale-95 disabled:opacity-50"
+            className="flex-1 py-3 rounded-xl font-black text-sm transition-all bg-gradient-to-r from-purple-500 to-purple-700 hover:from-purple-600 hover:to-purple-800 shadow-lg shadow-purple-500/25 hover:scale-[1.02] active:scale-95 disabled:opacity-50"
           >
             🔮 Drop ({wager}🪙)
           </button>
 
           {!autoDropping ? (
             <button type="button" onClick={() => autoDrop(10)} disabled={activeBalls > 15}
-              className="px-3 py-3 rounded-xl font-black text-[11px] bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 shadow-lg shadow-purple-500/20 transition-all hover:scale-105 active:scale-95 disabled:opacity-50"
+              className="px-3 py-3 rounded-xl font-black text-[11px] bg-gradient-to-r from-[#f59e0b] to-[#d97706] hover:from-[#d97706] hover:to-[#b45309] shadow-lg shadow-amber-500/20 transition-all hover:scale-105 active:scale-95 disabled:opacity-50"
             >
               ×10
             </button>
@@ -634,7 +634,7 @@ function PlinkoGame({ onClose, onWin, closing }) {
         {/* Legend */}
         <div className="flex justify-center gap-3 mt-2 text-[9px] text-gray-500 font-bold">
           <span><span className="inline-block w-2 h-2 rounded-full bg-indigo-500 mr-0.5" /> Peg</span>
-          <span><span className="inline-block w-2 h-2 rounded-full bg-cyan-400 mr-0.5" /> Moving</span>
+          <span><span className="inline-block w-2 h-2 rounded-full bg-purple-400 mr-0.5" /> Moving</span>
           <span><span className="inline-block w-2 h-2 rounded-full bg-red-500 mr-0.5" /> Obstacle</span>
           {risk === 'high' && <span>💣 Bomb slot</span>}
           <span>🏆 Jackpot</span>

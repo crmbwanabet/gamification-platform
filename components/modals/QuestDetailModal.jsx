@@ -88,7 +88,7 @@ export default function QuestDetailModal({ quest, questProgress, questsComplete,
               <span className="text-yellow-400 font-bold text-sm">🪙 {quest.reward.kwacha}</span>
               <span className="text-green-400 font-bold text-sm">💚 {quest.reward.gems}</span>
               {quest.reward.diamonds && <span className="text-cyan-400 font-bold text-sm">💎 {quest.reward.diamonds}</span>}
-              <span className="text-cyan-400 font-bold text-sm">⚡ {quest.xp} XP</span>
+              <span className="text-purple-400 font-bold text-sm">⚡ {quest.xp} XP</span>
             </div>
           </div>
 

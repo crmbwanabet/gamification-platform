@@ -164,7 +164,7 @@ export default function ScratchGame({ onClose, onWin, closing }) {
   };
 
   return (
-    <div className={`fixed inset-0 bg-black/95 flex items-center justify-center z-[70] p-4 ${closing ? 'anim-backdrop-close' : 'anim-fade-in'}`} onClick={onClose}>
+    <div className={`fixed inset-0 bg-[#1a0d26]/95 flex items-center justify-center z-[70] p-4 ${closing ? 'anim-backdrop-close' : 'anim-fade-in'}`} onClick={onClose}>
       {showTutorial && <TutorialModal tutorialKey="scratch" onClose={() => setShowTutorial(false)} />}
 
       {/* Jackpot screen flash */}
@@ -235,7 +235,7 @@ export default function ScratchGame({ onClose, onWin, closing }) {
                       className="w-16 h-16 object-contain"
                       style={{
                         animation: revealed[idx]
-                          ? `symbolPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both${isMatched(idx) ? ', matchPulse 1.2s ease-in-out 0.6s infinite' : ''}`
+                          ? `symbolPop 0.5s cubic-bezier(0.25, 1, 0.5, 1) both${isMatched(idx) ? ', matchPulse 1.2s ease-in-out 0.6s infinite' : ''}`
                           : 'none',
                         opacity: revealed[idx] ? 1 : 0.2,
                         transform: revealed[idx] ? 'scale(1)' : 'scale(0.4)',
@@ -310,7 +310,7 @@ export default function ScratchGame({ onClose, onWin, closing }) {
             {/* Prize result */}
             {allRevealed && (
               <div className={`text-center py-5 rounded-2xl mb-4`} style={{
-                animation: 'resultZoom 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both',
+                animation: 'resultZoom 0.5s cubic-bezier(0.25, 1, 0.5, 1) both',
                 background: matchCount === 3 ? 'linear-gradient(135deg, rgba(251,191,36,0.15) 0%, rgba(245,158,11,0.05) 100%)' : matchCount === 2 ? 'linear-gradient(135deg, rgba(96,165,250,0.1) 0%, rgba(59,130,246,0.05) 100%)' : 'rgba(255,255,255,0.03)',
                 border: matchCount === 3 ? '2px solid rgba(251,191,36,0.4)' : matchCount === 2 ? '2px solid rgba(96,165,250,0.3)' : '2px solid rgba(255,255,255,0.1)',
               }}>
@@ -336,10 +336,10 @@ export default function ScratchGame({ onClose, onWin, closing }) {
                 onClick={onClose}
                 className="w-full py-4 rounded-2xl font-black text-lg transition-all hover:scale-[1.02] active:scale-95"
                 style={{
-                  '--btn-shadow': matchCount === 3 ? '#92400E' : '#164E63',
-                  '--btn-glow': matchCount === 3 ? 'rgba(251,191,36,0.3)' : 'rgba(6,182,212,0.2)',
-                  '--btn-glow2': matchCount === 3 ? 'rgba(251,191,36,0.15)' : 'rgba(6,182,212,0.1)',
-                  background: matchCount === 3 ? 'linear-gradient(180deg, #FBBF24 0%, #D97706 100%)' : 'linear-gradient(180deg, #22D3EE 0%, #0891B2 100%)',
+                  '--btn-shadow': matchCount === 3 ? '#92400E' : '#4c1d95',
+                  '--btn-glow': matchCount === 3 ? 'rgba(251,191,36,0.3)' : 'rgba(147,51,234,0.2)',
+                  '--btn-glow2': matchCount === 3 ? 'rgba(251,191,36,0.15)' : 'rgba(147,51,234,0.1)',
+                  background: matchCount === 3 ? 'linear-gradient(180deg, #FBBF24 0%, #D97706 100%)' : 'linear-gradient(180deg, #a855f7 0%, #7c3aed 100%)',
                   color: '#000',
                   animation: 'collectBtnPulse 2s ease-in-out infinite',
                 }}

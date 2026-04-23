@@ -12,7 +12,7 @@ export default function MissionDetailModal({ mission, progress, done, onClose, o
 
   return (
     <div className={`fixed inset-0 bg-black/90 flex items-center justify-center z-[80] p-4 ${closing ? 'anim-backdrop-close' : 'anim-fade-in'}`} onClick={onClose}>
-      <div className={`bg-gradient-to-b from-[#0a1520] to-[#030810] rounded-3xl max-w-md w-full overflow-hidden border-0 shadow-2xl shadow-cyan-900/50 max-h-[90vh] overflow-y-auto ${closing ? 'anim-modal-close' : 'anim-scale-in'}`} onClick={(e) => e.stopPropagation()}>
+      <div className={`bg-gradient-to-b from-[#0a1520] to-[#030810] rounded-3xl max-w-md w-full overflow-hidden border-0 shadow-2xl shadow-purple-900/50 max-h-[90vh] overflow-y-auto ${closing ? 'anim-modal-close' : 'anim-scale-in'}`} onClick={(e) => e.stopPropagation()}>
         {/* Header Image */}
         <div className="relative h-44 overflow-hidden">
           <img src={IMAGES[mission.image]} alt="" className="w-full h-full object-cover" />
@@ -88,7 +88,7 @@ export default function MissionDetailModal({ mission, progress, done, onClose, o
               )}
               <div className="flex items-center gap-1.5">
                 <span className="text-lg">⚡</span>
-                <span className="text-cyan-400 font-bold text-lg">{mission.xp}</span>
+                <span className="text-purple-400 font-bold text-lg">{mission.xp}</span>
                 <span className="text-gray-500 text-sm">XP</span>
               </div>
             </div>
@@ -101,7 +101,7 @@ export default function MissionDetailModal({ mission, progress, done, onClose, o
               <div className="space-y-1.5">
                 {mission.tips.map((tip, i) => (
                   <div key={i} className="text-sm text-gray-300 flex items-start gap-2">
-                    <span className="text-cyan-400 mt-0.5">•</span>
+                    <span className="text-purple-400 mt-0.5">•</span>
                     <span>{tip}</span>
                   </div>
                 ))}
@@ -114,7 +114,7 @@ export default function MissionDetailModal({ mission, progress, done, onClose, o
             <button
               type="button"
               onClick={() => { onNavigate(mission.cta); onClose(); }}
-              className="w-full py-3.5 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 rounded-xl font-bold text-lg transition-all hover:scale-[1.02] active:scale-95 shadow-lg shadow-cyan-500/30 flex items-center justify-center gap-2"
+              className="w-full py-3.5 bg-gradient-to-r from-purple-500 to-purple-700 hover:from-purple-600 hover:to-purple-800 rounded-xl font-bold text-lg transition-all hover:scale-[1.02] active:scale-95 shadow-lg shadow-purple-500/30 flex items-center justify-center gap-2"
             >
               {mission.ctaLabel || 'Go'} <ChevronRight className="w-5 h-5" />
             </button>

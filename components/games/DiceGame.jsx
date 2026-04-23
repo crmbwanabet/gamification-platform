@@ -71,13 +71,13 @@ export default function DiceGame({ onClose, onWin, closing }) {
   };
 
   return (
-    <div className={`fixed inset-0 bg-black/95 flex items-center justify-center z-[70] p-4 ${closing ? "anim-backdrop-close" : "anim-fade-in"}`} onClick={onClose}>
+    <div className={`fixed inset-0 bg-[#1a0d26]/95 flex items-center justify-center z-[70] p-4 ${closing ? "anim-backdrop-close" : "anim-fade-in"}`} onClick={onClose}>
       {showTutorial && <TutorialModal tutorialKey="dice" onClose={() => setShowTutorial(false)} />}
 
       <div className={`bg-gradient-to-b from-[#0a1520] to-[#030810] rounded-3xl max-w-md w-full p-6 border-0 ${closing ? "anim-modal-close" : "anim-scale-in"}`} onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
           <button type="button" onClick={() => setShowTutorial(true)} className="p-2 hover:bg-white/10 rounded-full">
-            <HelpCircle className="w-6 h-6 text-cyan-400" />
+            <HelpCircle className="w-6 h-6 text-purple-400" />
           </button>
           <h2 className="text-2xl font-bold">🎲 Lucky Dice</h2>
           <button type="button" onClick={onClose} className="p-2 hover:bg-white/10 rounded-full">
@@ -102,7 +102,7 @@ export default function DiceGame({ onClose, onWin, closing }) {
                   type="button"
                   onClick={() => setGuess(n)}
                   disabled={rolling}
-                  className={`py-3 rounded-xl font-bold text-lg transition-all ${guess === n ? 'bg-gradient-to-br from-cyan-400 to-blue-500 scale-110 shadow-lg shadow-cyan-500/50' : 'bg-black/40 hover:bg-cyan-900/30 border border-white/10 hover:scale-105'}`}
+                  className={`py-3 rounded-xl font-bold text-lg transition-all ${guess === n ? 'bg-gradient-to-br from-purple-400 to-purple-600 scale-110 shadow-lg shadow-purple-500/50' : 'bg-[#2d1a3f]/40 hover:bg-purple-900/30 border border-white/10 hover:scale-105'}`}
                 >
                   {n}
                 </button>
@@ -120,7 +120,7 @@ export default function DiceGame({ onClose, onWin, closing }) {
         )}
 
         {result && (
-          <div className="text-center" style={{ animation: 'resultZoom 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both' }}>
+          <div className="text-center" style={{ animation: 'resultZoom 0.5s cubic-bezier(0.25, 1, 0.5, 1) both' }}>
             <div className="text-6xl mb-4" style={{ animation: result.won ? 'symbolPop 0.5s ease both, float 2s ease-in-out 0.5s infinite' : 'symbolPop 0.4s ease both' }}>{result.won ? '🎯' : result.close ? '👍' : '😢'}</div>
             <p className="text-xl mb-2">
               Total: <span className="text-4xl text-yellow-400 font-black">{result.total}</span>
@@ -131,7 +131,7 @@ export default function DiceGame({ onClose, onWin, closing }) {
             <button
               type="button"
               onClick={() => { setResult(null); setGuess(null); }}
-              className="px-8 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 rounded-xl font-bold text-lg"
+              className="px-8 py-3 bg-gradient-to-r from-purple-500 to-purple-700 hover:from-purple-600 hover:to-purple-800 rounded-xl font-bold text-lg"
             >
               Play Again 🎲
             </button>

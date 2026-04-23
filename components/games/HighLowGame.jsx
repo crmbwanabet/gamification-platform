@@ -57,13 +57,13 @@ export default function HighLowGame({ onClose, onWin, closing }) {
   );
 
   return (
-    <div className={`fixed inset-0 bg-black/95 flex items-center justify-center z-[70] p-4 ${closing ? "anim-backdrop-close" : "anim-fade-in"}`} onClick={onClose}>
+    <div className={`fixed inset-0 bg-[#1a0d26]/95 flex items-center justify-center z-[70] p-4 ${closing ? "anim-backdrop-close" : "anim-fade-in"}`} onClick={onClose}>
       {showTutorial && <TutorialModal tutorialKey="highlow" onClose={() => setShowTutorial(false)} />}
 
       <div className={`bg-gradient-to-b from-[#0a1520] to-[#030810] rounded-3xl max-w-md w-full p-6 border-0 ${closing ? "anim-modal-close" : "anim-scale-in"}`} onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
           <button type="button" onClick={() => setShowTutorial(true)} className="p-2 hover:bg-white/10 rounded-full">
-            <HelpCircle className="w-6 h-6 text-cyan-400" />
+            <HelpCircle className="w-6 h-6 text-purple-400" />
           </button>
           <h2 className="text-2xl font-bold">🃏 Higher or Lower</h2>
           <button type="button" onClick={onClose} className="p-2 hover:bg-white/10 rounded-full">
@@ -98,7 +98,7 @@ export default function HighLowGame({ onClose, onWin, closing }) {
               <button
                 type="button"
                 onClick={() => guess(false)}
-                className="py-4 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 rounded-xl font-bold text-lg flex items-center justify-center gap-2 shadow-lg shadow-blue-500/30"
+                className="py-4 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 rounded-xl font-bold text-lg flex items-center justify-center gap-2 shadow-lg shadow-blue-500/30"
               >
                 <ChevronDown className="w-6 h-6" /> LOWER
               </button>
@@ -123,11 +123,11 @@ export default function HighLowGame({ onClose, onWin, closing }) {
         )}
 
         {revealing && !gameOver && (
-          <p className="text-center text-xl text-cyan-400" style={{ animation: 'pulseGlow 1s ease-in-out infinite' }}>Revealing...</p>
+          <p className="text-center text-xl text-purple-400" style={{ animation: 'pulseGlow 1s ease-in-out infinite' }}>Revealing...</p>
         )}
 
         {gameOver && (
-          <div className="text-center p-4 bg-red-500/20 rounded-xl border border-red-500/50" style={{ animation: 'resultZoom 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both' }}>
+          <div className="text-center p-4 bg-red-500/20 rounded-xl border border-red-500/50" style={{ animation: 'resultZoom 0.5s cubic-bezier(0.25, 1, 0.5, 1) both' }}>
             <div className="text-5xl mb-2" style={{ animation: 'wrongShake 0.6s ease both' }}>💔</div>
             <div className="text-2xl font-bold text-red-400 mb-2">Game Over!</div>
             <p className="text-gray-300 mb-4">
@@ -142,7 +142,7 @@ export default function HighLowGame({ onClose, onWin, closing }) {
                 setRevealing(false);
                 setCurrent({ v: Math.floor(Math.random() * 13) + 1, s: '♠' });
               }}
-              className="px-8 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 rounded-xl font-bold"
+              className="px-8 py-3 bg-gradient-to-r from-purple-500 to-purple-700 rounded-xl font-bold"
             >
               Play Again 🃏
             </button>

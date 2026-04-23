@@ -38,19 +38,29 @@ import QuestDetailModal from './modals/QuestDetailModal';
 import WheelGame from './games/WheelGame';
 import ScratchGame from './games/ScratchGame';
 import DiceGame from './games/DiceGame';
-import MemoryGame from './games/MemoryGame';
 import HighLowGame from './games/HighLowGame';
 import PlinkoGame from './games/PlinkoGame';
 import TapFrenzyGame from './games/TapFrenzyGame';
 import StopClockGame from './games/StopClockGame';
-import TreasureHuntGame from './games/TreasureHuntGame';
-import MinesGame from './games/MinesGame';
-import ClassicQuizGame from './games/ClassicQuizGame';
-import SpeedRoundGame from './games/SpeedRoundGame';
-import StreakTriviaGame from './games/StreakTriviaGame';
+
+// Respect the user's OS-level motion preference.
+// Returns true when `prefers-reduced-motion: reduce` is active.
+const useReducedMotion = () => {
+  const [reduced, setReduced] = useState(false);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const update = () => setReduced(mq.matches);
+    update();
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
+  }, []);
+  return reduced;
+};
 
 export default function GamificationPlatform() {
-  const [tab, setTab] = useState('overview');
+  const prefersReducedMotion = useReducedMotion();
+  const [tab, setTab] = useState('home');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeGame, setActiveGame] = useState(null);
   const [missionSubTab, setMissionSubTab] = useState('daily');
@@ -174,10 +184,10 @@ export default function GamificationPlatform() {
     rewardAnimFrameRef.current = requestAnimationFrame(loop);
   }, []);
 
-  // Screen flash effect
+  // Screen flash effect — short, amber-tinted acknowledgement (~180ms)
   const triggerFlash = useCallback((color = 'gold') => {
     setScreenFlash(color);
-    setTimeout(() => setScreenFlash(null), 400);
+    setTimeout(() => setScreenFlash(null), 180);
   }, []);
 
   // Screen shake effect
@@ -217,67 +227,43 @@ export default function GamificationPlatform() {
     }
   }, []);
 
-  // Master reward trigger — composes all effects based on tier
+  // Master reward trigger — composes effects based on tier under a 2-layer motion budget.
+  // Budget excludes the persistent WebGL background shader and hover transitions.
+  //   small  -> 1 layer:  floating number(s)
+  //   medium -> 2 layers: floating number(s) + brief gold screen flash
+  //   big    -> 2 layers: fly-to-header trail + confetti burst (the trail IS the drama)
+  // prefers-reduced-motion collapses every tier to a static floating number only.
   const triggerReward = useCallback((tier, sourceEl, rewards = {}) => {
     const rect = sourceEl?.getBoundingClientRect?.() || { left: window.innerWidth / 2, top: window.innerHeight / 2, width: 0, height: 0 };
     const cx = rect.left + rect.width / 2;
     const cy = rect.top + rect.height / 2;
 
+    // Reduced-motion path: acknowledge the reward with a single, gentle float-up number.
+    // No confetti, no shake, no flash, no shimmer, no fly-to-header trail.
+    if (prefersReducedMotion) {
+      if (rewards.coins) spawnFloatingNumber(`+${rewards.coins}`, cx, cy - 20, '#EAB308');
+      if (rewards.gems) spawnFloatingNumber(`+${rewards.gems}`, cx + 40, cy - 20, '#10B981');
+      if (rewards.diamonds) spawnFloatingNumber(`+${rewards.diamonds}`, cx - 40, cy - 20, '#3B82F6');
+      if (rewards.xp) spawnFloatingNumber(`+${rewards.xp} XP`, cx, cy - 50, '#c026d3');
+      return;
+    }
+
     if (tier === 'small') {
-      // Tier 1: ~1.2s — quick burst + fly-to-header + floating numbers
-      spawnParticles(cx, cy, 12, { type: 'coin', spread: 160, speed: 6, life: 30, gravity: 0.2 });
-      spawnParticles(cx, cy, 6, { type: 'sparkle', spread: 200, speed: 4, life: 25, size: 10, gravity: 0.15 });
-      if (rewards.coins) {
-        spawnFlyingCoin(cx, cy, 'coin');
-        spawnFloatingNumber(`+${rewards.coins}`, cx, cy - 20, '#EAB308');
-      }
-      if (rewards.gems) {
-        setTimeout(() => spawnFlyingCoin(cx, cy, 'gem'), 150);
-        spawnFloatingNumber(`+${rewards.gems}`, cx + 40, cy - 20, '#10B981');
-      }
-      if (rewards.xp) spawnFloatingNumber(`+${rewards.xp} XP`, cx - 40, cy - 20, '#22D3EE');
+      // 1 layer: float number(s) only. No shake, no flash, no particles.
+      if (rewards.coins) spawnFloatingNumber(`+${rewards.coins}`, cx, cy - 20, '#EAB308');
+      if (rewards.gems) spawnFloatingNumber(`+${rewards.gems}`, cx + 40, cy - 20, '#10B981');
+      if (rewards.xp) spawnFloatingNumber(`+${rewards.xp} XP`, cx - 40, cy - 20, '#c026d3');
     }
     else if (tier === 'medium') {
-      // Tier 2: ~2.2s — burst + flash + short confetti shower
+      // 2 layers: float number(s) + brief amber screen flash (~180ms via triggerFlash).
       triggerFlash('gold');
-      spawnParticles(cx, cy, 22, { type: 'coin', spread: 180, speed: 7, life: 40, gravity: 0.18 });
-      spawnParticles(cx, cy, 10, { type: 'star', spread: 240, speed: 5, life: 35, size: 12, gravity: 0.15 });
-      spawnParticles(cx, cy, 8, { type: 'sparkle', spread: 360, speed: 4, life: 30, size: 10, gravity: 0.12 });
-      if (rewards.coins) {
-        spawnFlyingCoin(cx, cy, 'coin');
-        spawnFloatingNumber(`+${rewards.coins}`, cx, cy - 30, '#EAB308');
-      }
-      if (rewards.gems) {
-        setTimeout(() => spawnFlyingCoin(cx, cy, 'gem'), 200);
-        spawnFloatingNumber(`+${rewards.gems}`, cx + 50, cy - 30, '#10B981');
-      }
-      if (rewards.diamonds) {
-        setTimeout(() => spawnFlyingCoin(cx, cy, 'diamond'), 350);
-        spawnFloatingNumber(`+${rewards.diamonds}`, cx - 50, cy - 30, '#3B82F6');
-      }
-      if (rewards.xp) spawnFloatingNumber(`+${rewards.xp} XP`, cx, cy - 60, '#22D3EE');
-      // Short confetti shower — 15 particles over 0.6s, each lives ~1.2s
-      for (let i = 0; i < 15; i++) {
-        setTimeout(() => {
-          spawnParticles(Math.random() * window.innerWidth, -10, 1, {
-            type: ['coin', 'star', 'sparkle'][Math.floor(Math.random() * 3)],
-            spread: 30, speed: 2, gravity: 0.14, life: 65, size: 13
-          });
-        }, i * 40);
-      }
+      if (rewards.coins) spawnFloatingNumber(`+${rewards.coins}`, cx, cy - 30, '#EAB308');
+      if (rewards.gems) spawnFloatingNumber(`+${rewards.gems}`, cx + 50, cy - 30, '#10B981');
+      if (rewards.diamonds) spawnFloatingNumber(`+${rewards.diamonds}`, cx - 50, cy - 30, '#3B82F6');
+      if (rewards.xp) spawnFloatingNumber(`+${rewards.xp} XP`, cx, cy - 60, '#c026d3');
     }
     else if (tier === 'big') {
-      // Tier 3: ~3s — full celebration, everything wraps by 3s
-      triggerFlash('gold');
-      triggerShake();
-      // Initial burst — high speed, moderate life so they scatter fast and fade
-      spawnParticles(cx, cy, 35, { type: 'coin', spread: 360, speed: 9, life: 45, gravity: 0.2 });
-      spawnParticles(cx, cy, 18, { type: 'star', spread: 360, speed: 7, life: 40, size: 14, gravity: 0.18 });
-      spawnParticles(cx, cy, 14, { type: 'sparkle', spread: 360, speed: 6, life: 35, size: 12, gravity: 0.15 });
-      // Firework bursts — tighter timing, shorter life
-      setTimeout(() => spawnParticles(window.innerWidth * 0.3, window.innerHeight * 0.3, 14, { type: 'star', spread: 360, speed: 6, life: 35, size: 12, gravity: 0.18 }), 300);
-      setTimeout(() => spawnParticles(window.innerWidth * 0.7, window.innerHeight * 0.25, 14, { type: 'sparkle', spread: 360, speed: 6, life: 35, size: 12, gravity: 0.18 }), 550);
-      // Currency fly
+      // 2 layers: fly-to-header currency trail + confetti burst. No shake, no flash, no shimmer.
       if (rewards.coins) {
         spawnFlyingCoin(cx, cy, 'coin');
         spawnFloatingNumber(`+${rewards.coins}`, cx, cy - 30, '#EAB308');
@@ -290,18 +276,18 @@ export default function GamificationPlatform() {
         setTimeout(() => spawnFlyingCoin(cx, cy, 'diamond'), 450);
         spawnFloatingNumber(`+${rewards.diamonds}`, cx - 50, cy - 30, '#3B82F6');
       }
-      if (rewards.xp) spawnFloatingNumber(`+${rewards.xp} XP`, cx, cy - 70, '#22D3EE');
-      // Confetti rain — 25 particles over 1s, each lives ~1.1s, heavier gravity pulls them down naturally
-      for (let i = 0; i < 25; i++) {
+      if (rewards.xp) spawnFloatingNumber(`+${rewards.xp} XP`, cx, cy - 70, '#c026d3');
+      // Confetti burst (second layer) — single downpour, lighter than before.
+      for (let i = 0; i < 20; i++) {
         setTimeout(() => {
           spawnParticles(Math.random() * window.innerWidth, -10, 1, {
-            type: ['coin', 'star', 'sparkle', 'fire'][Math.floor(Math.random() * 4)],
-            spread: 35, speed: 2.5, gravity: 0.16, life: 60, size: 15
+            type: ['coin', 'star', 'sparkle'][Math.floor(Math.random() * 3)],
+            spread: 35, speed: 2.5, gravity: 0.16, life: 60, size: 14
           });
-        }, i * 40);
+        }, i * 45);
       }
     }
-  }, [spawnParticles, spawnFlyingCoin, spawnFloatingNumber, triggerFlash, triggerShake]);
+  }, [prefersReducedMotion, spawnParticles, spawnFlyingCoin, spawnFloatingNumber, triggerFlash]);
 
   // Avatar options
   const AVATARS = [
@@ -315,7 +301,6 @@ export default function GamificationPlatform() {
     const style = document.createElement('style');
     style.textContent = `
       /* Global overrides - bigger/bolder fonts, soft edges */
-      * { font-family: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif; }
       .scrollbar-hide::-webkit-scrollbar { display: none; }
       .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
       
@@ -361,29 +346,29 @@ export default function GamificationPlatform() {
         pointer-events: none;
       }
       
-      /* Cyan 3D button */
+      /* Plum 3D button */
       .btn-3d-purple {
-        background: linear-gradient(180deg, #22D3EE 0%, #06B6D4 40%, #0891B2 100%);
-        color: #000;
+        background: linear-gradient(180deg, #a855f7 0%, #9333ea 40%, #7c3aed 100%);
+        color: #fff;
         text-shadow: none;
-        box-shadow: 
-          0 4px 0 #0E7490,
-          0 6px 20px rgba(6,182,212,0.4),
-          0 0 20px rgba(34,211,238,0.15),
+        box-shadow:
+          0 4px 0 #6d28d9,
+          0 6px 20px rgba(147,51,234,0.3),
+          0 0 20px rgba(168,85,247,0.15),
           inset 0 1px 0 rgba(255,255,255,0.3),
           inset 0 -1px 0 rgba(0,0,0,0.2);
       }
       .btn-3d-purple:hover {
-        box-shadow: 
-          0 6px 0 #0E7490,
-          0 10px 30px rgba(6,182,212,0.5),
-          0 0 30px rgba(34,211,238,0.25),
+        box-shadow:
+          0 6px 0 #6d28d9,
+          0 10px 30px rgba(147,51,234,0.4),
+          0 0 30px rgba(168,85,247,0.25),
           inset 0 1px 0 rgba(255,255,255,0.35);
       }
       .btn-3d-purple:active {
-        box-shadow: 
-          0 1px 0 #0E7490,
-          0 2px 8px rgba(6,182,212,0.3),
+        box-shadow:
+          0 1px 0 #6d28d9,
+          0 2px 8px rgba(147,51,234,0.3),
           inset 0 2px 4px rgba(0,0,0,0.3);
       }
       
@@ -445,23 +430,46 @@ export default function GamificationPlatform() {
           inset 0 1px 0 rgba(255,255,255,0.35);
       }
       
-      /* ===== SOFT CARD SYSTEM ===== */
-      .card-soft {
-        background: linear-gradient(145deg, rgba(30,21,69,0.85) 0%, rgba(15,10,31,0.9) 100%);
-        border: 1px solid rgba(168,85,247,0.08);
-        box-shadow: 
-          0 4px 24px rgba(0,0,0,0.3),
-          0 0 0 1px rgba(168,85,247,0.06),
-          inset 0 1px 0 rgba(255,255,255,0.04);
-        border-radius: 20px;
+      /* ===== UNIFIED CARD SYSTEM =====
+         One source of truth: .card = base tokens.
+         Variants: .card--elevated (hero/feature), .card--flat (subtle), .card--match (predictions).
+         Legacy aliases (.card-soft / .card-interactive / .match-card) compose these. */
+      .card {
+        background: rgba(36, 20, 50, 0.65);
         backdrop-filter: blur(12px);
+        border: 1px solid rgba(147, 51, 234, 0.15);
+        border-radius: 16px;
+        transition: border-color 180ms ease, background 180ms ease, transform 180ms ease, box-shadow 180ms ease;
+      }
+      .card-interactive:hover,
+      .card.interactive:hover {
+        border-color: rgba(147, 51, 234, 0.4);
+        background: rgba(45, 26, 63, 0.75);
+      }
+      /* Variant modifiers */
+      .card--elevated {
+        background: rgba(45, 26, 63, 0.8);
+        box-shadow: 0 12px 32px rgba(12, 5, 24, 0.5);
+      }
+      .card--flat {
+        background: rgba(30, 16, 44, 0.5);
+        backdrop-filter: blur(8px);
+      }
+      .card--match {
+        border-radius: 20px;
+        padding: 16px;
+      }
+      /* Legacy aliases — keep JSX usage sites working, but composed from .card tokens */
+      .card-soft {
+        background: rgba(30, 16, 44, 0.5);
+        backdrop-filter: blur(8px);
+        border: 1px solid rgba(147, 51, 234, 0.15);
+        border-radius: 16px;
+        transition: border-color 180ms ease, background 180ms ease, box-shadow 180ms ease;
       }
       .card-soft:hover {
-        border-color: rgba(168,85,247,0.15);
-        box-shadow: 
-          0 8px 32px rgba(0,0,0,0.4),
-          0 0 0 1px rgba(168,85,247,0.1),
-          inset 0 1px 0 rgba(255,255,255,0.06);
+        border-color: rgba(147, 51, 234, 0.4);
+        background: rgba(45, 26, 63, 0.75);
       }
       
       @keyframes fadeInUp {
@@ -485,8 +493,8 @@ export default function GamificationPlatform() {
         to { opacity: 1; transform: scale(1); }
       }
       @keyframes pulseGlow {
-        0%, 100% { box-shadow: 0 0 8px rgba(6, 182, 212, 0.4); }
-        50% { box-shadow: 0 0 24px rgba(6, 182, 212, 0.7), 0 0 48px rgba(6, 182, 212, 0.3); }
+        0%, 100% { box-shadow: 0 0 8px rgba(147, 51, 234, 0.4); }
+        50% { box-shadow: 0 0 24px rgba(147, 51, 234, 0.7), 0 0 48px rgba(147, 51, 234, 0.3); }
       }
       @keyframes shimmer {
         0% { background-position: -200% center; }
@@ -506,8 +514,8 @@ export default function GamificationPlatform() {
         100% { transform: scale(1); }
       }
       @keyframes borderGlow {
-        0%, 100% { border-color: rgba(6, 182, 212, 0.08); }
-        50% { border-color: rgba(6, 182, 212, 0.3); }
+        0%, 100% { border-color: rgba(147, 51, 234, 0.08); }
+        50% { border-color: rgba(147, 51, 234, 0.3); }
       }
       @keyframes wiggle {
         0%, 100% { transform: rotate(0deg); }
@@ -700,10 +708,9 @@ export default function GamificationPlatform() {
       }
       .reward-screen-flash {
         position: fixed; inset: 0; z-index: 9999; pointer-events: none;
-        animation: rewardScreenFlash 0.4s ease-out forwards;
+        animation: rewardScreenFlash 0.18s ease-out forwards;
       }
       .reward-screen-flash-gold { background: radial-gradient(ellipse at center, rgba(234,179,8,0.3) 0%, rgba(234,179,8,0) 70%); }
-      .reward-screen-flash-cyan { background: radial-gradient(ellipse at center, rgba(6,182,212,0.3) 0%, rgba(6,182,212,0) 70%); }
       .reward-screen-flash-white { background: radial-gradient(ellipse at center, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0) 70%); }
       .reward-shake { animation: rewardScreenShake 0.4s ease-out; }
       .reward-float-number {
@@ -722,7 +729,7 @@ export default function GamificationPlatform() {
       }
       .hover-lift:hover {
         transform: translateY(-6px);
-        box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5), 0 0 20px rgba(6, 182, 212, 0.15);
+        box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5), 0 0 20px rgba(147, 51, 234, 0.15);
       }
       
       .btn-glow {
@@ -761,26 +768,28 @@ export default function GamificationPlatform() {
       .anim-check-pop { animation: checkPop 0.5s cubic-bezier(0.22, 1, 0.36, 1) both; }
       .card-gradient { background: linear-gradient(145deg, #0a1628 0%, #030810 100%); }
       
-      /* ===== BOLD INTERACTIVE ELEMENTS ===== */
+      /* Legacy aliases — composed from .card tokens (see unified card system above) */
       .card-interactive {
-        border: 2px solid rgba(255,255,255,0.15);
-        border-radius: 20px;
-        background: rgba(10,15,25,0.92);
+        background: rgba(45, 26, 63, 0.8);
         backdrop-filter: blur(12px);
-        box-shadow: 0 4px 24px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.05);
-        transition: all 0.25s cubic-bezier(0.22,1,0.36,1);
+        border: 1px solid rgba(147, 51, 234, 0.15);
+        border-radius: 16px;
+        box-shadow: 0 12px 32px rgba(12, 5, 24, 0.5);
+        transition: border-color 180ms ease, background 180ms ease, transform 180ms ease, box-shadow 180ms ease;
       }
       .card-interactive:hover {
-        border-color: rgba(6,182,212,0.6);
-        box-shadow: 0 0 20px rgba(6,182,212,0.2), 0 8px 32px rgba(0,0,0,0.6);
+        border-color: rgba(147, 51, 234, 0.4);
+        background: rgba(45, 26, 63, 0.9);
+        box-shadow: 0 16px 40px rgba(12, 5, 24, 0.6), 0 0 20px rgba(147,51,234,0.2);
         transform: translateY(-4px);
       }
       .match-card {
-        border: 2px solid rgba(255,255,255,0.12);
-        border-radius: 20px;
-        box-shadow: 0 4px 24px rgba(0,0,0,0.6);
-        background: rgba(10,15,25,0.92);
+        background: rgba(36, 20, 50, 0.65);
         backdrop-filter: blur(12px);
+        border: 1px solid rgba(147, 51, 234, 0.15);
+        border-radius: 20px;
+        padding: 16px;
+        transition: border-color 180ms ease, background 180ms ease;
       }
       /* Contrast boost for content over animated gradient background */
       .content-contrast h1,
@@ -801,16 +810,16 @@ export default function GamificationPlatform() {
         transition: all 0.2s ease;
       }
       .odds-btn:hover {
-        border-color: rgba(6,182,212,0.7);
-        background: rgba(6,182,212,0.2);
-        box-shadow: 0 0 20px rgba(6,182,212,0.3), 0 2px 0 rgba(0,0,0,0.3);
+        border-color: rgba(168,85,247,0.7);
+        background: rgba(147,51,234,0.2);
+        box-shadow: 0 0 20px rgba(147,51,234,0.3), 0 2px 0 rgba(0,0,0,0.3);
         transform: translateY(-2px);
       }
       .tab-btn-active {
-        background: linear-gradient(180deg, #22D3EE 0%, #06B6D4 40%, #0891B2 100%);
-        color: #000;
+        background: linear-gradient(135deg, #9333ea 0%, #7c3aed 100%);
+        color: #fff;
         font-weight: 900;
-        box-shadow: 0 4px 0 #0E7490, 0 6px 20px rgba(6,182,212,0.35), 0 0 20px rgba(34,211,238,0.15), inset 0 1px 0 rgba(255,255,255,0.3);
+        box-shadow: 0 4px 0 #6d28d9, 0 6px 20px rgba(147,51,234,0.25), 0 0 20px rgba(168,85,247,0.15), inset 0 1px 0 rgba(255,255,255,0.25);
         border: none;
         border-radius: 14px;
       }
@@ -821,8 +830,20 @@ export default function GamificationPlatform() {
         transition: all 0.2s ease;
       }
       .tab-btn-inactive:hover {
-        border-color: rgba(6,182,212,0.5);
-        background: rgba(6,182,212,0.15);
+        border-color: rgba(168,85,247,0.5);
+        background: rgba(147,51,234,0.15);
+      }
+
+      /* ===== ACCESSIBILITY — reduced-motion safety net =====
+         Catches any keyframe animation the runtime check misses.
+         Does not affect the persistent WebGL background (not CSS-driven). */
+      @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after {
+          animation-duration: 0.01ms !important;
+          animation-iteration-count: 1 !important;
+          transition-duration: 0.01ms !important;
+          scroll-behavior: auto !important;
+        }
       }
     `;
     document.head.appendChild(style);
@@ -846,8 +867,8 @@ export default function GamificationPlatform() {
     dailyDay: 1,
     dailyClaimed: false,
     referrals: 0,
-    gamePlays: { wheel: 3, scratch: 5, dice: 5, memory: 3, highlow: 5, plinko: 5, tapfrenzy: 5, stopclock: 5, treasure: 3, mines: 5 },
-    triviaPlays: { classicQuiz: 3, speedRound: 5, streakTrivia: 3 },
+    gamePlays: { wheel: 3, scratch: 5, dice: 5, highlow: 5, plinko: 5, tapfrenzy: 5, stopclock: 5 },
+    triviaPlays: {},
     dailyChallengeAnswered: false,
     dailyChallengeCorrect: false,
     dailyTasksDone: [],
@@ -889,6 +910,10 @@ export default function GamificationPlatform() {
   }));
 
   const handleWin = (prize, name) => {
+    const coins = typeof prize === 'number' ? prize : (prize.kwacha || 0);
+    const gems = typeof prize === 'number' ? 0 : (prize.gems || 0);
+    const diamonds = typeof prize === 'number' ? 0 : (prize.diamonds || 0);
+    const xp = typeof prize === 'number' ? 0 : (prize.xp || 0);
     if (typeof prize === 'number') {
       addCoins(prize);
       showNotif(`🎉 +${prize} Coins!`);
@@ -901,12 +926,11 @@ export default function GamificationPlatform() {
     }
     setUser(u => ({ ...u, gamesPlayed: u.gamesPlayed + 1, dailyTasksDone: [...new Set([...u.dailyTasksDone, 'game'])] }));
     setGamesPlayedToday(prev => new Set([...prev, 'wheel']));
-    trackMission('gamePlayed', { gameId: 'wheel', coinsWon: typeof prize === 'number' ? prize : (prize.kwacha || 0), gamesSet: gamesPlayedToday });
+    trackMission('gamePlayed', { gameId: 'wheel', coinsWon: coins, gamesSet: gamesPlayedToday });
     trackQuest('wheelSpun', {});
     trackQuest('gamePlayed', { gameId: 'wheel' });
-    trackQuest('coinsEarned', { amount: typeof prize === 'number' ? prize : (prize.kwacha || 0) });
-    setShowConfetti(true);
-    setTimeout(() => setShowConfetti(false), 1500);
+    trackQuest('coinsEarned', { amount: coins });
+    triggerReward('medium', null, { coins, gems, diamonds, xp });
   };
 
 
@@ -963,21 +987,6 @@ export default function GamificationPlatform() {
             break;
           case 'clockClose':
             if (actionType === 'gamePlayed' && metadata.gameId === 'stopclock' && metadata.clockDiff !== undefined && metadata.clockDiff <= 3) {
-              setTo = 1;
-            }
-            break;
-          case 'treasureSurvive':
-            if (actionType === 'gamePlayed' && metadata.gameId === 'treasure' && metadata.survivedNoTrap) {
-              setTo = 1;
-            }
-            break;
-          case 'treasureJackpot':
-            if (actionType === 'gamePlayed' && metadata.gameId === 'treasure' && metadata.foundCrown) {
-              setTo = 1;
-            }
-            break;
-          case 'memoryFast':
-            if (actionType === 'gamePlayed' && metadata.gameId === 'memory' && metadata.memoryMoves && metadata.memoryMoves < 16) {
               setTo = 1;
             }
             break;
@@ -1060,6 +1069,7 @@ export default function GamificationPlatform() {
         setTimeout(() => {
           justCompleted.forEach(m => {
             showNotif('✅ Mission Complete: ' + m.name + '!');
+            triggerReward('small', null, { coins: m.reward?.kwacha || 0, gems: m.reward?.gems || 0, xp: m.xp || 0 });
             // Track weekly mission for daily missions completed
             if (m.id.startsWith('d_')) {
               trackMission('missionCompleted', { missionId: m.id });
@@ -1116,8 +1126,7 @@ export default function GamificationPlatform() {
       };
     });
     showNotif(`🏆 Quest Complete: ${quest.name}!`);
-    setShowConfetti(true);
-    setTimeout(() => setShowConfetti(false), 3000);
+    triggerReward('big', null, { coins: quest.reward?.kwacha || 0, gems: quest.reward?.gems || 0, diamonds: quest.reward?.diamonds || 0, xp: quest.xp || 0 });
     trackQuest('questCompleted', {});
     setSelectedQuest(null);
   }, [showNotif]);
@@ -1163,6 +1172,8 @@ export default function GamificationPlatform() {
     if (totalCoins > 0) addCoins(totalCoins);
     if (totalGems > 0) addGems(totalGems);
     if (xpEarned > 0) addXP(xpEarned);
+    if (isPerfect) triggerReward('big', null, { coins: totalCoins, gems: totalGems, xp: xpEarned });
+    else if (correctCount > 0) triggerReward('small', null, { coins: totalCoins });
 
     const msg = isPerfect
       ? `🏆 Perfect Trivia! +${totalCoins} Coins + ${totalGems} Gems${streakMult > 1 ? ` (${streakMult}x streak!)` : '!'}`
@@ -1186,18 +1197,54 @@ export default function GamificationPlatform() {
   };
 
   const tabs = [
-    { id: 'overview', icon: Home, label: 'Overview' },
-    { id: 'missions', icon: Target, label: 'Missions' },
-    { id: 'quests', icon: Map, label: 'Quests' },
-    { id: 'minigames', icon: Gamepad2, label: 'Games' },
+    { id: 'home', icon: Home, label: 'Home' },
+    { id: 'play', icon: Gamepad2, label: 'Play' },
+    { id: 'earn', icon: Target, label: 'Earn' },
     { id: 'store', icon: Store, label: 'Store' },
-    { id: 'predictions', icon: Trophy, label: 'Predict' },
-    { id: 'daily', icon: Gift, label: 'Daily' },
-    { id: 'vip', icon: Crown, label: 'VIP' },
-    { id: 'referrals', icon: Users, label: 'Refer' },
-    { id: 'leaderboard', icon: Medal, label: 'Leaders' },
-    { id: 'profile', icon: User, label: 'Profile' },
+    { id: 'me', icon: User, label: 'Me' },
   ];
+
+  const SUB_NAV = {
+    play: [
+      { key: 'minigames', label: 'Games' },
+      { key: 'predictions', label: 'Predict' },
+      { key: 'daily', label: 'Daily' },
+    ],
+    earn: [
+      { key: 'missions', label: 'Missions' },
+      { key: 'quests', label: 'Quests' },
+    ],
+    me: [
+      { key: 'profile', label: 'Profile' },
+      { key: 'vip', label: 'VIP' },
+      { key: 'referrals', label: 'Refer' },
+      { key: 'leaderboard', label: 'Leaders' },
+    ],
+  };
+
+  // Map legacy flat tab ids (used by modals/quests/missions) to new dot-notation routes.
+  const LEGACY_TAB_MAP = {
+    overview: 'home',
+    home: 'home',
+    store: 'store',
+    minigames: 'play.minigames',
+    predict: 'play.predictions',
+    predictions: 'play.predictions',
+    daily: 'play.daily',
+    missions: 'earn.missions',
+    quests: 'earn.quests',
+    profile: 'me.profile',
+    vip: 'me.vip',
+    refer: 'me.referrals',
+    referrals: 'me.referrals',
+    leaders: 'me.leaderboard',
+    leaderboard: 'me.leaderboard',
+    play: 'play.minigames',
+    earn: 'earn.missions',
+    me: 'me.profile',
+    overview: 'home',
+  };
+  const navigateTab = (id) => setTab(LEGACY_TAB_MAP[id] || id);
 
   return (
     <div className={`flex h-screen text-white overflow-hidden ${screenShake ? 'reward-shake' : ''}`}>
@@ -1297,7 +1344,7 @@ export default function GamificationPlatform() {
       {showBuyModal && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[80] p-4 anim-fade-in" onClick={() => setShowBuyModal(null)}>
           <div className="w-full max-w-md anim-scale-in" onClick={(e) => e.stopPropagation()}>
-            <div className="rounded-2xl overflow-hidden" style={{ background: 'linear-gradient(180deg, #0c1a2e 0%, #030810 100%)', border: '2px solid rgba(6,182,212,0.25)' }}>
+            <div className="rounded-2xl overflow-hidden" style={{ background: 'linear-gradient(180deg, #1a0c2e 0%, #0a0310 100%)', border: '2px solid rgba(147,51,234,0.25)' }}>
               <div className="p-6">
                 <div className="flex items-center justify-between mb-6">
                   <h2 className="text-2xl font-black tracking-tight">
@@ -1339,14 +1386,14 @@ export default function GamificationPlatform() {
                           setShowBuyModal(null);
                         }}
                         className="w-full flex items-center justify-between p-4 rounded-xl transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] relative"
-                        style={{ border: `1.5px solid ${pkg.best ? 'rgba(6,182,212,0.6)' : colors.border}`, background: pkg.best ? 'rgba(6,182,212,0.08)' : colors.bg, boxShadow: pkg.best ? '0 0 20px rgba(6,182,212,0.15)' : 'none' }}
+                        style={{ border: `1.5px solid ${pkg.best ? 'rgba(245,158,11,0.6)' : colors.border}`, background: pkg.best ? 'rgba(245,158,11,0.08)' : colors.bg, boxShadow: pkg.best ? '0 0 20px rgba(245,158,11,0.18)' : 'none' }}
                       >
-                        {pkg.best && <span className="absolute -top-2.5 right-3 px-2 py-0.5 bg-cyan-500 text-black text-xs font-black rounded-md">BEST VALUE</span>}
+                        {pkg.best && <span className="absolute -top-2.5 right-3 px-2 py-0.5 bg-amber-500 text-black text-xs font-black rounded-md">BEST VALUE</span>}
                         <div className="flex items-center gap-3">
                           <img src={CURRENCY_ICONS[showBuyModal === 'coins' ? 'coin' : showBuyModal === 'gems' ? 'gem' : 'diamond']} alt="" className="w-10 h-10 object-contain" />
                           <div className="text-left">
                             <div className={`font-black text-xl ${colors.text}`}>{pkg.amount.toLocaleString()}</div>
-                            {pkg.bonus && <div className="text-xs text-cyan-400 font-bold">{pkg.bonus}</div>}
+                            {pkg.bonus && <div className="text-xs text-amber-400 font-bold">{pkg.bonus}</div>}
                           </div>
                         </div>
                         <div className="px-4 py-2 rounded-lg font-black text-sm btn-3d btn-3d-green">{pkg.price}</div>
@@ -1378,55 +1425,43 @@ export default function GamificationPlatform() {
           onWin={(n) => {
             addCoins(n);
             showNotif(`🎉 +${n} Coins!`);
+            triggerReward('medium', null, { coins: n });
             setUser(u => ({ ...u, gamesPlayed: u.gamesPlayed + 1, dailyTasksDone: [...new Set([...u.dailyTasksDone, 'game'])] }));
             setGamesPlayedToday(prev => new Set([...prev, 'scratch']));
             trackMission('gamePlayed', { gameId: 'scratch', coinsWon: n, gamesSet: gamesPlayedToday });
             trackQuest('gamePlayed', { gameId: 'scratch' });
             trackQuest('coinsEarned', { amount: n });
-          }} 
+          }}
         />
       )}
       {activeGame === 'dice' && (
-        <DiceGame 
-          onClose={() => animateClose(() => setActiveGame(null))} closing={closingModal} 
+        <DiceGame
+          onClose={() => animateClose(() => setActiveGame(null))} closing={closingModal}
           onWin={(n) => {
             addCoins(n);
             showNotif(`🎉 +${n} Coins!`);
+            triggerReward('medium', null, { coins: n });
             setUser(u => ({ ...u, gamesPlayed: u.gamesPlayed + 1, dailyTasksDone: [...new Set([...u.dailyTasksDone, 'game'])] }));
             setGamesPlayedToday(prev => new Set([...prev, 'dice']));
             trackMission('gamePlayed', { gameId: 'dice', coinsWon: n, gamesSet: gamesPlayedToday });
             trackQuest('gamePlayed', { gameId: 'dice' });
             trackQuest('coinsEarned', { amount: n });
-          }} 
-        />
-      )}
-      {activeGame === 'memory' && (
-        <MemoryGame 
-          onClose={() => animateClose(() => setActiveGame(null))} closing={closingModal} 
-          onWin={(n, meta) => {
-            addCoins(n);
-            addXP(20);
-            showNotif(`🎉 +${n} Coins + 20 XP!`);
-            setUser(u => ({ ...u, gamesPlayed: u.gamesPlayed + 1, dailyTasksDone: [...new Set([...u.dailyTasksDone, 'game'])] }));
-            setGamesPlayedToday(prev => new Set([...prev, 'memory']));
-            trackMission('gamePlayed', { gameId: 'memory', coinsWon: n, memoryMoves: meta?.moves, gamesSet: gamesPlayedToday });
-            trackQuest('gamePlayed', { gameId: 'memory' });
-            trackQuest('coinsEarned', { amount: n });
-          }} 
+          }}
         />
       )}
       {activeGame === 'highlow' && (
-        <HighLowGame 
-          onClose={() => animateClose(() => setActiveGame(null))} closing={closingModal} 
+        <HighLowGame
+          onClose={() => animateClose(() => setActiveGame(null))} closing={closingModal}
           onWin={(n) => {
             addCoins(n);
             showNotif(`🎉 +${n} Coins!`);
+            triggerReward('medium', null, { coins: n });
             setUser(u => ({ ...u, gamesPlayed: u.gamesPlayed + 1, dailyTasksDone: [...new Set([...u.dailyTasksDone, 'game'])] }));
             setGamesPlayedToday(prev => new Set([...prev, 'highlow']));
             trackMission('gamePlayed', { gameId: 'highlow', coinsWon: n, gamesSet: gamesPlayedToday });
             trackQuest('gamePlayed', { gameId: 'highlow' });
             trackQuest('coinsEarned', { amount: n });
-          }} 
+          }}
         />
       )}
 
@@ -1437,112 +1472,41 @@ export default function GamificationPlatform() {
           onWin={(n) => {
             addCoins(n);
             showNotif(`🎉 +${n} Coins!`);
+            triggerReward('medium', null, { coins: n });
             setUser(u => ({ ...u, gamesPlayed: u.gamesPlayed + 1, dailyTasksDone: [...new Set([...u.dailyTasksDone, 'game'])] }));
             setGamesPlayedToday(prev => new Set([...prev, 'plinko']));
             trackMission('gamePlayed', { gameId: 'plinko', coinsWon: n, gamesSet: gamesPlayedToday });
             trackQuest('gamePlayed', { gameId: 'plinko' });
             trackQuest('coinsEarned', { amount: n });
-          }} 
+          }}
         />
       )}
       {activeGame === 'tapfrenzy' && (
-        <TapFrenzyGame 
-          onClose={() => animateClose(() => setActiveGame(null))} closing={closingModal} 
+        <TapFrenzyGame
+          onClose={() => animateClose(() => setActiveGame(null))} closing={closingModal}
           onWin={(n, meta) => {
             addCoins(n);
             showNotif(`🎉 +${n} Coins!`);
+            triggerReward('medium', null, { coins: n });
             setUser(u => ({ ...u, gamesPlayed: u.gamesPlayed + 1, dailyTasksDone: [...new Set([...u.dailyTasksDone, 'game'])] }));
             setGamesPlayedToday(prev => new Set([...prev, 'tapfrenzy']));
             trackMission('gamePlayed', { gameId: 'tapfrenzy', coinsWon: n, tapScore: meta?.score, gamesSet: gamesPlayedToday });
             trackQuest('gamePlayed', { gameId: 'tapfrenzy' });
             trackQuest('coinsEarned', { amount: n });
-          }} 
+          }}
         />
       )}
       {activeGame === 'stopclock' && (
-        <StopClockGame 
-          onClose={() => animateClose(() => setActiveGame(null))} closing={closingModal} 
+        <StopClockGame
+          onClose={() => animateClose(() => setActiveGame(null))} closing={closingModal}
           onWin={(n, meta) => {
             addCoins(n);
             showNotif(`🎉 +${n} Coins!`);
+            triggerReward('medium', null, { coins: n });
             setUser(u => ({ ...u, gamesPlayed: u.gamesPlayed + 1, dailyTasksDone: [...new Set([...u.dailyTasksDone, 'game'])] }));
             setGamesPlayedToday(prev => new Set([...prev, 'stopclock']));
             trackMission('gamePlayed', { gameId: 'stopclock', coinsWon: n, clockDiff: meta?.diff, gamesSet: gamesPlayedToday });
             trackQuest('gamePlayed', { gameId: 'stopclock' });
-            trackQuest('coinsEarned', { amount: n });
-          }} 
-        />
-      )}
-      {activeGame === 'treasure' && (
-        <TreasureHuntGame 
-          onClose={() => animateClose(() => setActiveGame(null))} closing={closingModal} 
-          onWin={(n, meta) => {
-            addCoins(n);
-            showNotif(`🎉 +${n} Coins!`);
-            setUser(u => ({ ...u, gamesPlayed: u.gamesPlayed + 1, dailyTasksDone: [...new Set([...u.dailyTasksDone, 'game'])] }));
-            setGamesPlayedToday(prev => new Set([...prev, 'treasure']));
-            trackMission('gamePlayed', { gameId: 'treasure', coinsWon: n, foundCrown: meta?.foundCrown, survivedNoTrap: meta?.survivedNoTrap, gamesSet: gamesPlayedToday });
-            trackQuest('gamePlayed', { gameId: 'treasure' });
-            trackQuest('coinsEarned', { amount: n });
-          }} 
-        />
-      )}
-
-
-
-      {/* Mines Game */}
-      {activeGame === 'mines' && (
-        <MinesGame 
-          onClose={() => animateClose(() => setActiveGame(null))} closing={closingModal} 
-          onWin={(n) => {
-            addCoins(n);
-            showNotif(`💎 +${n} Coins from Mines!`);
-            setUser(u => ({ ...u, gamesPlayed: u.gamesPlayed + 1, dailyTasksDone: [...new Set([...u.dailyTasksDone, 'game'])] }));
-            setGamesPlayedToday(prev => new Set([...prev, 'mines']));
-            trackMission('gamePlayed', { gameId: 'mines', coinsWon: n, gamesSet: gamesPlayedToday });
-            trackQuest('gamePlayed', { gameId: 'mines' });
-            trackQuest('coinsEarned', { amount: n });
-          }} 
-        />
-      )}
-
-      {/* Trivia Game Modals */}
-      {activeTrivia === 'classicQuiz' && (
-        <ClassicQuizGame
-          onClose={() => animateClose(() => setActiveTrivia(null))} closing={closingModal}
-          onWin={(n, meta) => {
-            addCoins(n);
-            showNotif('🧠 +' + n + ' Coins!');
-            trackMission('triviaPlayed', { triviaType: 'classic' });
-            trackQuest('triviaPlayed', {});
-            if (meta?.triviaCorrect) { trackMission('triviaCorrect', { count: meta.triviaCorrect }); trackQuest('triviaCorrect', { count: meta.triviaCorrect }); }
-            trackQuest('coinsEarned', { amount: n });
-          }}
-        />
-      )}
-      {activeTrivia === 'speedRound' && (
-        <SpeedRoundGame
-          onClose={() => animateClose(() => setActiveTrivia(null))} closing={closingModal}
-          onWin={(n, meta) => {
-            addCoins(n);
-            showNotif('⚡ +' + n + ' Coins!');
-            trackMission('triviaPlayed', { triviaType: 'speed', speedScore: meta?.triviaCorrect });
-            trackQuest('triviaPlayed', {});
-            trackQuest('speedScore', { score: meta?.triviaCorrect || 0 });
-            if (meta?.triviaCorrect) { trackMission('triviaCorrect', { count: meta.triviaCorrect }); trackQuest('triviaCorrect', { count: meta.triviaCorrect }); }
-            trackQuest('coinsEarned', { amount: n });
-          }}
-        />
-      )}
-      {activeTrivia === 'streakTrivia' && (
-        <StreakTriviaGame
-          onClose={() => animateClose(() => setActiveTrivia(null))} closing={closingModal}
-          onWin={(n, meta) => {
-            addCoins(n);
-            showNotif('🏆 +' + n + ' Coins!');
-            trackMission('triviaPlayed', { triviaType: 'streak', triviaStreak: meta?.triviaStreak });
-            trackQuest('triviaPlayed', {});
-            if (meta?.triviaStreak) { trackMission('triviaCorrect', { count: meta.triviaStreak }); trackQuest('triviaCorrect', { count: meta.triviaStreak }); trackQuest('triviaStreak', { streak: meta.triviaStreak }); }
             trackQuest('coinsEarned', { amount: n });
           }}
         />
@@ -1556,7 +1520,7 @@ export default function GamificationPlatform() {
           questsComplete={user.questsComplete}
           onClose={() => animateClose(() => setSelectedQuest(null))}
           onClaim={claimQuest}
-          onNavigate={(tabId) => setTab(tabId)}
+          onNavigate={(tabId) => navigateTab(tabId)}
           onPlayGame={playGame}
           closing={closingModal}
         />
@@ -1569,7 +1533,7 @@ export default function GamificationPlatform() {
           progress={user.missionProgress[selectedMission.id] || 0}
           done={user.missionsComplete.includes(selectedMission.id)}
           onClose={() => animateClose(() => setSelectedMission(null))} closing={closingModal}
-          onNavigate={(tabId) => setTab(tabId)}
+          onNavigate={(tabId) => navigateTab(tabId)}
         />
       )}
 
@@ -1590,7 +1554,7 @@ export default function GamificationPlatform() {
             
             {/* Current Avatar */}
             <div className="flex justify-center mb-6">
-              <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center text-5xl shadow-lg shadow-cyan-500/50 anim-float">
+              <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-[#a855f7] to-[#7c3aed] flex items-center justify-center text-5xl shadow-lg shadow-[#9333ea]/50 anim-float">
                 {user.avatar}
               </div>
             </div>
@@ -1606,7 +1570,7 @@ export default function GamificationPlatform() {
                     showNotif('Avatar updated!');
                     setShowAvatarSelector(false);
                   }}
-                  className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl transition-all hover:scale-110 ${user.avatar === avatar ? 'bg-gradient-to-br from-cyan-400 to-blue-500 ring-2 ring-cyan-400' : 'bg-black/40 hover:bg-cyan-900/30 border border-white/10'}`}
+                  className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl transition-all hover:scale-110 ${user.avatar === avatar ? 'bg-gradient-to-br from-[#a855f7] to-[#7c3aed] ring-2 ring-[#a855f7]' : 'bg-black/40 hover:bg-[#7c3aed]/20 border border-white/10'}`}
                 >
                   {avatar}
                 </button>
@@ -1630,7 +1594,7 @@ export default function GamificationPlatform() {
             </div>
             <div>
               <div className="font-bold text-base leading-tight">100xBet</div>
-              <div className="text-[10px] text-cyan-400 font-bold tracking-wider">REWARDS</div>
+              <div className="text-[10px] text-[#c026d3] font-bold tracking-wider">REWARDS</div>
             </div>
           </div>
 
@@ -1640,7 +1604,7 @@ export default function GamificationPlatform() {
               <button
                 type="button"
                 onClick={() => setShowAvatarSelector(true)}
-                className="relative w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center text-lg hover:scale-105 transition-transform group flex-shrink-0"
+                className="relative w-10 h-10 rounded-xl bg-gradient-to-br from-[#a855f7] to-[#7c3aed] flex items-center justify-center text-lg hover:scale-105 transition-transform group flex-shrink-0"
               >
                 {user.avatar}
                 <div className="absolute inset-0 bg-black/50 rounded-xl opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
@@ -1649,7 +1613,7 @@ export default function GamificationPlatform() {
               </button>
               <button
                 type="button"
-                onClick={() => setTab('profile')}
+                onClick={() => setTab('me.profile')}
                 className="flex-1 text-left min-w-0"
               >
                 <div className="font-bold text-sm truncate">Player1</div>
@@ -1658,7 +1622,7 @@ export default function GamificationPlatform() {
             </div>
             <div className="mt-2.5 h-1.5 bg-white/5 rounded-full overflow-hidden">
               <div
-                className="h-full bg-gradient-to-r from-cyan-400 to-blue-500 rounded-full progress-animated"
+                className="h-full bg-gradient-to-r from-[#7c3aed] to-[#c026d3] rounded-full progress-animated"
                 style={{ width: `${xpProgress}%` }}
               />
             </div>
@@ -1671,25 +1635,23 @@ export default function GamificationPlatform() {
           <nav className="space-y-0.5">
             {tabs.map(t => {
               const Icon = t.icon;
-              const active = tab === t.id;
-              const hasNotif = (t.id === 'daily' && user.streak > 0) || (t.id === 'missions' && user.missionsComplete.length === 0) || (t.id === 'store');
+              const active = tab === t.id || tab.startsWith(t.id + '.');
+              const hasNotif = (t.id === 'play' && user.streak > 0) || (t.id === 'earn' && user.missionsComplete.length === 0) || (t.id === 'store');
               return (
                 <button
                   key={t.id}
                   type="button"
-                  onClick={() => { setTab(t.id); setMobileMenuOpen(false); }}
+                  onClick={() => { navigateTab(t.id); setMobileMenuOpen(false); }}
                   className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-left transition-all duration-200 relative group ${active ? 'text-white font-bold' : 'text-gray-400 hover:text-white hover:bg-white/[0.06] font-medium'}`}
                   style={active ? {
-                    background: 'linear-gradient(135deg, rgba(6,182,212,0.15) 0%, rgba(6,182,212,0.08) 100%)',
-                    borderLeft: '3px solid #22D3EE',
-                  } : {
-                    borderLeft: '3px solid transparent',
-                  }}
+                    background: 'linear-gradient(135deg, rgba(147,51,234,0.2), rgba(192,38,211,0.15))',
+                    boxShadow: '0 0 0 1px rgba(147,51,234,0.35), 0 0 20px rgba(147,51,234,0.18)',
+                  } : {}}
                 >
-                  <Icon className={`w-[18px] h-[18px] transition-all duration-200 ${active ? 'text-cyan-400' : 'group-hover:text-cyan-300 group-hover:scale-110'}`} />
+                  <Icon className={`w-[18px] h-[18px] transition-all duration-200 ${active ? 'text-[#c026d3]' : 'group-hover:text-[#a855f7] group-hover:scale-110'}`} />
                   <span className="text-[13px]">{t.label}</span>
                   {hasNotif && !active && (
-                    <span className="ml-auto w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
+                    <span className="ml-auto w-2 h-2 rounded-full bg-[#c026d3] animate-pulse" />
                   )}
                 </button>
               );
@@ -1756,7 +1718,7 @@ export default function GamificationPlatform() {
                   triggerReward('small', e.currentTarget, { xp: 100 });
                   showNotif('+100 XP!');
                 }}
-                className="py-1.5 bg-cyan-600/20 hover:bg-cyan-600/30 text-cyan-400 rounded-lg text-[10px] font-bold transition-all active:scale-95"
+                className="py-1.5 bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 rounded-lg text-[10px] font-bold transition-all active:scale-95"
               >
                 +100 XP
               </button>
@@ -1815,7 +1777,7 @@ export default function GamificationPlatform() {
                 <div className="text-xl">{level.icon}</div>
                 <div>
                   <div className="text-[10px] text-gray-500 leading-tight">Lvl {level.level}</div>
-                  <div className="font-bold text-xs text-cyan-400 leading-tight">{level.name}</div>
+                  <div className="font-bold text-xs text-[#c026d3] leading-tight">{level.name}</div>
                 </div>
               </div>
               <button type="button" className="relative p-2 hover:bg-white/5 rounded-lg transition-colors">
@@ -1831,9 +1793,35 @@ export default function GamificationPlatform() {
         {/* Page Content */}
         <div className="p-4 md:p-6 max-w-7xl mx-auto" key={tab}>
           {/* ============================================================= */}
-          {/* OVERVIEW TAB */}
+          {/* SUB-NAV STRIP (rendered when a parent-with-children is active) */}
           {/* ============================================================= */}
-          {tab === 'overview' && (
+          {(() => {
+            const parent = tab.includes('.') ? tab.split('.')[0] : null;
+            const subs = parent && SUB_NAV[parent];
+            if (!subs) return null;
+            return (
+              <div className="flex gap-2 mb-4 overflow-x-auto -mx-1 px-1 pb-1" style={{ scrollbarWidth: 'none' }}>
+                {subs.map(s => {
+                  const isActive = tab === `${parent}.${s.key}`;
+                  return (
+                    <button
+                      key={s.key}
+                      type="button"
+                      onClick={() => setTab(`${parent}.${s.key}`)}
+                      className={`${isActive ? 'tab-btn-active' : 'tab-btn-inactive text-gray-300 hover:text-white'} px-4 py-2 text-sm whitespace-nowrap flex-shrink-0`}
+                    >
+                      {s.label}
+                    </button>
+                  );
+                })}
+              </div>
+            );
+          })()}
+
+          {/* ============================================================= */}
+          {/* HOME TAB */}
+          {/* ============================================================= */}
+          {tab === 'home' && (
             <div className="space-y-5">
               {/* === PRIORITY ACTION STRIP — What should the user do RIGHT NOW? === */}
               {!user.dailyClaimed && (
@@ -1848,7 +1836,7 @@ export default function GamificationPlatform() {
                     </div>
                     <button
                       type="button"
-                      onClick={() => {
+                      onClick={(e) => {
                         const r = DAILY_REWARDS[user.dailyDay - 1];
                         addCoins(r.kwacha);
                         if (r.gems) addGems(r.gems);
@@ -1865,6 +1853,7 @@ export default function GamificationPlatform() {
                         trackQuest('dailyClaimed', {});
                         trackQuest('xpEarned', { amount: 20 });
                         showNotif(`🎉 +${r.kwacha} Coins!`);
+                        triggerReward('medium', e.currentTarget, { coins: r.kwacha, gems: r.gems, diamonds: r.diamonds, xp: 20 });
                       }}
                       className="px-6 py-2.5 rounded-xl font-bold text-sm text-black flex-shrink-0 btn-3d btn-3d-green"
                     >
@@ -1927,7 +1916,7 @@ export default function GamificationPlatform() {
                     {/* Day progress dots */}
                     <div className="flex gap-1 mb-3">
                       {[1,2,3,4,5,6,7].map(d => (
-                        <div key={d} className={`h-1 flex-1 rounded-full ${d < user.dailyDay ? 'bg-green-500' : d === user.dailyDay ? (user.dailyClaimed ? 'bg-green-500' : 'bg-cyan-400') : 'bg-white/5'}`} />
+                        <div key={d} className={`h-1 flex-1 rounded-full ${d < user.dailyDay ? 'bg-green-500' : d === user.dailyDay ? (user.dailyClaimed ? 'bg-green-500' : 'bg-[#c026d3]') : 'bg-white/5'}`} />
                       ))}
                     </div>
                     {!user.dailyClaimed && (
@@ -1973,7 +1962,7 @@ export default function GamificationPlatform() {
                       <HelpCircle className="w-3.5 h-3.5 text-white/60" />
                     </button>
                     {user.gamePlays.wheel > 0 && (
-                      <span className="absolute top-2.5 right-2.5 px-2 py-0.5 bg-cyan-500 rounded-md text-[10px] font-bold tracking-wider">
+                      <span className="absolute top-2.5 right-2.5 px-2 py-0.5 bg-amber-500 text-black rounded-md text-[10px] font-bold tracking-wider">
                         {user.gamePlays.wheel} FREE
                       </span>
                     )}
@@ -1990,7 +1979,7 @@ export default function GamificationPlatform() {
                 </div>
 
                 {/* Predictions Card */}
-                <div onClick={() => setTab('predictions')} className="rounded-2xl overflow-hidden transition-all group cursor-pointer" style={{ background: 'rgba(10,15,25,0.85)', border: '1px solid rgba(255,255,255,0.06)', boxShadow: '0 2px 12px rgba(0,0,0,0.3)' }}>
+                <div onClick={() => setTab('play.predictions')} className="rounded-2xl overflow-hidden transition-all group cursor-pointer" style={{ background: 'rgba(10,15,25,0.85)', border: '1px solid rgba(255,255,255,0.06)', boxShadow: '0 2px 12px rgba(0,0,0,0.3)' }}>
                   <div className="relative h-36 overflow-hidden">
                     <img src={IMAGES.soccerBall} alt="" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
                     <div className="absolute inset-0 bg-gradient-to-t from-[#0a0f19] via-transparent to-transparent" />
@@ -2020,7 +2009,7 @@ export default function GamificationPlatform() {
               {/* === JACKPOT BANNER — slimmer === */}
               <button
                 type="button"
-                onClick={() => setTab('minigames')}
+                onClick={() => setTab('play.minigames')}
                 className="w-full rounded-2xl overflow-hidden hover:brightness-110 transition-all group"
               >
                 <div className="relative">
@@ -2046,13 +2035,13 @@ export default function GamificationPlatform() {
                 const CatIcon = todayCat.Icon || Target;
                 return (
                   <div
-                    onClick={() => setTab('daily')}
+                    onClick={() => setTab('play.daily')}
                     className="rounded-2xl p-3.5 cursor-pointer transition-all group"
                     style={{ background: 'rgba(10,15,25,0.7)', border: dtAll ? '1px solid rgba(34,197,94,0.2)' : '1px solid rgba(255,255,255,0.06)' }}
                   >
                     <div className="flex items-center gap-3">
-                      <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${dtAll ? 'bg-green-500/12' : 'bg-cyan-500/8'}`}>
-                        {dtAll ? <CheckCircle className="w-4.5 h-4.5 text-green-400" /> : <Gift className="w-4.5 h-4.5 text-cyan-400" />}
+                      <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${dtAll ? 'bg-green-500/12' : 'bg-[#9333ea]/10'}`}>
+                        {dtAll ? <CheckCircle className="w-4.5 h-4.5 text-green-400" /> : <Gift className="w-4.5 h-4.5 text-[#c026d3]" />}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="font-bold text-xs">Daily Hub</div>
@@ -2069,12 +2058,12 @@ export default function GamificationPlatform() {
                           </span>
                         </div>
                       </div>
-                      <ChevronRight className="w-4 h-4 text-gray-600 group-hover:text-cyan-400 transition-colors" />
+                      <ChevronRight className="w-4 h-4 text-gray-600 group-hover:text-[#c026d3] transition-colors" />
                     </div>
                     <div className="h-1 bg-white/[0.03] rounded-full overflow-hidden mt-2.5">
                       <div className="h-full rounded-full transition-all duration-700" style={{
                         width: `${(dtCount / 3) * 100}%`,
-                        background: dtAll ? 'linear-gradient(90deg,#22c55e,#10b981)' : 'linear-gradient(90deg,#22D3EE,#06B6D4)',
+                        background: dtAll ? 'linear-gradient(90deg,#22c55e,#10b981)' : 'linear-gradient(90deg,#7c3aed,#c026d3)',
                       }} />
                     </div>
                   </div>
@@ -2085,13 +2074,13 @@ export default function GamificationPlatform() {
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
-                    <Target className="w-4 h-4 text-cyan-400" />
+                    <Target className="w-4 h-4 text-[#c026d3]" />
                     <h2 className="text-base font-bold">Active Missions</h2>
                   </div>
                   <button
                     type="button"
-                    onClick={() => setTab('missions')}
-                    className="text-xs text-gray-500 hover:text-cyan-400 flex items-center gap-0.5 transition-colors font-medium"
+                    onClick={() => setTab('earn.missions')}
+                    className="text-xs text-gray-500 hover:text-[#c026d3] flex items-center gap-0.5 transition-colors font-medium"
                   >
                     View all <ChevronRight className="w-3.5 h-3.5" />
                   </button>
@@ -2115,12 +2104,12 @@ export default function GamificationPlatform() {
                           <div className="font-bold text-xs mb-1 truncate">{m.name}</div>
                           {/* Mission progress bar */}
                           <div className="h-1 bg-white/5 rounded-full overflow-hidden mb-2">
-                            <div className="h-full bg-gradient-to-r from-cyan-400 to-blue-500 rounded-full transition-all" style={{ width: `${pctM}%` }} />
+                            <div className="h-full bg-gradient-to-r from-[#7c3aed] to-[#c026d3] rounded-full transition-all" style={{ width: `${pctM}%` }} />
                           </div>
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2 text-[10px]">
-                              <span className="text-yellow-400 font-bold">🪙 {m.reward.kwacha}</span>
-                              {m.reward.gems && <span className="text-green-400 font-bold">💚 {m.reward.gems}</span>}
+                              <span className="text-yellow-400 font-bold inline-flex items-center gap-1"><img src={CURRENCY_ICONS.coin} alt="" className="w-3.5 h-3.5 inline" />{m.reward.kwacha}</span>
+                              {m.reward.gems && <span className="text-green-400 font-bold inline-flex items-center gap-1"><img src={CURRENCY_ICONS.gem} alt="" className="w-3.5 h-3.5 inline" />{m.reward.gems}</span>}
                             </div>
                             <span className="text-[9px] text-gray-500 font-medium">{prog}/{m.target}</span>
                           </div>
@@ -2141,7 +2130,7 @@ export default function GamificationPlatform() {
                   <button
                     type="button"
                     onClick={() => setTab('store')}
-                    className="text-xs text-gray-500 hover:text-cyan-400 flex items-center gap-0.5 transition-colors font-medium"
+                    className="text-xs text-gray-500 hover:text-[#c026d3] flex items-center gap-0.5 transition-colors font-medium"
                   >
                     Browse all <ChevronRight className="w-3.5 h-3.5" />
                   </button>
@@ -2158,7 +2147,7 @@ export default function GamificationPlatform() {
                       </div>
                       <div className="p-2.5">
                         <div className="font-bold text-xs truncate mb-0.5">{item.name}</div>
-                        <div className="text-yellow-400 font-bold text-[10px]">🪙 {item.price.kwacha}</div>
+                        <div className="text-yellow-400 font-bold text-[10px] inline-flex items-center gap-1"><img src={CURRENCY_ICONS.coin} alt="" className="w-3.5 h-3.5 inline" />{item.price.kwacha}</div>
                       </div>
                     </div>
                   ))}
@@ -2170,7 +2159,7 @@ export default function GamificationPlatform() {
           {/* ============================================================= */}
           {/* MINIGAMES TAB */}
           {/* ============================================================= */}
-          {tab === 'minigames' && (
+          {tab === 'play.minigames' && (
             <div className="space-y-6">
               <div>
                 <h1 className="text-3xl font-black tracking-tight">Minigames</h1>
@@ -2256,7 +2245,7 @@ export default function GamificationPlatform() {
           {/* ============================================================= */}
           {/* MISSIONS TAB */}
           {/* ============================================================= */}
-          {tab === 'missions' && (
+          {tab === 'earn.missions' && (
             <div className="space-y-6">
               <div className="flex items-center gap-4">
                 <img src={IMAGES.target} alt="" className="w-14 h-14 rounded-xl object-cover" />
@@ -2267,7 +2256,7 @@ export default function GamificationPlatform() {
                 <button 
                   type="button" 
                   onClick={() => setActiveTutorial('missions')} 
-                  className="ml-auto p-2 bg-cyan-600/20 hover:bg-cyan-600/40 rounded-xl"
+                  className="ml-auto p-2 bg-purple-600/20 hover:bg-purple-600/40 rounded-xl"
                 >
                   <HelpCircle className="w-5 h-5" />
                 </button>
@@ -2310,13 +2299,13 @@ export default function GamificationPlatform() {
                         <span className="text-sm text-gray-400">{completedCount}/{dailyMissions.length} done</span>
                       </div>
                       <div className="h-3 bg-black/50 rounded-full overflow-hidden mb-3">
-                        <div 
-                          className="h-full rounded-full bg-gradient-to-r from-cyan-400 to-blue-500 transition-all duration-500" 
-                          style={{ width: `${(completedCount / dailyMissions.length) * 100}%` }} 
+                        <div
+                          className="h-full rounded-full bg-gradient-to-r from-[#7c3aed] to-[#c026d3] transition-all duration-500"
+                          style={{ width: `${(completedCount / dailyMissions.length) * 100}%` }}
                         />
                       </div>
                       {/* Bonus chest reward for completing all */}
-                      <div className={`flex items-center justify-between p-3 rounded-xl border ${allDone ? 'bg-yellow-500/10 border-yellow-500/30' : 'bg-black/40 border-cyan-900/20'}`}>
+                      <div className={`flex items-center justify-between p-3 rounded-xl border ${allDone ? 'bg-yellow-500/10 border-yellow-500/30' : 'bg-black/40 border-[#7c3aed]/20'}`}>
                         <div className="flex items-center gap-3">
                           <span className="text-2xl">{allDone ? '🎁' : '🔒'}</span>
                           <div>
@@ -2325,8 +2314,8 @@ export default function GamificationPlatform() {
                           </div>
                         </div>
                         <div className="text-right text-sm">
-                          <span className="text-yellow-400 font-bold">500 🪙</span>
-                          <span className="text-green-400 font-bold ml-2">10 💚</span>
+                          <span className="text-yellow-400 font-bold inline-flex items-center gap-1">500<img src={CURRENCY_ICONS.coin} alt="" className="w-4 h-4 inline" /></span>
+                          <span className="text-green-400 font-bold ml-2 inline-flex items-center gap-1">10<img src={CURRENCY_ICONS.gem} alt="" className="w-4 h-4 inline" /></span>
                         </div>
                       </div>
                     </div>
@@ -2342,7 +2331,7 @@ export default function GamificationPlatform() {
                             key={m.id}
                             type="button"
                             onClick={() => setSelectedMission(m)}
-                            className={`rounded-3xl overflow-hidden border text-left transition-all duration-300 group relative ${done ? 'border-green-500/50 opacity-60' : 'border-cyan-500/30 card-interactive hover:scale-[1.02] active:scale-[0.98]'}`}
+                            className={`rounded-3xl overflow-hidden border text-left transition-all duration-300 group relative ${done ? 'border-green-500/50 opacity-60' : 'border-[#9333ea]/30 card-interactive hover:scale-[1.02] active:scale-[0.98]'}`}
                           >
                             {/* Full-card completed overlay */}
                             {done && (
@@ -2362,13 +2351,13 @@ export default function GamificationPlatform() {
                               <div className="font-bold text-sm mb-0.5 truncate">{m.name}</div>
                               <div className="text-xs text-gray-400 mb-2 truncate">{m.desc}</div>
                               <div className="flex items-center gap-2 text-xs mb-2">
-                                <span className="text-yellow-400 font-bold">🪙 {m.reward.kwacha}</span>
-                                {m.reward.gems && <span className="text-green-400 font-bold">💚 {m.reward.gems}</span>}
-                                <span className="text-cyan-400 font-bold">⚡ {m.xp}</span>
+                                <span className="text-yellow-400 font-bold inline-flex items-center gap-1"><img src={CURRENCY_ICONS.coin} alt="" className="w-4 h-4 inline" />{m.reward.kwacha}</span>
+                                {m.reward.gems && <span className="text-green-400 font-bold inline-flex items-center gap-1"><img src={CURRENCY_ICONS.gem} alt="" className="w-4 h-4 inline" />{m.reward.gems}</span>}
+                                <span className="text-[#c026d3] font-bold">⚡ {m.xp}</span>
                               </div>
                               <div className="h-1.5 bg-black/50 rounded-full overflow-hidden">
                                 <div 
-                                  className={`h-full rounded-full ${done ? 'bg-green-500' : 'bg-gradient-to-r from-cyan-400 to-blue-500'}`} 
+                                  className={`h-full rounded-full ${done ? 'bg-green-500' : 'bg-gradient-to-r from-[#7c3aed] to-[#c026d3]'}`}
                                   style={{ width: `${Math.min(100, (progress / m.target) * 100)}%` }} 
                                 />
                               </div>
@@ -2393,7 +2382,7 @@ export default function GamificationPlatform() {
                         key={m.id}
                         type="button"
                         onClick={() => setSelectedMission(m)}
-                        className={`rounded-3xl overflow-hidden border text-left transition-all duration-300 group relative ${done ? 'border-green-500/50 opacity-60' : 'border-cyan-500/30 card-interactive hover:scale-[1.02] active:scale-[0.98]'}`}
+                        className={`rounded-3xl overflow-hidden border text-left transition-all duration-300 group relative ${done ? 'border-green-500/50 opacity-60' : 'border-[#9333ea]/30 card-interactive hover:scale-[1.02] active:scale-[0.98]'}`}
                       >
                         {done && (
                           <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/30 rounded-2xl">
@@ -2411,16 +2400,16 @@ export default function GamificationPlatform() {
                           <div className="font-bold text-lg mb-0.5">{m.name}</div>
                           <div className="text-sm text-gray-400 mb-3">{m.desc}</div>
                           <div className="flex items-center gap-3 mb-3 text-sm">
-                            <span className="text-yellow-400 font-bold">🪙 {m.reward.kwacha}</span>
-                            {m.reward.gems && <span className="text-green-400 font-bold">💚 {m.reward.gems}</span>}
-                            <span className="text-cyan-400 font-bold">⚡ {m.xp}</span>
+                            <span className="text-yellow-400 font-bold inline-flex items-center gap-1"><img src={CURRENCY_ICONS.coin} alt="" className="w-4 h-4 inline" />{m.reward.kwacha}</span>
+                            {m.reward.gems && <span className="text-green-400 font-bold inline-flex items-center gap-1"><img src={CURRENCY_ICONS.gem} alt="" className="w-4 h-4 inline" />{m.reward.gems}</span>}
+                            <span className="text-[#c026d3] font-bold">⚡ {m.xp}</span>
                           </div>
                           <div className="flex justify-between items-center mb-1.5">
                             <span className="text-xs text-gray-500">{Math.min(progress, m.target)}/{m.target}</span>
                           </div>
                           <div className="h-2 bg-black/50 rounded-full overflow-hidden">
                             <div 
-                              className={`h-full rounded-full ${done ? 'bg-green-500' : 'bg-gradient-to-r from-cyan-400 to-blue-500'}`} 
+                              className={`h-full rounded-full ${done ? 'bg-green-500' : 'bg-gradient-to-r from-[#7c3aed] to-[#c026d3]'}`}
                               style={{ width: `${Math.min(100, (progress / m.target) * 100)}%` }} 
                             />
                           </div>
@@ -2443,7 +2432,7 @@ export default function GamificationPlatform() {
                         key={m.id}
                         type="button"
                         onClick={() => setSelectedMission(m)}
-                        className={`rounded-3xl overflow-hidden border text-left transition-all duration-300 group relative ${done ? 'border-green-500/50 opacity-60' : 'border-cyan-500/30 card-interactive hover:scale-[1.02] active:scale-[0.98]'}`}
+                        className={`rounded-3xl overflow-hidden border text-left transition-all duration-300 group relative ${done ? 'border-green-500/50 opacity-60' : 'border-[#9333ea]/30 card-interactive hover:scale-[1.02] active:scale-[0.98]'}`}
                       >
                         {done && (
                           <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/30 rounded-2xl">
@@ -2466,16 +2455,16 @@ export default function GamificationPlatform() {
                           <div className="font-bold text-lg mb-0.5">{m.name}</div>
                           <div className="text-sm text-gray-400 mb-3">{m.desc}</div>
                           <div className="flex items-center gap-3 mb-3 text-sm">
-                            <span className="text-yellow-400 font-bold">🪙 {m.reward.kwacha}</span>
-                            {m.reward.gems && <span className="text-green-400 font-bold">💚 {m.reward.gems}</span>}
-                            <span className="text-cyan-400 font-bold">⚡ {m.xp}</span>
+                            <span className="text-yellow-400 font-bold inline-flex items-center gap-1"><img src={CURRENCY_ICONS.coin} alt="" className="w-4 h-4 inline" />{m.reward.kwacha}</span>
+                            {m.reward.gems && <span className="text-green-400 font-bold inline-flex items-center gap-1"><img src={CURRENCY_ICONS.gem} alt="" className="w-4 h-4 inline" />{m.reward.gems}</span>}
+                            <span className="text-[#c026d3] font-bold">⚡ {m.xp}</span>
                           </div>
                           <div className="flex justify-between items-center mb-1.5">
                             <span className="text-xs text-gray-500">{Math.min(progress, m.target)}/{m.target}</span>
                           </div>
                           <div className="h-2 bg-black/50 rounded-full overflow-hidden">
                             <div 
-                              className={`h-full rounded-full ${done ? 'bg-green-500' : 'bg-gradient-to-r from-cyan-400 to-blue-500'}`} 
+                              className={`h-full rounded-full ${done ? 'bg-green-500' : 'bg-gradient-to-r from-[#7c3aed] to-[#c026d3]'}`}
                               style={{ width: `${Math.min(100, (progress / m.target) * 100)}%` }} 
                             />
                           </div>
@@ -2491,7 +2480,7 @@ export default function GamificationPlatform() {
           {/* ============================================================= */}
           {/* DAILY TAB */}
           {/* ============================================================= */}
-          {tab === 'daily' && (() => {
+          {tab === 'play.daily' && (() => {
             const dtFreeSpinGames = getDailyFreeSpinGames();
             const dtFreeSpinsUsed = user.dailyFreeSpinsUsed || [];
             const dtCoinClaims = user.dailyCoinBonusClaims || 0;
@@ -2515,29 +2504,29 @@ export default function GamificationPlatform() {
             return (
             <div className="space-y-5">
               <style>{`
-                @keyframes dhPulseRing{0%{box-shadow:0 0 0 0 rgba(6,182,212,.4)}70%{box-shadow:0 0 0 10px rgba(6,182,212,0)}100%{box-shadow:0 0 0 0 rgba(6,182,212,0)}}
+                @keyframes dhPulseRing{0%{box-shadow:0 0 0 0 rgba(168,85,247,.4)}70%{box-shadow:0 0 0 10px rgba(168,85,247,0)}100%{box-shadow:0 0 0 0 rgba(168,85,247,0)}}
                 @keyframes dhShimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
                 @keyframes dhFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
                 @keyframes dhCoinSpin{0%{transform:rotateY(0)}100%{transform:rotateY(360deg)}}
-                @keyframes dhGlowBorder{0%,100%{border-color:rgba(6,182,212,.25)}50%{border-color:rgba(6,182,212,.55)}}
+                @keyframes dhGlowBorder{0%,100%{border-color:rgba(147,51,234,.25)}50%{border-color:rgba(168,85,247,.55)}}
                 .dh-card{border:1.5px solid rgba(255,255,255,.08);border-radius:20px;box-shadow:0 4px 24px rgba(0,0,0,.5);background:rgba(10,15,25,.92);backdrop-filter:blur(12px);transition:all .3s ease}
-                .dh-card:hover{border-color:rgba(6,182,212,.2);box-shadow:0 4px 30px rgba(0,0,0,.6),0 0 20px rgba(6,182,212,.05)}
-                .dh-hero-card{border:1.5px solid rgba(6,182,212,.3);border-radius:20px;box-shadow:0 4px 24px rgba(0,0,0,.5),0 0 40px rgba(6,182,212,.06);background:linear-gradient(135deg,rgba(10,15,25,.95),rgba(6,30,50,.9));backdrop-filter:blur(12px)}
+                .dh-card:hover{border-color:rgba(168,85,247,.2);box-shadow:0 4px 30px rgba(0,0,0,.6),0 0 20px rgba(168,85,247,.05)}
+                .dh-hero-card{border:1.5px solid rgba(147,51,234,.3);border-radius:20px;box-shadow:0 4px 24px rgba(0,0,0,.5),0 0 40px rgba(147,51,234,.06);background:linear-gradient(135deg,rgba(10,15,25,.95),rgba(30,6,50,.9));backdrop-filter:blur(12px)}
                 .dh-glow-btn{position:relative;overflow:hidden}
                 .dh-glow-btn::after{content:'';position:absolute;top:0;left:-100%;width:60%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.12),transparent);transition:none}
                 .dh-glow-btn:hover::after{left:100%;transition:left .6s ease}
-                .dh-go-btn{display:flex;align-items:center;gap:4px;padding:4px 10px;border-radius:8px;font-size:11px;font-weight:700;color:#22D3EE;background:rgba(6,182,212,.08);border:1px solid rgba(6,182,212,.2);transition:all .2s;cursor:pointer;white-space:nowrap}
-                .dh-go-btn:hover{background:rgba(6,182,212,.15);border-color:rgba(6,182,212,.4);transform:translateX(2px)}
+                .dh-go-btn{display:flex;align-items:center;gap:4px;padding:4px 10px;border-radius:8px;font-size:11px;font-weight:700;color:#c026d3;background:rgba(147,51,234,.08);border:1px solid rgba(147,51,234,.2);transition:all .2s;cursor:pointer;white-space:nowrap}
+                .dh-go-btn:hover{background:rgba(147,51,234,.15);border-color:rgba(168,85,247,.4);transform:translateX(2px)}
                 .dh-segment{height:8px;border-radius:99px;transition:all .5s cubic-bezier(.4,0,.2,1);position:relative;overflow:hidden}
-                .dh-segment-filled{background:linear-gradient(90deg,#22D3EE,#06B6D4)}
+                .dh-segment-filled{background:linear-gradient(90deg,#7c3aed,#c026d3)}
                 .dh-segment-filled::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent 40%,rgba(255,255,255,.2) 50%,transparent 60%);background-size:200% 100%;animation:dhShimmer 2s linear infinite}
                 .dh-segment-empty{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.05)}
               `}</style>
 
               {/* ===== HEADER (Slim) ===== */}
               <div className="flex items-center gap-3.5">
-                <div className="w-12 h-12 rounded-2xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, rgba(6,182,212,.15), rgba(59,130,246,.15))', border: '1.5px solid rgba(6,182,212,.25)' }}>
-                  <Gift className="w-6 h-6 text-cyan-400" />
+                <div className="w-12 h-12 rounded-2xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, rgba(147,51,234,.15), rgba(192,38,211,.15))', border: '1.5px solid rgba(147,51,234,.25)' }}>
+                  <Gift className="w-6 h-6 text-[#c026d3]" />
                 </div>
                 <div className="flex-1">
                   <h1 className="text-2xl font-black tracking-tight">Daily Hub</h1>
@@ -2547,7 +2536,7 @@ export default function GamificationPlatform() {
                   <Timer className="w-3.5 h-3.5 text-gray-500" />
                   <div>
                     <div className="text-[9px] text-gray-500 font-medium uppercase tracking-wider">Resets in</div>
-                    <div className="text-cyan-400 font-bold text-xs font-mono leading-tight">{dailyCountdown}</div>
+                    <div className="text-[#c026d3] font-bold text-xs font-mono leading-tight">{dailyCountdown}</div>
                   </div>
                 </div>
               </div>
@@ -2556,25 +2545,25 @@ export default function GamificationPlatform() {
               <div className="dh-card p-4" style={{ animation: dtAll && !user.dailyBonusClaimed ? 'dhGlowBorder 2s ease-in-out infinite' : 'none', borderColor: dtAll && !user.dailyBonusClaimed ? 'rgba(251,191,36,.3)' : undefined }}>
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
-                    <Zap className="w-4 h-4 text-cyan-400" />
+                    <Zap className="w-4 h-4 text-[#c026d3]" />
                     <span className="font-bold text-sm">Progress</span>
                   </div>
-                  <span className={`text-xs font-bold px-2 py-0.5 rounded-md ${dtAll ? 'bg-green-500/15 text-green-400' : 'bg-cyan-500/10 text-cyan-400'}`}>{dtCount}/3</span>
+                  <span className={`text-xs font-bold px-2 py-0.5 rounded-md ${dtAll ? 'bg-green-500/15 text-green-400' : 'bg-[#9333ea]/10 text-[#c026d3]'}`}>{dtCount}/3</span>
                 </div>
                 {/* Progress bar */}
                 <div className="h-2 bg-black/40 rounded-full overflow-hidden mb-3.5" style={{ border: '1px solid rgba(255,255,255,.04)' }}>
                   <div className="h-full rounded-full transition-all duration-700 ease-out" style={{
                     width: `${dtPct}%`,
-                    background: dtAll ? 'linear-gradient(90deg,#22c55e,#10b981)' : 'linear-gradient(90deg,#22D3EE,#06B6D4)',
-                    boxShadow: dtAll ? '0 0 12px rgba(34,197,94,.3)' : '0 0 12px rgba(6,182,212,.2)',
+                    background: dtAll ? 'linear-gradient(90deg,#22c55e,#10b981)' : 'linear-gradient(90deg,#7c3aed,#c026d3)',
+                    boxShadow: dtAll ? '0 0 12px rgba(34,197,94,.3)' : '0 0 12px rgba(147,51,234,.25)',
                   }} />
                 </div>
                 {/* Task list with GO buttons */}
                 <div className="space-y-2">
                   {DAILY_TASKS.map(task => (
                     <div key={task.id} className={`flex items-center gap-2.5 p-2.5 rounded-xl transition-all duration-300 ${task.done ? 'bg-green-500/5 border border-green-500/10' : 'bg-black/15 border border-white/[.03]'}`}>
-                      <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${task.done ? 'bg-green-500/15' : 'bg-cyan-500/8'}`}>
-                        {task.done ? <CheckCircle className="w-4 h-4 text-green-400" /> : <task.Icon className="w-3.5 h-3.5 text-cyan-400" />}
+                      <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${task.done ? 'bg-green-500/15' : 'bg-[#9333ea]/10'}`}>
+                        {task.done ? <CheckCircle className="w-4 h-4 text-green-400" /> : <task.Icon className="w-3.5 h-3.5 text-[#c026d3]" />}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className={`font-bold text-xs ${task.done ? 'text-green-400/70 line-through' : 'text-white'}`}>{task.title}</div>
@@ -2612,10 +2601,11 @@ export default function GamificationPlatform() {
                       </div>
                     </div>
                     {dtAll && !user.dailyBonusClaimed && (
-                      <button type="button" onClick={() => {
+                      <button type="button" onClick={(e) => {
                         addCoins(200); addGems(5); addXP(100);
                         setUser(u => ({ ...u, dailyBonusClaimed: true }));
                         showNotif('Daily Bonus: +200 Coins + 5 Gems + 100 XP!');
+                        triggerReward('big', e.currentTarget, { coins: 200, gems: 5, xp: 100 });
                       }} className="dh-glow-btn px-4 py-2 rounded-xl font-bold text-xs text-black flex-shrink-0" style={{
                         background: 'linear-gradient(180deg,#fbbf24 0%,#d97706 100%)',
                         boxShadow: '0 3px 0 #92400e, 0 4px 15px rgba(251,191,36,0.3)',
@@ -2649,12 +2639,12 @@ export default function GamificationPlatform() {
                     return (
                       <button key={gameId} type="button" disabled={used} onClick={() => {
                         setUser(u => ({ ...u, dailyFreeSpinsUsed: [...new Set([...(u.dailyFreeSpinsUsed || []), gameId])] }));
-                        setTab('minigames');
+                        setTab('play.minigames');
                         setTimeout(() => setActiveGame(gameId), 300);
                       }} className={`group relative p-3 rounded-2xl text-center transition-all duration-300 ${
                         used 
                           ? 'bg-green-500/5 border border-green-500/15 opacity-50' 
-                          : 'bg-gradient-to-b from-white/[.04] to-transparent border border-cyan-500/15 hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 hover:scale-[1.03] active:scale-95'
+                          : 'bg-gradient-to-b from-white/[.04] to-transparent border border-[#9333ea]/20 hover:border-[#a855f7]/50 hover:shadow-lg hover:shadow-[#9333ea]/15 hover:scale-[1.03] active:scale-95'
                       }`} style={{ animation: !used ? 'dhPulseRing 2.5s ease-out infinite' : 'none', animationDelay: `${dtFreeSpinGames.indexOf(gameId) * 0.5}s` }}>
                         <div className="relative w-16 h-16 mx-auto mb-2.5 rounded-xl overflow-hidden border border-white/10 shadow-lg">
                           <img src={IMAGES[game.image]} alt="" className="w-full h-full object-cover" />
@@ -2671,7 +2661,7 @@ export default function GamificationPlatform() {
                         {used ? (
                           <span className="text-[10px] font-bold text-green-400/70">Played</span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[10px] font-black tracking-wider text-cyan-300" style={{ background: 'linear-gradient(135deg, rgba(6,182,212,.15), rgba(59,130,246,.15))', border: '1px solid rgba(6,182,212,.25)' }}>
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[10px] font-black tracking-wider text-white" style={{ background: 'linear-gradient(135deg, rgba(147,51,234,.2), rgba(192,38,211,.2))', border: '1px solid rgba(168,85,247,.35)' }}>
                             <Play className="w-2.5 h-2.5" /> FREE
                           </span>
                         )}
@@ -2686,7 +2676,7 @@ export default function GamificationPlatform() {
                 <DailyTriviaChallenge
                   user={user}
                   onAnswer={handleDailyChallenge}
-                  onNavigate={setTab}
+                  onNavigate={navigateTab}
                 />
               </div>
 
@@ -2700,8 +2690,8 @@ export default function GamificationPlatform() {
                   <div id="dh-coinbonus" className="dh-card p-5">
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-cyan-500/10 border border-cyan-500/20">
-                          <CircleDollarSign className="w-4.5 h-4.5 text-cyan-400" />
+                        <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-amber-500/10 border border-amber-500/25">
+                          <CircleDollarSign className="w-4.5 h-4.5 text-amber-400" />
                         </div>
                         <div>
                           <span className="font-bold text-sm">Coin Bonus</span>
@@ -2716,8 +2706,8 @@ export default function GamificationPlatform() {
                         <div key={i} className="flex-1">
                           <div className={`dh-segment ${i < claimed ? 'dh-segment-filled' : 'dh-segment-empty'}`} />
                           <div className="flex items-center justify-center gap-0.5 mt-1.5">
-                            <Medal className={`w-3 h-3 ${i < claimed ? 'text-cyan-400' : 'text-gray-700'}`} />
-                            <span className={`text-[10px] font-bold ${i < claimed ? 'text-cyan-400' : 'text-gray-700'}`}>{amount}</span>
+                            <Medal className={`w-3 h-3 ${i < claimed ? 'text-amber-400' : 'text-gray-700'}`} />
+                            <span className={`text-[10px] font-bold ${i < claimed ? 'text-amber-400' : 'text-gray-700'}`}>{amount}</span>
                           </div>
                         </div>
                       ))}
@@ -2730,9 +2720,9 @@ export default function GamificationPlatform() {
                         trackMission('dailyClaimed');
                         trackQuest('dailyClaimed', {});
                       }} className="dh-glow-btn w-full py-3 rounded-xl font-bold text-sm transition-all hover:scale-[1.01] active:scale-[.98]" style={{
-                        background: 'linear-gradient(180deg,#22D3EE 0%,#0891b2 100%)',
+                        background: 'linear-gradient(180deg,#a855f7 0%,#7c3aed 100%)',
                         color: '#fff',
-                        boxShadow: '0 3px 0 #155e75, 0 4px 20px rgba(6,182,212,0.25)',
+                        boxShadow: '0 3px 0 #6d28d9, 0 4px 20px rgba(147,51,234,0.3)',
                         textShadow: '0 1px 2px rgba(0,0,0,.3)',
                       }}>
                         <span className="flex items-center justify-center gap-2">
@@ -2779,15 +2769,15 @@ export default function GamificationPlatform() {
                       <button 
                         key={day} 
                         type="button" 
-                        onClick={() => {
+                        onClick={(e) => {
                           if (canClaim) {
                             addCoins(r.kwacha);
                             if (r.gems) addGems(r.gems);
                             if (r.diamonds) addDiamonds(r.diamonds);
                             addXP(20);
-                            setUser(u => ({ 
-                              ...u, 
-                              dailyClaimed: true, 
+                            setUser(u => ({
+                              ...u,
+                              dailyClaimed: true,
                               dailyDay: u.dailyDay >= 7 ? 1 : u.dailyDay + 1,
                               dailyTasksDone: [...new Set([...u.dailyTasksDone, 'claim'])]
                             }));
@@ -2796,16 +2786,17 @@ export default function GamificationPlatform() {
                             trackQuest('dailyClaimed', {});
                             trackQuest('xpEarned', { amount: 20 });
                             showNotif(`+${r.kwacha} Coins streak reward!`);
+                            triggerReward('medium', e.currentTarget, { coins: r.kwacha, gems: r.gems, diamonds: r.diamonds, xp: 20 });
                           }
-                        }} 
+                        }}
                         disabled={!canClaim} 
                         className={`p-2 rounded-xl text-center transition-all duration-300 relative ${
                           isPast 
                             ? 'bg-green-500/10 border border-green-500/25' 
-                            : canClaim 
-                              ? 'bg-gradient-to-br from-cyan-500/25 to-blue-500/25 border-2 border-cyan-400/50 shadow-lg shadow-cyan-500/20 hover:scale-105' 
-                              : isCurrent 
-                                ? 'bg-cyan-500/8 border border-cyan-500/20' 
+                            : canClaim
+                              ? 'bg-gradient-to-br from-[#9333ea]/25 to-[#c026d3]/25 border-2 border-[#a855f7]/50 shadow-lg shadow-[#9333ea]/25 hover:scale-105'
+                              : isCurrent
+                                ? 'bg-[#9333ea]/10 border border-[#9333ea]/20'
                                 : 'bg-black/20 border border-white/[.04]'
                         }`}
                       >
@@ -2820,7 +2811,7 @@ export default function GamificationPlatform() {
                         <div className={`font-bold text-[10px] ${isPast ? 'text-green-400' : isFuture ? 'text-gray-700' : 'text-yellow-400'}`}>{r.kwacha}</div>
                         {r.gems && <div className={`text-[8px] ${isFuture ? 'text-gray-700' : 'text-emerald-400'}`}>+{r.gems}g</div>}
                         {r.diamonds && <div className={`text-[8px] ${isFuture ? 'text-gray-700' : 'text-blue-400'}`}>+1d</div>}
-                        {canClaim && <div className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-cyan-400 rounded-full animate-ping" />}
+                        {canClaim && <div className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-[#c026d3] rounded-full animate-ping" />}
                       </button>
                     );
                   })}
@@ -2834,7 +2825,7 @@ export default function GamificationPlatform() {
           {/* ============================================================= */}
           {/* VIP TAB */}
           {/* ============================================================= */}
-          {tab === 'vip' && (() => {
+          {tab === 'me.vip' && (() => {
             const currentTierIdx = VIP_TIERS.findIndex(t => t.name === vip.name);
             const nextTier = VIP_TIERS[currentTierIdx + 1];
             const prevMin = vip.min;
@@ -2859,34 +2850,34 @@ export default function GamificationPlatform() {
                 <button
                   type="button"
                   onClick={() => setActiveTutorial('vip')}
-                  className="ml-auto p-2 bg-cyan-600/20 hover:bg-cyan-600/40 rounded-xl"
+                  className="ml-auto p-2 bg-purple-600/20 hover:bg-purple-600/40 rounded-xl"
                 >
                   <HelpCircle className="w-5 h-5" />
                 </button>
               </div>
 
               {/* Current Tier Hero Card */}
-              <div className={`relative overflow-hidden rounded-2xl p-6 border ${tierColors[vip.name]?.border || 'border-cyan-500/40'} glow-border`} style={{ background: `linear-gradient(135deg, rgba(6,182,212,0.12) 0%, rgba(59,130,246,0.08) 50%, rgba(139,92,246,0.06) 100%)` }}>
+              <div className={`relative overflow-hidden rounded-2xl p-6 border ${tierColors[vip.name]?.border || 'border-[#9333ea]/40'} glow-border`} style={{ background: `linear-gradient(135deg, rgba(147,51,234,0.12) 0%, rgba(192,38,211,0.08) 50%, rgba(124,58,237,0.06) 100%)` }}>
                 <div className="absolute top-0 right-0 w-40 h-40 opacity-10 text-[120px] -mt-4 -mr-4 pointer-events-none">{vip.icon}</div>
                 <div className="flex items-center gap-5 relative z-10">
-                  <div className="text-6xl anim-float drop-shadow-lg" style={{ filter: 'drop-shadow(0 0 12px rgba(6,182,212,0.4))' }}>{vip.icon}</div>
+                  <div className="text-6xl anim-float drop-shadow-lg" style={{ filter: 'drop-shadow(0 0 12px rgba(168,85,247,0.4))' }}>{vip.icon}</div>
                   <div className="flex-1">
                     <div className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-0.5">Current Tier</div>
-                    <div className={`text-3xl font-black ${tierColors[vip.name]?.accent || 'text-cyan-300'}`}>{vip.name}</div>
+                    <div className={`text-3xl font-black ${tierColors[vip.name]?.accent || 'text-[#c026d3]'}`}>{vip.name}</div>
                     <div className="text-gray-300 mt-1">{vip.cashback}% Cashback on losses</div>
                     {nextTier && (
                       <div className="mt-3">
                         <div className="flex items-center justify-between text-xs mb-1.5">
                           <span className="text-gray-400">Progress to {nextTier.name}</span>
-                          <span className={`font-bold ${tierColors[nextTier.name]?.accent || 'text-cyan-300'}`}>K{user.deposits.toLocaleString()} / K{nextTier.min.toLocaleString()}</span>
+                          <span className={`font-bold ${tierColors[nextTier.name]?.accent || 'text-[#c026d3]'}`}>K{user.deposits.toLocaleString()} / K{nextTier.min.toLocaleString()}</span>
                         </div>
                         <div className="h-2.5 bg-black/40 rounded-full overflow-hidden">
-                          <div className={`h-full bg-gradient-to-r ${tierColors[nextTier.name]?.bar || 'from-cyan-400 to-blue-500'} rounded-full transition-all duration-1000`} style={{ width: `${tierProgress}%` }} />
+                          <div className={`h-full bg-gradient-to-r ${tierColors[nextTier.name]?.bar || 'from-[#7c3aed] to-[#c026d3]'} rounded-full transition-all duration-1000`} style={{ width: `${tierProgress}%` }} />
                         </div>
                       </div>
                     )}
                     {!nextTier && (
-                      <div className="mt-3 text-sm text-cyan-300 font-bold flex items-center gap-2">
+                      <div className="mt-3 text-sm text-[#c026d3] font-bold flex items-center gap-2">
                         <Sparkles className="w-4 h-4" /> Maximum tier reached!
                       </div>
                     )}
@@ -2913,7 +2904,7 @@ export default function GamificationPlatform() {
                       }`}
                     >
                       {isCurrent && (
-                        <div className="absolute top-2 right-2 px-2 py-0.5 bg-cyan-500/30 rounded-full text-[10px] font-bold text-cyan-300 uppercase tracking-wider">
+                        <div className="absolute top-2 right-2 px-2 py-0.5 bg-[#9333ea]/30 rounded-full text-[10px] font-bold text-[#e9d5ff] uppercase tracking-wider">
                           Current
                         </div>
                       )}
@@ -2931,7 +2922,7 @@ export default function GamificationPlatform() {
                       <div className={`font-bold text-lg ${isLocked ? 'text-gray-500' : colors.accent}`}>{tier.name}</div>
                       <div className={`text-sm mt-1 ${isLocked ? 'text-gray-600' : 'text-gray-400'}`}>K{tier.min.toLocaleString()}+ deposits</div>
                       <div className={`text-sm font-bold mt-2 ${isLocked ? 'text-gray-600' : 'text-green-400'}`}>{tier.cashback}% cashback</div>
-                      {isCurrent && <div className="absolute inset-0 rounded-2xl pointer-events-none" style={{ boxShadow: 'inset 0 0 30px rgba(6,182,212,0.08)' }} />}
+                      {isCurrent && <div className="absolute inset-0 rounded-2xl pointer-events-none" style={{ boxShadow: 'inset 0 0 30px rgba(147,51,234,0.12)' }} />}
                     </div>
                   );
                 })}
@@ -2950,7 +2941,7 @@ export default function GamificationPlatform() {
                     <div><div className="font-bold text-sm">Exclusive Rewards</div><div className="text-xs text-gray-400">VIP-only store items & bonuses</div></div>
                   </div>
                   <div className="flex items-start gap-3 p-3 rounded-xl bg-white/[0.03]">
-                    <div className="w-10 h-10 rounded-lg bg-cyan-500/15 flex items-center justify-center text-cyan-400 flex-shrink-0"><Zap className="w-5 h-5" /></div>
+                    <div className="w-10 h-10 rounded-lg bg-purple-500/15 flex items-center justify-center text-purple-400 flex-shrink-0"><Zap className="w-5 h-5" /></div>
                     <div><div className="font-bold text-sm">Priority Support</div><div className="text-xs text-gray-400">Fast-track customer service</div></div>
                   </div>
                 </div>
@@ -2969,7 +2960,7 @@ export default function GamificationPlatform() {
                 <button 
                   type="button" 
                   onClick={() => setActiveTutorial('store')} 
-                  className="p-2 bg-cyan-600/20 hover:bg-cyan-600/40 rounded-xl"
+                  className="p-2 bg-purple-600/20 hover:bg-purple-600/40 rounded-xl"
                 >
                   <HelpCircle className="w-5 h-5" />
                 </button>
@@ -2981,7 +2972,7 @@ export default function GamificationPlatform() {
                 {STORE_ITEMS.map(item => {
                   const canBuy = user.kwacha >= item.price.kwacha && (!item.price.gems || user.gems >= item.price.gems);
                   return (
-                    <div key={item.id} className={`rounded-3xl overflow-hidden border card-interactive group ${item.featured ? 'border-amber-400/50' : 'border-cyan-500/30'}`}>
+                    <div key={item.id} className={`rounded-3xl overflow-hidden border card-interactive group ${item.featured ? 'border-amber-400/50' : 'border-[#9333ea]/30'}`}>
                       <div className="relative h-44 overflow-hidden">
                         <img src={IMAGES[item.image]} alt="" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
                         {item.featured && (
@@ -2996,20 +2987,21 @@ export default function GamificationPlatform() {
                         <div className="text-sm text-gray-400 mb-4">{item.desc}</div>
                         <button 
                           type="button" 
-                          onClick={() => {
+                          onClick={(e) => {
                             if (canBuy) {
                               addCoins(-item.price.kwacha);
                               if (item.price.gems) addGems(-item.price.gems);
                               trackMission('storePurchase', { amount: item.price.kwacha });
                               trackQuest('storePurchase', {});
                               showNotif(`Purchased ${item.name}!`);
+                              triggerReward('small', e.currentTarget, { coins: 0 });
                             }
                           }} 
                           disabled={!canBuy} 
                           className={`w-full py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all duration-300 hover:scale-[1.02] active:scale-95 ${canBuy ? 'bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 btn-glow' : 'bg-gray-800/40 border border-gray-600/20 opacity-50'}`}
                         >
-                          🪙 {item.price.kwacha}
-                          {item.price.gems && <><span>+</span>💚 {item.price.gems}</>}
+                          <img src={CURRENCY_ICONS.coin} alt="" className="w-4 h-4 inline" /> {item.price.kwacha}
+                          {item.price.gems && <><span>+</span><img src={CURRENCY_ICONS.gem} alt="" className="w-4 h-4 inline" /> {item.price.gems}</>}
                         </button>
                       </div>
                     </div>
@@ -3022,7 +3014,7 @@ export default function GamificationPlatform() {
           {/* ============================================================= */}
           {/* PREDICTIONS TAB */}
           {/* ============================================================= */}
-          {tab === 'predictions' && (() => {
+          {tab === 'play.predictions' && (() => {
             const leagues = ['All', ...new Set(MATCHES.map(m => m.leagueShort))];
             const filtered = predLeague === 'All' ? MATCHES : MATCHES.filter(m => m.leagueShort === predLeague);
             const todayMatches = filtered.filter(m => m.status === 'today');
@@ -3052,7 +3044,7 @@ export default function GamificationPlatform() {
                     {/* Teams row */}
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex-1 text-center">
-                        <div className="w-12 h-12 mx-auto rounded-xl bg-gradient-to-br from-white/10 to-white/5 flex items-center justify-center text-lg font-black text-cyan-400 mb-1.5">
+                        <div className="w-12 h-12 mx-auto rounded-xl bg-gradient-to-br from-white/10 to-white/5 flex items-center justify-center text-lg font-black text-[#c026d3] mb-1.5">
                           {m.homeShort}
                         </div>
                         <div className="font-bold text-sm leading-tight">{m.home}</div>
@@ -3061,12 +3053,12 @@ export default function GamificationPlatform() {
                       <div className="px-3 flex flex-col items-center">
                         <div className="text-[10px] text-gray-600 font-bold mb-1">VS</div>
                         <div className="flex items-center gap-1 text-yellow-500">
-                          <span className="text-xs font-bold">🪙 {m.reward}</span>
+                          <span className="text-xs font-bold inline-flex items-center gap-1"><img src={CURRENCY_ICONS.coin} alt="" className="w-3.5 h-3.5 inline" />{m.reward}</span>
                         </div>
                       </div>
 
                       <div className="flex-1 text-center">
-                        <div className="w-12 h-12 mx-auto rounded-xl bg-gradient-to-br from-white/10 to-white/5 flex items-center justify-center text-lg font-black text-cyan-400 mb-1.5">
+                        <div className="w-12 h-12 mx-auto rounded-xl bg-gradient-to-br from-white/10 to-white/5 flex items-center justify-center text-lg font-black text-[#c026d3] mb-1.5">
                           {m.awayShort}
                         </div>
                         <div className="font-bold text-sm leading-tight">{m.away}</div>
@@ -3075,12 +3067,12 @@ export default function GamificationPlatform() {
 
                     {/* Odds buttons or prediction result */}
                     {pred ? (
-                      <div className="flex items-center justify-center gap-2 p-3 rounded-xl bg-cyan-500/10 border border-cyan-500/20 anim-scale-in">
-                        <Check className="w-4 h-4 text-cyan-400" />
-                        <span className="text-sm font-bold text-cyan-300">
+                      <div className="flex items-center justify-center gap-2 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 anim-scale-in">
+                        <Check className="w-4 h-4 text-emerald-400" />
+                        <span className="text-sm font-bold text-emerald-300">
                           {pred.choice === 'home' ? m.home + ' Win' : pred.choice === 'away' ? m.away + ' Win' : 'Draw'}
                         </span>
-                        <span className="text-xs text-cyan-500 ml-1">
+                        <span className="text-xs text-emerald-500 ml-1">
                           @ {pred.choice === 'home' ? m.h : pred.choice === 'draw' ? m.d : m.a}
                         </span>
                       </div>
@@ -3103,7 +3095,7 @@ export default function GamificationPlatform() {
                             className="odds-btn p-3 text-center transition-all duration-200 hover:scale-105 active:scale-95 group"
                           >
                             <div className="text-[10px] text-gray-500 font-bold mb-0.5">{opt.sublabel}</div>
-                            <div className="text-xl font-black text-white group-hover:text-cyan-400 transition-colors tabular-nums">{opt.odds.toFixed(2)}</div>
+                            <div className="text-xl font-black text-white group-hover:text-[#c026d3] transition-colors tabular-nums">{opt.odds.toFixed(2)}</div>
                           </button>
                         ))}
                       </div>
@@ -3122,7 +3114,7 @@ export default function GamificationPlatform() {
                     <h1 className="text-2xl font-black tracking-tight">Predictions</h1>
                     <p className="text-gray-500 text-sm">{MATCHES.length} matches available</p>
                   </div>
-                  <button type="button" onClick={() => setActiveTutorial('predictions')} className="p-2 bg-cyan-600/20 hover:bg-cyan-600/40 rounded-xl">
+                  <button type="button" onClick={() => setActiveTutorial('predictions')} className="p-2 bg-purple-600/20 hover:bg-purple-600/40 rounded-xl">
                     <HelpCircle className="w-5 h-5" />
                   </button>
                 </div>
@@ -3130,7 +3122,7 @@ export default function GamificationPlatform() {
                 {/* Stats bar */}
                 <div className="grid grid-cols-3 gap-2">
                   <div className="match-card p-3 text-center">
-                    <div className="text-2xl font-black text-cyan-400">{totalPredicted}</div>
+                    <div className="text-2xl font-black text-[#c026d3]">{totalPredicted}</div>
                     <div className="text-[10px] text-gray-500 font-bold">Predicted</div>
                   </div>
                   <div className="match-card p-3 text-center">
@@ -3151,7 +3143,7 @@ export default function GamificationPlatform() {
                       type="button"
                       onClick={() => setPredLeague(l)}
                       className={`px-3 py-1.5 rounded-lg text-xs font-black whitespace-nowrap transition-all ${predLeague === l
-                        ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40'
+                        ? 'bg-[#9333ea]/20 text-[#c026d3] border border-[#9333ea]/40'
                         : 'bg-white/5 text-gray-500 border border-transparent hover:text-gray-300'
                       }`}
                     >
@@ -3200,7 +3192,7 @@ export default function GamificationPlatform() {
 
           {/* QUESTS TAB */}
           {/* ============================================================= */}
-          {tab === 'quests' && (
+          {tab === 'earn.quests' && (
             <div className="space-y-5">
               {/* Header */}
               <div className="flex items-center justify-between">
@@ -3285,13 +3277,13 @@ export default function GamificationPlatform() {
                         {/* Rewards row */}
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2.5 text-[10px]">
-                            <span className="text-yellow-400 font-bold flex items-center gap-0.5">🪙 {quest.reward.kwacha}</span>
-                            <span className="text-green-400 font-bold flex items-center gap-0.5">💚 {quest.reward.gems}</span>
-                            <span className="text-cyan-400 font-bold flex items-center gap-0.5">⚡ {quest.xp} XP</span>
+                            <span className="text-yellow-400 font-bold flex items-center gap-1"><img src={CURRENCY_ICONS.coin} alt="" className="w-3.5 h-3.5 inline" />{quest.reward.kwacha}</span>
+                            <span className="text-green-400 font-bold flex items-center gap-1"><img src={CURRENCY_ICONS.gem} alt="" className="w-3.5 h-3.5 inline" />{quest.reward.gems}</span>
+                            <span className="text-[#c026d3] font-bold flex items-center gap-0.5">⚡ {quest.xp} XP</span>
                           </div>
                           <div className="flex items-center gap-1.5 text-[10px] text-gray-500 font-medium">
                             {stepsComplete}/{quest.steps.length}
-                            <ChevronRight className="w-3.5 h-3.5 text-gray-600 group-hover:text-cyan-400 transition-colors" />
+                            <ChevronRight className="w-3.5 h-3.5 text-gray-600 group-hover:text-[#c026d3] transition-colors" />
                           </div>
                         </div>
                       </div>
@@ -3323,19 +3315,19 @@ export default function GamificationPlatform() {
           {/* ============================================================= */}
           {/* REFERRALS TAB */}
           {/* ============================================================= */}
-          {tab === 'referrals' && (
+          {tab === 'me.referrals' && (
             <div className="space-y-6">
               <div className="flex items-center gap-4">
                 <h1 className="text-3xl font-black tracking-tight">Referrals</h1>
                 <button 
                   type="button" 
                   onClick={() => setActiveTutorial('referrals')} 
-                  className="p-2 bg-cyan-600/20 hover:bg-cyan-600/40 rounded-xl"
+                  className="p-2 bg-purple-600/20 hover:bg-purple-600/40 rounded-xl"
                 >
                   <HelpCircle className="w-5 h-5" />
                 </button>
               </div>
-              <div className="bg-gradient-to-r from-cyan-600/20 to-blue-600/20 rounded-2xl p-6 border border-cyan-500/40 glow-border">
+              <div className="bg-gradient-to-r from-[#9333ea]/20 to-[#c026d3]/20 rounded-2xl p-6 border border-[#9333ea]/40 glow-border">
                 <div className="text-center mb-4">
                   <h3 className="text-xl font-bold mb-2">Your Referral Code</h3>
                   <p className="text-gray-400">Earn 500 Coins + 50 Gems per referral!</p>
@@ -3348,14 +3340,14 @@ export default function GamificationPlatform() {
                       navigator.clipboard.writeText('PLAYER1X');
                       showNotif('Code copied!');
                     }} 
-                    className="px-6 bg-cyan-600 hover:bg-cyan-700 rounded-xl font-bold"
+                    className="px-6 bg-[#9333ea] hover:bg-[#7c3aed] rounded-xl font-bold"
                   >
                     <Copy className="w-6 h-6" />
                   </button>
                 </div>
                 <div className="grid grid-cols-3 gap-4 mb-6">
                   <div className="bg-black/60 rounded-xl p-4 border border-white/10 text-center">
-                    <div className="text-3xl font-black text-cyan-400">{user.referrals}</div>
+                    <div className="text-3xl font-black text-[#c026d3]">{user.referrals}</div>
                     <div className="text-gray-400">Referrals</div>
                   </div>
                   <div className="bg-black/60 rounded-xl p-4 border border-white/10 text-center">
@@ -3369,12 +3361,13 @@ export default function GamificationPlatform() {
                 </div>
                 <button 
                   type="button" 
-                  onClick={() => {
+                  onClick={(e) => {
                     setUser(u => ({ ...u, referrals: u.referrals + 1 }));
                     addCoins(500);
                     addGems(50);
                     addXP(200);
                     showNotif('🎉 +500 Coins + 50 Gems!');
+                    triggerReward('big', e.currentTarget, { coins: 500, gems: 50, xp: 200 });
                   }} 
                   className="w-full py-4 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 rounded-xl font-bold btn-glow transition-all duration-300 hover:scale-[1.02] active:scale-95"
                 >
@@ -3387,7 +3380,7 @@ export default function GamificationPlatform() {
           {/* ============================================================= */}
           {/* LEADERBOARD TAB */}
           {/* ============================================================= */}
-          {tab === 'leaderboard' && (
+          {tab === 'me.leaderboard' && (
             <div className="space-y-6">
               <div className="flex items-center gap-4">
                 <img src={IMAGES.trophy} alt="" className="w-14 h-14 rounded-xl object-cover" />
@@ -3443,10 +3436,10 @@ export default function GamificationPlatform() {
                   const maxK = 15420;
                   const barWidth = Math.max(5, (p.k / maxK) * 100);
                   return (
-                    <div key={p.r} className={`group flex items-center gap-4 p-4 rounded-xl transition-all duration-300 hover:scale-[1.01] relative overflow-hidden ${p.u ? 'bg-cyan-500/15 border border-cyan-500/40 glow-border' : 'bg-black/20 hover:bg-black/30'}`}>
+                    <div key={p.r} className={`group flex items-center gap-4 p-4 rounded-xl transition-all duration-300 hover:scale-[1.01] relative overflow-hidden ${p.u ? 'bg-[#9333ea]/15 border border-[#9333ea]/40 glow-border' : 'bg-black/20 hover:bg-black/30'}`}>
                       {/* Background bar */}
                       <div
-                        className={`absolute left-0 top-0 h-full transition-all duration-700 ${p.r === 1 ? 'bg-yellow-500/10' : p.r === 2 ? 'bg-gray-400/8' : p.r === 3 ? 'bg-amber-600/8' : p.u ? 'bg-cyan-500/10' : 'bg-white/[0.02]'}`}
+                        className={`absolute left-0 top-0 h-full transition-all duration-700 ${p.r === 1 ? 'bg-yellow-500/10' : p.r === 2 ? 'bg-gray-400/8' : p.r === 3 ? 'bg-amber-600/8' : p.u ? 'bg-[#9333ea]/10' : 'bg-white/[0.02]'}`}
                         style={{ width: `${barWidth}%` }}
                       />
                       <div className={`relative z-10 w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-all duration-300 ${
@@ -3457,8 +3450,8 @@ export default function GamificationPlatform() {
                       }`}>
                         {p.r <= 3 ? ['🥇','🥈','🥉'][p.r-1] : p.r}
                       </div>
-                      <div className="flex-1 font-bold relative z-10">{p.n} {p.u && <span className="text-xs text-cyan-400 ml-1">(You)</span>}</div>
-                      <div className={`relative z-10 font-bold ${p.r === 1 ? 'text-yellow-400' : p.r === 2 ? 'text-gray-300' : p.r === 3 ? 'text-amber-500' : p.u ? 'text-cyan-400' : 'text-gray-400'}`}>{p.k.toLocaleString()}</div>
+                      <div className="flex-1 font-bold relative z-10">{p.n} {p.u && <span className="text-xs text-[#c026d3] ml-1">(You)</span>}</div>
+                      <div className={`relative z-10 font-bold ${p.r === 1 ? 'text-yellow-400' : p.r === 2 ? 'text-gray-300' : p.r === 3 ? 'text-amber-500' : p.u ? 'text-[#c026d3]' : 'text-gray-400'}`}>{p.k.toLocaleString()}</div>
                     </div>
                   );
                 })}
@@ -3469,25 +3462,25 @@ export default function GamificationPlatform() {
           {/* ============================================================= */}
           {/* PROFILE TAB */}
           {/* ============================================================= */}
-          {tab === 'profile' && (() => {
+          {tab === 'me.profile' && (() => {
             const winRate = user.bets > 0 ? Math.round((user.wins / user.bets) * 100) : 0;
             const profileStats = [
               { label: 'Bets Placed', value: user.bets, icon: Target, color: 'yellow', gradient: 'from-yellow-500/15 to-amber-500/10', border: 'border-yellow-500/20' },
               { label: 'Bets Won', value: user.wins, icon: Trophy, color: 'green', gradient: 'from-green-500/15 to-emerald-500/10', border: 'border-green-500/20' },
-              { label: 'Games Played', value: user.gamesPlayed, icon: Gamepad2, color: 'cyan', gradient: 'from-cyan-500/15 to-blue-500/10', border: 'border-cyan-500/20' },
+              { label: 'Games Played', value: user.gamesPlayed, icon: Gamepad2, color: 'fuchsia', gradient: 'from-fuchsia-500/15 to-purple-500/10', border: 'border-fuchsia-500/20' },
               { label: 'Missions Done', value: user.missionsComplete.length, icon: CheckCircle, color: 'purple', gradient: 'from-purple-500/15 to-violet-500/10', border: 'border-purple-500/20' },
             ];
             return (
             <div className="space-y-6">
               {/* Profile Hero Card */}
-              <div className="relative overflow-hidden rounded-2xl border border-cyan-500/30" style={{ background: 'linear-gradient(135deg, rgba(6,182,212,0.12) 0%, rgba(59,130,246,0.08) 50%, rgba(139,92,246,0.06) 100%)' }}>
-                <div className="absolute inset-0 opacity-5" style={{ backgroundImage: 'radial-gradient(circle at 80% 20%, rgba(6,182,212,0.4) 0%, transparent 50%)' }} />
+              <div className="relative overflow-hidden rounded-2xl border border-[#9333ea]/30" style={{ background: 'linear-gradient(135deg, rgba(147,51,234,0.12) 0%, rgba(192,38,211,0.08) 50%, rgba(124,58,237,0.06) 100%)' }}>
+                <div className="absolute inset-0 opacity-5" style={{ backgroundImage: 'radial-gradient(circle at 80% 20%, rgba(168,85,247,0.4) 0%, transparent 50%)' }} />
                 <div className="relative p-6">
                   <div className="flex items-center gap-5">
                     <button
                       type="button"
                       onClick={() => setShowAvatarSelector(true)}
-                      className="relative w-24 h-24 rounded-2xl bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center text-5xl hover:scale-105 transition-all duration-300 group shadow-lg shadow-cyan-500/30 ring-2 ring-cyan-400/30"
+                      className="relative w-24 h-24 rounded-2xl bg-gradient-to-br from-[#a855f7] to-[#7c3aed] flex items-center justify-center text-5xl hover:scale-105 transition-all duration-300 group shadow-lg shadow-[#9333ea]/30 ring-2 ring-[#a855f7]/30"
                     >
                       {user.avatar}
                       <div className="absolute inset-0 bg-black/50 rounded-2xl opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
@@ -3496,7 +3489,7 @@ export default function GamificationPlatform() {
                     </button>
                     <div className="flex-1">
                       <h2 className="text-3xl font-black">Player1</h2>
-                      <div className="text-cyan-300 flex items-center gap-2 mt-0.5">
+                      <div className="text-[#e9d5ff] flex items-center gap-2 mt-0.5">
                         <span className="text-lg">{level.icon}</span>
                         <span className="font-bold">{level.name}</span>
                         <span className="text-gray-400">•</span>
@@ -3506,10 +3499,10 @@ export default function GamificationPlatform() {
                       <div className="mt-3 max-w-sm">
                         <div className="flex items-center justify-between text-xs mb-1">
                           <span className="text-gray-400">Level {level.level}</span>
-                          <span className="text-cyan-400 font-bold">{nextLevel ? `${user.xp} / ${nextLevel.xp} XP` : 'MAX LEVEL'}</span>
+                          <span className="text-[#c026d3] font-bold">{nextLevel ? `${user.xp} / ${nextLevel.xp} XP` : 'MAX LEVEL'}</span>
                         </div>
                         <div className="h-2 bg-black/40 rounded-full overflow-hidden">
-                          <div className="h-full bg-gradient-to-r from-cyan-400 to-blue-500 rounded-full transition-all duration-1000 progress-animated" style={{ width: `${xpProgress}%` }} />
+                          <div className="h-full bg-gradient-to-r from-[#7c3aed] to-[#c026d3] rounded-full transition-all duration-1000 progress-animated" style={{ width: `${xpProgress}%` }} />
                         </div>
                       </div>
                     </div>
@@ -3550,7 +3543,7 @@ export default function GamificationPlatform() {
 
               {/* Wallet — Enhanced */}
               <div className="match-card p-5">
-                <h3 className="font-bold text-lg mb-4 flex items-center gap-2"><Wallet className="w-5 h-5 text-cyan-400" /> Wallet</h3>
+                <h3 className="font-bold text-lg mb-4 flex items-center gap-2"><Wallet className="w-5 h-5 text-[#c026d3]" /> Wallet</h3>
                 <div className="space-y-3">
                   {[
                     { icon: CURRENCY_ICONS.coin, name: 'Kwacha (Coins)', value: user.kwacha, color: 'text-yellow-400', bg: 'bg-yellow-500/10', border: 'border-yellow-500/20' },

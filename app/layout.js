@@ -1,4 +1,26 @@
 import './globals.css'
+import { Bricolage_Grotesque, Onest, JetBrains_Mono } from 'next/font/google'
+
+const display = Bricolage_Grotesque({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700', '800'],
+  variable: '--font-display',
+  display: 'swap',
+})
+
+const body = Onest({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-body',
+  display: 'swap',
+})
+
+const mono = JetBrains_Mono({
+  subsets: ['latin'],
+  weight: ['400', '500', '700'],
+  variable: '--font-mono',
+  display: 'swap',
+})
 
 export const metadata = {
   title: '100xBet Rewards - Gamification Platform',
@@ -21,7 +43,7 @@ export const viewport = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en">
+    <html lang="en" className={`${display.variable} ${body.variable} ${mono.variable}`}>
       <head>
         <link rel="icon" href="/images/coin.png" />
       </head>

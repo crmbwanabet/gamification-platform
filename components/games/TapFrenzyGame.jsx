@@ -85,11 +85,11 @@ function TapFrenzyGame({ onClose, onWin, closing }) {
   const getPrize = () => score >= 30 ? 300 : score >= 20 ? 200 : score >= 10 ? 100 : score >= 5 ? 50 : 10;
 
   return (
-    <div className={`fixed inset-0 bg-black/95 flex items-center justify-center z-[70] p-4 ${closing ? "anim-backdrop-close" : "anim-fade-in"}`} onClick={onClose}>
+    <div className={`fixed inset-0 bg-[#1a0d26]/95 flex items-center justify-center z-[70] p-4 ${closing ? "anim-backdrop-close" : "anim-fade-in"}`} onClick={onClose}>
       <div className={`bg-gradient-to-b from-[#0a1520] to-[#030810] rounded-3xl max-w-md w-full p-6 border-0 ${closing ? "anim-modal-close" : "anim-scale-in"}`} onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
           <button type="button" onClick={() => setShowTutorial(true)} className="p-2 hover:bg-white/10 rounded-full">
-            <HelpCircle className="w-6 h-6 text-cyan-400" />
+            <HelpCircle className="w-6 h-6 text-purple-400" />
           </button>
           <h2 className="text-2xl font-bold">⚡ Tap Frenzy</h2>
           <button type="button" onClick={onClose} className="p-2 hover:bg-white/10 rounded-full">
@@ -101,7 +101,7 @@ function TapFrenzyGame({ onClose, onWin, closing }) {
         {gameState !== 'ready' && (
           <div className="flex justify-between items-center mb-4">
             <div className="text-xl font-bold">Score: <span className="text-yellow-400">{score}</span></div>
-            <div className={`text-xl font-bold px-4 py-1 rounded-full ${timeLeft <= 3 ? 'bg-red-500/30 text-red-400 animate-pulse' : 'bg-cyan-500/20 text-cyan-300'}`}>
+            <div className={`text-xl font-bold px-4 py-1 rounded-full ${timeLeft <= 3 ? 'bg-red-500/30 text-red-400 animate-pulse' : 'bg-purple-500/20 text-purple-300'}`}>
               ⏱️ {timeLeft}s
             </div>
           </div>
@@ -166,14 +166,14 @@ function TapFrenzyGame({ onClose, onWin, closing }) {
           )}
 
           {gameState === 'done' && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ animation: 'resultZoom 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both' }}>
+            <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ animation: 'resultZoom 0.5s cubic-bezier(0.25, 1, 0.5, 1) both' }}>
               <div className="text-6xl mb-3" style={{ animation: 'symbolPop 0.5s ease both, float 2s ease-in-out 0.5s infinite' }}>{score >= 20 ? '🏆' : score >= 10 ? '⭐' : '👏'}</div>
               <div className="text-4xl font-black text-yellow-400 mb-2">{score} Points</div>
               <div className="text-xl text-green-400 font-bold mb-6" style={{ animation: 'correctPop 0.4s ease 0.3s both' }}>+{getPrize()} Coins!</div>
               <button
                 type="button"
                 onClick={() => { setGameState('ready'); setScore(0); setTimeLeft(10); }}
-                className="px-8 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 rounded-xl font-bold"
+                className="px-8 py-3 bg-gradient-to-r from-purple-500 to-purple-700 hover:from-purple-600 hover:to-purple-800 rounded-xl font-bold"
               >
                 Play Again ⚡
               </button>
