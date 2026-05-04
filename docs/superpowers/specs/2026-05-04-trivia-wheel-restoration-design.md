@@ -106,25 +106,30 @@ Inside `play.minigames`, render the existing 7-game grid first, then a "Trivia" 
 | Pointer-peg spring physics | Verify; port from widget if absent |
 | 1.5s pause after stop before result overlay | Verify; add `setTimeout(..., 1500)` if absent |
 
+### Rigging note (added 2026-05-04)
+
+The WIP wheel is intentionally rigged to always land on a prize segment (`WheelGame.jsx:355–359`). Loss segments stay on the wheel for **visual fidelity** with the standalone widget, but `winIndices` excludes them so users never land on a loss. This is deliberate: in the platform context, the user already spends a `gamePlays.wheel` to open the wheel, so every spin must be rewarding.
+
+Consequence for this scope: the loss-overlay copy never renders, so the loss-overlay copy edit is dropped. The loss-segment label cleanup remains (cosmetic — visual fidelity wants concise labels even on decorative slots). Rigging tuning (slight loss probability, gem prizes) is **deferred** to a later pass.
+
 ### Concrete edits required
 
-1. **Loss-segment copy** — for each `isLoss: true` entry in `WHEEL_SEGMENTS`:
+1. **Loss-segment label cleanup** — for each `isLoss: true` entry in `WHEEL_SEGMENTS`:
    ```js
    label: 'Try Again Tomorrow'  →  label: 'Try Again'
    ```
-   Reason: multi-play model (multiple spins/day per `gamePlays.wheel`) makes "tomorrow" wrong.
+   Cosmetic only (loss segments never get picked), but cleaner.
 
-2. **Result-overlay loss copy** (around line 437–442):
-   ```jsx
-   "BETTER LUCK NEXT TIME" + "TRY AGAIN TOMORROW"
-     →  "BETTER LUCK NEXT TIME" + "TRY AGAIN"
-   ```
+2. **Verify single celebration** — `claimPrize` calls `onWin(prize)` (routes through the platform's normal currency-add path) but must NOT also call `triggerReward()`. The standalone overlay is the only celebration. If `triggerReward('big', ...)` is currently invoked from the wheel win path, remove that call.
 
-3. **Verify single celebration** — `claimPrize` calls `onWin(prize)` (which routes through the platform's normal currency-add path) but must NOT also call `triggerReward()`. The standalone overlay (count-up + shake + confetti) is the only celebration. If `triggerReward('big', ...)` is currently invoked from the wheel win path, remove that call.
+3. **Pointer-peg spring physics** — confirm presence of stiffness 0.3, damping 0.15, impulse-on-hit (impulse scales with rotation speed). Already confirmed in WIP at lines 308–330.
 
-4. **Pointer-peg spring physics** — confirm presence of stiffness 0.3, damping 0.15, impulse-on-hit (impulse scales with rotation speed). If WIP has only the brake refs without the spring, port the spring math from the standalone widget's `WheelWidget.jsx`.
+4. **1.5s post-stop pause** — confirm there's a 1500ms gap between wheel stop-detect and `setSpinResult(...)`. Add a `setTimeout` if absent.
 
-5. **1.5s post-stop pause** — confirm there's a 1500ms gap between wheel stop-detect and `setSpinResult(...)`. Add a `setTimeout` if absent.
+### Deferred (out of scope for this change)
+
+- Rigging tuning — slight loss probability, the exact win/loss ratio.
+- Prize-data changes — adding gem rewards to segments.
 
 ### What does NOT change
 
