@@ -54,8 +54,9 @@ export default function SpeedRoundGame({ onClose, onWin, closing }) {
       if (qIndex >= 19) {
         clearInterval(timerRef.current);
         setPhase('result');
-        const totalCoins = (correct ? score + 1 : score) * 5 + ((correct ? score + 1 : score) >= 15 ? 200 : (correct ? score + 1 : score) >= 20 ? 500 : 0);
-        if (totalCoins > 0) onWin(totalCoins, { triviaCorrect: correct ? score + 1 : score, triviaType: 'speed' });
+        const final = correct ? score + 1 : score;
+        const totalCoins = final * 5 + (final >= 20 ? 500 : final >= 15 ? 200 : 0);
+        if (totalCoins > 0) onWin(totalCoins, { triviaCorrect: final, triviaType: 'speed' });
       } else {
         setQIndex(i => i + 1);
       }
