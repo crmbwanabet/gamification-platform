@@ -105,7 +105,7 @@ export default function SpeedRoundGame({ onClose, onWin, closing }) {
               <div className="flex items-center justify-center gap-4 mb-6">
                 <span className="px-4 py-2 rounded-xl bg-emerald-500/15 border-2 border-emerald-500/40 text-emerald-300 font-bold text-sm">✓ TRUE</span>
                 <span className="text-gray-600">or</span>
-                <span className="px-4 py-2 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-300 font-bold text-sm">✗ FALSE</span>
+                <span className="px-4 py-2 rounded-xl bg-rose-500/15 border-2 border-rose-500/40 text-rose-300 font-bold text-sm">✗ FALSE</span>
               </div>
               <button type="button" onClick={startGame}
                 className="w-full py-4 bg-gradient-to-r from-yellow-500 to-orange-600 rounded-xl font-black text-lg hover:scale-[1.02] active:scale-95 transition-all shadow-lg shadow-orange-500/30">
