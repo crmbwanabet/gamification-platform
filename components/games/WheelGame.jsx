@@ -10,15 +10,15 @@ import TutorialModal from '../modals/TutorialModal';
 // ============================================================================
 const WHEEL_SEGMENTS = [
   { id: 1,  label: 'K10',                prize: { kwacha: 10 },  color: '#00e5ff', isLoss: false },
-  { id: 2,  label: 'Try Again Tomorrow', prize: null,            color: '#78909c', isLoss: true  },
+  { id: 2,  label: 'Try Again', prize: null,            color: '#78909c', isLoss: true  },
   { id: 3,  label: 'K50',                prize: { kwacha: 50 },  color: '#d500f9', isLoss: false },
-  { id: 4,  label: 'Try Again Tomorrow', prize: null,            color: '#78909c', isLoss: true  },
+  { id: 4,  label: 'Try Again', prize: null,            color: '#78909c', isLoss: true  },
   { id: 5,  label: 'K200',               prize: { kwacha: 200 }, color: '#ffd600', isLoss: false },
-  { id: 6,  label: 'Try Again Tomorrow', prize: null,            color: '#78909c', isLoss: true  },
+  { id: 6,  label: 'Try Again', prize: null,            color: '#78909c', isLoss: true  },
   { id: 7,  label: 'K20',                prize: { kwacha: 20 },  color: '#00e676', isLoss: false },
-  { id: 8,  label: 'Try Again Tomorrow', prize: null,            color: '#78909c', isLoss: true  },
+  { id: 8,  label: 'Try Again', prize: null,            color: '#78909c', isLoss: true  },
   { id: 9,  label: 'K100',               prize: { kwacha: 100 }, color: '#ff6d00', isLoss: false },
-  { id: 10, label: 'Try Again Tomorrow', prize: null,            color: '#78909c', isLoss: true  },
+  { id: 10, label: 'Try Again', prize: null,            color: '#78909c', isLoss: true  },
 ];
 
 const NUM = WHEEL_SEGMENTS.length;
