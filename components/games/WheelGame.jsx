@@ -1,359 +1,886 @@
 'use client';
 
-import { useState } from 'react';
-import { HelpCircle, X, RotateCcw } from 'lucide-react';
-import { WHEEL_IMAGES } from '../../lib/data/images';
-import { WHEEL_SEGMENTS } from '../../lib/data/platform';
+import { useState, useCallback, useRef, useEffect } from 'react';
+import { X, HelpCircle } from 'lucide-react';
 import TutorialModal from '../modals/TutorialModal';
 
+// ============================================================================
+// SEGMENTS — 10 slots: K10, K20, K50, K100, K200 + 5 "Try Again" losses
+// (matches the standalone bwanabet.com wheel widget exactly)
+// ============================================================================
+const WHEEL_SEGMENTS = [
+  { id: 1,  label: 'K10',                prize: { kwacha: 10 },  color: '#00e5ff', isLoss: false },
+  { id: 2,  label: 'Try Again Tomorrow', prize: null,            color: '#78909c', isLoss: true  },
+  { id: 3,  label: 'K50',                prize: { kwacha: 50 },  color: '#d500f9', isLoss: false },
+  { id: 4,  label: 'Try Again Tomorrow', prize: null,            color: '#78909c', isLoss: true  },
+  { id: 5,  label: 'K200',               prize: { kwacha: 200 }, color: '#ffd600', isLoss: false },
+  { id: 6,  label: 'Try Again Tomorrow', prize: null,            color: '#78909c', isLoss: true  },
+  { id: 7,  label: 'K20',                prize: { kwacha: 20 },  color: '#00e676', isLoss: false },
+  { id: 8,  label: 'Try Again Tomorrow', prize: null,            color: '#78909c', isLoss: true  },
+  { id: 9,  label: 'K100',               prize: { kwacha: 100 }, color: '#ff6d00', isLoss: false },
+  { id: 10, label: 'Try Again Tomorrow', prize: null,            color: '#78909c', isLoss: true  },
+];
+
+const NUM = WHEEL_SEGMENTS.length;
+const SEG_ANGLE = 360 / NUM;
+
+// ============================================================================
+// PARTICLE SYSTEM — lifted from mini-project widget
+// ============================================================================
+const PARTICLE_COLORS = ['#fbbf24', '#a855f7', '#06b6d4', '#ec4899', '#22c55e'];
+
+function useParticleSystem() {
+  const canvasRef = useRef(null);
+  const particlesRef = useRef([]);
+  const animFrameRef = useRef(null);
+
+  const spawnParticles = useCallback((x, y, count, config = {}) => {
+    const { spread = 200, speed = 8, life = 40, gravity = 0.18, colors = PARTICLE_COLORS, size = 8 } = config;
+    for (let i = 0; i < count; i++) {
+      const angle = (Math.PI * 2 * i) / count + (Math.random() - 0.5) * 0.5;
+      const v = speed * (0.5 + Math.random() * 0.5);
+      particlesRef.current.push({
+        x, y, vx: Math.cos(angle) * v * (spread / 200), vy: Math.sin(angle) * v * (spread / 200) - 2,
+        life: life + Math.random() * 15, maxLife: life + 15, gravity,
+        color: colors[Math.floor(Math.random() * colors.length)],
+        shape: Math.random() > 0.5 ? 'circle' : 'square',
+        size: size * (0.7 + Math.random() * 0.6), rotation: Math.random() * 360, rotSpeed: (Math.random() - 0.5) * 12,
+      });
+    }
+  }, []);
+
+  const startLoop = useCallback(() => {
+    if (animFrameRef.current) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const loop = () => {
+      canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      particlesRef.current = particlesRef.current.filter(p => {
+        p.x += p.vx; p.y += p.vy; p.vy += p.gravity; p.vx *= 0.99; p.life--; p.rotation += p.rotSpeed;
+        const alpha = Math.min(1, p.life / (p.maxLife * 0.3));
+        if (alpha <= 0) return false;
+        ctx.save(); ctx.globalAlpha = alpha; ctx.translate(p.x, p.y);
+        ctx.rotate((p.rotation * Math.PI) / 180);
+        ctx.fillStyle = p.color;
+        if (p.shape === 'circle') {
+          ctx.beginPath();
+          ctx.arc(0, 0, p.size / 2, 0, Math.PI * 2);
+          ctx.fill();
+        } else {
+          ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
+        }
+        ctx.restore();
+        return true;
+      });
+      if (particlesRef.current.length > 0) animFrameRef.current = requestAnimationFrame(loop);
+      else animFrameRef.current = null;
+    };
+    animFrameRef.current = requestAnimationFrame(loop);
+  }, []);
+
+  useEffect(() => () => { if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current); }, []);
+  return { canvasRef, spawnParticles, startLoop };
+}
+
+// ============================================================================
+// MAIN WHEEL — adapted from bwanabet.com WheelWidget for the gamification flow.
+// Visual structure (chrome frame, gold pegs, marquee lights, spring pointer,
+// STOP button) is preserved verbatim. The API spin is replaced with a local
+// random pick that always lands on a winning segment, since the user has
+// already paid for this spin via gamePlays before the modal opened.
+// ============================================================================
 export default function WheelGame({ onClose, onWin, playsLeft, closing }) {
-  const [spinning, setSpinning] = useState(false);
-  const [rotation, setRotation] = useState(0);
-  const [result, setResult] = useState(null);
-  const [showTutorial, setShowTutorial] = useState(false);
+  // Screen flow: spinning → stopping → result
+  const [screen, setScreen] = useState('spinning');
+  const [spinResult, setSpinResult] = useState(null);
   const [showFlash, setShowFlash] = useState(false);
-  const [pointerBouncing, setPointerBouncing] = useState(false);
   const [wheelConfetti, setWheelConfetti] = useState(false);
+  const [showTutorial, setShowTutorial] = useState(false);
+  const { canvasRef, spawnParticles, startLoop } = useParticleSystem();
+  const [floatingNums, setFloatingNums] = useState([]);
+  const [countUpValue, setCountUpValue] = useState(0);
+  const [shaking, setShaking] = useState(false);
+  const [prizeFlash, setPrizeFlash] = useState(false);
 
-  const NUM = WHEEL_SEGMENTS.length;         // 9 segments
-  const SEG_ANGLE = 360 / NUM;               // 40° each
+  // Spin refs
+  const spinAngleRef = useRef(0);
+  const spinFrameRef = useRef(null);
+  const wheelRef = useRef(null);
+  const winSegmentRef = useRef(null);
+  const screenRef = useRef(screen);
 
-  // SPIN LOGIC — written from scratch
-  // How the wheel works:
-  // - SVG draws segment 0 starting at top (12 o'clock), going clockwise
-  // - Segment i occupies: i*40° to (i+1)*40° clockwise from top
-  // - Pointer is fixed at top (12 o'clock)
-  // - CSS rotate(R) spins wheel R° clockwise
-  // - After rotation R, pointer reads the segment at position (360 - R%360)° from wheel's top
-  // - To land on segment i's CENTER: (360 - R%360) = i*40 + 20
-  //   Therefore: R % 360 = 360 - i*40 - 20 = 340 - i*40
+  // Braking refs — friction slowdown when STOP pressed
+  const brakingRef = useRef(false);
+  const brakingSpeedRef = useRef(0);
 
-  const spin = () => {
-    if (spinning || playsLeft <= 0) return;
-    setSpinning(true);
-    setResult(null);
-    setPointerBouncing(true);
+  // Result is computed locally and consumed at next frame boundary
+  const pendingResultRef = useRef(null);
 
-    // 1. Pick random winner
-    const winIndex = Math.floor(Math.random() * NUM);
-    const segment = WHEEL_SEGMENTS[winIndex];
+  // Easing refs — smooth landing on target segment
+  const decelStartRef = useRef(null);
+  const decelFromRef = useRef(0);
+  const decelTotalRef = useRef(0);
+  const decelDurationRef = useRef(5000);
 
-    // 2. Calculate where wheel must stop (mod 360)
-    // Add small random offset so it doesn't always land dead center
-    const jitter = (Math.random() - 0.5) * (SEG_ANGLE * 0.6); // stays within segment
-    const targetRemainder = (340 - winIndex * SEG_ANGLE + jitter + 360) % 360;
+  // Pointer physics refs
+  const pointerAngleRef = useRef(0);
+  const pointerVelRef = useRef(0);
+  const lastPegIndexRef = useRef(-1);
+  const pointerElRef = useRef(null);
+  const prevWheelAngleRef = useRef(0);
 
-    // 3. Calculate total rotation from current position
-    const currentRemainder = rotation % 360;
-    let extraDegrees = targetRemainder - currentRemainder;
-    if (extraDegrees <= 0) extraDegrees += 360;
+  const SPIN_SPEED = 20;
+  const BRAKE_FRICTION = 0.98;
+  const FRAME_MS = 1000 / 60;
+  const SPRING_STIFFNESS = 0.3;
+  const SPRING_DAMPING = 0.15;
 
-    // 4. Add full spins (6-8 full rotations for drama)
-    const fullSpins = (6 + Math.floor(Math.random() * 3)) * 360;
-    const totalRotation = rotation + fullSpins + extraDegrees;
+  // Low-end device heuristic — set once on mount
+  const [isLowEnd] = useState(() => {
+    if (typeof navigator === 'undefined') return false;
+    const cores = navigator.hardwareConcurrency || 8;
+    const mem = navigator.deviceMemory || 8;
+    return cores <= 4 || mem <= 3;
+  });
 
-    setRotation(totalRotation);
+  const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3);
 
-    setTimeout(() => {
-      setSpinning(false);
-      setPointerBouncing(false);
-      setResult(segment);
-      setShowFlash(true);
-      setWheelConfetti(true);
-      setTimeout(() => setShowFlash(false), 400);
-      setTimeout(() => setWheelConfetti(false), 3000);
-    }, 5000);
-  };
+  useEffect(() => { screenRef.current = screen; }, [screen]);
+
+  // Count-up animation for win prize
+  useEffect(() => {
+    if (!spinResult || spinResult.isLoss) {
+      setCountUpValue(0);
+      setPrizeFlash(false);
+      return;
+    }
+    const target = spinResult.prize.kwacha;
+    const duration = 800;
+    const start = performance.now();
+    let raf;
+    const animate = (now) => {
+      const elapsed = now - start;
+      const t = Math.min(elapsed / duration, 1);
+      const eased = 1 - Math.pow(1 - t, 3);
+      setCountUpValue(Math.round(eased * target));
+      if (t < 1) {
+        raf = requestAnimationFrame(animate);
+      } else {
+        setPrizeFlash(true);
+        setTimeout(() => setPrizeFlash(false), 300);
+      }
+    };
+    raf = requestAnimationFrame(animate);
+    return () => { if (raf) cancelAnimationFrame(raf); };
+  }, [spinResult]);
+
+  const spawnFloatingNumber = useCallback((text, x, y, color = '#fbbf24') => {
+    const id = Date.now() + Math.random();
+    setFloatingNums(prev => [...prev, { id, text, x, y, color }]);
+    setTimeout(() => setFloatingNums(prev => prev.filter(n => n.id !== id)), 1200);
+  }, []);
+
+  // Main animation loop — 3 phases: free spin → friction brake → easing to target
+  const spinActiveRef = useRef(false);
+  useEffect(() => {
+    const isActive = screen === 'spinning' || screen === 'stopping';
+    if (isActive && !spinActiveRef.current) {
+      spinActiveRef.current = true;
+      lastPegIndexRef.current = -1;
+      prevWheelAngleRef.current = spinAngleRef.current;
+      pointerAngleRef.current = 0;
+      pointerVelRef.current = 0;
+      let cancelled = false;
+      let lastTs = null;
+
+      const loop = (timestamp) => {
+        if (cancelled) return;
+
+        const k = lastTs === null ? 1 : Math.min(5, (timestamp - lastTs) / FRAME_MS);
+        lastTs = timestamp;
+
+        let currentAngle = spinAngleRef.current;
+
+        // PHASE 3: EASING TO TARGET
+        if (decelStartRef.current !== null) {
+          const elapsed = timestamp - decelStartRef.current;
+          const t = Math.min(elapsed / decelDurationRef.current, 1);
+          const progress = easeOutCubic(t);
+          currentAngle = decelFromRef.current + decelTotalRef.current * progress;
+          spinAngleRef.current = currentAngle;
+
+          if (wheelRef.current) {
+            wheelRef.current.style.transform = `rotate(${currentAngle}deg)`;
+          }
+
+          if (t >= 1) {
+            decelStartRef.current = null;
+            const settleStart = performance.now();
+            const settleLoop = () => {
+              if (cancelled) return;
+              pointerVelRef.current += (-SPRING_STIFFNESS * pointerAngleRef.current - SPRING_DAMPING * pointerVelRef.current);
+              pointerAngleRef.current += pointerVelRef.current;
+              if (pointerElRef.current) {
+                pointerElRef.current.style.transform = `rotate(${pointerAngleRef.current}deg)`;
+              }
+              const settled = Math.abs(pointerAngleRef.current) < 0.1 && Math.abs(pointerVelRef.current) < 0.1;
+              if (performance.now() - settleStart < 500 && !settled) {
+                requestAnimationFrame(settleLoop);
+              } else {
+                pointerAngleRef.current = 0;
+                pointerVelRef.current = 0;
+                if (pointerElRef.current) pointerElRef.current.style.transform = 'rotate(0deg)';
+
+                // Pause so user can read where the pointer landed
+                setTimeout(() => {
+                  if (cancelled) return;
+                  spinActiveRef.current = false;
+                  const segment = winSegmentRef.current;
+                  setScreen('result');
+                  setSpinResult(segment);
+
+                  if (segment && !segment.isLoss) {
+                    setShowFlash(true);
+                    setWheelConfetti(true);
+                    setShaking(true);
+                    setTimeout(() => setShowFlash(false), 400);
+                    setTimeout(() => setWheelConfetti(false), 3000);
+                    setTimeout(() => setShaking(false), 150);
+                    const cx = window.innerWidth / 2, cy = window.innerHeight * 0.45;
+                    const isMobile = window.innerWidth < 600;
+                    spawnParticles(cx, cy, isMobile ? 12 : 25, { spread: 250, speed: 9, life: isMobile ? 25 : 40, gravity: 0.2 });
+                    if (!isMobile) spawnParticles(cx, cy, 15, { spread: 180, speed: 6, life: 30, gravity: 0.15 });
+                    startLoop();
+                    if (segment.prize?.kwacha) spawnFloatingNumber(`+K${segment.prize.kwacha}`, cx, cy - 40, '#fbbf24');
+                  }
+                  spinFrameRef.current = null;
+                }, 1500);
+              }
+            };
+            requestAnimationFrame(settleLoop);
+            return;
+          }
+
+        // PHASE 2: FRICTION BRAKE
+        } else if (brakingRef.current) {
+          brakingSpeedRef.current *= Math.pow(BRAKE_FRICTION, k);
+          spinAngleRef.current += brakingSpeedRef.current * k;
+          currentAngle = spinAngleRef.current;
+          if (wheelRef.current) {
+            wheelRef.current.style.transform = `rotate(${currentAngle}deg)`;
+          }
+
+          if (pendingResultRef.current) {
+            const { winIndex } = pendingResultRef.current;
+            pendingResultRef.current = null;
+
+            winSegmentRef.current = WHEEL_SEGMENTS[winIndex];
+
+            const segCenter = winIndex * SEG_ANGLE + SEG_ANGLE / 2;
+            const jitter = (Math.random() - 0.5) * (SEG_ANGLE * 0.5);
+            const targetRemainder = (360 - segCenter + jitter + 360) % 360;
+            let remaining = targetRemainder - (currentAngle % 360);
+            if (remaining <= 0) remaining += 360;
+
+            const currentSpeed = brakingSpeedRef.current;
+            const extraRotations = currentSpeed > 12 ? 4 : currentSpeed > 6 ? 3 : 2;
+            const decelTotal = extraRotations * 360 + remaining;
+            const duration = Math.max(2500, decelTotal * 50 / currentSpeed);
+
+            decelFromRef.current = currentAngle;
+            decelTotalRef.current = decelTotal;
+            decelDurationRef.current = duration;
+            decelStartRef.current = timestamp;
+            brakingRef.current = false;
+          }
+
+        // PHASE 1: FREE SPIN
+        } else {
+          spinAngleRef.current += SPIN_SPEED * k;
+          currentAngle = spinAngleRef.current;
+          if (wheelRef.current) {
+            wheelRef.current.style.transform = `rotate(${currentAngle}deg)`;
+          }
+        }
+
+        // Pointer-peg physics
+        const normalizedAngle = ((currentAngle % 360) + 360) % 360;
+        const pegIndex = Math.floor(normalizedAngle / SEG_ANGLE);
+        if (lastPegIndexRef.current >= 0 && pegIndex !== lastPegIndexRef.current) {
+          const wheelSpeed = Math.abs(currentAngle - prevWheelAngleRef.current) / Math.max(k, 0.01);
+          let impulse;
+          if (wheelSpeed >= 15) impulse = 2;
+          else if (wheelSpeed >= 5) impulse = 5;
+          else impulse = 10;
+          pointerVelRef.current += impulse;
+        }
+        lastPegIndexRef.current = pegIndex;
+        prevWheelAngleRef.current = currentAngle;
+
+        const springSteps = Math.max(1, Math.min(6, Math.round(k)));
+        for (let s = 0; s < springSteps; s++) {
+          pointerVelRef.current += (-SPRING_STIFFNESS * pointerAngleRef.current - SPRING_DAMPING * pointerVelRef.current);
+          pointerAngleRef.current += pointerVelRef.current;
+        }
+        pointerAngleRef.current = Math.max(-20, Math.min(20, pointerAngleRef.current));
+        if (pointerElRef.current) {
+          pointerElRef.current.style.transform = `rotate(${pointerAngleRef.current}deg)`;
+        }
+
+        spinFrameRef.current = requestAnimationFrame(loop);
+      };
+      spinFrameRef.current = requestAnimationFrame(loop);
+      return () => {
+        cancelled = true;
+        spinActiveRef.current = false;
+        if (spinFrameRef.current) { cancelAnimationFrame(spinFrameRef.current); spinFrameRef.current = null; }
+      };
+    }
+    if (!isActive) {
+      spinActiveRef.current = false;
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [screen]);
+
+  // STOP — brake immediately, then land on a random winning segment
+  const stopWheel = useCallback(() => {
+    if (screenRef.current !== 'spinning') return;
+    setScreen('stopping');
+
+    brakingRef.current = true;
+    brakingSpeedRef.current = SPIN_SPEED;
+
+    // Always land on a prize segment — the user paid a free spin to open the wheel,
+    // so every spin is rewarding. Loss segments stay on the wheel for visual fidelity
+    // with the public bwanabet.com widget but are intentionally never picked here.
+    const winIndices = WHEEL_SEGMENTS.map((s, i) => s.isLoss ? -1 : i).filter(i => i >= 0);
+    const winIndex = winIndices[Math.floor(Math.random() * winIndices.length)];
+    pendingResultRef.current = { winIndex };
+    winSegmentRef.current = WHEEL_SEGMENTS[winIndex];
+  }, []);
+
+  // CLAIM — credit prize back to the platform and close
+  const claimPrize = useCallback(() => {
+    if (!spinResult) return;
+    if (!spinResult.isLoss && spinResult.prize?.kwacha) {
+      onWin(spinResult.prize.kwacha, spinResult.label);
+    }
+    setSpinResult(null);
+    onClose();
+  }, [spinResult, onWin, onClose]);
+
+  const WHEEL_SIZE = 320;
+  const isSpinning = screen === 'spinning' || screen === 'stopping';
 
   return (
-    <div className={`fixed inset-0 bg-[#1a0d26]/95 flex items-center justify-center z-[70] p-4 ${closing ? "anim-backdrop-close" : "anim-fade-in"}`} onClick={onClose}>
+    <div
+      className={`fixed inset-0 z-[70] flex items-center justify-center ${closing ? 'anim-backdrop-close' : 'anim-fade-in'}`}
+      style={{ background: 'rgba(0,0,0,0.6)' }}
+      onClick={onClose}
+    >
       {showTutorial && <TutorialModal tutorialKey="wheel" onClose={() => setShowTutorial(false)} />}
 
-      {/* Screen Flash on Win */}
+      {/* Particle canvas */}
+      <canvas ref={canvasRef} className="fixed inset-0 pointer-events-none z-[60]" />
+
+      {/* Floating numbers */}
+      {floatingNums.map(n => (
+        <div key={n.id} className="fixed pointer-events-none z-[60] font-black text-2xl" style={{
+          left: n.x, top: n.y, color: n.color, textShadow: `0 0 10px ${n.color}`,
+          animation: 'slideUp 1.2s ease-out forwards', transform: 'translate(-50%, -50%)',
+        }}>{n.text}</div>
+      ))}
+
+      {/* Screen flash */}
       {showFlash && (
-        <div className="fixed inset-0 z-[75] pointer-events-none" style={{
+        <div className="fixed inset-0 z-[55] pointer-events-none" style={{
           background: 'radial-gradient(circle, rgba(251,191,36,0.5) 0%, rgba(168,85,247,0.3) 50%, transparent 80%)',
           animation: 'screenFlash 0.4s ease-out forwards',
         }} />
       )}
 
-      {/* Win Confetti */}
+      {/* Confetti */}
       {wheelConfetti && (
-        <div className="fixed inset-0 pointer-events-none z-[74] overflow-hidden">
-          {Array.from({ length: 60 }, (_, i) => {
-            const colors = ['#fbbf24', '#a855f7', '#ec4899', '#22c55e', '#3b82f6', '#f97316', '#ef4444', '#14b8a6'];
-            const shape = ['circle', 'rect', 'star'][i % 3];
+        <div className="fixed inset-0 pointer-events-none z-[55] overflow-hidden">
+          {Array.from({ length: typeof window !== 'undefined' && window.innerWidth < 600 ? 25 : 60 }, (_, i) => {
+            const colors = ['#fbbf24','#a855f7','#06b6d4','#ec4899','#22c55e'];
+            const shape = ['circle','rect'][i % 2];
             const size = 6 + Math.random() * 10;
             return (
               <div key={i} style={{
-                position: 'absolute',
-                left: `${5 + Math.random() * 90}%`,
-                top: '-20px',
-                width: shape === 'rect' ? size * 0.6 : size,
-                height: shape === 'star' ? size * 0.4 : size,
-                backgroundColor: colors[i % colors.length],
-                borderRadius: shape === 'circle' ? '50%' : '2px',
+                position: 'absolute', left: `${5 + Math.random() * 90}%`, top: '-20px',
+                width: shape === 'rect' ? size * 0.6 : size, height: size,
+                backgroundColor: colors[i % colors.length], borderRadius: shape === 'circle' ? '50%' : '2px',
                 '--drift': `${(Math.random() - 0.5) * 120}px`,
-                animation: `confettiFall ${2.2 + Math.random() * 1.5}s ${Math.random() * 0.8}s cubic-bezier(0.25, 0.46, 0.45, 0.94) both`,
+                animation: `confettiFall ${2.2 + Math.random() * 1.5}s ${Math.random() * 0.8}s cubic-bezier(0.25,0.46,0.45,0.94) both`,
               }} />
             );
           })}
         </div>
       )}
 
-      <div className={`bg-gradient-to-b from-[#0a1520] to-[#030810] rounded-3xl max-w-md w-full p-6 border-0 shadow-2xl shadow-purple-900/50 ${closing ? "anim-modal-close" : "anim-scale-in"}`} onClick={(e) => e.stopPropagation()}>
-        {/* Header */}
-        <div className="flex items-center justify-between mb-4">
-          <button type="button" onClick={() => setShowTutorial(true)} className="p-2 hover:bg-white/10 rounded-full transition-colors">
-            <HelpCircle className="w-6 h-6 text-purple-400" />
-          </button>
-          <h2 className="text-2xl font-bold flex items-center gap-2">
-            <span className="text-3xl">🎡</span> Wheel of Fortune
-          </h2>
-          <button type="button" onClick={onClose} className="p-2 hover:bg-white/10 rounded-full transition-all hover:rotate-90 duration-300">
-            <X className="w-6 h-6" />
-          </button>
+      {/* WIN RESULT OVERLAY */}
+      {spinResult && (
+        <div className="fixed inset-0 z-[58] flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.7)', animation: 'fadeIn 0.3s ease-out' }} onClick={(e) => e.stopPropagation()}>
+          <div className="text-center p-8 rounded-3xl max-w-xs w-full mx-4" style={{
+            background: 'linear-gradient(180deg, rgba(30,40,60,0.95), rgba(15,20,35,0.98))',
+            border: `2px solid ${spinResult.isLoss ? 'rgba(156,163,175,0.3)' : 'rgba(251,191,36,0.3)'}`,
+            boxShadow: spinResult.isLoss
+              ? '0 0 60px rgba(100,100,100,0.1), 0 20px 60px rgba(0,0,0,0.5)'
+              : '0 0 60px rgba(251,191,36,0.15), 0 20px 60px rgba(0,0,0,0.5)',
+            animation: 'resultZoom 0.5s cubic-bezier(0.34,1.56,0.64,1) both',
+          }}>
+            {spinResult.isLoss ? (
+              <>
+                <div className="text-lg font-extrabold uppercase tracking-widest mb-2" style={{ color: 'rgba(255,255,255,0.7)', letterSpacing: '2px' }}>
+                  BETTER LUCK NEXT TIME
+                </div>
+                <div className="text-base font-bold uppercase tracking-widest mb-6" style={{ color: 'rgba(255,255,255,0.4)', letterSpacing: '2px' }}>
+                  TRY AGAIN TOMORROW
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="uppercase font-bold mb-2" style={{ color: '#ffd700', fontSize: '12px', letterSpacing: '3px' }}>
+                  YOU WON
+                </div>
+                <div className="relative mb-2">
+                  {prizeFlash && (
+                    <div className="absolute inset-0 rounded-xl" style={{
+                      background: 'radial-gradient(circle, rgba(255,215,0,0.4) 0%, transparent 70%)',
+                      animation: 'fadeIn 0.1s ease-out',
+                    }} />
+                  )}
+                  <div className="relative" style={{
+                    fontSize: '48px', fontWeight: 900, color: '#ffd700',
+                    textShadow: '0 0 20px rgba(255,215,0,0.5), 0 0 40px rgba(255,215,0,0.2)',
+                    transform: `scale(${spinResult.prize ? 0.9 + 0.1 * Math.min(countUpValue / spinResult.prize.kwacha, 1) : 1})`,
+                    transition: 'transform 0.05s ease-out',
+                  }}>
+                    K{countUpValue}
+                  </div>
+                </div>
+                <p className="text-gray-400 text-xs mb-5">Coins added to your balance</p>
+              </>
+            )}
+            <button
+              type="button"
+              onClick={claimPrize}
+              className={`w-full py-3.5 rounded-xl font-bold text-lg shadow-lg transition-all hover:scale-[1.03] active:scale-95 ${
+                spinResult.isLoss
+                  ? 'bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 shadow-gray-500/20'
+                  : 'bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 shadow-green-500/30'
+              }`}
+              style={spinResult.isLoss ? {} : { '--btn-shadow': '#065F46', '--btn-glow': 'rgba(16,185,129,0.3)', '--btn-glow2': 'rgba(16,185,129,0.15)', animation: 'collectBtnPulse 2s ease-in-out infinite' }}
+            >
+              {spinResult.isLoss ? 'GOT IT' : 'Claim Prize!'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* MAIN CARD */}
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className={`relative rounded-2xl ${closing ? 'anim-modal-close' : 'anim-scale-in'}`}
+        style={{
+          width: 380, maxWidth: '95vw',
+          background: 'linear-gradient(180deg, #2d3348 0%, #1e2233 40%, #1a1e2e 100%)',
+          boxShadow: '0 0 80px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.06)',
+          border: '3px solid #3a3f52',
+          ...(shaking ? { animation: 'winShake 0.15s ease-out' } : {}),
+        }}
+      >
+
+        {/* Marquee light dots — paused during spin, reduced on low-end */}
+        <div className="absolute inset-0 pointer-events-none z-30 rounded-2xl overflow-hidden">
+          {Array.from({ length: isLowEnd ? 12 : 28 }, (_, i) => {
+            const n = isLowEnd ? 12 : 28;
+            return (
+              <div key={`mt${i}`} className="absolute rounded-full" style={{
+                width: 4, height: 4, top: 3, left: `${(i + 1) * (100 / (n + 1))}%`,
+                background: '#fbbf24', boxShadow: isLowEnd ? '0 0 3px #fbbf24' : '0 0 4px #fbbf24, 0 0 8px #fbbf2480',
+                animation: `marqueeLight 1.5s ${i * 0.08}s ease-in-out infinite`,
+                animationPlayState: isSpinning ? 'paused' : 'running',
+              }} />
+            );
+          })}
+          {Array.from({ length: isLowEnd ? 12 : 28 }, (_, i) => {
+            const n = isLowEnd ? 12 : 28;
+            return (
+              <div key={`mb${i}`} className="absolute rounded-full" style={{
+                width: 4, height: 4, bottom: 3, left: `${(i + 1) * (100 / (n + 1))}%`,
+                background: '#fbbf24', boxShadow: isLowEnd ? '0 0 3px #fbbf24' : '0 0 4px #fbbf24, 0 0 8px #fbbf2480',
+                animation: `marqueeLight 1.5s ${(i + n / 2) * 0.08}s ease-in-out infinite`,
+                animationPlayState: isSpinning ? 'paused' : 'running',
+              }} />
+            );
+          })}
+          {Array.from({ length: isLowEnd ? 8 : 18 }, (_, i) => {
+            const n = isLowEnd ? 8 : 18;
+            return (
+              <div key={`ml${i}`} className="absolute rounded-full" style={{
+                width: 4, height: 4, left: 3, top: `${(i + 1) * (100 / (n + 1))}%`,
+                background: '#fbbf24', boxShadow: isLowEnd ? '0 0 3px #fbbf24' : '0 0 4px #fbbf24, 0 0 8px #fbbf2480',
+                animation: `marqueeLight 1.5s ${(i + n) * 0.08}s ease-in-out infinite`,
+                animationPlayState: isSpinning ? 'paused' : 'running',
+              }} />
+            );
+          })}
+          {Array.from({ length: isLowEnd ? 8 : 18 }, (_, i) => {
+            const n = isLowEnd ? 8 : 18;
+            return (
+              <div key={`mr${i}`} className="absolute rounded-full" style={{
+                width: 4, height: 4, right: 3, top: `${(i + 1) * (100 / (n + 1))}%`,
+                background: '#fbbf24', boxShadow: isLowEnd ? '0 0 3px #fbbf24' : '0 0 4px #fbbf24, 0 0 8px #fbbf2480',
+                animation: `marqueeLight 1.5s ${(i + n * 2.5) * 0.08}s ease-in-out infinite`,
+                animationPlayState: isSpinning ? 'paused' : 'running',
+              }} />
+            );
+          })}
         </div>
 
-        {/* Free Spins Badge */}
-        <div className="text-center mb-5">
-          <span className={`px-5 py-2.5 rounded-full font-bold text-lg inline-flex items-center gap-2 ${playsLeft > 0 ? 'bg-green-500/20 text-green-400 border-2 border-green-500/40 glow-pulse' : 'bg-red-500/20 text-red-400 border border-red-500/30'}`}>
-            {playsLeft > 0 ? `🎁 ${playsLeft} Free Spins` : '❌ No Free Spins'}
-          </span>
-        </div>
+        {/* Tutorial button */}
+        <button
+          type="button"
+          onClick={() => setShowTutorial(true)}
+          className="absolute top-3 left-3 z-40 w-9 h-9 rounded-full flex items-center justify-center transition-all hover:scale-110 active:scale-90"
+          style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)' }}
+        >
+          <HelpCircle className="w-5 h-5 text-amber-300" />
+        </button>
 
-        {/* === THE WHEEL === */}
-        <div className="relative mx-auto mb-6" style={{ width: 300, height: 300 }}>
+        {/* Close button */}
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute top-3 right-3 z-40 w-9 h-9 rounded-full flex items-center justify-center transition-all hover:scale-110 active:scale-90"
+          style={{ background: 'linear-gradient(135deg, #ef4444, #dc2626)', boxShadow: '0 2px 8px rgba(239,68,68,0.5)' }}
+        >
+          <X className="w-5 h-5 text-white" strokeWidth={3} />
+        </button>
 
-          {/* STATIC FRAME LAYER (does not rotate) */}
-          <svg viewBox="0 0 300 300" className="absolute inset-0 w-full h-full z-20 pointer-events-none" style={{ overflow: 'visible' }}>
-            <defs>
-              <linearGradient id="wg1" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#ffd700" />
-                <stop offset="25%" stopColor="#b8860b" />
-                <stop offset="50%" stopColor="#ffd700" />
-                <stop offset="75%" stopColor="#daa520" />
-                <stop offset="100%" stopColor="#ffd700" />
-              </linearGradient>
-              <linearGradient id="wg2" x1="100%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stopColor="#daa520" />
-                <stop offset="50%" stopColor="#ffd700" />
-                <stop offset="100%" stopColor="#b8860b" />
-              </linearGradient>
-              <filter id="gldGlow" x="-15%" y="-15%" width="130%" height="130%">
-                <feGaussianBlur in="SourceGraphic" stdDeviation="2.5" result="b" />
-                <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
-              </filter>
-              <filter id="pegGlow" x="-80%" y="-80%" width="260%" height="260%">
-                <feGaussianBlur in="SourceGraphic" stdDeviation="2" result="b" />
-                <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
-              </filter>
-            </defs>
+        {/* === CONTENT === */}
+        <div className="relative z-10 px-4 sm:px-5 pt-4 pb-4">
 
-            {/* Outer gold ring with glow */}
-            <circle cx="150" cy="150" r="147" fill="none" stroke="url(#wg1)" strokeWidth="7" filter="url(#gldGlow)" />
-            {/* Dark channel */}
-            <circle cx="150" cy="150" r="141" fill="none" stroke="#0a0f1a" strokeWidth="8" />
-            {/* Inner gold trim */}
-            <circle cx="150" cy="150" r="136" fill="none" stroke="url(#wg2)" strokeWidth="2.5" />
-
-            {/* Decorative pegs with animated lights */}
-            {[...Array(18)].map((_, i) => {
-              const a = i * 20 - 90;
-              const bx = 150 + 141 * Math.cos(a * Math.PI / 180);
-              const by = 150 + 141 * Math.sin(a * Math.PI / 180);
-              const colors = ['#fbbf24', '#ec4899', '#a855f7'];
-              const c = colors[i % 3];
-              return (
-                <g key={`p${i}`}>
-                  <circle cx={bx} cy={by} r="7" fill="#15112a" stroke="url(#wg2)" strokeWidth="1.5" />
-                  <circle cx={bx} cy={by} r="4" fill={c} filter="url(#pegGlow)">
-                    {spinning && (
-                      <animate attributeName="opacity" values={i % 2 === 0 ? '1;0.2;1' : '0.2;1;0.2'} dur={`${0.3 + (i % 4) * 0.1}s`} repeatCount="indefinite" />
-                    )}
-                  </circle>
-                </g>
-              );
-            })}
-          </svg>
-
-          {/* FLASHING LIGHTS RING - 24 chasing lights */}
-          <div className="absolute inset-[-4px] z-25 pointer-events-none">
-            {[...Array(24)].map((_, i) => {
-              const deg = i * 15 - 90;
-              const x = 50 + 50 * Math.cos(deg * Math.PI / 180);
-              const y = 50 + 50 * Math.sin(deg * Math.PI / 180);
-              const colors = ['#fbbf24', '#ec4899', '#a855f7', '#22c55e', '#3b82f6', '#f97316'];
-              const c = colors[i % colors.length];
-              const delay = (i * 0.12) % 1.8;
-              return (
-                <div
-                  key={`fl-${i}`}
-                  className="absolute rounded-full"
-                  style={{
-                    width: 8,
-                    height: 8,
-                    left: `${x}%`,
-                    top: `${y}%`,
-                    background: c,
-                    boxShadow: `0 0 6px 2px ${c}, 0 0 12px 4px ${c}50`,
-                    animation: `lightChase 1.8s ${delay}s ease-in-out infinite`,
-                    transform: 'translate(-50%, -50%)',
-                  }}
-                />
-              );
-            })}
+          {/* Header */}
+          <div className="text-center mb-2">
+            <h1 className="text-3xl sm:text-4xl font-black tracking-tight leading-[0.9]" style={{
+              background: 'linear-gradient(180deg, #ffeaa0 0%, #ffd700 30%, #ff9500 70%, #cc7000 100%)',
+              WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+              filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.6))',
+            }}>BWANABET</h1>
+            <h1 className="text-3xl sm:text-4xl font-black tracking-tight leading-[0.9] mt-1">
+              <span style={{
+                background: 'linear-gradient(180deg, #ffeaa0 0%, #ffd700 30%, #ff9500 70%, #cc7000 100%)',
+                WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+                filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.6))',
+              }}>SPIN</span>{' '}
+              <span className="text-white text-2xl sm:text-3xl" style={{ filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.6))' }}>AND</span>{' '}
+              <span style={{
+                background: 'linear-gradient(180deg, #ffeaa0 0%, #ffd700 30%, #ff9500 70%, #cc7000 100%)',
+                WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+                filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.6))',
+              }}>WIN</span>
+            </h1>
+            {playsLeft > 0 && (
+              <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold" style={{
+                background: 'rgba(34,197,94,0.18)', border: '1px solid rgba(34,197,94,0.4)', color: '#86efac',
+              }}>
+                {playsLeft} {playsLeft === 1 ? 'spin' : 'spins'} left after this
+              </div>
+            )}
           </div>
 
-          {/* Pointer (HTML element for reliable animation) */}
-          <div
-            className="absolute z-30"
-            style={{
-              top: -6, left: '50%', transform: 'translateX(-50%)',
-              animation: pointerBouncing ? 'pointerBounce 0.15s ease-in-out infinite' : 'none',
-            }}
-          >
-            <svg width="36" height="30" viewBox="0 0 36 30" style={{ filter: 'drop-shadow(0 3px 6px rgba(0,0,0,0.5))' }}>
-              <defs>
-                <linearGradient id="ptrGold" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#ffd700" />
-                  <stop offset="50%" stopColor="#b8860b" />
-                  <stop offset="100%" stopColor="#ffd700" />
-                </linearGradient>
-              </defs>
-              <polygon points="18,28 3,2 33,2" fill="url(#ptrGold)" stroke="#8b6914" strokeWidth="1" />
-              <polygon points="18,22 9,5 27,5" fill="#ffd700" opacity="0.5" />
-              <circle cx="18" cy="7" r="4.5" fill="#dc2626" stroke="#ffd700" strokeWidth="1.2" />
-              <circle cx="16.5" cy="5.5" r="1.5" fill="#ff8888" opacity="0.6" />
-            </svg>
-          </div>
+          {/* === WHEEL AREA === */}
+          <div className="relative mx-auto" style={{ width: '100%', maxWidth: WHEEL_SIZE + 50, aspectRatio: '1' }}>
 
-          {/* SPINNING WHEEL LAYER */}
-          <div
-            className="absolute rounded-full overflow-hidden"
-            style={{
-              top: 16, left: 16, right: 16, bottom: 16,
-              transform: `rotate(${rotation}deg)`,
-              transition: spinning ? 'transform 5s cubic-bezier(0.12, 0.8, 0.18, 1)' : 'none',
-            }}
-          >
-            {/* Colored segments */}
-            <svg viewBox="0 0 200 200" className="w-full h-full">
+            {/* Spotlight behind wheel */}
+            <div className="absolute pointer-events-none" style={{
+              inset: '-20%',
+              background: 'radial-gradient(circle at 50% 48%, rgba(200,210,230,0.15) 0%, rgba(150,160,180,0.07) 30%, transparent 60%)',
+            }} />
+
+            {/* Sparkle accents */}
+            {!isLowEnd && (
+              <>
+                <div className="absolute pointer-events-none text-white/40" style={{ top: '5%', left: '2%', fontSize: 18, animation: 'sparkle 2.5s 0.3s ease-in-out infinite' }}>&#10022;</div>
+                <div className="absolute pointer-events-none text-white/30" style={{ top: '12%', right: '4%', fontSize: 14, animation: 'sparkle 2.5s 1s ease-in-out infinite' }}>&#10022;</div>
+                <div className="absolute pointer-events-none text-white/25" style={{ bottom: '10%', left: '4%', fontSize: 12, animation: 'sparkle 2.5s 1.6s ease-in-out infinite' }}>&#10022;</div>
+                <div className="absolute pointer-events-none text-white/35" style={{ bottom: '5%', right: '2%', fontSize: 16, animation: 'sparkle 2.5s 0.7s ease-in-out infinite' }}>&#10022;</div>
+              </>
+            )}
+
+            {/* Drop shadow under wheel */}
+            <div className="absolute pointer-events-none rounded-full" style={{
+              left: '8%', right: '8%', bottom: '-2%', height: '12%',
+              background: 'radial-gradient(ellipse, rgba(0,0,0,0.35) 0%, transparent 70%)',
+              filter: 'blur(8px)',
+            }} />
+
+            {/* === CHROME FRAME === */}
+            <svg viewBox="0 0 400 400" className="absolute inset-0 w-full h-full z-20 pointer-events-none">
               <defs>
-                <radialGradient id="segD" cx="50%" cy="50%" r="50%">
-                  <stop offset="0%" stopColor="#000" stopOpacity="0.2" />
-                  <stop offset="55%" stopColor="#000" stopOpacity="0" />
-                  <stop offset="100%" stopColor="#000" stopOpacity="0.12" />
-                </radialGradient>
-                <linearGradient id="segShine" x1="30%" y1="0%" x2="70%" y2="100%">
-                  <stop offset="0%" stopColor="#fff" stopOpacity="0.1" />
-                  <stop offset="50%" stopColor="#fff" stopOpacity="0" />
-                  <stop offset="100%" stopColor="#000" stopOpacity="0.06" />
+                <linearGradient id="chrome1" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#e8e8e8" />
+                  <stop offset="12%" stopColor="#fff" />
+                  <stop offset="28%" stopColor="#888" />
+                  <stop offset="42%" stopColor="#e8e8e8" />
+                  <stop offset="55%" stopColor="#fff" />
+                  <stop offset="68%" stopColor="#999" />
+                  <stop offset="82%" stopColor="#e0e0e0" />
+                  <stop offset="100%" stopColor="#bbb" />
                 </linearGradient>
+                <linearGradient id="chrome2" x1="100%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" stopColor="#ddd" />
+                  <stop offset="25%" stopColor="#fff" />
+                  <stop offset="50%" stopColor="#777" />
+                  <stop offset="75%" stopColor="#e0e0e0" />
+                  <stop offset="100%" stopColor="#bbb" />
+                </linearGradient>
+                <filter id="chromeGlow" x="-8%" y="-8%" width="116%" height="116%">
+                  <feGaussianBlur in="SourceGraphic" stdDeviation="2" result="b" />
+                  <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
+                </filter>
+                <filter id="lightGlow" x="-150%" y="-150%" width="400%" height="400%">
+                  <feGaussianBlur in="SourceGraphic" stdDeviation="4" result="b" />
+                  <feMerge><feMergeNode in="b" /><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
+                </filter>
               </defs>
-              {WHEEL_SEGMENTS.map((seg, i) => {
-                const sA = i * SEG_ANGLE - 90;
-                const eA = sA + SEG_ANGLE;
-                const s = { x: 100 + 100 * Math.cos(sA * Math.PI / 180), y: 100 + 100 * Math.sin(sA * Math.PI / 180) };
-                const e = { x: 100 + 100 * Math.cos(eA * Math.PI / 180), y: 100 + 100 * Math.sin(eA * Math.PI / 180) };
+
+              {/* Outer chrome ring */}
+              <circle cx="200" cy="200" r="194" fill="none" stroke="url(#chrome1)" strokeWidth="12" filter={isLowEnd ? undefined : 'url(#chromeGlow)'} />
+              <path d="M 80 120 A 190 190 0 0 1 280 70" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" opacity="0.35" filter={isLowEnd ? undefined : 'url(#chromeGlow)'} />
+              <path d="M 90 125 A 185 185 0 0 1 270 78" fill="none" stroke="white" strokeWidth="1.5" strokeLinecap="round" opacity="0.2" />
+              <circle cx="200" cy="200" r="184" fill="none" stroke="#12151f" strokeWidth="10" />
+              <circle cx="200" cy="200" r="176" fill="none" stroke="url(#chrome2)" strokeWidth="6" />
+              <path d="M 95 140 A 170 170 0 0 1 260 90" fill="none" stroke="white" strokeWidth="1.5" strokeLinecap="round" opacity="0.18" />
+              <circle cx="200" cy="200" r="171" fill="none" stroke="#1a1e2e" strokeWidth="2" />
+
+              {/* Chasing lights */}
+              {!isSpinning && !isLowEnd && Array.from({ length: 36 }, (_, i) => {
+                const deg = i * 10 - 90;
+                const lR = 184;
+                const lx = 200 + lR * Math.cos(deg * Math.PI / 180);
+                const ly = 200 + lR * Math.sin(deg * Math.PI / 180);
+                const colors = ['#fbbf24','#ffffff','#ec4899','#ffffff','#a855f7','#ffffff','#22c55e','#ffffff','#3b82f6','#ffffff','#f97316','#ffffff'];
+                const c = colors[i % colors.length];
                 return (
-                  <g key={seg.id}>
-                    <path d={`M 100 100 L ${s.x} ${s.y} A 100 100 0 0 1 ${e.x} ${e.y} Z`} fill={seg.color} stroke="#0a0f1a" strokeWidth="1" />
-                    <path d={`M 100 100 L ${s.x} ${s.y} A 100 100 0 0 1 ${e.x} ${e.y} Z`} fill="url(#segD)" />
+                  <circle key={`ol-${i}`} cx={lx} cy={ly} r="4" fill={c} filter="url(#lightGlow)">
+                    <animate attributeName="opacity" values="0.15;1;0.15" dur="2.4s" begin={`${(i * 0.067).toFixed(2)}s`} repeatCount="indefinite" />
+                    <animate attributeName="r" values="3;5.5;3" dur="2.4s" begin={`${(i * 0.067).toFixed(2)}s`} repeatCount="indefinite" />
+                  </circle>
+                );
+              })}
+              {isLowEnd && Array.from({ length: 18 }, (_, i) => {
+                const deg = i * 20 - 90;
+                const lR = 184;
+                const lx = 200 + lR * Math.cos(deg * Math.PI / 180);
+                const ly = 200 + lR * Math.sin(deg * Math.PI / 180);
+                const colors = ['#fbbf24','#ec4899','#a855f7','#22c55e','#3b82f6','#f97316'];
+                return (
+                  <circle key={`ol-${i}`} cx={lx} cy={ly} r="3.5" fill={colors[i % colors.length]} opacity="0.7" />
+                );
+              })}
+
+              {/* Gold pegs at segment dividers */}
+              {WHEEL_SEGMENTS.map((_, i) => {
+                const a = i * SEG_ANGLE - 90;
+                const px = 200 + 175 * Math.cos(a * Math.PI / 180);
+                const py = 200 + 175 * Math.sin(a * Math.PI / 180);
+                return (
+                  <g key={`peg${i}`}>
+                    <circle cx={px} cy={py} r="5" fill="#1a1e2e" stroke="#b8860b" strokeWidth="1.2" />
+                    <circle cx={px} cy={py} r="3" fill="#fbbf24">
+                      {isSpinning && !isLowEnd && <animate attributeName="opacity" values="1;0.3;1" dur={`${0.3 + (i % 3) * 0.12}s`} repeatCount="indefinite" />}
+                    </circle>
                   </g>
                 );
               })}
-              {/* Divider lines */}
-              {WHEEL_SEGMENTS.map((_, i) => {
-                const a = i * SEG_ANGLE - 90;
-                return <line key={`d${i}`} x1="100" y1="100" x2={100 + 99 * Math.cos(a * Math.PI / 180)} y2={100 + 99 * Math.sin(a * Math.PI / 180)} stroke="#0a0f1a" strokeWidth="2" opacity="0.4" />;
-              })}
-              {/* Shine overlay */}
-              <circle cx="100" cy="100" r="99" fill="url(#segShine)" />
             </svg>
 
-            {/* Prize images */}
-            {WHEEL_SEGMENTS.map((seg, i) => {
-              const mid = i * SEG_ANGLE - 90 + SEG_ANGLE / 2;
-              const ix = 50 + 32 * Math.cos(mid * Math.PI / 180);
-              const iy = 50 + 32 * Math.sin(mid * Math.PI / 180);
-              return (
-                <img
-                  key={`ic-${seg.id}`}
-                  src={WHEEL_IMAGES[seg.image]}
-                  alt={seg.label}
-                  className="absolute pointer-events-none"
-                  style={{
-                    width: 48, height: 48,
-                    left: `${ix}%`, top: `${iy}%`,
-                    transform: `translate(-50%, -50%) rotate(${mid + 90}deg)`,
-                    filter: 'drop-shadow(0 2px 3px rgba(0,0,0,0.5))',
-                    objectFit: 'contain',
-                  }}
-                />
-              );
-            })}
-          </div>
+            {/* === POINTER === */}
+            <div className="absolute z-30" style={{ top: -4, left: '50%', transform: 'translateX(-50%)' }}>
+              <div ref={pointerElRef} style={{ transformOrigin: '20px 12px', willChange: 'transform' }}>
+                <svg width="40" height="48" viewBox="0 0 40 48" style={{ filter: 'drop-shadow(0 3px 8px rgba(0,0,0,0.7))' }}>
+                  <defs>
+                    <linearGradient id="ptrGold" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#ffd700" />
+                      <stop offset="40%" stopColor="#b8860b" />
+                      <stop offset="100%" stopColor="#ffd700" />
+                    </linearGradient>
+                  </defs>
+                  <polygon points="20,46 2,16 38,16" fill="url(#ptrGold)" stroke="#8b6914" strokeWidth="1" />
+                  <polygon points="20,38 9,19 31,19" fill="#ffd700" opacity="0.35" />
+                  <circle cx="20" cy="12" r="11" fill="#1a1a1a" stroke="#b8860b" strokeWidth="2" />
+                  <circle cx="20" cy="12" r="8" fill="#222" />
+                  <circle cx="16" cy="9" r="3" fill="white" opacity="0.2" />
+                </svg>
+              </div>
+            </div>
 
-          {/* CENTER HUB (non-rotating) */}
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20" style={{ width: 76, height: 76 }}>
-            <svg viewBox="0 0 76 76" className="w-full h-full">
-              <defs>
-                <radialGradient id="hubM" cx="38%" cy="35%">
-                  <stop offset="0%" stopColor="#ffd700" />
-                  <stop offset="50%" stopColor="#f59e0b" />
-                  <stop offset="85%" stopColor="#d97706" />
-                  <stop offset="100%" stopColor="#92400e" />
-                </radialGradient>
-                <radialGradient id="hubH" cx="35%" cy="30%">
-                  <stop offset="0%" stopColor="#fff" stopOpacity="0.35" />
-                  <stop offset="100%" stopColor="#fff" stopOpacity="0" />
-                </radialGradient>
-              </defs>
-              <circle cx="38" cy="38" r="37" fill="none" stroke="url(#wg1)" strokeWidth="3" filter="url(#gldGlow)" />
-              <circle cx="38" cy="38" r="34" fill="url(#hubM)" />
-              <circle cx="38" cy="38" r="34" fill="url(#hubH)" />
-              <circle cx="38" cy="38" r="28" fill="none" stroke="#92400e" strokeWidth="0.8" opacity="0.4" />
-            </svg>
-            <button
-              type="button"
-              onClick={spin}
-              disabled={spinning || playsLeft <= 0}
-              className={`absolute inset-0 rounded-full flex items-center justify-center transition-all duration-200 ${
-                spinning || playsLeft <= 0 ? 'opacity-60 cursor-not-allowed' : 'hover:scale-110 active:scale-90 cursor-pointer'
-              }`}
+            {/* === SPINNING WHEEL === */}
+            <div
+              ref={wheelRef}
+              className="absolute rounded-full overflow-hidden"
+              style={{
+                top: '7%', left: '7%', right: '7%', bottom: '7%',
+                willChange: 'transform',
+                backfaceVisibility: 'hidden',
+              }}
             >
-              {spinning ? (
-                <RotateCcw className="w-7 h-7 animate-spin text-white drop-shadow-lg" />
-              ) : (
-                <span className="text-white font-black text-lg tracking-wider" style={{ textShadow: '0 2px 4px rgba(0,0,0,0.6)' }}>SPIN</span>
-              )}
-            </button>
+              <svg viewBox="0 0 300 300" className="w-full h-full">
+                <defs>
+                  <linearGradient id="segGloss" x1="50%" y1="0%" x2="50%" y2="100%">
+                    <stop offset="0%" stopColor="#fff" stopOpacity="0.1" />
+                    <stop offset="40%" stopColor="#fff" stopOpacity="0.02" />
+                    <stop offset="100%" stopColor="#000" stopOpacity="0" />
+                  </linearGradient>
+                  <radialGradient id="innerGlow" cx="50%" cy="50%" r="50%">
+                    <stop offset="0%" stopColor="#fff" stopOpacity="0.2" />
+                    <stop offset="15%" stopColor="#fff" stopOpacity="0.08" />
+                    <stop offset="30%" stopColor="#fff" stopOpacity="0" />
+                    <stop offset="100%" stopColor="#000" stopOpacity="0" />
+                  </radialGradient>
+                  <radialGradient id="rimDarken" cx="50%" cy="50%" r="50%">
+                    <stop offset="0%" stopColor="#000" stopOpacity="0" />
+                    <stop offset="75%" stopColor="#000" stopOpacity="0" />
+                    <stop offset="90%" stopColor="#000" stopOpacity="0.1" />
+                    <stop offset="100%" stopColor="#000" stopOpacity="0.2" />
+                  </radialGradient>
+                </defs>
+
+                {/* Segments */}
+                {WHEEL_SEGMENTS.map((seg, i) => {
+                  const sA = i * SEG_ANGLE - 90;
+                  const eA = sA + SEG_ANGLE;
+                  const s = { x: 150 + 148 * Math.cos(sA * Math.PI / 180), y: 150 + 148 * Math.sin(sA * Math.PI / 180) };
+                  const e = { x: 150 + 148 * Math.cos(eA * Math.PI / 180), y: 150 + 148 * Math.sin(eA * Math.PI / 180) };
+                  const path = `M 150 150 L ${s.x} ${s.y} A 148 148 0 0 1 ${e.x} ${e.y} Z`;
+                  return (
+                    <g key={seg.id}>
+                      <path d={path} fill={seg.color} />
+                      <path d={path} fill="url(#segGloss)" />
+                    </g>
+                  );
+                })}
+
+                {/* Dividers */}
+                {WHEEL_SEGMENTS.map((_, i) => {
+                  const a = i * SEG_ANGLE - 90;
+                  const ex = 150 + 148 * Math.cos(a * Math.PI / 180);
+                  const ey = 150 + 148 * Math.sin(a * Math.PI / 180);
+                  return (
+                    <g key={`d${i}`}>
+                      <line x1="150" y1="150" x2={ex} y2={ey} stroke="rgba(0,0,0,0.4)" strokeWidth="2.5" />
+                      <line x1="150" y1="150" x2={ex} y2={ey} stroke="rgba(255,255,255,0.06)" strokeWidth="1" transform="translate(0.5,0.5)" />
+                    </g>
+                  );
+                })}
+
+                <circle cx="150" cy="150" r="148" fill="url(#innerGlow)" />
+                <circle cx="150" cy="150" r="148" fill="url(#rimDarken)" />
+
+                {/* Arc paths for prize text */}
+                {WHEEL_SEGMENTS.map((seg, i) => {
+                  if (seg.isLoss) return null;
+                  const r = 118;
+                  const startDeg = i * SEG_ANGLE - 90;
+                  const endDeg = startDeg + SEG_ANGLE;
+                  const s = { x: 150 + r * Math.cos(startDeg * Math.PI / 180), y: 150 + r * Math.sin(startDeg * Math.PI / 180) };
+                  const e = { x: 150 + r * Math.cos(endDeg * Math.PI / 180), y: 150 + r * Math.sin(endDeg * Math.PI / 180) };
+                  return <path key={`arc${i}`} id={`segArc${i}`} d={`M ${s.x} ${s.y} A ${r} ${r} 0 0 1 ${e.x} ${e.y}`} fill="none" />;
+                })}
+
+                {/* Text labels */}
+                {WHEEL_SEGMENTS.map((seg, i) => {
+                  const midAngle = i * SEG_ANGLE - 90 + SEG_ANGLE / 2;
+                  if (seg.isLoss) {
+                    return (
+                      <g key={`t${i}`} transform={`rotate(${midAngle}, 150, 150)`}>
+                        <text x={150 + 100} y={150 - 7} textAnchor="middle" dominantBaseline="central"
+                          fill="white" fontSize="11" fontWeight="900" fontFamily="Arial Black, Arial, sans-serif"
+                          stroke="rgba(0,0,0,0.6)" strokeWidth="2.5" paintOrder="stroke" letterSpacing="0.3">
+                          TRY AGAIN
+                        </text>
+                        <text x={150 + 100} y={150 + 7} textAnchor="middle" dominantBaseline="central"
+                          fill="white" fontSize="11" fontWeight="900" fontFamily="Arial Black, Arial, sans-serif"
+                          stroke="rgba(0,0,0,0.6)" strokeWidth="2.5" paintOrder="stroke" letterSpacing="0.3">
+                          TOMORROW
+                        </text>
+                      </g>
+                    );
+                  }
+                  return (
+                    <text key={`t${i}`} fill="white" fontSize="26" fontWeight="900" fontFamily="Arial Black, Arial, sans-serif"
+                      stroke="rgba(0,0,0,0.6)" strokeWidth="3" paintOrder="stroke" letterSpacing="2">
+                      <textPath href={`#segArc${i}`} startOffset="50%" textAnchor="middle">
+                        {seg.label}
+                      </textPath>
+                    </text>
+                  );
+                })}
+              </svg>
+            </div>
+
+            {/* === CENTER HUB with STOP button === */}
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20" style={{ width: '30%', height: '30%' }}>
+              <svg viewBox="0 0 90 90" className="w-full h-full">
+                <defs>
+                  <radialGradient id="hubSphere" cx="38%" cy="28%" r="65%">
+                    <stop offset="0%" stopColor="#aaa" />
+                    <stop offset="10%" stopColor="#777" />
+                    <stop offset="30%" stopColor="#3a3a3a" />
+                    <stop offset="55%" stopColor="#151515" />
+                    <stop offset="100%" stopColor="#000" />
+                  </radialGradient>
+                  <linearGradient id="hubChrome" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#e8e8e8" />
+                    <stop offset="15%" stopColor="#fff" />
+                    <stop offset="35%" stopColor="#666" />
+                    <stop offset="55%" stopColor="#fff" />
+                    <stop offset="75%" stopColor="#888" />
+                    <stop offset="100%" stopColor="#ccc" />
+                  </linearGradient>
+                  <radialGradient id="hubSpec" cx="32%" cy="22%">
+                    <stop offset="0%" stopColor="#fff" stopOpacity="0.85" />
+                    <stop offset="20%" stopColor="#fff" stopOpacity="0.4" />
+                    <stop offset="50%" stopColor="#fff" stopOpacity="0.08" />
+                    <stop offset="100%" stopColor="#fff" stopOpacity="0" />
+                  </radialGradient>
+                  <radialGradient id="hubRim" cx="50%" cy="50%" r="50%">
+                    <stop offset="0%" stopColor="#000" stopOpacity="0" />
+                    <stop offset="75%" stopColor="#000" stopOpacity="0" />
+                    <stop offset="100%" stopColor="#fff" stopOpacity="0.08" />
+                  </radialGradient>
+                </defs>
+                <circle cx="45" cy="45" r="44" fill="none" stroke="url(#hubChrome)" strokeWidth="5"
+                  style={screen === 'spinning' ? { animation: 'hubRingPulse 0.4s ease-in-out infinite' } : {}} />
+                <circle cx="45" cy="45" r="39" fill="url(#hubSphere)" />
+                <circle cx="45" cy="45" r="39" fill="url(#hubRim)" />
+                <ellipse cx="36" cy="32" rx="18" ry="14" fill="url(#hubSpec)" />
+              </svg>
+              <button
+                type="button"
+                onClick={screen === 'spinning' ? stopWheel : undefined}
+                disabled={screen !== 'spinning'}
+                className={`absolute inset-0 rounded-full flex items-center justify-center transition-all duration-200 ${
+                  screen === 'spinning' ? 'hover:scale-110 active:scale-90 cursor-pointer' : 'cursor-default'
+                }`}
+              >
+                <span className={`font-black text-xl sm:text-2xl tracking-wider ${screen !== 'spinning' ? 'opacity-40' : ''}`} style={{
+                  background: 'linear-gradient(180deg, #ff9999 0%, #ef4444 40%, #b91c1c 100%)',
+                  WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+                  filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.9))',
+                  ...(screen === 'spinning' ? { animation: 'stopFlash 0.4s ease-in-out infinite' } : {}),
+                }}>STOP</span>
+              </button>
+            </div>
           </div>
+
         </div>
-
-        {/* Result */}
-        {result && (
-          <div
-            className="text-center p-6 bg-gradient-to-r from-green-500/20 via-emerald-500/20 to-green-500/20 rounded-2xl border border-green-500/50"
-            style={{ animation: 'resultZoom 0.5s cubic-bezier(0.25, 1, 0.5, 1) both' }}
-          >
-            <div className="w-24 h-24 mx-auto mb-3" style={{ animation: 'float 2s ease-in-out infinite' }}>
-              <img src={WHEEL_IMAGES[result.image]} alt="" className="w-full h-full object-contain drop-shadow-lg" />
-            </div>
-            <div className="text-3xl font-black text-yellow-400 mb-4" style={{ textShadow: '0 0 20px rgba(251,191,36,0.5)' }}>
-              {result.label}
-            </div>
-            <button
-              type="button"
-              onClick={() => { onWin(result.prize, result.label); setResult(null); }}
-              className="px-10 py-3.5 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 rounded-xl font-bold text-lg shadow-lg shadow-green-500/30 btn-glow transition-all hover:scale-105 active:scale-95"
-              style={{ '--btn-shadow': '#065F46', '--btn-glow': 'rgba(16,185,129,0.3)', '--btn-glow2': 'rgba(16,185,129,0.15)', animation: 'collectBtnPulse 2s ease-in-out infinite' }}
-            >
-              🎉 Claim Prize!
-            </button>
-          </div>
-        )}
       </div>
     </div>
   );

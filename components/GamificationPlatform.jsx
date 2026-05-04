@@ -20,7 +20,7 @@ import {
 } from '../lib/data/trivia';
 import { TUTORIALS } from '../lib/data/tutorials';
 import {
-  WHEEL_SEGMENTS, XP_LEVELS, VIP_TIERS, MINIGAMES, STORE_ITEMS, MATCHES,
+  XP_LEVELS, VIP_TIERS, MINIGAMES, STORE_ITEMS, MATCHES,
   QUESTS, DAILY_REWARDS, DAILY_FREE_SPIN_ROTATION, getDailyFreeSpinGames,
   getLevel, getNextLevel, getXPProgress, getVIP
 } from '../lib/data/platform';
@@ -42,6 +42,7 @@ import HighLowGame from './games/HighLowGame';
 import PlinkoGame from './games/PlinkoGame';
 import TapFrenzyGame from './games/TapFrenzyGame';
 import StopClockGame from './games/StopClockGame';
+import ClassicQuizGame from './games/ClassicQuizGame';
 
 // Respect the user's OS-level motion preference.
 // Returns true when `prefers-reduced-motion: reduce` is active.
@@ -868,7 +869,7 @@ export default function GamificationPlatform() {
     dailyClaimed: false,
     referrals: 0,
     gamePlays: { wheel: 3, scratch: 5, dice: 5, highlow: 5, plinko: 5, tapfrenzy: 5, stopclock: 5 },
-    triviaPlays: {},
+    triviaPlays: { classicQuiz: 3 },
     dailyChallengeAnswered: false,
     dailyChallengeCorrect: false,
     dailyTasksDone: [],
@@ -1507,6 +1508,22 @@ export default function GamificationPlatform() {
             setGamesPlayedToday(prev => new Set([...prev, 'stopclock']));
             trackMission('gamePlayed', { gameId: 'stopclock', coinsWon: n, clockDiff: meta?.diff, gamesSet: gamesPlayedToday });
             trackQuest('gamePlayed', { gameId: 'stopclock' });
+            trackQuest('coinsEarned', { amount: n });
+          }}
+        />
+      )}
+
+      {/* Trivia Game Modals */}
+      {activeTrivia === 'classicQuiz' && (
+        <ClassicQuizGame
+          onClose={() => animateClose(() => setActiveTrivia(null))} closing={closingModal}
+          onWin={(n, meta) => {
+            addCoins(n);
+            showNotif('🧠 +' + n + ' Coins!');
+            triggerReward('medium', null, { coins: n });
+            trackMission('triviaPlayed', { triviaType: 'classic' });
+            trackQuest('triviaPlayed', {});
+            if (meta?.triviaCorrect) { trackMission('triviaCorrect', { count: meta.triviaCorrect }); trackQuest('triviaCorrect', { count: meta.triviaCorrect }); }
             trackQuest('coinsEarned', { amount: n });
           }}
         />
