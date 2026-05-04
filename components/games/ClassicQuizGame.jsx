@@ -106,15 +106,15 @@ export default function ClassicQuizGame({ onClose, onWin, closing }) {
 
         {/* Header with glow */}
         <div className="relative px-6 pt-5 pb-4">
-          <div className="absolute inset-0 bg-gradient-to-b from-cyan-600/10 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-b from-purple-600/10 to-transparent" />
           <div className="relative flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/30">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-fuchsia-600 flex items-center justify-center shadow-lg shadow-purple-500/30">
                 <span className="text-lg">🧠</span>
               </div>
               <div>
                 <h2 className="font-black text-lg tracking-tight">Classic Quiz</h2>
-                {phase === 'playing' && <span className="text-xs text-cyan-400">{TRIVIA_CATEGORIES.find(c => c.id === category)?.name}</span>}
+                {phase === 'playing' && <span className="text-xs text-purple-400">{TRIVIA_CATEGORIES.find(c => c.id === category)?.name}</span>}
               </div>
             </div>
             <button type="button" onClick={onClose} className="w-9 h-9 flex items-center justify-center bg-white/5 hover:bg-white/10 rounded-full transition-all">
@@ -151,7 +151,7 @@ export default function ClassicQuizGame({ onClose, onWin, closing }) {
               <div className="flex items-center gap-3 mb-4">
                 <div className="flex-1">
                   <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-xs font-bold text-cyan-300">Question {qIndex + 1}/10</span>
+                    <span className="text-xs font-bold text-purple-300">Question {qIndex + 1}/10</span>
                     <div className="flex items-center gap-1.5">
                       <span className="text-xs font-bold text-green-400">{score} correct</span>
                       {streak >= 2 && <span className="text-xs text-orange-400 animate-pulse">🔥{streak}</span>}
@@ -184,7 +184,7 @@ export default function ClassicQuizGame({ onClose, onWin, closing }) {
 
               {/* Question Card */}
               <div className="relative mb-4">
-                <div className="absolute -inset-[1px] bg-gradient-to-r from-cyan-500/30 via-blue-500/30 to-cyan-500/30 rounded-2xl blur-sm" />
+                <div className="absolute -inset-[1px] bg-gradient-to-r from-purple-500/30 via-fuchsia-500/30 to-purple-500/30 rounded-2xl blur-sm" />
                 <div className="relative bg-black/50 rounded-2xl p-5 border border-white/10">
                   <p className="font-bold text-center leading-relaxed">{q.q}</p>
                 </div>
@@ -250,9 +250,9 @@ export default function ClassicQuizGame({ onClose, onWin, closing }) {
                 <div className="text-7xl" style={{ filter: 'drop-shadow(0 0 20px rgba(168,85,247,0.5))' }}>
                   {score >= 8 ? '🏆' : score >= 5 ? '⭐' : '👏'}
                 </div>
-                <div className="absolute -inset-4 bg-cyan-500/10 rounded-full blur-2xl" />
+                <div className="absolute -inset-4 bg-purple-500/10 rounded-full blur-2xl" />
               </div>
-              <div className="text-4xl font-black mb-1 bg-gradient-to-r from-cyan-400 via-blue-400 to-emerald-400 bg-clip-text text-transparent">{score}/10</div>
+              <div className="text-4xl font-black mb-1 bg-gradient-to-r from-purple-400 via-fuchsia-400 to-emerald-400 bg-clip-text text-transparent">{score}/10</div>
               <div className="text-gray-400 mb-5">{score >= 8 ? 'Outstanding!' : score >= 5 ? 'Well done!' : 'Keep practicing!'}</div>
               <div className="bg-gradient-to-r from-yellow-500/10 to-amber-500/10 border border-yellow-500/20 rounded-2xl p-4 mb-5">
                 <div className="text-yellow-400 font-black text-2xl mb-1">🪙 +{finalCoins}</div>
