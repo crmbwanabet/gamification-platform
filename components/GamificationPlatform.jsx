@@ -914,9 +914,6 @@ export default function GamificationPlatform() {
 
   const handleWin = (prize, name) => {
     const coins = typeof prize === 'number' ? prize : (prize.kwacha || 0);
-    const gems = typeof prize === 'number' ? 0 : (prize.gems || 0);
-    const diamonds = typeof prize === 'number' ? 0 : (prize.diamonds || 0);
-    const xp = typeof prize === 'number' ? 0 : (prize.xp || 0);
     if (typeof prize === 'number') {
       addCoins(prize);
       showNotif(`🎉 +${prize} Coins!`);
@@ -933,7 +930,9 @@ export default function GamificationPlatform() {
     trackQuest('wheelSpun', {});
     trackQuest('gamePlayed', { gameId: 'wheel' });
     trackQuest('coinsEarned', { amount: coins });
-    triggerReward('medium', null, { coins, gems, diamonds, xp });
+    // NOTE: No triggerReward() call — the wheel renders its own self-contained
+    // celebration overlay (count-up + confetti + screen flash). Calling
+    // triggerReward here would fire a second confetti burst on prize claim.
   };
 
 
