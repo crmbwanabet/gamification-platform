@@ -1557,6 +1557,10 @@ export default function GamificationPlatform() {
             triggerReward('medium', null, { coins: n });
             trackMission('triviaPlayed', { triviaType: 'streak', triviaStreak: meta?.triviaStreak ?? 0 });
             trackQuest('triviaPlayed', {});
+            if (meta?.triviaStreak) {
+              trackMission('triviaCorrect', { count: meta.triviaStreak });
+              trackQuest('triviaCorrect', { count: meta.triviaStreak });
+            }
             trackQuest('coinsEarned', { amount: n });
           }}
         />
