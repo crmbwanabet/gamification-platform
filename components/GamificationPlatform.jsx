@@ -43,6 +43,8 @@ import PlinkoGame from './games/PlinkoGame';
 import TapFrenzyGame from './games/TapFrenzyGame';
 import StopClockGame from './games/StopClockGame';
 import ClassicQuizGame from './games/ClassicQuizGame';
+import SpeedRoundGame from './games/SpeedRoundGame';
+import StreakTriviaGame from './games/StreakTriviaGame';
 
 // Respect the user's OS-level motion preference.
 // Returns true when `prefers-reduced-motion: reduce` is active.
@@ -869,7 +871,7 @@ export default function GamificationPlatform() {
     dailyClaimed: false,
     referrals: 0,
     gamePlays: { wheel: 3, scratch: 5, dice: 5, highlow: 5, plinko: 5, tapfrenzy: 5, stopclock: 5 },
-    triviaPlays: { classicQuiz: 3 },
+    triviaPlays: { classicQuiz: 3, speedRound: 5, streakTrivia: 3 },
     dailyChallengeAnswered: false,
     dailyChallengeCorrect: false,
     dailyTasksDone: [],
@@ -1524,6 +1526,42 @@ export default function GamificationPlatform() {
             trackMission('triviaPlayed', { triviaType: 'classic' });
             trackQuest('triviaPlayed', {});
             if (meta?.triviaCorrect) { trackMission('triviaCorrect', { count: meta.triviaCorrect }); trackQuest('triviaCorrect', { count: meta.triviaCorrect }); }
+            trackQuest('coinsEarned', { amount: n });
+          }}
+        />
+      )}
+
+      {activeTrivia === 'speedRound' && (
+        <SpeedRoundGame
+          onClose={() => animateClose(() => setActiveTrivia(null))} closing={closingModal}
+          onWin={(n, meta) => {
+            addCoins(n);
+            showNotif('⚡ +' + n + ' Coins!');
+            triggerReward('medium', null, { coins: n });
+            trackMission('triviaPlayed', { triviaType: 'speed' });
+            trackQuest('triviaPlayed', {});
+            if (meta?.triviaCorrect) {
+              trackMission('triviaCorrect', { count: meta.triviaCorrect });
+              trackQuest('triviaCorrect', { count: meta.triviaCorrect });
+              trackMission('speedScore', { score: meta.triviaCorrect });
+            }
+            trackQuest('coinsEarned', { amount: n });
+          }}
+        />
+      )}
+
+      {activeTrivia === 'streakTrivia' && (
+        <StreakTriviaGame
+          onClose={() => animateClose(() => setActiveTrivia(null))} closing={closingModal}
+          onWin={(n, meta) => {
+            addCoins(n);
+            showNotif('🏆 +' + n + ' Coins!');
+            triggerReward('medium', null, { coins: n });
+            trackMission('triviaPlayed', { triviaType: 'streak' });
+            trackQuest('triviaPlayed', {});
+            if (meta?.triviaStreak) {
+              trackMission('triviaStreak', { streak: meta.triviaStreak });
+            }
             trackQuest('coinsEarned', { amount: n });
           }}
         />
