@@ -1537,12 +1537,11 @@ export default function GamificationPlatform() {
             addCoins(n);
             showNotif('⚡ +' + n + ' Coins!');
             triggerReward('medium', null, { coins: n });
-            trackMission('triviaPlayed', { triviaType: 'speed' });
+            trackMission('triviaPlayed', { triviaType: 'speed', speedScore: meta?.triviaCorrect ?? 0 });
             trackQuest('triviaPlayed', {});
             if (meta?.triviaCorrect) {
               trackMission('triviaCorrect', { count: meta.triviaCorrect });
               trackQuest('triviaCorrect', { count: meta.triviaCorrect });
-              trackMission('speedScore', { score: meta.triviaCorrect });
             }
             trackQuest('coinsEarned', { amount: n });
           }}
@@ -1556,11 +1555,8 @@ export default function GamificationPlatform() {
             addCoins(n);
             showNotif('🏆 +' + n + ' Coins!');
             triggerReward('medium', null, { coins: n });
-            trackMission('triviaPlayed', { triviaType: 'streak' });
+            trackMission('triviaPlayed', { triviaType: 'streak', triviaStreak: meta?.triviaStreak ?? 0 });
             trackQuest('triviaPlayed', {});
-            if (meta?.triviaStreak) {
-              trackMission('triviaStreak', { streak: meta.triviaStreak });
-            }
             trackQuest('coinsEarned', { amount: n });
           }}
         />
