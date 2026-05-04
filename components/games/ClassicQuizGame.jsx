@@ -136,7 +136,7 @@ export default function ClassicQuizGame({ onClose, onWin, closing }) {
                     <div className="relative p-5 text-center border border-white/10 rounded-2xl group-hover:border-white/20">
                       <div className="text-4xl mb-2 drop-shadow-lg" style={{ filter: 'drop-shadow(0 0 8px rgba(168,85,247,0.4))' }}>{cat.icon}</div>
                       <div className="font-bold text-sm">{cat.name}</div>
-                      <div className="text-xs text-gray-500 mt-1">15 questions</div>
+                      <div className="text-xs text-gray-500 mt-1">10 questions</div>
                     </div>
                   </button>
                 ))}
