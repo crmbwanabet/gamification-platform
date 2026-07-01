@@ -1,0 +1,31 @@
+import { NextResponse } from 'next/server';
+import { supabaseAdmin } from '@/lib/supabase/admin';
+import { verifyBwanabetToken } from '@/lib/auth/bwanabetToken';
+
+export const runtime = 'nodejs';
+
+const NUMERIC = ['kwacha', 'gems', 'diamonds', 'xp', 'deposits', 'streak'];
+
+// POST { token, kwacha?, gems?, ..., state? } -> persist this player's progress.
+// The token identifies the player (server-side); the client can't spoof another id.
+export async function POST(req) {
+  if (!supabaseAdmin) return NextResponse.json({ error: 'supabase_not_configured' }, { status: 500 });
+
+  let body;
+  try { body = await req.json(); } catch { return NextResponse.json({ error: 'bad_body' }, { status: 400 }); }
+
+  const result = verifyBwanabetToken(body?.token);
+  if (!result.valid || !result.payload?.id) return NextResponse.json({ error: 'invalid_token' }, { status: 401 });
+  const uid = Number(result.payload.id);
+
+  const patch = {};
+  for (const k of NUMERIC) if (typeof body?.[k] === 'number' && Number.isFinite(body[k])) patch[k] = body[k];
+  if (body?.state && typeof body.state === 'object' && !Array.isArray(body.state)) patch.state = body.state;
+  if (Object.keys(patch).length === 0) return NextResponse.json({ error: 'nothing_to_update' }, { status: 400 });
+
+  const { data, error } = await supabaseAdmin
+    .from('profiles').update(patch).eq('bwanabet_user_id', uid).select('*').single();
+  if (error) return NextResponse.json({ error: 'db_error', detail: error.message }, { status: 500 });
+
+  return NextResponse.json({ ok: true, profile: data });
+}
