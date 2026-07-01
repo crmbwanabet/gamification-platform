@@ -10,8 +10,9 @@ import {
   Camera, Wallet
 } from 'lucide-react';
 
-// Redesign (v2) home dashboard
+// Redesign (v2) screens
 import Overview from './redesign/Overview';
+import PlayView from './redesign/PlayView';
 // SSO session (bwanabet token -> Supabase profile)
 import { useSession } from './session/SessionProvider';
 
@@ -1282,19 +1283,173 @@ export default function GamificationPlatform() {
   };
   const navigateTab = (id) => setTab(LEGACY_TAB_MAP[id] || id);
 
-  // === v2 redesign: Home dashboard renders the new design, fed by real state ===
+  // Game + trivia overlays are app-global modals. Extracted so the redesigned
+  // (early-returned) tabs can render them too and still launch games.
+  const gameOverlays = (
+    <>
+      {activeGame === 'wheel' && (
+        <WheelGame
+          onClose={() => animateClose(() => setActiveGame(null))} closing={closingModal}
+          onWin={handleWin}
+          playsLeft={user.gamePlays.wheel}
+        />
+      )}
+      {activeGame === 'scratch' && (
+        <ScratchGame
+          onClose={() => animateClose(() => setActiveGame(null))} closing={closingModal}
+          onWin={(n) => {
+            addCoins(n);
+            showNotif(`🎉 +${n} Coins!`);
+            triggerReward('medium', null, { coins: n });
+            setUser(u => ({ ...u, gamesPlayed: u.gamesPlayed + 1, dailyTasksDone: [...new Set([...u.dailyTasksDone, 'game'])] }));
+            setGamesPlayedToday(prev => new Set([...prev, 'scratch']));
+            trackMission('gamePlayed', { gameId: 'scratch', coinsWon: n, gamesSet: gamesPlayedToday });
+            trackQuest('gamePlayed', { gameId: 'scratch' });
+            trackQuest('coinsEarned', { amount: n });
+          }}
+        />
+      )}
+      {activeGame === 'dice' && (
+        <DiceGame
+          onClose={() => animateClose(() => setActiveGame(null))} closing={closingModal}
+          onWin={(n) => {
+            addCoins(n);
+            showNotif(`🎉 +${n} Coins!`);
+            triggerReward('medium', null, { coins: n });
+            setUser(u => ({ ...u, gamesPlayed: u.gamesPlayed + 1, dailyTasksDone: [...new Set([...u.dailyTasksDone, 'game'])] }));
+            setGamesPlayedToday(prev => new Set([...prev, 'dice']));
+            trackMission('gamePlayed', { gameId: 'dice', coinsWon: n, gamesSet: gamesPlayedToday });
+            trackQuest('gamePlayed', { gameId: 'dice' });
+            trackQuest('coinsEarned', { amount: n });
+          }}
+        />
+      )}
+      {activeGame === 'highlow' && (
+        <HighLowGame
+          onClose={() => animateClose(() => setActiveGame(null))} closing={closingModal}
+          onWin={(n) => {
+            addCoins(n);
+            showNotif(`🎉 +${n} Coins!`);
+            triggerReward('medium', null, { coins: n });
+            setUser(u => ({ ...u, gamesPlayed: u.gamesPlayed + 1, dailyTasksDone: [...new Set([...u.dailyTasksDone, 'game'])] }));
+            setGamesPlayedToday(prev => new Set([...prev, 'highlow']));
+            trackMission('gamePlayed', { gameId: 'highlow', coinsWon: n, gamesSet: gamesPlayedToday });
+            trackQuest('gamePlayed', { gameId: 'highlow' });
+            trackQuest('coinsEarned', { amount: n });
+          }}
+        />
+      )}
+      {activeGame === 'plinko' && (
+        <PlinkoGame
+          onClose={() => animateClose(() => setActiveGame(null))} closing={closingModal}
+          onWin={(n) => {
+            addCoins(n);
+            showNotif(`🎉 +${n} Coins!`);
+            triggerReward('medium', null, { coins: n });
+            setUser(u => ({ ...u, gamesPlayed: u.gamesPlayed + 1, dailyTasksDone: [...new Set([...u.dailyTasksDone, 'game'])] }));
+            setGamesPlayedToday(prev => new Set([...prev, 'plinko']));
+            trackMission('gamePlayed', { gameId: 'plinko', coinsWon: n, gamesSet: gamesPlayedToday });
+            trackQuest('gamePlayed', { gameId: 'plinko' });
+            trackQuest('coinsEarned', { amount: n });
+          }}
+        />
+      )}
+      {activeGame === 'tapfrenzy' && (
+        <TapFrenzyGame
+          onClose={() => animateClose(() => setActiveGame(null))} closing={closingModal}
+          onWin={(n, meta) => {
+            addCoins(n);
+            showNotif(`🎉 +${n} Coins!`);
+            triggerReward('medium', null, { coins: n });
+            setUser(u => ({ ...u, gamesPlayed: u.gamesPlayed + 1, dailyTasksDone: [...new Set([...u.dailyTasksDone, 'game'])] }));
+            setGamesPlayedToday(prev => new Set([...prev, 'tapfrenzy']));
+            trackMission('gamePlayed', { gameId: 'tapfrenzy', coinsWon: n, tapScore: meta?.score, gamesSet: gamesPlayedToday });
+            trackQuest('gamePlayed', { gameId: 'tapfrenzy' });
+            trackQuest('coinsEarned', { amount: n });
+          }}
+        />
+      )}
+      {activeGame === 'stopclock' && (
+        <StopClockGame
+          onClose={() => animateClose(() => setActiveGame(null))} closing={closingModal}
+          onWin={(n, meta) => {
+            addCoins(n);
+            showNotif(`🎉 +${n} Coins!`);
+            triggerReward('medium', null, { coins: n });
+            setUser(u => ({ ...u, gamesPlayed: u.gamesPlayed + 1, dailyTasksDone: [...new Set([...u.dailyTasksDone, 'game'])] }));
+            setGamesPlayedToday(prev => new Set([...prev, 'stopclock']));
+            trackMission('gamePlayed', { gameId: 'stopclock', coinsWon: n, clockDiff: meta?.diff, gamesSet: gamesPlayedToday });
+            trackQuest('gamePlayed', { gameId: 'stopclock' });
+            trackQuest('coinsEarned', { amount: n });
+          }}
+        />
+      )}
+      {activeTrivia === 'classicQuiz' && (
+        <ClassicQuizGame
+          onClose={() => animateClose(() => setActiveTrivia(null))} closing={closingModal}
+          onWin={(n, meta) => {
+            addCoins(n);
+            showNotif('🧠 +' + n + ' Coins!');
+            triggerReward('medium', null, { coins: n });
+            trackMission('triviaPlayed', { triviaType: 'classic' });
+            trackQuest('triviaPlayed', {});
+            if (meta?.triviaCorrect) { trackMission('triviaCorrect', { count: meta.triviaCorrect }); trackQuest('triviaCorrect', { count: meta.triviaCorrect }); }
+            trackQuest('coinsEarned', { amount: n });
+          }}
+        />
+      )}
+      {activeTrivia === 'speedRound' && (
+        <SpeedRoundGame
+          onClose={() => animateClose(() => setActiveTrivia(null))} closing={closingModal}
+          onWin={(n, meta) => {
+            addCoins(n);
+            showNotif('⚡ +' + n + ' Coins!');
+            triggerReward('medium', null, { coins: n });
+            trackMission('triviaPlayed', { triviaType: 'speed', speedScore: meta?.triviaCorrect ?? 0 });
+            trackQuest('triviaPlayed', {});
+            if (meta?.triviaCorrect) { trackMission('triviaCorrect', { count: meta.triviaCorrect }); trackQuest('triviaCorrect', { count: meta.triviaCorrect }); }
+            trackQuest('coinsEarned', { amount: n });
+          }}
+        />
+      )}
+      {activeTrivia === 'streakTrivia' && (
+        <StreakTriviaGame
+          onClose={() => animateClose(() => setActiveTrivia(null))} closing={closingModal}
+          onWin={(n, meta) => {
+            addCoins(n);
+            showNotif('🏆 +' + n + ' Coins!');
+            triggerReward('medium', null, { coins: n });
+            trackMission('triviaPlayed', { triviaType: 'streak', triviaStreak: meta?.triviaStreak ?? 0 });
+            trackQuest('triviaPlayed', {});
+            if (meta?.triviaStreak) { trackMission('triviaCorrect', { count: meta.triviaStreak }); trackQuest('triviaCorrect', { count: meta.triviaStreak }); }
+            trackQuest('coinsEarned', { amount: n });
+          }}
+        />
+      )}
+    </>
+  );
+
+  const v2Stats = {
+    points: user.kwacha.toLocaleString(),
+    missionsCount: [...getDailyMissions(), ...PERMANENT_MISSIONS].filter(m => !user.missionsComplete.includes(m.id)).length,
+    badges: user.missionsComplete.length,
+    xp: user.xp,
+    onNavigate: navigateTab,
+  };
+
+  // === v2 redesigned Home ===
   if (tab === 'home') {
-    const activeMissions = [...getDailyMissions(), ...PERMANENT_MISSIONS].filter(m => !user.missionsComplete.includes(m.id));
-    return (
-      <Overview
-        points={user.kwacha.toLocaleString()}
-        missionsCount={activeMissions.length}
-        badges={user.missionsComplete.length}
-        xp={user.xp}
-        activeTab="home"
-        onNavigate={navigateTab}
-      />
-    );
+    return (<>
+      <Overview {...v2Stats} activeTab="home" />
+      {gameOverlays}
+    </>);
+  }
+  // === v2 redesigned Play ===
+  if (tab === 'play' || tab.startsWith('play.')) {
+    return (<>
+      <PlayView {...v2Stats} tab={tab} gamePlays={user.gamePlays} onPlay={playGame} />
+      {gameOverlays}
+    </>);
   }
 
   return (
