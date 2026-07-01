@@ -2,3 +2,12 @@
 node_modules/
 .next/
 .superpowers/
+
+# environment variables (never commit secrets)
+.env
+.env.local
+.env*.local
+
+# local dev junk
+test_screenshots/
+.claude/scheduled_tasks.lock

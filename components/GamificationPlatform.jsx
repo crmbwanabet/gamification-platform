@@ -10,6 +10,9 @@ import {
   Camera, Wallet
 } from 'lucide-react';
 
+// Redesign (v2) home dashboard
+import Overview from './redesign/Overview';
+
 // Data imports
 import { IMG_BASE, CURRENCY_ICONS, IMAGES, WHEEL_IMAGES } from '../lib/data/images';
 import {
@@ -1247,6 +1250,21 @@ export default function GamificationPlatform() {
     overview: 'home',
   };
   const navigateTab = (id) => setTab(LEGACY_TAB_MAP[id] || id);
+
+  // === v2 redesign: Home dashboard renders the new design, fed by real state ===
+  if (tab === 'home') {
+    const activeMissions = [...getDailyMissions(), ...PERMANENT_MISSIONS].filter(m => !user.missionsComplete.includes(m.id));
+    return (
+      <Overview
+        points={user.kwacha.toLocaleString()}
+        missionsCount={activeMissions.length}
+        badges={user.missionsComplete.length}
+        xp={user.xp}
+        activeTab="home"
+        onNavigate={navigateTab}
+      />
+    );
+  }
 
   return (
     <div className={`flex h-screen text-white overflow-hidden ${screenShake ? 'reward-shake' : ''}`}>
