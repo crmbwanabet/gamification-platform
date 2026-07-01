@@ -14,6 +14,7 @@ import {
 import Overview from './redesign/Overview';
 import PlayView from './redesign/PlayView';
 import EarnView from './redesign/EarnView';
+import StoreView from './redesign/StoreView';
 // SSO session (bwanabet token -> Supabase profile)
 import { useSession } from './session/SessionProvider';
 
@@ -1448,6 +1449,14 @@ export default function GamificationPlatform() {
           onNavigate={(tabId) => navigateTab(tabId)}
         />
       )}
+      {notif && (
+        <div className={`fixed top-4 right-4 z-[100] px-6 py-3 rounded-xl shadow-2xl ${notifLeaving ? 'anim-slide-out' : 'anim-slide-down'} ${notif.type === 'success' ? 'bg-gradient-to-r from-green-500 to-emerald-600 shadow-green-500/30' : 'bg-gradient-to-r from-red-500 to-rose-600 shadow-red-500/30'}`}>
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-5 h-5" />
+            <span className="font-bold">{notif.msg}</span>
+          </div>
+        </div>
+      )}
     </>
   );
 
@@ -1479,6 +1488,23 @@ export default function GamificationPlatform() {
       <EarnView {...v2Stats} tab={tab === 'earn' ? 'earn.missions' : tab}
         missionProgress={user.missionProgress} missionsComplete={user.missionsComplete} onOpenMission={setSelectedMission}
         questProgress={user.questProgress} questsComplete={user.questsComplete} onOpenQuest={setSelectedQuest} />
+      {gameOverlays}
+    </>);
+  }
+  // === v2 redesigned Store ===
+  if (tab === 'store') {
+    const buyStoreItem = (item, el) => {
+      const canBuy = user.kwacha >= item.price.kwacha && (!item.price.gems || user.gems >= item.price.gems);
+      if (!canBuy) { showNotif('Not enough balance!', 'error'); return; }
+      addCoins(-item.price.kwacha);
+      if (item.price.gems) addGems(-item.price.gems);
+      trackMission('storePurchase', { amount: item.price.kwacha });
+      trackQuest('storePurchase', {});
+      showNotif(`Purchased ${item.name}!`);
+      triggerReward('small', el || null, { coins: 0 });
+    };
+    return (<>
+      <StoreView {...v2Stats} onBuy={buyStoreItem} kwacha={user.kwacha} gems={user.gems} />
       {gameOverlays}
     </>);
   }
