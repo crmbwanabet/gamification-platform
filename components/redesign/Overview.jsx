@@ -56,11 +56,11 @@ export default function Overview({ points = '2,344', missionsCount = MISSIONS.le
   const go = (t) => onNavigate && onNavigate(t);
   return (
     <RedesignShell points={points} missionsCount={missionsCount} badges={badges} xp={xp} activeTab={activeTab} onNavigate={onNavigate}>
-      <div style={{ display: 'grid', gridTemplateColumns: '1.35fr 1fr', gap: 26, alignContent: 'start' }}>
+      <div className="rs-ov-grid" style={{ display: 'grid', gridTemplateColumns: '1.35fr 1fr', gap: 26, alignContent: 'start' }}>
 
         <section>
           <SectionTitle>Latest Missions</SectionTitle>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 14 }}>
+          <div className="rs-ov-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 14 }}>
             {MISSIONS.slice(0, 3).map((m, i) => <MissionCard key={m.id} m={m} state={MISSION_STATE[i]} />)}
           </div>
         </section>
@@ -79,7 +79,7 @@ export default function Overview({ points = '2,344', missionsCount = MISSIONS.le
           </Card>
         </section>
 
-        <section style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+        <section className="rs-ov-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
           <div>
             <SectionTitle>Featured</SectionTitle>
             <Card style={{ overflow: 'hidden' }}>

@@ -1457,6 +1457,30 @@ export default function GamificationPlatform() {
           </div>
         </div>
       )}
+      {showConfetti && (
+        <div className="fixed inset-0 pointer-events-none z-[200] overflow-hidden">
+          {Array.from({ length: 50 }, (_, i) => {
+            const colors = ['#fbbf24', '#a855f7', '#ec4899', '#22c55e', '#3b82f6', '#f97316', '#ef4444', '#14b8a6'];
+            const shapes = ['circle', 'rect', 'star'];
+            const shape = shapes[i % 3];
+            const size = 6 + Math.random() * 10;
+            const drift = (Math.random() - 0.5) * 100;
+            const delay = Math.random() * 0.5;
+            const duration = 1.8 + Math.random() * 1.2;
+            return (
+              <div key={i} style={{ position: 'absolute', left: `${10 + Math.random() * 80}%`, top: '-15px', width: shape === 'rect' ? size * 0.5 : size, height: shape === 'star' ? size * 0.4 : size, backgroundColor: colors[i % colors.length], borderRadius: shape === 'circle' ? '50%' : shape === 'star' ? '1px' : '2px', '--drift': `${drift}px`, animation: `confettiFall ${duration}s ${delay}s cubic-bezier(0.25, 0.46, 0.45, 0.94) both`, boxShadow: `0 0 3px ${colors[i % colors.length]}40` }} />
+            );
+          })}
+        </div>
+      )}
+      <canvas ref={rewardCanvasRef} className="fixed inset-0 pointer-events-none" style={{ zIndex: 9998 }} />
+      {screenFlash && <div className={`reward-screen-flash reward-screen-flash-${screenFlash}`} />}
+      {rollingNumbers.map(n => (
+        <div key={n.id} className="reward-float-number" style={{ left: n.x, top: n.y, color: n.color }}>{n.text}</div>
+      ))}
+      {flyingCoins.map(c => (
+        <div key={c.id} className="reward-flying-coin" style={{ left: c.fromX, top: c.fromY, '--fly-dx': `${c.toX - c.fromX}px`, '--fly-dy': `${c.toY - c.fromY}px`, '--fly-dx-half': `${(c.toX - c.fromX) * 0.3}px`, '--fly-dy-half': `${(c.toY - c.fromY) * 0.5 - 60}px` }}>{c.emoji}</div>
+      ))}
     </>
   );
 
