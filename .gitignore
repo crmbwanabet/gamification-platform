@@ -11,3 +11,6 @@ node_modules/
 # local dev junk
 test_screenshots/
 .claude/scheduled_tasks.lock
+
+# security report — do NOT publish vuln details to the repo
+docs/bwanabet-security-audit.md
