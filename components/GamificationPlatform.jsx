@@ -13,6 +13,7 @@ import {
 // Redesign (v2) screens
 import Overview from './redesign/Overview';
 import PlayView from './redesign/PlayView';
+import EarnView from './redesign/EarnView';
 // SSO session (bwanabet token -> Supabase profile)
 import { useSession } from './session/SessionProvider';
 
@@ -1426,6 +1427,27 @@ export default function GamificationPlatform() {
           }}
         />
       )}
+      {selectedQuest && (
+        <QuestDetailModal
+          quest={selectedQuest}
+          questProgress={user.questProgress}
+          questsComplete={user.questsComplete}
+          onClose={() => animateClose(() => setSelectedQuest(null))}
+          onClaim={claimQuest}
+          onNavigate={(tabId) => navigateTab(tabId)}
+          onPlayGame={playGame}
+          closing={closingModal}
+        />
+      )}
+      {selectedMission && (
+        <MissionDetailModal
+          mission={selectedMission}
+          progress={user.missionProgress[selectedMission.id] || 0}
+          done={user.missionsComplete.includes(selectedMission.id)}
+          onClose={() => animateClose(() => setSelectedMission(null))} closing={closingModal}
+          onNavigate={(tabId) => navigateTab(tabId)}
+        />
+      )}
     </>
   );
 
@@ -1448,6 +1470,15 @@ export default function GamificationPlatform() {
   if (tab === 'play' || tab.startsWith('play.')) {
     return (<>
       <PlayView {...v2Stats} tab={tab} gamePlays={user.gamePlays} onPlay={playGame} />
+      {gameOverlays}
+    </>);
+  }
+  // === v2 redesigned Earn ===
+  if (tab === 'earn' || tab.startsWith('earn.')) {
+    return (<>
+      <EarnView {...v2Stats} tab={tab === 'earn' ? 'earn.missions' : tab}
+        missionProgress={user.missionProgress} missionsComplete={user.missionsComplete} onOpenMission={setSelectedMission}
+        questProgress={user.questProgress} questsComplete={user.questsComplete} onOpenQuest={setSelectedQuest} />
       {gameOverlays}
     </>);
   }
