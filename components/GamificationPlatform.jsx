@@ -12,6 +12,8 @@ import {
 
 // Redesign (v2) home dashboard
 import Overview from './redesign/Overview';
+// SSO session (bwanabet token -> Supabase profile)
+import { useSession } from './session/SessionProvider';
 
 // Data imports
 import { IMG_BASE, CURRENCY_ICONS, IMAGES, WHEEL_IMAGES } from '../lib/data/images';
@@ -891,6 +893,35 @@ export default function GamificationPlatform() {
   const nextLevel = getNextLevel(user.xp);
   const xpProgress = getXPProgress(user.xp);
   const vip = getVIP(user.deposits);
+
+  // === SSO persistence: load this player's saved progress on session, save on change ===
+  // When embedded on bwanabet with a valid token, session.status becomes 'ready'.
+  // Standalone (no token) it stays idle -> app runs on local state as before.
+  const session = useSession();
+  const hydratedRef = useRef(false);
+  const saveTimer = useRef(null);
+  useEffect(() => {
+    if (hydratedRef.current) return;
+    if (session.status === 'ready' && session.profile) {
+      const saved = session.profile.state;
+      if (saved && typeof saved === 'object' && Object.keys(saved).length) {
+        setUser(u => ({ ...u, ...saved }));
+      }
+      hydratedRef.current = true;
+    }
+  }, [session.status, session.profile]);
+  useEffect(() => {
+    if (session.status !== 'ready' || !hydratedRef.current) return;
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      session.saveState({
+        kwacha: user.kwacha, gems: user.gems, diamonds: user.diamonds,
+        xp: user.xp, deposits: user.deposits, streak: user.streak,
+        state: user,
+      });
+    }, 1500);
+    return () => { if (saveTimer.current) clearTimeout(saveTimer.current); };
+  }, [user, session.status]);
 
   // Helper functions
   const showNotif = useCallback((msg, type = 'success') => {
