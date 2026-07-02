@@ -1,8 +1,10 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { X } from 'lucide-react';
 import { getQuestions, TRIVIA_CATEGORIES } from '../../lib/data/trivia';
+import { C } from '@/components/redesign/tokens';
+import { RewardIcon } from '@/components/redesign/RedesignShell';
+import { GameShell, GameBtn, OptionBtn } from './gameKit';
 
 export default function ClassicQuizGame({ onClose, onWin, closing }) {
   const [phase, setPhase] = useState('category');
@@ -20,12 +22,6 @@ export default function ClassicQuizGame({ onClose, onWin, closing }) {
   const timerRef = useRef(null);
 
   const optionLetters = ['A', 'B', 'C', 'D'];
-  const optionColors = [
-    { bg: 'from-rose-600/30 to-pink-700/20', border: 'border-rose-500/40', glow: 'shadow-rose-500/20', letter: 'bg-rose-500', hover: 'hover:border-rose-400/60 hover:shadow-rose-500/30' },
-    { bg: 'from-blue-600/30 to-cyan-700/20', border: 'border-blue-500/40', glow: 'shadow-blue-500/20', letter: 'bg-blue-500', hover: 'hover:border-blue-400/60 hover:shadow-blue-500/30' },
-    { bg: 'from-amber-600/30 to-yellow-700/20', border: 'border-amber-400/50', glow: 'shadow-amber-500/20', letter: 'bg-amber-500', hover: 'hover:border-amber-400/60 hover:shadow-amber-500/30' },
-    { bg: 'from-emerald-600/30 to-green-700/20', border: 'border-emerald-500/40', glow: 'shadow-emerald-500/20', letter: 'bg-emerald-500', hover: 'hover:border-emerald-400/60 hover:shadow-emerald-500/30' },
-  ];
 
   const startQuiz = (catId) => {
     setCategory(catId);
@@ -99,173 +95,144 @@ export default function ClassicQuizGame({ onClose, onWin, closing }) {
   const finalCoins = score * 10 + (score >= 10 ? 500 : score >= 7 ? 150 : score >= 5 ? 50 : 0);
   const timerPct = (timer / 15) * 100;
   const circumference = 2 * Math.PI * 22;
+  const catName = TRIVIA_CATEGORIES.find(c => c.id === category)?.name;
+
+  const lifelineStyle = (disabled, accent) => ({
+    flex: 1, padding: '10px 8px', borderRadius: 11, fontSize: 12, fontWeight: 800,
+    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+    cursor: disabled ? 'not-allowed' : 'pointer', transition: 'border-color .15s',
+    background: disabled ? C.track : 'rgba(255,255,255,.04)',
+    color: disabled ? C.muted : accent,
+    border: `1px solid ${disabled ? C.line : accent + '55'}`,
+  });
 
   return (
-    <div className={`fixed inset-0 bg-black/95 flex items-center justify-center z-[70] p-4 ${closing ? "anim-backdrop-close" : "anim-fade-in"}`} onClick={onClose}>
-      <div className={`bg-gradient-to-b from-[#0a1828]/95 via-[#061018]/95 to-[#030810]/95 backdrop-blur-xl rounded-3xl max-w-md w-full border-0 overflow-hidden ${closing ? "anim-modal-close" : "anim-scale-in"}`} onClick={(e) => e.stopPropagation()}>
+    <GameShell title="🧠 Classic Quiz" onClose={onClose} closing={closing}>
+      {phase === 'playing' && catName && (
+        <p style={{ textAlign: 'center', color: C.teal, fontSize: 12.5, fontWeight: 700, margin: '-6px 0 14px' }}>{catName}</p>
+      )}
 
-        {/* Header with glow */}
-        <div className="relative px-6 pt-5 pb-4">
-          <div className="absolute inset-0 bg-gradient-to-b from-purple-600/10 to-transparent" />
-          <div className="relative flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-fuchsia-600 flex items-center justify-center shadow-lg shadow-purple-500/30">
-                <span className="text-lg">🧠</span>
+      {/* Category Selection */}
+      {phase === 'category' && (
+        <div>
+          <p style={{ textAlign: 'center', color: C.sub, fontSize: 13.5, marginBottom: 18 }}>Choose your category</p>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            {TRIVIA_CATEGORIES.map(cat => (
+              <button key={cat.id} type="button" onClick={() => startQuiz(cat.id)}
+                style={{ background: C.track, border: `1px solid ${C.line}`, borderRadius: 16, padding: '20px 12px', textAlign: 'center', cursor: 'pointer', transition: 'border-color .15s, transform .12s' }}
+                onMouseEnter={(e) => { e.currentTarget.style.borderColor = C.teal; }}
+                onMouseLeave={(e) => { e.currentTarget.style.borderColor = C.line; }}>
+                <div style={{ fontSize: 34, marginBottom: 8 }}>{cat.icon}</div>
+                <div style={{ fontWeight: 700, fontSize: 13.5, color: C.text }}>{cat.name}</div>
+                <div style={{ fontSize: 11.5, color: C.muted, marginTop: 4 }}>10 questions</div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Playing */}
+      {phase === 'playing' && q && (
+        <div>
+          {/* Score bar + Timer */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: C.teal }}>Question {qIndex + 1}/10</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: C.green }}>{score} correct</span>
+                  {streak >= 2 && <span style={{ fontSize: 12, color: C.gold, fontWeight: 800, animation: 'streakFire 0.6s ease-in-out infinite' }}>🔥{streak}</span>}
+                </div>
               </div>
-              <div>
-                <h2 className="font-black text-lg tracking-tight">Classic Quiz</h2>
-                {phase === 'playing' && <span className="text-xs text-purple-400">{TRIVIA_CATEGORIES.find(c => c.id === category)?.name}</span>}
+              <div style={{ height: 8, background: C.track, borderRadius: 99, overflow: 'hidden' }}>
+                <div style={{ height: '100%', borderRadius: 99, transition: 'width .5s ease-out', width: `${((qIndex + 1) / 10) * 100}%`, background: C.green }} />
               </div>
             </div>
-            <button type="button" onClick={onClose} className="w-9 h-9 flex items-center justify-center bg-white/5 hover:bg-white/10 rounded-full transition-all">
-              <X className="w-4 h-4" />
+            {/* Circular Timer */}
+            <div style={{ position: 'relative', width: 56, height: 56, flex: 'none' }}>
+              <svg width="56" height="56" viewBox="0 0 48 48" style={{ transform: 'rotate(-90deg)' }}>
+                <circle cx="24" cy="24" r="22" fill="none" stroke={C.track} strokeWidth="3" />
+                <circle cx="24" cy="24" r="22" fill="none"
+                  stroke={C.gold} strokeWidth="3" strokeLinecap="round"
+                  strokeDasharray={circumference}
+                  strokeDashoffset={circumference - (timerPct / 100) * circumference}
+                  style={{ transition: 'stroke-dashoffset 1s linear' }}
+                />
+              </svg>
+              <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: 18, color: C.gold, animation: timer <= 5 ? 'timerUrgent 0.5s ease-in-out infinite' : 'none' }}>
+                {timer}
+              </div>
+            </div>
+          </div>
+
+          {/* Question Card */}
+          <div style={{ background: C.track, borderRadius: 16, padding: 18, border: `1px solid ${C.line}`, marginBottom: 16, boxShadow: `0 0 0 1px rgba(79,169,139,.12)` }}>
+            <p style={{ fontWeight: 700, textAlign: 'center', lineHeight: 1.5, color: C.text, margin: 0 }}>{q.q}</p>
+          </div>
+
+          {/* Answer Options */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
+            {q.options.map((opt, i) => {
+              if (eliminated.includes(opt)) return (
+                <div key={i} style={{ height: 46, borderRadius: 11, background: C.track, border: `1px solid ${C.line}`, display: 'flex', alignItems: 'center', padding: '0 14px', opacity: 0.3 }}>
+                  <span style={{ width: 26, height: 26, borderRadius: 8, background: C.panel2, display: 'grid', placeItems: 'center', fontWeight: 800, fontSize: 12, marginRight: 12, color: C.muted }}>{optionLetters[i]}</span>
+                  <span style={{ color: C.muted, textDecoration: 'line-through', fontSize: 14 }}>{opt}</span>
+                </div>
+              );
+              const isCorrect = opt === q.a;
+              const isSelected = opt === selected;
+              let badgeBg = C.panel2, badgeColor = C.text;
+              const optStyle = { width: '100%', display: 'flex', alignItems: 'center', textAlign: 'left', gap: 12, padding: '12px 14px', fontSize: 14 };
+              if (showAnswer && isCorrect) {
+                optStyle.background = 'rgba(79,169,139,.18)'; optStyle.border = `2px solid ${C.green}`;
+                badgeBg = C.green; badgeColor = '#08210f';
+                optStyle.animation = 'correctPop 0.4s ease both';
+              } else if (showAnswer && isSelected && !isCorrect) {
+                optStyle.background = 'rgba(229,87,63,.18)'; optStyle.border = `2px solid ${C.red}`;
+                badgeBg = C.red; badgeColor = '#fff';
+                optStyle.animation = 'wrongShake 0.5s ease both';
+              } else if (showAnswer) {
+                optStyle.opacity = 0.45;
+              }
+              return (
+                <OptionBtn key={i} onClick={() => selectAnswer(opt)} disabled={showAnswer} style={optStyle}>
+                  <span style={{ width: 26, height: 26, borderRadius: 8, background: badgeBg, color: badgeColor, display: 'grid', placeItems: 'center', fontWeight: 800, fontSize: 12, flex: 'none' }}>{optionLetters[i]}</span>
+                  <span style={{ flex: 1, fontWeight: 600 }}>{opt}</span>
+                  {showAnswer && isCorrect && <span style={{ color: C.green, fontSize: 18 }}>✓</span>}
+                  {showAnswer && isSelected && !isCorrect && <span style={{ color: C.red, fontSize: 18 }}>✗</span>}
+                </OptionBtn>
+              );
+            })}
+          </div>
+
+          {/* Lifelines */}
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button type="button" onClick={useFiftyFifty} disabled={fiftyFiftyUsed >= 2 || showAnswer} style={lifelineStyle(fiftyFiftyUsed >= 2 || showAnswer, C.teal)}>
+              <span style={{ fontSize: 15 }}>🔀</span> 50/50 <span style={{ opacity: 0.5 }}>({2 - fiftyFiftyUsed})</span>
+            </button>
+            <button type="button" onClick={useSkip} disabled={skipUsed || showAnswer} style={lifelineStyle(skipUsed || showAnswer, C.gold)}>
+              <span style={{ fontSize: 15 }}>⏭️</span> Skip <span style={{ opacity: 0.5 }}>({skipUsed ? 0 : 1})</span>
             </button>
           </div>
         </div>
+      )}
 
-        <div className="px-6 pb-6">
-          {/* Category Selection */}
-          {phase === 'category' && (
-            <div>
-              <p className="text-gray-400 text-center text-sm mb-5">Choose your category</p>
-              <div className="grid grid-cols-2 gap-3">
-                {TRIVIA_CATEGORIES.map(cat => (
-                  <button key={cat.id} type="button" onClick={() => startQuiz(cat.id)}
-                    className="group relative rounded-3xl overflow-hidden transition-all duration-300 hover:scale-[1.03] active:scale-95">
-                    <div className={`absolute inset-0 bg-gradient-to-br ${cat.color} opacity-20 group-hover:opacity-40 transition-opacity`} />
-                    <div className="relative p-5 text-center border border-white/10 rounded-2xl group-hover:border-white/20">
-                      <div className="text-4xl mb-2 drop-shadow-lg" style={{ filter: 'drop-shadow(0 0 8px rgba(168,85,247,0.4))' }}>{cat.icon}</div>
-                      <div className="font-bold text-sm">{cat.name}</div>
-                      <div className="text-xs text-gray-500 mt-1">10 questions</div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Playing */}
-          {phase === 'playing' && q && (
-            <div>
-              {/* Score bar + Timer */}
-              <div className="flex items-center gap-3 mb-4">
-                <div className="flex-1">
-                  <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-xs font-bold text-purple-300">Question {qIndex + 1}/10</span>
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-xs font-bold text-green-400">{score} correct</span>
-                      {streak >= 2 && <span className="text-xs text-orange-400 animate-pulse">🔥{streak}</span>}
-                    </div>
-                  </div>
-                  <div className="h-2 bg-black/50 rounded-full overflow-hidden">
-                    <div className="h-full rounded-full transition-all duration-500 ease-out" style={{
-                      width: `${((qIndex + 1) / 10) * 100}%`,
-                      background: 'linear-gradient(90deg, #a855f7, #ec4899, #f97316)'
-                    }} />
-                  </div>
-                </div>
-                {/* Circular Timer */}
-                <div className="relative w-14 h-14 flex-shrink-0">
-                  <svg className="w-14 h-14 -rotate-90" viewBox="0 0 48 48">
-                    <circle cx="24" cy="24" r="22" fill="none" stroke="#0a1520" strokeWidth="3" />
-                    <circle cx="24" cy="24" r="22" fill="none"
-                      stroke={timer <= 5 ? '#ef4444' : timer <= 10 ? '#f59e0b' : '#a855f7'}
-                      strokeWidth="3" strokeLinecap="round"
-                      strokeDasharray={circumference}
-                      strokeDashoffset={circumference - (timerPct / 100) * circumference}
-                      style={{ transition: 'stroke-dashoffset 1s linear, stroke 0.3s' }}
-                    />
-                  </svg>
-                  <div className={`absolute inset-0 flex items-center justify-center font-black text-lg ${timer <= 5 ? 'text-red-400' : 'text-white'}`} style={{ animation: timer <= 5 ? 'timerUrgent 0.5s ease-in-out infinite' : 'none' }}>
-                    {timer}
-                  </div>
-                </div>
-              </div>
-
-              {/* Question Card */}
-              <div className="relative mb-4">
-                <div className="absolute -inset-[1px] bg-gradient-to-r from-purple-500/30 via-fuchsia-500/30 to-purple-500/30 rounded-2xl blur-sm" />
-                <div className="relative bg-black/50 rounded-2xl p-5 border border-white/10">
-                  <p className="font-bold text-center leading-relaxed">{q.q}</p>
-                </div>
-              </div>
-
-              {/* Answer Options - Colored Bars */}
-              <div className="space-y-2.5 mb-4">
-                {q.options.map((opt, i) => {
-                  if (eliminated.includes(opt)) return (
-                    <div key={i} className="relative h-12 rounded-xl bg-gray-900/50 border border-gray-800/50 flex items-center px-4 opacity-30">
-                      <span className="w-7 h-7 rounded-lg bg-gray-800/40 border border-gray-600/20 flex items-center justify-center font-black text-xs mr-3">{optionLetters[i]}</span>
-                      <span className="text-gray-600 line-through text-sm">{opt}</span>
-                    </div>
-                  );
-                  const isCorrect = opt === q.a;
-                  const isSelected = opt === selected;
-                  const c = optionColors[i];
-                  let classes, inner;
-                  if (showAnswer && isCorrect) {
-                    classes = 'bg-gradient-to-r from-green-600/30 to-emerald-600/20 border-green-400/60 shadow-lg shadow-green-500/20';
-                    inner = 'bg-green-500';
-                  } else if (showAnswer && isSelected && !isCorrect) {
-                    classes = 'bg-gradient-to-r from-red-600/30 to-red-700/20 border-red-400/60 shadow-lg shadow-red-500/20';
-                    inner = 'bg-red-500';
-                  } else if (showAnswer) {
-                    classes = `bg-gradient-to-r ${c.bg} ${c.border} opacity-40`;
-                    inner = c.letter;
-                  } else {
-                    classes = `bg-gradient-to-r ${c.bg} ${c.border} ${c.hover} shadow-md ${c.glow}`;
-                    inner = c.letter;
-                  }
-                  return (
-                    <button key={i} type="button" onClick={() => selectAnswer(opt)} disabled={showAnswer}
-                      className={`relative w-full h-13 rounded-xl border flex items-center px-4 py-3 transition-all duration-200 ${!showAnswer ? 'hover:scale-[1.01] active:scale-[0.98]' : ''} ${classes}`}
-                      style={{ animation: showAnswer && isCorrect ? 'correctPop 0.4s ease both' : showAnswer && isSelected && !isCorrect ? 'wrongShake 0.5s ease both' : 'none' }}>
-                      <span className={`w-7 h-7 rounded-lg ${inner} flex items-center justify-center font-black text-xs mr-3 shadow-md flex-shrink-0`}>{optionLetters[i]}</span>
-                      <span className="font-semibold text-sm flex-1 text-left">{opt}</span>
-                      {showAnswer && isCorrect && <span className="text-green-400 text-lg ml-2">✓</span>}
-                      {showAnswer && isSelected && !isCorrect && <span className="text-red-400 text-lg ml-2">✗</span>}
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Lifelines */}
-              <div className="flex gap-2">
-                <button type="button" onClick={useFiftyFifty} disabled={fiftyFiftyUsed >= 2 || showAnswer}
-                  className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${fiftyFiftyUsed >= 2 || showAnswer ? 'bg-gray-900/50 text-gray-600 border border-gray-800/30' : 'bg-gradient-to-r from-blue-600/20 to-cyan-600/20 text-blue-300 border border-blue-500/30 hover:border-blue-400/50 shadow-md shadow-blue-500/10 hover:shadow-blue-500/20'}`}>
-                  <span className="text-base">🔀</span> 50/50 <span className="opacity-50">({2 - fiftyFiftyUsed})</span>
-                </button>
-                <button type="button" onClick={useSkip} disabled={skipUsed || showAnswer}
-                  className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${skipUsed || showAnswer ? 'bg-gray-900/50 text-gray-600 border border-gray-800/30' : 'bg-gradient-to-r from-amber-600/20 to-yellow-600/20 text-amber-300 border border-amber-500/30 hover:border-amber-400/50 shadow-md shadow-amber-500/10 hover:shadow-amber-500/20'}`}>
-                  <span className="text-base">⏭️</span> Skip <span className="opacity-50">({skipUsed ? 0 : 1})</span>
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Results */}
-          {phase === 'result' && (
-            <div className="text-center py-2">
-              <div className="relative inline-block mb-4">
-                <div className="text-7xl" style={{ filter: 'drop-shadow(0 0 20px rgba(168,85,247,0.5))' }}>
-                  {score >= 8 ? '🏆' : score >= 5 ? '⭐' : '👏'}
-                </div>
-                <div className="absolute -inset-4 bg-purple-500/10 rounded-full blur-2xl" />
-              </div>
-              <div className="text-4xl font-black mb-1 bg-gradient-to-r from-purple-400 via-fuchsia-400 to-emerald-400 bg-clip-text text-transparent">{score}/10</div>
-              <div className="text-gray-400 mb-5">{score >= 8 ? 'Outstanding!' : score >= 5 ? 'Well done!' : 'Keep practicing!'}</div>
-              <div className="bg-gradient-to-r from-yellow-500/10 to-amber-500/10 border border-yellow-500/20 rounded-2xl p-4 mb-5">
-                <div className="text-yellow-400 font-black text-2xl mb-1">🪙 +{finalCoins}</div>
-                <div className="text-yellow-400/60 text-xs">Coins earned</div>
-                {score >= 7 && <div className="text-emerald-400 text-sm mt-2 font-bold">🎉 Bonus: +{score >= 10 ? 500 : 150} for {score >= 10 ? 'perfect' : 'great'} score!</div>}
-              </div>
-              <button type="button" onClick={onClose} className="w-full py-4 rounded-2xl font-black text-lg tracking-wide btn-3d btn-3d-purple">
-                Continue
-              </button>
-            </div>
-          )}
+      {/* Results */}
+      {phase === 'result' && (
+        <div style={{ textAlign: 'center', padding: '4px 0' }} className="anim-scale-in">
+          <div style={{ fontSize: 66, marginBottom: 10, animation: 'symbolPop 0.5s ease both, float 2s ease-in-out 0.5s infinite' }}>
+            {score >= 8 ? '🏆' : score >= 5 ? '⭐' : '👏'}
+          </div>
+          <div style={{ fontSize: 40, fontWeight: 900, marginBottom: 2, color: C.green }}>{score}/10</div>
+          <div style={{ color: C.sub, marginBottom: 20 }}>{score >= 8 ? 'Outstanding!' : score >= 5 ? 'Well done!' : 'Keep practicing!'}</div>
+          <div style={{ background: C.track, border: `1px solid ${C.line}`, borderRadius: 16, padding: 16, marginBottom: 20 }}>
+            <div style={{ color: C.gold, fontWeight: 900, fontSize: 24, marginBottom: 2, display: 'inline-flex', alignItems: 'center', gap: 6 }}>+{finalCoins} <RewardIcon kind="coins" size={20} /></div>
+            <div style={{ color: C.muted, fontSize: 11.5 }}>Coins earned</div>
+            {score >= 7 && <div style={{ color: C.green, fontSize: 13, marginTop: 8, fontWeight: 700 }}>🎉 Bonus: +{score >= 10 ? 500 : 150} for {score >= 10 ? 'perfect' : 'great'} score!</div>}
+          </div>
+          <GameBtn onClick={onClose}>Continue</GameBtn>
         </div>
-      </div>
-    </div>
+      )}
+    </GameShell>
   );
 }
