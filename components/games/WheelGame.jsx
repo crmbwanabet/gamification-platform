@@ -2,6 +2,8 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { X, HelpCircle } from 'lucide-react';
+import { C } from '@/components/redesign/tokens';
+import { RewardIcon } from '@/components/redesign/RedesignShell';
 import TutorialModal from '../modals/TutorialModal';
 
 // ============================================================================
@@ -377,7 +379,7 @@ export default function WheelGame({ onClose, onWin, playsLeft, closing }) {
   return (
     <div
       className={`fixed inset-0 z-[70] flex items-center justify-center ${closing ? 'anim-backdrop-close' : 'anim-fade-in'}`}
-      style={{ background: 'rgba(0,0,0,0.6)' }}
+      style={{ background: 'rgba(8,10,16,.74)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)' }}
       onClick={onClose}
     >
       {showTutorial && <TutorialModal tutorialKey="wheel" onClose={() => setShowTutorial(false)} />}
@@ -396,7 +398,7 @@ export default function WheelGame({ onClose, onWin, playsLeft, closing }) {
       {/* Screen flash */}
       {showFlash && (
         <div className="fixed inset-0 z-[55] pointer-events-none" style={{
-          background: 'radial-gradient(circle, rgba(251,191,36,0.5) 0%, rgba(168,85,247,0.3) 50%, transparent 80%)',
+          background: 'radial-gradient(circle, rgba(230,173,74,0.5) 0%, rgba(79,169,139,0.28) 50%, transparent 80%)',
           animation: 'screenFlash 0.4s ease-out forwards',
         }} />
       )}
@@ -423,57 +425,56 @@ export default function WheelGame({ onClose, onWin, playsLeft, closing }) {
 
       {/* WIN RESULT OVERLAY */}
       {spinResult && (
-        <div className="fixed inset-0 z-[58] flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.7)', animation: 'fadeIn 0.3s ease-out' }} onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-[58] flex items-center justify-center" style={{ background: 'rgba(8,10,16,.74)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)', animation: 'fadeIn 0.3s ease-out' }} onClick={(e) => e.stopPropagation()}>
           <div className="text-center p-8 rounded-3xl max-w-xs w-full mx-4" style={{
-            background: 'linear-gradient(180deg, rgba(30,40,60,0.95), rgba(15,20,35,0.98))',
-            border: `2px solid ${spinResult.isLoss ? 'rgba(156,163,175,0.3)' : 'rgba(251,191,36,0.3)'}`,
+            background: `linear-gradient(180deg, ${C.panelHi}, ${C.panelLo})`,
+            border: `1px solid ${spinResult.isLoss ? 'rgba(255,255,255,.09)' : 'rgba(230,173,74,0.35)'}`,
             boxShadow: spinResult.isLoss
-              ? '0 0 60px rgba(100,100,100,0.1), 0 20px 60px rgba(0,0,0,0.5)'
-              : '0 0 60px rgba(251,191,36,0.15), 0 20px 60px rgba(0,0,0,0.5)',
+              ? '0 24px 60px rgba(0,0,0,.55)'
+              : '0 0 60px rgba(230,173,74,0.15), 0 24px 60px rgba(0,0,0,.55)',
             animation: 'resultZoom 0.5s cubic-bezier(0.34,1.56,0.64,1) both',
           }}>
             {spinResult.isLoss ? (
               <>
-                <div className="text-lg font-extrabold uppercase tracking-widest mb-2" style={{ color: 'rgba(255,255,255,0.7)', letterSpacing: '2px' }}>
+                <div className="text-lg font-extrabold uppercase tracking-widest mb-2" style={{ color: C.sub, letterSpacing: '2px' }}>
                   BETTER LUCK NEXT TIME
                 </div>
-                <div className="text-base font-bold uppercase tracking-widest mb-6" style={{ color: 'rgba(255,255,255,0.4)', letterSpacing: '2px' }}>
+                <div className="text-base font-bold uppercase tracking-widest mb-6" style={{ color: C.muted, letterSpacing: '2px' }}>
                   TRY AGAIN TOMORROW
                 </div>
               </>
             ) : (
               <>
-                <div className="uppercase font-bold mb-2" style={{ color: '#ffd700', fontSize: '12px', letterSpacing: '3px' }}>
+                <div className="uppercase font-bold mb-2" style={{ color: C.green, fontSize: '12px', letterSpacing: '3px' }}>
                   YOU WON
                 </div>
                 <div className="relative mb-2">
                   {prizeFlash && (
                     <div className="absolute inset-0 rounded-xl" style={{
-                      background: 'radial-gradient(circle, rgba(255,215,0,0.4) 0%, transparent 70%)',
+                      background: 'radial-gradient(circle, rgba(230,173,74,0.4) 0%, transparent 70%)',
                       animation: 'fadeIn 0.1s ease-out',
                     }} />
                   )}
                   <div className="relative" style={{
-                    fontSize: '48px', fontWeight: 900, color: '#ffd700',
-                    textShadow: '0 0 20px rgba(255,215,0,0.5), 0 0 40px rgba(255,215,0,0.2)',
+                    fontSize: '48px', fontWeight: 900, color: C.gold,
+                    textShadow: '0 0 20px rgba(230,173,74,0.5), 0 0 40px rgba(230,173,74,0.2)',
                     transform: `scale(${spinResult.prize ? 0.9 + 0.1 * Math.min(countUpValue / spinResult.prize.kwacha, 1) : 1})`,
                     transition: 'transform 0.05s ease-out',
+                    display: 'inline-flex', alignItems: 'center', gap: 8,
                   }}>
-                    K{countUpValue}
+                    K{countUpValue}<RewardIcon kind="coins" size={34} />
                   </div>
                 </div>
-                <p className="text-gray-400 text-xs mb-5">Coins added to your balance</p>
+                <p className="text-xs mb-5" style={{ color: C.sub }}>Coins added to your balance</p>
               </>
             )}
             <button
               type="button"
               onClick={claimPrize}
-              className={`w-full py-3.5 rounded-xl font-bold text-lg shadow-lg transition-all hover:scale-[1.03] active:scale-95 ${
-                spinResult.isLoss
-                  ? 'bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 shadow-gray-500/20'
-                  : 'bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 shadow-green-500/30'
-              }`}
-              style={spinResult.isLoss ? {} : { '--btn-shadow': '#065F46', '--btn-glow': 'rgba(16,185,129,0.3)', '--btn-glow2': 'rgba(16,185,129,0.15)', animation: 'collectBtnPulse 2s ease-in-out infinite' }}
+              className="w-full py-3.5 rounded-xl font-bold text-lg transition-all hover:scale-[1.03] active:scale-95"
+              style={spinResult.isLoss
+                ? { background: C.panel2, color: C.text }
+                : { background: 'linear-gradient(180deg,#57b795,#3f9a7b)', color: '#08210f', boxShadow: '0 6px 18px rgba(79,169,139,.4)', '--btn-shadow': '#2f7a5f', '--btn-glow': 'rgba(79,169,139,0.4)', '--btn-glow2': 'rgba(79,169,139,0.2)', animation: 'collectBtnPulse 2s ease-in-out infinite' }}
             >
               {spinResult.isLoss ? 'GOT IT' : 'Claim Prize!'}
             </button>
@@ -484,18 +485,18 @@ export default function WheelGame({ onClose, onWin, playsLeft, closing }) {
       {/* MAIN CARD */}
       <div
         onClick={(e) => e.stopPropagation()}
-        className={`relative rounded-2xl ${closing ? 'anim-modal-close' : 'anim-scale-in'}`}
+        className={`relative ${closing ? 'anim-modal-close' : 'anim-scale-in'}`}
         style={{
-          width: 380, maxWidth: '95vw',
-          background: 'linear-gradient(180deg, #2d3348 0%, #1e2233 40%, #1a1e2e 100%)',
-          boxShadow: '0 0 80px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.06)',
-          border: '3px solid #3a3f52',
+          width: 380, maxWidth: '95vw', borderRadius: 20,
+          background: `linear-gradient(180deg, ${C.panelHi}, ${C.panelLo})`,
+          boxShadow: '0 24px 60px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,0.06)',
+          border: '1px solid rgba(255,255,255,.09)',
           ...(shaking ? { animation: 'winShake 0.15s ease-out' } : {}),
         }}
       >
 
         {/* Marquee light dots — paused during spin, reduced on low-end */}
-        <div className="absolute inset-0 pointer-events-none z-30 rounded-2xl overflow-hidden">
+        <div className="absolute inset-0 pointer-events-none z-30 overflow-hidden" style={{ borderRadius: 20 }}>
           {Array.from({ length: isLowEnd ? 12 : 28 }, (_, i) => {
             const n = isLowEnd ? 12 : 28;
             return (
@@ -557,9 +558,9 @@ export default function WheelGame({ onClose, onWin, playsLeft, closing }) {
           type="button"
           onClick={onClose}
           className="absolute top-3 right-3 z-40 w-9 h-9 rounded-full flex items-center justify-center transition-all hover:scale-110 active:scale-90"
-          style={{ background: 'linear-gradient(135deg, #ef4444, #dc2626)', boxShadow: '0 2px 8px rgba(239,68,68,0.5)' }}
+          style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)' }}
         >
-          <X className="w-5 h-5 text-white" strokeWidth={3} />
+          <X className="w-5 h-5" strokeWidth={3} style={{ color: C.sub }} />
         </button>
 
         {/* === CONTENT === */}
@@ -587,7 +588,7 @@ export default function WheelGame({ onClose, onWin, playsLeft, closing }) {
             </h1>
             {playsLeft > 0 && (
               <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold" style={{
-                background: 'rgba(34,197,94,0.18)', border: '1px solid rgba(34,197,94,0.4)', color: '#86efac',
+                background: 'rgba(79,169,139,0.18)', border: '1px solid rgba(79,169,139,0.4)', color: '#8fd3bd',
               }}>
                 {playsLeft} {playsLeft === 1 ? 'spin' : 'spins'} left after this
               </div>
@@ -871,7 +872,7 @@ export default function WheelGame({ onClose, onWin, playsLeft, closing }) {
                 }`}
               >
                 <span className={`font-black text-xl sm:text-2xl tracking-wider ${screen !== 'spinning' ? 'opacity-40' : ''}`} style={{
-                  background: 'linear-gradient(180deg, #ff9999 0%, #ef4444 40%, #b91c1c 100%)',
+                  background: 'linear-gradient(180deg, #9fe0c7 0%, #57b795 45%, #3f9a7b 100%)',
                   WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
                   filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.9))',
                   ...(screen === 'spinning' ? { animation: 'stopFlash 0.4s ease-in-out infinite' } : {}),
