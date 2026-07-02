@@ -132,6 +132,21 @@ body {
   .icon-pop:hover { transform: none; }
 }
 
+/* Content entrance + celebratory */
+@keyframes cardEnter { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+@keyframes claimPulse { 0%, 100% { box-shadow: 0 6px 20px rgba(79,169,139,.45); } 50% { box-shadow: 0 6px 30px rgba(79,169,139,.8); } }
+
+.card-enter { animation: cardEnter 0.45s cubic-bezier(0.2, 0.8, 0.3, 1) both; }
+.rs-thumb img { transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.3, 1); }
+.rs-thumb:hover img { transform: scale(1.06); }
+.rs-claim-pulse { animation: claimPulse 2.2s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .card-enter { animation: none; }
+  .rs-thumb img, .rs-thumb:hover img { transition: none; transform: none; }
+  .rs-claim-pulse { animation: none; }
+}
+
 /* Nav + top-bar icon hover pop (v2 shell) */
 .rs-sidebar img, .rs-bottomnav img, .rs-stats img { transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.3, 1); }
 .rs-sidebar button:hover img { transform: scale(1.16) rotate(-4deg); }

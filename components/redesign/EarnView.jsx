@@ -87,11 +87,11 @@ function SubNav({ tab, onNavigate }) {
   );
 }
 
-function MissionCard({ m, progress, done, onOpen }) {
+function MissionCard({ m, progress, done, onOpen, i = 0 }) {
   const pct = done ? 100 : Math.min(100, Math.round(((progress || 0) / m.target) * 100));
   const d = DIFF[m.difficulty] || DIFF.easy;
   return (
-    <Card style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column', cursor: 'pointer' }}>
+    <Card className="card-enter" style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column', cursor: 'pointer', animationDelay: `${i * 40}ms` }}>
       <button onClick={() => onOpen && onOpen(m)} style={{ all: 'unset', display: 'flex', flexDirection: 'column', cursor: 'pointer' }}>
         <div style={{ position: 'relative' }}>
           <Thumb src={IMAGES[m.image]} alt={m.name} h={78} radius={0} />
@@ -162,8 +162,8 @@ export default function EarnView({ tab = 'earn.missions', points = '0', missions
         <section>
           <SectionTitle>Missions</SectionTitle>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(168px, 1fr))', gap: 12 }}>
-            {ALL_MISSIONS.map(m => (
-              <MissionCard key={m.id} m={m} progress={missionProgress?.[m.id]} done={missionsComplete?.includes(m.id)} onOpen={onOpenMission} />
+            {ALL_MISSIONS.map((m, i) => (
+              <MissionCard key={m.id} i={i} m={m} progress={missionProgress?.[m.id]} done={missionsComplete?.includes(m.id)} onOpen={onOpenMission} />
             ))}
           </div>
         </section>

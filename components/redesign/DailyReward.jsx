@@ -128,6 +128,7 @@ export default function DailyReward({ dailyDay = 1, dailyClaimed = false, onClai
       <button
         onClick={(e) => !dailyClaimed && onClaim && onClaim(e && e.currentTarget)}
         disabled={dailyClaimed}
+        className={dailyClaimed ? undefined : 'rs-claim-pulse'}
         style={{
           position: 'absolute', left: '50%', bottom: 0, transform: 'translateX(-50%)',
           border: 'none', cursor: dailyClaimed ? 'default' : 'pointer',

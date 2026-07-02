@@ -30,10 +30,10 @@ function SubNav({ tab, onNavigate }) {
   );
 }
 
-function GameCard({ g, free, onPlay }) {
+function GameCard({ g, free, onPlay, i = 0 }) {
   const out = free <= 0;
   return (
-    <Card style={{ overflow: 'hidden', cursor: out ? 'default' : 'pointer', opacity: out ? 0.72 : 1 }}>
+    <Card className="card-enter" style={{ overflow: 'hidden', cursor: out ? 'default' : 'pointer', opacity: out ? 0.72 : 1, animationDelay: `${i * 45}ms` }}>
       <div onClick={() => !out && onPlay && onPlay(g.id)} style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
         <div style={{ position: 'relative' }}>
           <Thumb src={IMAGES[g.image]} alt={g.name} h={82} radius={0} />
@@ -59,7 +59,7 @@ function GamesGrid({ gamePlays, onPlay }) {
     <section>
       <SectionTitle>Minigames</SectionTitle>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 12 }}>
-        {MINIGAMES.map((g) => <GameCard key={g.id} g={g} free={gamePlays?.[g.id] ?? 0} onPlay={onPlay} />)}
+        {MINIGAMES.map((g, i) => <GameCard key={g.id} i={i} g={g} free={gamePlays?.[g.id] ?? 0} onPlay={onPlay} />)}
       </div>
     </section>
   );

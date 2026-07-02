@@ -7,14 +7,45 @@ import { getDailyMissions, PERMANENT_MISSIONS } from '@/lib/data/missions';
 
 /* ---------------- shared UI primitives (used by all redesign views) ------- */
 
+const prefersReduced = () => typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/** Animate a number rolling up to its new value when `value` changes. */
+export function CountUp({ value = 0, duration = 550, format = (n) => n.toLocaleString(), style, className }) {
+  const [display, setDisplay] = React.useState(value);
+  const fromRef = React.useRef(value);
+  React.useEffect(() => {
+    const from = fromRef.current, to = value;
+    if (from === to) return;
+    if (prefersReduced()) { fromRef.current = to; setDisplay(to); return; }
+    let raf, start;
+    const step = (ts) => {
+      if (start === undefined) start = ts;
+      const t = Math.min(1, (ts - start) / duration);
+      const eased = 1 - Math.pow(1 - t, 3);
+      setDisplay(Math.round(from + (to - from) * eased));
+      if (t < 1) raf = requestAnimationFrame(step); else fromRef.current = to;
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [value, duration]);
+  return <span className={className} style={style}>{format(display)}</span>;
+}
+
 export function Badge({ children, bg, color = '#0c2b1e' }) {
   return <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 800, letterSpacing: '.03em', textTransform: 'uppercase', padding: '3px 8px', borderRadius: 6, background: bg, color }}>{children}</span>;
 }
 
 export function Progress({ value, color = C.green, height = 7 }) {
+  const target = Math.max(0, Math.min(100, value || 0));
+  const [w, setW] = React.useState(() => (prefersReduced() ? target : 0));
+  React.useEffect(() => {
+    if (prefersReduced()) { setW(target); return; }
+    const id = requestAnimationFrame(() => setW(target));
+    return () => cancelAnimationFrame(id);
+  }, [target]);
   return (
     <div style={{ height, borderRadius: height, background: C.track, overflow: 'hidden' }}>
-      <div style={{ height: '100%', width: `${Math.max(0, Math.min(100, value))}%`, borderRadius: height, background: color }} />
+      <div style={{ height: '100%', width: `${w}%`, borderRadius: height, background: color, transition: 'width 0.6s cubic-bezier(0.2, 0.8, 0.3, 1)' }} />
     </div>
   );
 }
@@ -37,13 +68,13 @@ export const SectionTitle = ({ children, right }) => (
   </div>
 );
 
-export function Card({ children, style }) {
-  return <div style={{ background: `linear-gradient(180deg, ${C.panelHi}, ${C.panelLo})`, borderRadius: 15, border: '1px solid rgba(255,255,255,0.07)', boxShadow: '0 5px 16px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.06)', ...style }}>{children}</div>;
+export function Card({ children, style, className }) {
+  return <div className={className} style={{ background: `linear-gradient(180deg, ${C.panelHi}, ${C.panelLo})`, borderRadius: 15, border: '1px solid rgba(255,255,255,0.07)', boxShadow: '0 5px 16px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.06)', ...style }}>{children}</div>;
 }
 
 export function Thumb({ src, alt, from = '#3a4450', to = '#232a32', h = 92, radius = 10, label }) {
   return (
-    <div style={{ position: 'relative', height: h, borderRadius: radius, overflow: 'hidden', background: `radial-gradient(130% 125% at 28% 16%, ${from}, ${to} 82%)`, boxShadow: 'inset 0 0 0 1px rgba(255,255,255,.06), inset 0 -20px 34px rgba(0,0,0,.22)' }}>
+    <div className="rs-thumb" style={{ position: 'relative', height: h, borderRadius: radius, overflow: 'hidden', background: `radial-gradient(130% 125% at 28% 16%, ${from}, ${to} 82%)`, boxShadow: 'inset 0 0 0 1px rgba(255,255,255,.06), inset 0 -20px 34px rgba(0,0,0,.22)' }}>
       {src && <img src={src} alt={alt || ''} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />}
       <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,0) 40%, rgba(0,0,0,.28))', pointerEvents: 'none' }} />
       {label && <span style={{ position: 'absolute', bottom: 6, left: 8, fontSize: 12, fontWeight: 900, color: '#fff', textShadow: '0 2px 4px rgba(0,0,0,.7)' }}>{label}</span>}
@@ -70,7 +101,7 @@ function Stat({ img, value, label, cls }) {
     <div className={cls} style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
       <img src={`/ui/nav/${img}.png`} alt="" width={30} height={30} style={{ objectFit: 'contain', flex: 'none' }} />
       <div style={{ lineHeight: 1.1 }}>
-        <div style={{ fontSize: 18, fontWeight: 800, color: C.text }}>{value}</div>
+        <div style={{ fontSize: 18, fontWeight: 800, color: C.text }}>{typeof value === 'number' ? <CountUp value={value} /> : value}</div>
         <div className="rs-statlabel" style={{ fontSize: 11, color: C.muted, fontWeight: 600 }}>{label}</div>
       </div>
     </div>

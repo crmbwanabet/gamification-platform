@@ -1535,7 +1535,7 @@ export default function GamificationPlatform() {
   );
 
   const v2Stats = {
-    points: user.kwacha.toLocaleString(),
+    points: user.kwacha,
     missionsCount: [...getDailyMissions(), ...PERMANENT_MISSIONS].filter(m => !user.missionsComplete.includes(m.id)).length,
     badges: user.missionsComplete.length,
     xp: user.xp,

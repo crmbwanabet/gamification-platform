@@ -23,11 +23,11 @@ function pickLatestMissions(missionProgress, missionsComplete) {
     .slice(0, 3);
 }
 
-function MissionCard({ m, progress = 0, done = false, onOpen }) {
+function MissionCard({ m, progress = 0, done = false, onOpen, i = 0 }) {
   const pct = done ? 100 : Math.min(100, Math.round((progress / m.target) * 100));
   const state = done ? 'done' : progress > 0 ? 'progress' : 'new';
   return (
-    <Card style={{ position: 'relative', overflow: 'hidden', border: state === 'progress' ? `1.5px solid ${C.teal}` : '1px solid rgba(255,255,255,0.07)' }}>
+    <Card className="card-enter" style={{ position: 'relative', overflow: 'hidden', border: state === 'progress' ? `1.5px solid ${C.teal}` : '1px solid rgba(255,255,255,0.07)', animationDelay: `${i * 60}ms` }}>
       <button onClick={() => onOpen && onOpen(m)} style={{ all: 'unset', display: 'block', width: '100%', boxSizing: 'border-box', padding: 12, cursor: onOpen ? 'pointer' : 'default' }}>
         {state === 'new' && <div style={{ position: 'absolute', top: 12, left: -30, transform: 'rotate(-45deg)', background: C.green, color: '#08210f', fontSize: 10, fontWeight: 900, padding: '3px 34px', letterSpacing: '.05em', zIndex: 2 }}>NEW!</div>}
         <div style={{ fontSize: 13.5, fontWeight: 800, color: C.text, marginBottom: 10, minHeight: 34 }}>{m.name}</div>
@@ -84,7 +84,7 @@ export default function Overview({ points = '2,344', missionsCount = MISSIONS.le
         <section>
           <SectionTitle right={<button onClick={() => go('earn')} style={{ all: 'unset', cursor: 'pointer', fontSize: 12, fontWeight: 700, color: C.sub }}>View all ›</button>}>Latest Missions</SectionTitle>
           <div className="rs-ov-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 14 }}>
-            {latest.map(({ m, progress, done }) => <MissionCard key={m.id} m={m} progress={progress} done={done} onOpen={onOpenMission} />)}
+            {latest.map(({ m, progress, done }, i) => <MissionCard key={m.id} i={i} m={m} progress={progress} done={done} onOpen={onOpenMission} />)}
           </div>
         </section>
 

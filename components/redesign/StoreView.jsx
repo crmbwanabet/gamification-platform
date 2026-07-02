@@ -6,9 +6,9 @@ import RedesignShell, { GreenBtn, SectionTitle, Card, Thumb, Badge, RewardIcon }
 import { IMAGES } from '@/lib/data/images';
 import { STORE_ITEMS } from '@/lib/data/platform';
 
-function StoreCard({ item, canBuy, onBuy }) {
+function StoreCard({ item, canBuy, onBuy, i = 0 }) {
   return (
-    <Card style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+    <Card className="card-enter" style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column', animationDelay: `${i * 45}ms` }}>
       <div style={{ position: 'relative' }}>
         <Thumb src={IMAGES[item.image]} alt={item.name} h={90} radius={0} />
         {item.featured && <span style={{ position: 'absolute', top: 6, left: 6, zIndex: 2 }}><Badge bg={C.gold}>Featured</Badge></span>}
@@ -34,9 +34,9 @@ export default function StoreView({ points = '0', missionsCount = 0, badges = 0,
       <section>
         <SectionTitle>Rewards Store</SectionTitle>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(168px, 1fr))', gap: 12 }}>
-          {STORE_ITEMS.map(item => {
+          {STORE_ITEMS.map((item, i) => {
             const canBuy = kwacha >= item.price.kwacha && (!item.price.gems || gems >= item.price.gems);
-            return <StoreCard key={item.id} item={item} canBuy={canBuy} onBuy={onBuy} />;
+            return <StoreCard key={item.id} i={i} item={item} canBuy={canBuy} onBuy={onBuy} />;
           })}
         </div>
       </section>
