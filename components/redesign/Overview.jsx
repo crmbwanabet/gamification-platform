@@ -1,9 +1,8 @@
 'use client';
 
 import React from 'react';
-import { Coins, Gem } from 'lucide-react';
 import { C } from './tokens';
-import RedesignShell, { Badge, Progress, GreenBtn, SectionTitle, Card, Thumb } from './RedesignShell';
+import RedesignShell, { Badge, Progress, GreenBtn, SectionTitle, Card, Thumb, RewardIcon } from './RedesignShell';
 import DailyReward from './DailyReward';
 import { IMAGES } from '@/lib/data/images';
 import { getDailyMissions, PERMANENT_MISSIONS } from '@/lib/data/missions';
@@ -61,8 +60,8 @@ function StoreRow({ item, onNavigate }) {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginTop: item.desc ? 0 : 8 }}>
           <GreenBtn onClick={() => onNavigate && onNavigate('store')}>Buy Now</GreenBtn>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 12 }}>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 13, fontWeight: 800, color: C.gold }}><Coins size={15} /> {item.price.kwacha}</span>
-            {item.price.gems && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 13, fontWeight: 800, color: C.teal }}><Gem size={14} /> {item.price.gems}</span>}
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 13, fontWeight: 800, color: C.gold }}><RewardIcon kind="coins" size={16} /> {item.price.kwacha}</span>
+            {item.price.gems && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 13, fontWeight: 800, color: C.teal }}><RewardIcon kind="gem" size={15} /> {item.price.gems}</span>}
           </span>
         </div>
       </div>
@@ -98,7 +97,7 @@ export default function Overview({ points = '2,344', missionsCount = MISSIONS.le
               {viking.desc && <div style={{ fontSize: 12, color: C.sub, marginBottom: 10 }}>{viking.desc}</div>}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14, marginTop: viking.desc ? 0 : 10 }}>
                 <GreenBtn onClick={() => go('store')}>Buy Now</GreenBtn>
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 14, fontWeight: 800, color: C.gold }}><Coins size={16} /> {viking.price.kwacha}</span>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 14, fontWeight: 800, color: C.gold }}><RewardIcon kind="coins" size={17} /> {viking.price.kwacha}</span>
               </div>
             </div>
           </Card>

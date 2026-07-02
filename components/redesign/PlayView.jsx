@@ -1,9 +1,8 @@
 'use client';
 
 import React from 'react';
-import { Coins } from 'lucide-react';
 import { C } from './tokens';
-import RedesignShell, { GreenBtn, SectionTitle, Card, Thumb, Badge } from './RedesignShell';
+import RedesignShell, { GreenBtn, SectionTitle, Card, Thumb, Badge, RewardIcon } from './RedesignShell';
 import { IMAGES } from '@/lib/data/images';
 import { MINIGAMES, MATCHES } from '@/lib/data/platform';
 
@@ -45,7 +44,7 @@ function GameCard({ g, free, onPlay }) {
           <div style={{ fontSize: 12.5, fontWeight: 800, color: C.text, lineHeight: 1.2 }}>{g.name}</div>
           <div style={{ marginTop: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
             <span style={{ fontSize: 11, fontWeight: 800, padding: '5px 13px', borderRadius: 7, background: out ? C.track : C.green, color: out ? C.muted : '#08210f' }}>{out ? 'No plays' : 'Play'}</span>
-            <span style={{ fontSize: 10.5, color: C.muted, display: 'inline-flex', alignItems: 'center', gap: 3 }}>{free > 0 ? 'Free' : <><Coins size={11} />{g.cost}</>}</span>
+            <span style={{ fontSize: 10.5, color: C.muted, display: 'inline-flex', alignItems: 'center', gap: 3 }}>{free > 0 ? 'Free' : <><RewardIcon kind="coins" size={13} />{g.cost}</>}</span>
           </div>
         </div>
       </div>

@@ -1,9 +1,8 @@
 'use client';
 
 import React from 'react';
-import { Coins, Gem, Diamond } from 'lucide-react';
 import { C } from './tokens';
-import { GreenBtn } from './RedesignShell';
+import { GreenBtn, RewardIcon } from './RedesignShell';
 
 // Celebratory level-up modal. Driven by a `levelUp` object:
 //   { level, name, icon, reward: { kwacha, gems, diamonds } }
@@ -22,9 +21,9 @@ export default function LevelUpModal({ levelUp, onClose }) {
           <div style={{ background: C.track, borderRadius: 12, padding: '12px 14px', marginBottom: 18 }}>
             <div style={{ fontSize: 10.5, color: C.muted, marginBottom: 8, textTransform: 'uppercase', letterSpacing: '.08em' }}>Rewards</div>
             <div style={{ display: 'flex', justifyContent: 'center', gap: 18, fontSize: 16, fontWeight: 800 }}>
-              {r.kwacha ? <span style={{ color: C.gold, display: 'inline-flex', alignItems: 'center', gap: 5 }}><Coins size={18} />{r.kwacha}</span> : null}
-              {r.gems ? <span style={{ color: C.teal, display: 'inline-flex', alignItems: 'center', gap: 5 }}><Gem size={17} />{r.gems}</span> : null}
-              {r.diamonds ? <span style={{ color: '#7db8ff', display: 'inline-flex', alignItems: 'center', gap: 5 }}><Diamond size={17} />{r.diamonds}</span> : null}
+              {r.kwacha ? <span style={{ color: C.gold, display: 'inline-flex', alignItems: 'center', gap: 5 }}><RewardIcon kind="coins" size={19} />{r.kwacha}</span> : null}
+              {r.gems ? <span style={{ color: C.teal, display: 'inline-flex', alignItems: 'center', gap: 5 }}><RewardIcon kind="gem" size={18} />{r.gems}</span> : null}
+              {r.diamonds ? <span style={{ color: '#7db8ff', display: 'inline-flex', alignItems: 'center', gap: 5 }}><RewardIcon kind="diamond" size={18} />{r.diamonds}</span> : null}
             </div>
           </div>
         ) : null}

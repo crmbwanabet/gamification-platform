@@ -1,13 +1,12 @@
 'use client';
 
 import React from 'react';
-import { Coins, Gem } from 'lucide-react';
 import { C } from './tokens';
-import RedesignShell, { GreenBtn, SectionTitle, Card, Thumb, Badge, Progress } from './RedesignShell';
+import RedesignShell, { GreenBtn, SectionTitle, Card, Thumb, Badge, Progress, RewardIcon } from './RedesignShell';
 import { IMAGES } from '@/lib/data/images';
 import { getDailyMissions, PERMANENT_MISSIONS } from '@/lib/data/missions';
 import { QUESTS, XP_LEVELS, LEVEL_REWARDS, STREAK_REWARDS, getLevel } from '@/lib/data/platform';
-import { Diamond, Check, Lock } from 'lucide-react';
+import { Check, Lock } from 'lucide-react';
 import DailyReward from './DailyReward';
 
 const ALL_MISSIONS = [...getDailyMissions(), ...PERMANENT_MISSIONS];
@@ -22,9 +21,9 @@ const SUBS = [
 function RewardChips({ r }) {
   return (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 12, fontSize: 13, fontWeight: 800 }}>
-      {r.kwacha ? <span style={{ color: C.gold, display: 'inline-flex', alignItems: 'center', gap: 4 }}><Coins size={14} />{r.kwacha}</span> : null}
-      {r.gems ? <span style={{ color: C.teal, display: 'inline-flex', alignItems: 'center', gap: 4 }}><Gem size={13} />{r.gems}</span> : null}
-      {r.diamonds ? <span style={{ color: '#7db8ff', display: 'inline-flex', alignItems: 'center', gap: 4 }}><Diamond size={13} />{r.diamonds}</span> : null}
+      {r.kwacha ? <span style={{ color: C.gold, display: 'inline-flex', alignItems: 'center', gap: 4 }}><RewardIcon kind="coins" size={15} />{r.kwacha}</span> : null}
+      {r.gems ? <span style={{ color: C.teal, display: 'inline-flex', alignItems: 'center', gap: 4 }}><RewardIcon kind="gem" size={14} />{r.gems}</span> : null}
+      {r.diamonds ? <span style={{ color: '#7db8ff', display: 'inline-flex', alignItems: 'center', gap: 4 }}><RewardIcon kind="diamond" size={14} />{r.diamonds}</span> : null}
     </span>
   );
 }
@@ -103,8 +102,8 @@ function MissionCard({ m, progress, done, onOpen }) {
           <Progress value={pct} />
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10, fontSize: 12, fontWeight: 800 }}>
-              <span style={{ color: C.gold, display: 'inline-flex', alignItems: 'center', gap: 4 }}><Coins size={14} />{m.reward.kwacha}</span>
-              {m.reward.gems && <span style={{ color: C.teal, display: 'inline-flex', alignItems: 'center', gap: 4 }}><Gem size={13} />{m.reward.gems}</span>}
+              <span style={{ color: C.gold, display: 'inline-flex', alignItems: 'center', gap: 4 }}><RewardIcon kind="coins" size={15} />{m.reward.kwacha}</span>
+              {m.reward.gems && <span style={{ color: C.teal, display: 'inline-flex', alignItems: 'center', gap: 4 }}><RewardIcon kind="gem" size={14} />{m.reward.gems}</span>}
             </span>
             <span style={{ fontSize: 11, color: C.muted }}>{done ? m.target : (progress || 0)}/{m.target}</span>
           </div>
@@ -133,8 +132,8 @@ function QuestCard({ q, questProgress, questsComplete, onOpen }) {
           <Progress value={pct} />
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10, fontSize: 12, fontWeight: 800 }}>
-              <span style={{ color: C.gold, display: 'inline-flex', alignItems: 'center', gap: 4 }}><Coins size={14} />{q.reward.kwacha}</span>
-              {q.reward.gems && <span style={{ color: C.teal, display: 'inline-flex', alignItems: 'center', gap: 4 }}><Gem size={13} />{q.reward.gems}</span>}
+              <span style={{ color: C.gold, display: 'inline-flex', alignItems: 'center', gap: 4 }}><RewardIcon kind="coins" size={15} />{q.reward.kwacha}</span>
+              {q.reward.gems && <span style={{ color: C.teal, display: 'inline-flex', alignItems: 'center', gap: 4 }}><RewardIcon kind="gem" size={14} />{q.reward.gems}</span>}
             </span>
             <span style={{ fontSize: 11, color: C.muted }}>{stepsDone}/{q.steps.length} steps</span>
           </div>

@@ -1,9 +1,8 @@
 'use client';
 
 import React from 'react';
-import { Coins, Gem } from 'lucide-react';
 import { C } from './tokens';
-import RedesignShell, { GreenBtn, SectionTitle, Card, Thumb, Badge } from './RedesignShell';
+import RedesignShell, { GreenBtn, SectionTitle, Card, Thumb, Badge, RewardIcon } from './RedesignShell';
 import { IMAGES } from '@/lib/data/images';
 import { STORE_ITEMS } from '@/lib/data/platform';
 
@@ -19,8 +18,8 @@ function StoreCard({ item, canBuy, onBuy }) {
         <div style={{ fontSize: 13, fontWeight: 800, color: C.text, lineHeight: 1.2 }}>{item.name}</div>
         <div style={{ marginTop: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 12, fontWeight: 800 }}>
-            <span style={{ color: C.gold, display: 'inline-flex', alignItems: 'center', gap: 4 }}><Coins size={13} />{item.price.kwacha}</span>
-            {item.price.gems && <span style={{ color: C.teal, display: 'inline-flex', alignItems: 'center', gap: 4 }}><Gem size={12} />{item.price.gems}</span>}
+            <span style={{ color: C.gold, display: 'inline-flex', alignItems: 'center', gap: 4 }}><RewardIcon kind="coins" size={15} />{item.price.kwacha}</span>
+            {item.price.gems && <span style={{ color: C.teal, display: 'inline-flex', alignItems: 'center', gap: 4 }}><RewardIcon kind="gem" size={14} />{item.price.gems}</span>}
           </span>
           <button onClick={(e) => canBuy && onBuy && onBuy(item, e?.currentTarget)} disabled={!canBuy} style={{ border: 'none', cursor: canBuy ? 'pointer' : 'not-allowed', fontSize: 11, fontWeight: 800, padding: '6px 14px', borderRadius: 8, background: canBuy ? C.green : C.track, color: canBuy ? '#08210f' : C.muted }}>Buy</button>
         </div>

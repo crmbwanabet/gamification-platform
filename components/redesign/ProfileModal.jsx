@@ -1,9 +1,9 @@
 'use client';
 
 import React from 'react';
-import { Coins, Gem, Diamond, Gamepad2, Target, Trophy, Flame, Users, TrendingUp, X } from 'lucide-react';
+import { Gamepad2, Target, Trophy, Flame, Users, TrendingUp, X } from 'lucide-react';
 import { C } from './tokens';
-import { Progress } from './RedesignShell';
+import { Progress, RewardIcon } from './RedesignShell';
 
 /**
  * Player stats popup in the v2 design. Rendered as a fixed overlay (in the
@@ -14,9 +14,9 @@ export default function ProfileModal({ open, onClose, name = 'Player', level, ne
   if (!open) return null;
   const u = user || {};
   const money = [
-    { icon: <Coins size={18} />, label: 'Kwacha', value: (u.kwacha || 0).toLocaleString(), color: C.gold },
-    { icon: <Gem size={17} />, label: 'Gems', value: (u.gems || 0).toLocaleString(), color: C.teal },
-    { icon: <Diamond size={17} />, label: 'Diamonds', value: (u.diamonds || 0).toLocaleString(), color: '#7db8ff' },
+    { icon: <RewardIcon kind="coins" size={26} />, label: 'Kwacha', value: (u.kwacha || 0).toLocaleString(), color: C.gold },
+    { icon: <RewardIcon kind="gem" size={24} />, label: 'Gems', value: (u.gems || 0).toLocaleString(), color: C.teal },
+    { icon: <RewardIcon kind="diamond" size={24} />, label: 'Diamonds', value: (u.diamonds || 0).toLocaleString(), color: '#7db8ff' },
   ];
   const stats = [
     { icon: <Gamepad2 size={16} />, label: 'Games played', value: u.gamesPlayed || 0 },
