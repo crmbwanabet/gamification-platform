@@ -12,24 +12,39 @@ const MISSIONS = [...getDailyMissions(), ...PERMANENT_MISSIONS];
 const viking = STORE_ITEMS.find(i => i.id === 'viking') || STORE_ITEMS[0];
 const storeMore = STORE_ITEMS.filter(i => i.id !== viking.id).slice(0, 2);
 const wheelGame = MINIGAMES.find(g => g.id === 'wheel');
-const MISSION_STATE = [{ kind: 'done' }, { kind: 'progress', pct: 62, isNew: true }, { kind: 'reward' }];
 
-function MissionCard({ m, state }) {
-  const highlight = state.kind === 'progress';
+// Pick 3 missions that best reflect the player's current progress:
+// in-progress first, then not-started, then completed.
+function pickLatestMissions(missionProgress, missionsComplete) {
+  const rank = (x) => (x.done ? 2 : x.progress > 0 ? 0 : 1);
+  return [...getDailyMissions(), ...PERMANENT_MISSIONS]
+    .map((m) => ({ m, progress: (missionProgress && missionProgress[m.id]) || 0, done: !!(missionsComplete && missionsComplete.includes(m.id)) }))
+    .sort((a, b) => rank(a) - rank(b))
+    .slice(0, 3);
+}
+
+function MissionCard({ m, progress = 0, done = false, onOpen }) {
+  const pct = done ? 100 : Math.min(100, Math.round((progress / m.target) * 100));
+  const state = done ? 'done' : progress > 0 ? 'progress' : 'new';
   return (
-    <Card style={{ padding: 12, position: 'relative', overflow: 'hidden', border: highlight ? `1.5px solid ${C.teal}` : '1px solid rgba(255,255,255,0.07)' }}>
-      {state.isNew && <div style={{ position: 'absolute', top: 12, left: -30, transform: 'rotate(-45deg)', background: C.green, color: '#08210f', fontSize: 10, fontWeight: 900, padding: '3px 34px', letterSpacing: '.05em', zIndex: 2 }}>NEW!</div>}
-      <div style={{ fontSize: 13.5, fontWeight: 800, color: C.text, marginBottom: 10, minHeight: 34 }}>{m.name}</div>
-      <Thumb src={IMAGES[m.image]} alt={m.name} h={78} />
-      <div style={{ marginTop: 10 }}>
-        {state.kind === 'done' && <Badge bg={C.green}>Mission is completed</Badge>}
-        {state.kind === 'progress' && <Badge bg={C.teal} color="#06231f">In progress</Badge>}
-        <div style={{ marginTop: 8 }}>
-          {state.kind === 'reward'
-            ? <div style={{ fontSize: 11, color: C.sub }}><span style={{ color: C.muted }}>Reward:</span> <b style={{ color: C.text }}>{m.reward.kwacha} Points</b></div>
-            : <Progress value={state.kind === 'done' ? 100 : state.pct} />}
+    <Card style={{ position: 'relative', overflow: 'hidden', border: state === 'progress' ? `1.5px solid ${C.teal}` : '1px solid rgba(255,255,255,0.07)' }}>
+      <button onClick={() => onOpen && onOpen(m)} style={{ all: 'unset', display: 'block', width: '100%', boxSizing: 'border-box', padding: 12, cursor: onOpen ? 'pointer' : 'default' }}>
+        {state === 'new' && <div style={{ position: 'absolute', top: 12, left: -30, transform: 'rotate(-45deg)', background: C.green, color: '#08210f', fontSize: 10, fontWeight: 900, padding: '3px 34px', letterSpacing: '.05em', zIndex: 2 }}>NEW!</div>}
+        <div style={{ fontSize: 13.5, fontWeight: 800, color: C.text, marginBottom: 10, minHeight: 34 }}>{m.name}</div>
+        <Thumb src={IMAGES[m.image]} alt={m.name} h={78} />
+        <div style={{ marginTop: 10 }}>
+          {state === 'done' && <Badge bg={C.green}>Mission is completed</Badge>}
+          {state === 'progress' && <Badge bg={C.teal} color="#06231f">In progress</Badge>}
+          {state === 'new' && <div style={{ fontSize: 11, color: C.sub }}><span style={{ color: C.muted }}>Reward:</span> <b style={{ color: C.text }}>{m.reward.kwacha} Points</b></div>}
+          <div style={{ marginTop: 8 }}>
+            <Progress value={pct} />
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6, fontSize: 10.5, color: C.muted }}>
+              <span>{done ? m.target : progress}/{m.target}</span>
+              <span>{pct}%</span>
+            </div>
+          </div>
         </div>
-      </div>
+      </button>
     </Card>
   );
 }
@@ -52,16 +67,17 @@ function StoreRow({ item, onNavigate }) {
   );
 }
 
-export default function Overview({ points = '2,344', missionsCount = MISSIONS.length, badges = 12, xp = 1200, activeTab = 'home', onNavigate } = {}) {
+export default function Overview({ points = '2,344', missionsCount = MISSIONS.length, badges = 12, xp = 1200, activeTab = 'home', onNavigate, missionProgress, missionsComplete, onOpenMission } = {}) {
   const go = (t) => onNavigate && onNavigate(t);
+  const latest = pickLatestMissions(missionProgress, missionsComplete);
   return (
     <RedesignShell points={points} missionsCount={missionsCount} badges={badges} xp={xp} activeTab={activeTab} onNavigate={onNavigate}>
       <div className="rs-ov-grid" style={{ display: 'grid', gridTemplateColumns: '1.35fr 1fr', gap: 26, alignContent: 'start' }}>
 
         <section>
-          <SectionTitle>Latest Missions</SectionTitle>
+          <SectionTitle right={<button onClick={() => go('earn')} style={{ all: 'unset', cursor: 'pointer', fontSize: 12, fontWeight: 700, color: C.sub }}>View all ›</button>}>Latest Missions</SectionTitle>
           <div className="rs-ov-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 14 }}>
-            {MISSIONS.slice(0, 3).map((m, i) => <MissionCard key={m.id} m={m} state={MISSION_STATE[i]} />)}
+            {latest.map(({ m, progress, done }) => <MissionCard key={m.id} m={m} progress={progress} done={done} onOpen={onOpenMission} />)}
           </div>
         </section>
 

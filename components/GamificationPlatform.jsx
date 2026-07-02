@@ -1495,7 +1495,8 @@ export default function GamificationPlatform() {
   // === v2 redesigned Home ===
   if (tab === 'home') {
     return (<>
-      <Overview {...v2Stats} activeTab="home" />
+      <Overview {...v2Stats} activeTab="home"
+        missionProgress={user.missionProgress} missionsComplete={user.missionsComplete} onOpenMission={setSelectedMission} />
       {gameOverlays}
     </>);
   }
