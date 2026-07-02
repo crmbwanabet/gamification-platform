@@ -65,9 +65,9 @@ const NAV = [
   { label: 'Store', img: 'store', tab: 'store', n: STORE_ITEMS.length },
 ];
 
-function Stat({ img, value, label }) {
+function Stat({ img, value, label, cls }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+    <div className={cls} style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
       <img src={`/ui/nav/${img}.png`} alt="" width={30} height={30} style={{ objectFit: 'contain', flex: 'none' }} />
       <div style={{ lineHeight: 1.1 }}>
         <div style={{ fontSize: 18, fontWeight: 800, color: C.text }}>{value}</div>
@@ -88,7 +88,7 @@ function TopBar({ points, missionsCount, badges, lvl, nextLvl, xpPct, onNavigate
         </div>
       </button>
       <div className="rs-stats" style={{ display: 'flex', alignItems: 'center', gap: 26 }}>
-        <Stat img="points" value={points} label="Points" />
+        <Stat img="points" value={points} label="Points" cls="currency-coin-target currency-gem-target currency-diamond-target" />
         <Stat img="missions" value={missionsCount} label="Missions" />
         <Stat img="badges" value={badges} label="Badges" />
       </div>
