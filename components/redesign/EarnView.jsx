@@ -95,14 +95,13 @@ function MissionCard({ m, progress, done, onOpen }) {
     <Card style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column', cursor: 'pointer' }}>
       <button onClick={() => onOpen && onOpen(m)} style={{ all: 'unset', display: 'flex', flexDirection: 'column', cursor: 'pointer' }}>
         <div style={{ position: 'relative' }}>
-          <Thumb src={IMAGES[m.image]} alt={m.name} h={110} radius={0} />
-          <span style={{ position: 'absolute', top: 8, right: 8, zIndex: 2 }}><Badge bg={done ? C.green : d.c} color={done ? '#08210f' : '#08210f'}>{done ? 'Done' : d.label}</Badge></span>
+          <Thumb src={IMAGES[m.image]} alt={m.name} h={78} radius={0} />
+          <span style={{ position: 'absolute', top: 6, right: 6, zIndex: 2 }}><Badge bg={done ? C.green : d.c} color={done ? '#08210f' : '#08210f'}>{done ? 'Done' : d.label}</Badge></span>
         </div>
-        <div style={{ padding: 12 }}>
-          <div style={{ fontSize: 13.5, fontWeight: 800, color: C.text, marginBottom: 2 }}>{m.name}</div>
-          <div style={{ fontSize: 11.5, color: C.sub, marginBottom: 10, minHeight: 32 }}>{m.desc}</div>
+        <div style={{ padding: '10px 11px' }}>
+          <div style={{ fontSize: 12.5, fontWeight: 800, color: C.text, marginBottom: 6, lineHeight: 1.2 }}>{m.name}</div>
           <Progress value={pct} />
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 9 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10, fontSize: 12, fontWeight: 800 }}>
               <span style={{ color: C.gold, display: 'inline-flex', alignItems: 'center', gap: 4 }}><Coins size={14} />{m.reward.kwacha}</span>
               {m.reward.gems && <span style={{ color: C.teal, display: 'inline-flex', alignItems: 'center', gap: 4 }}><Gem size={13} />{m.reward.gems}</span>}
@@ -163,7 +162,7 @@ export default function EarnView({ tab = 'earn.missions', points = '0', missions
       {tab !== 'earn.quests' && tab !== 'earn.rewards' && (
         <section>
           <SectionTitle>Missions</SectionTitle>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))', gap: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(168px, 1fr))', gap: 12 }}>
             {ALL_MISSIONS.map(m => (
               <MissionCard key={m.id} m={m} progress={missionProgress?.[m.id]} done={missionsComplete?.includes(m.id)} onOpen={onOpenMission} />
             ))}

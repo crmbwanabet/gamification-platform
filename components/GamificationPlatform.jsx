@@ -878,6 +878,7 @@ export default function GamificationPlatform() {
     missionProgress: {},
     dailyDay: 1,
     dailyClaimed: false,
+    lastDailyClaim: null,
     referrals: 0,
     gamePlays: { wheel: 3, scratch: 5, dice: 5, highlow: 5, plinko: 5, tapfrenzy: 5, stopclock: 5 },
     triviaPlays: { classicQuiz: 3, speedRound: 5, streakTrivia: 3 },
@@ -929,6 +930,22 @@ export default function GamificationPlatform() {
     }, 1500);
     return () => { if (saveTimer.current) clearTimeout(saveTimer.current); };
   }, [user, session.status]);
+
+  // Daily-reward day rollover: once a new calendar day begins since the last
+  // claim, re-open the claim. Runs on mount and whenever the stored claim date
+  // changes (e.g. after SSO hydration restores yesterday's claim).
+  useEffect(() => {
+    const today = new Date().toDateString();
+    setUser(u => {
+      if (!u.lastDailyClaim || u.lastDailyClaim === today) return u;
+      const days = Math.round((new Date(today) - new Date(u.lastDailyClaim)) / 86400000);
+      if (days <= 0) return u;
+      if (days === 1) return u.dailyClaimed ? { ...u, dailyClaimed: false } : u;
+      // missed one or more days → reset the 7-day cycle and streak
+      if (u.dailyClaimed || u.dailyDay !== 1 || u.streak !== 1) return { ...u, dailyClaimed: false, dailyDay: 1, streak: 1 };
+      return u;
+    });
+  }, [user.lastDailyClaim]);
 
   // Helper functions
   const showNotif = useCallback((msg, type = 'success') => {
@@ -1525,7 +1542,11 @@ export default function GamificationPlatform() {
     if (r.gems) addGems(r.gems);
     if (r.diamonds) addDiamonds(r.diamonds);
     addXP(20);
-    setUser(u => ({ ...u, dailyClaimed: true, dailyDay: u.dailyDay >= 7 ? 1 : u.dailyDay + 1, dailyTasksDone: [...new Set([...u.dailyTasksDone, 'claim'])] }));
+    const today = new Date().toDateString();
+    setUser(u => {
+      const wasYesterday = u.lastDailyClaim && Math.round((new Date(today) - new Date(u.lastDailyClaim)) / 86400000) === 1;
+      return { ...u, dailyClaimed: true, lastDailyClaim: today, dailyDay: u.dailyDay >= 7 ? 1 : u.dailyDay + 1, streak: wasYesterday ? u.streak + 1 : u.streak, dailyTasksDone: [...new Set([...u.dailyTasksDone, 'claim'])] };
+    });
     trackMission('dailyClaimed');
     trackQuest('dailyClaimed', {});
     showNotif(`🎉 +${r.kwacha} Coins claimed!`);
@@ -2227,12 +2248,18 @@ export default function GamificationPlatform() {
                         if (r.gems) addGems(r.gems);
                         if (r.diamonds) addDiamonds(r.diamonds);
                         addXP(20);
-                        setUser(u => ({
-                          ...u,
-                          dailyClaimed: true,
-                          dailyDay: u.dailyDay >= 7 ? 1 : u.dailyDay + 1,
-                          dailyTasksDone: [...new Set([...u.dailyTasksDone, 'claim'])]
-                        }));
+                        const today = new Date().toDateString();
+                        setUser(u => {
+                          const wasYesterday = u.lastDailyClaim && Math.round((new Date(today) - new Date(u.lastDailyClaim)) / 86400000) === 1;
+                          return {
+                            ...u,
+                            dailyClaimed: true,
+                            lastDailyClaim: today,
+                            dailyDay: u.dailyDay >= 7 ? 1 : u.dailyDay + 1,
+                            streak: wasYesterday ? u.streak + 1 : u.streak,
+                            dailyTasksDone: [...new Set([...u.dailyTasksDone, 'claim'])]
+                          };
+                        });
                         trackMission('dailyClaimed');
                         trackMission('xpEarned', { amount: 20 });
                         trackQuest('dailyClaimed', {});

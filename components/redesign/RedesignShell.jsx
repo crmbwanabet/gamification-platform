@@ -74,7 +74,7 @@ function Stat({ img, value, label }) {
 
 function TopBar({ points, missionsCount, badges, lvl, nextLvl, xpPct, onNavigate }) {
   return (
-    <div className="rs-topbar" style={{ display: 'flex', alignItems: 'center', gap: 26, padding: '14px 22px', background: C.bgTop, borderBottom: `1px solid ${C.line}`, boxShadow: '0 2px 10px rgba(0,0,0,.2)' }}>
+    <div className="rs-topbar" style={{ display: 'flex', alignItems: 'center', gap: 26, padding: '14px 22px', background: C.bgTop, borderBottom: `1px solid ${C.line}`, boxShadow: '0 2px 10px rgba(0,0,0,.2)', flexShrink: 0 }}>
       <button onClick={() => onNavigate && onNavigate('me.profile')} title="Your profile" className="rs-profile" style={{ all: 'unset', display: 'flex', alignItems: 'center', gap: 12, width: 168, flex: 'none', cursor: 'pointer', borderRadius: 12, padding: 2 }}>
         <div style={{ width: 46, height: 46, borderRadius: '50%', background: 'linear-gradient(135deg,#7fd7e8,#3a7d8c)', display: 'grid', placeItems: 'center', fontSize: 24, border: `2px solid ${C.teal}` }}>🧑‍🦰</div>
         <div>
@@ -143,7 +143,7 @@ export default function RedesignShell({
 }) {
   const lvl = getLevel(xp), nextLvl = getNextLevel(xp), xpPct = getXPProgress(xp);
   return (
-    <div style={{ minHeight: '100vh', background: 'radial-gradient(130% 90% at 50% -10%, #1f2230, #171922 72%)', color: C.text, fontFamily: "var(--font-body, 'Onest', system-ui, sans-serif)", WebkitFontSmoothing: 'antialiased' }}>
+    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', overflowX: 'hidden', background: 'radial-gradient(130% 90% at 50% -10%, #1f2230, #171922 72%)', color: C.text, fontFamily: "var(--font-body, 'Onest', system-ui, sans-serif)", WebkitFontSmoothing: 'antialiased' }}>
       <style>{`
         @media (max-width: 860px) {
           .rs-sidebar { display: none !important; }
@@ -164,9 +164,9 @@ export default function RedesignShell({
         }
       `}</style>
       <TopBar points={points} missionsCount={missionsCount} badges={badges} lvl={lvl} nextLvl={nextLvl} xpPct={xpPct} onNavigate={onNavigate} />
-      <div style={{ display: 'flex', alignItems: 'stretch' }}>
+      <div style={{ flex: 1, minHeight: 0, display: 'flex', alignItems: 'stretch' }}>
         <Sidebar active={activeTab} onNavigate={onNavigate} />
-        <main className="rs-main" style={{ flex: 1, minWidth: 0, padding: '20px 22px' }}>{children}</main>
+        <main className="rs-main" style={{ flex: 1, minWidth: 0, overflowY: 'auto', WebkitOverflowScrolling: 'touch', padding: '20px 22px' }}>{children}</main>
       </div>
       <BottomNav active={activeTab} onNavigate={onNavigate} />
     </div>
