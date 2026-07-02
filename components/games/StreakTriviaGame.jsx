@@ -1,8 +1,10 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { X } from 'lucide-react';
 import { getRandomQuestion } from '../../lib/data/trivia';
+import { C } from '@/components/redesign/tokens';
+import { RewardIcon } from '@/components/redesign/RedesignShell';
+import { GameShell, GameBtn, OptionBtn } from './gameKit';
 
 export default function StreakTriviaGame({ onClose, onWin, closing }) {
   const [phase, setPhase] = useState('ready');
@@ -14,13 +16,6 @@ export default function StreakTriviaGame({ onClose, onWin, closing }) {
   const [timer, setTimer] = useState(15);
   const [maxStreak, setMaxStreak] = useState(0);
   const timerRef = useRef(null);
-
-  const barColors = [
-    { bg: 'from-rose-600/30 to-pink-700/20', border: 'border-rose-500/40', dot: 'bg-rose-500', hover: 'hover:border-rose-400/60', glow: 'shadow-rose-500/15' },
-    { bg: 'from-blue-600/30 to-indigo-700/20', border: 'border-blue-500/40', dot: 'bg-blue-500', hover: 'hover:border-blue-400/60', glow: 'shadow-blue-500/15' },
-    { bg: 'from-amber-600/30 to-yellow-700/20', border: 'border-amber-400/50', dot: 'bg-amber-500', hover: 'hover:border-amber-400/60', glow: 'shadow-amber-500/15' },
-    { bg: 'from-emerald-600/30 to-green-700/20', border: 'border-emerald-500/40', dot: 'bg-emerald-500', hover: 'hover:border-emerald-400/60', glow: 'shadow-emerald-500/15' },
-  ];
 
   const loadQuestion = () => {
     setQuestion(getRandomQuestion());
@@ -85,190 +80,145 @@ export default function StreakTriviaGame({ onClose, onWin, closing }) {
   const timerPct = (timer / 15) * 100;
   const circumference = 2 * Math.PI * 22;
 
-  // Streak tier coloring
-  const streakColor = streak >= 8 ? 'text-red-400' : streak >= 5 ? 'text-orange-400' : streak >= 3 ? 'text-yellow-400' : 'text-gray-400';
-  const streakGlow = streak >= 5 ? 'drop-shadow(0 0 8px rgba(239,68,68,0.5))' : streak >= 3 ? 'drop-shadow(0 0 6px rgba(234,179,8,0.4))' : 'none';
-
   return (
-    <div className={`fixed inset-0 bg-black/95 flex items-center justify-center z-[70] p-4 ${closing ? "anim-backdrop-close" : "anim-fade-in"}`} onClick={onClose}>
-      <div className={`bg-gradient-to-b from-[#0a1828]/95 via-[#061018]/95 to-[#030810]/95 backdrop-blur-xl rounded-3xl max-w-md w-full border border-red-500/20 overflow-hidden ${closing ? "anim-modal-close" : "anim-scale-in"}`} onClick={(e) => e.stopPropagation()}>
+    <GameShell title="🔥 Streak Trivia" onClose={onClose} closing={closing}>
+      {phase === 'playing' && (
+        <p style={{ textAlign: 'center', color: C.gold, fontSize: 12.5, fontWeight: 700, margin: '-6px 0 14px' }}>Answer or Cash Out!</p>
+      )}
 
-        {/* Header */}
-        <div className="relative px-6 pt-5 pb-4">
-          <div className="absolute inset-0 bg-gradient-to-b from-red-600/10 to-transparent" />
-          <div className="relative flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-red-500 to-orange-600 flex items-center justify-center shadow-lg shadow-red-500/30">
-                <span className="text-lg">🔥</span>
-              </div>
-              <div>
-                <h2 className="font-black text-lg tracking-tight">Streak Trivia</h2>
-                {phase === 'playing' && <span className="text-xs text-orange-400">Answer or Cash Out!</span>}
-              </div>
-            </div>
-            <button type="button" onClick={onClose} className="w-9 h-9 flex items-center justify-center bg-white/5 hover:bg-white/10 rounded-full transition-all">
-              <X className="w-4 h-4" />
-            </button>
+      {/* Ready Screen */}
+      {phase === 'ready' && (
+        <div style={{ textAlign: 'center', padding: '8px 0' }}>
+          <div style={{ width: 112, height: 112, borderRadius: '50%', background: 'rgba(230,173,74,.14)', border: `1px solid ${C.gold}55`, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', boxShadow: '0 0 40px rgba(230,173,74,.15), inset 0 0 30px rgba(230,173,74,.08)' }}>
+            <span style={{ fontSize: 58 }}>🔥</span>
           </div>
+          <h3 style={{ fontSize: 20, fontWeight: 900, marginBottom: 14, color: C.text }}>How Far Can You Go?</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 24, fontSize: 13.5 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'rgba(255,255,255,.04)', borderRadius: 11, padding: 12 }}>
+              <span style={{ fontSize: 20 }}>🪙</span>
+              <span style={{ color: C.sub }}>Earn <span style={{ color: C.gold, fontWeight: 700 }}>25 Coins</span> per correct answer</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'rgba(255,255,255,.04)', borderRadius: 11, padding: 12 }}>
+              <span style={{ fontSize: 20 }}>💰</span>
+              <span style={{ color: C.sub }}><span style={{ color: C.green, fontWeight: 700 }}>Cash out</span> anytime to keep coins</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'rgba(229,87,63,.1)', borderRadius: 11, padding: 12, border: `1px solid ${C.red}33` }}>
+              <span style={{ fontSize: 20 }}>💥</span>
+              <span style={{ color: C.sub }}>Wrong answer = <span style={{ color: C.red, fontWeight: 700 }}>lose everything!</span></span>
+            </div>
+          </div>
+          <GameBtn onClick={startGame}>Start Streak!</GameBtn>
         </div>
+      )}
 
-        <div className="px-6 pb-6">
-          {/* Ready Screen */}
-          {phase === 'ready' && (
-            <div className="text-center py-4">
-              <div className="relative inline-block mb-5">
-                <div className="w-28 h-28 rounded-full bg-gradient-to-br from-red-500/20 to-orange-600/20 border border-red-500/30 flex items-center justify-center mx-auto" style={{ boxShadow: '0 0 40px rgba(239,68,68,0.15), inset 0 0 30px rgba(239,68,68,0.1)' }}>
-                  <span className="text-6xl" style={{ filter: 'drop-shadow(0 0 12px rgba(239,68,68,0.5))' }}>🔥</span>
+      {/* Playing */}
+      {phase === 'playing' && question && (
+        <div>
+          {/* Streak Bar */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 900, color: C.gold, animation: streak >= 3 ? 'streakFire 0.6s ease-in-out infinite' : 'none' }}>
+                  <span style={{ fontSize: 18 }}>🔥</span>
+                  <span style={{ fontSize: 20 }}>{streak}</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'rgba(230,173,74,.15)', padding: '4px 12px', borderRadius: 99, border: `1px solid ${C.gold}33` }}>
+                  <RewardIcon kind="coins" size={14} />
+                  <span style={{ color: C.gold, fontWeight: 900, fontSize: 13 }}>{currentPrize}</span>
                 </div>
               </div>
-              <h3 className="text-xl font-black mb-3">How Far Can You Go?</h3>
-              <div className="space-y-2 mb-6 text-sm">
-                <div className="flex items-center gap-3 bg-white/5 rounded-xl p-3">
-                  <span className="text-xl">🪙</span>
-                  <span className="text-gray-300">Earn <span className="text-yellow-400 font-bold">25 Coins</span> per correct answer</span>
-                </div>
-                <div className="flex items-center gap-3 bg-white/5 rounded-xl p-3">
-                  <span className="text-xl">💰</span>
-                  <span className="text-gray-300"><span className="text-green-400 font-bold">Cash out</span> anytime to keep coins</span>
-                </div>
-                <div className="flex items-center gap-3 bg-red-500/10 rounded-xl p-3 border border-red-500/20">
-                  <span className="text-xl">💥</span>
-                  <span className="text-gray-300">Wrong answer = <span className="text-red-400 font-bold">lose everything!</span></span>
-                </div>
+              {/* Streak Milestones */}
+              <div style={{ display: 'flex', gap: 4 }}>
+                {Array.from({ length: 10 }, (_, i) => (
+                  <div key={i} style={{ flex: 1, height: 6, borderRadius: 99, transition: 'all .3s', background: i < streak ? C.green : C.track, boxShadow: i < streak ? `0 0 4px ${C.green}` : 'none' }} />
+                ))}
               </div>
-              <button type="button" onClick={startGame}
-                className="w-full py-4 bg-gradient-to-r from-red-500 to-orange-600 rounded-xl font-black text-lg hover:scale-[1.02] active:scale-95 transition-all shadow-lg shadow-red-500/30">
-                Start Streak!
-              </button>
             </div>
-          )}
-
-          {/* Playing */}
-          {phase === 'playing' && question && (
-            <div>
-              {/* Streak Bar */}
-              <div className="flex items-center gap-3 mb-4">
-                <div className="flex-1">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className={`flex items-center gap-1.5 font-black ${streakColor}`} style={{ filter: streakGlow, animation: streak >= 3 ? 'streakFire 0.6s ease-in-out infinite' : 'none' }}>
-                      <span className="text-lg">🔥</span>
-                      <span className="text-xl">{streak}</span>
-                    </div>
-                    <div className="flex items-center gap-1.5 bg-yellow-500/15 px-3 py-1 rounded-full border border-yellow-500/20">
-                      <span className="text-sm">🪙</span>
-                      <span className="text-yellow-400 font-black text-sm">{currentPrize}</span>
-                    </div>
-                  </div>
-                  {/* Streak Milestones */}
-                  <div className="flex gap-1">
-                    {Array.from({length: 10}, (_, i) => (
-                      <div key={i} className={`flex-1 h-1.5 rounded-full transition-all duration-300 ${i < streak ? (i < 3 ? 'bg-yellow-500' : i < 5 ? 'bg-orange-500' : i < 8 ? 'bg-red-500' : 'bg-rose-400') : 'bg-gray-800'}`}
-                        style={i < streak ? { boxShadow: `0 0 4px ${i < 3 ? '#eab308' : i < 5 ? '#f97316' : '#ef4444'}` } : {}} />
-                    ))}
-                  </div>
-                </div>
-                {/* Timer */}
-                <div className="relative w-14 h-14 flex-shrink-0">
-                  <svg className="w-14 h-14 -rotate-90" viewBox="0 0 48 48">
-                    <circle cx="24" cy="24" r="22" fill="none" stroke="#0a1520" strokeWidth="3" />
-                    <circle cx="24" cy="24" r="22" fill="none"
-                      stroke={timer <= 5 ? '#ef4444' : timer <= 10 ? '#f59e0b' : '#f97316'}
-                      strokeWidth="3" strokeLinecap="round"
-                      strokeDasharray={circumference}
-                      strokeDashoffset={circumference - (timerPct / 100) * circumference}
-                      style={{ transition: 'stroke-dashoffset 1s linear, stroke 0.3s' }}
-                    />
-                  </svg>
-                  <div className={`absolute inset-0 flex items-center justify-center font-black text-lg ${timer <= 5 ? 'text-red-400' : 'text-white'}`}>
-                    {timer}
-                  </div>
-                </div>
+            {/* Timer */}
+            <div style={{ position: 'relative', width: 56, height: 56, flex: 'none' }}>
+              <svg width="56" height="56" viewBox="0 0 48 48" style={{ transform: 'rotate(-90deg)' }}>
+                <circle cx="24" cy="24" r="22" fill="none" stroke={C.track} strokeWidth="3" />
+                <circle cx="24" cy="24" r="22" fill="none"
+                  stroke={C.gold} strokeWidth="3" strokeLinecap="round"
+                  strokeDasharray={circumference}
+                  strokeDashoffset={circumference - (timerPct / 100) * circumference}
+                  style={{ transition: 'stroke-dashoffset 1s linear' }}
+                />
+              </svg>
+              <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: 18, color: C.gold, animation: timer <= 5 ? 'timerUrgent 0.5s ease-in-out infinite' : 'none' }}>
+                {timer}
               </div>
-
-              {/* Question */}
-              <div className="relative mb-4">
-                <div className="absolute -inset-[1px] bg-gradient-to-r from-orange-500/20 via-red-500/20 to-orange-500/20 rounded-2xl blur-sm" />
-                <div className="relative bg-black/50 rounded-2xl p-5 border border-white/10">
-                  <p className="font-bold text-center leading-relaxed">{question.q}</p>
-                </div>
-              </div>
-
-              {/* Colored Answer Bars */}
-              <div className="space-y-2.5 mb-4">
-                {question.options.map((opt, i) => {
-                  const isCorrect = opt === question.a;
-                  const isSelected = opt === selected;
-                  const c = barColors[i];
-                  let classes, dotClass;
-                  if (showAnswer && isCorrect) {
-                    classes = 'bg-gradient-to-r from-green-600/30 to-emerald-600/20 border-green-400/60 shadow-lg shadow-green-500/20';
-                    dotClass = 'bg-green-500';
-                  } else if (showAnswer && isSelected && !isCorrect) {
-                    classes = 'bg-gradient-to-r from-red-600/30 to-red-700/20 border-red-400/60 shadow-lg shadow-red-500/20';
-                    dotClass = 'bg-red-500';
-                  } else if (showAnswer) {
-                    classes = `bg-gradient-to-r ${c.bg} ${c.border} opacity-40`;
-                    dotClass = c.dot;
-                  } else {
-                    classes = `bg-gradient-to-r ${c.bg} ${c.border} ${c.hover} shadow-md ${c.glow}`;
-                    dotClass = c.dot;
-                  }
-                  return (
-                    <button key={i} type="button" onClick={() => selectAnswer(opt)} disabled={showAnswer}
-                      className={`relative w-full rounded-xl border flex items-center px-4 py-3.5 transition-all duration-200 ${!showAnswer ? 'hover:scale-[1.01] active:scale-[0.98]' : ''} ${classes}`}>
-                      <span className={`w-3 h-3 rounded-full ${dotClass} mr-3 flex-shrink-0 shadow-sm`} />
-                      <span className="font-semibold text-sm flex-1 text-left">{opt}</span>
-                      {showAnswer && isCorrect && <span className="text-green-400 font-bold ml-2">✓</span>}
-                      {showAnswer && isSelected && !isCorrect && <span className="text-red-400 font-bold ml-2">✗</span>}
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Cash Out Button */}
-              {streak > 0 && !showAnswer && (
-                <button type="button" onClick={cashOut}
-                  className="w-full py-4 rounded-2xl font-black text-lg tracking-wide btn-3d btn-3d-green flex items-center justify-center gap-2"
-                  style={{ boxShadow: '0 0 20px rgba(34,197,94,0.25), 0 4px 12px rgba(0,0,0,0.3)' }}>
-                  <span className="text-lg">💰</span> Cash Out — {currentPrize} Coins
-                </button>
-              )}
             </div>
-          )}
+          </div>
 
-          {/* Results */}
-          {phase === 'result' && (
-            <div className="text-center py-2">
-              <div className="relative inline-block mb-4">
-                <div className="text-7xl" style={{ filter: didCashOut ? 'drop-shadow(0 0 20px rgba(34,197,94,0.5))' : 'drop-shadow(0 0 20px rgba(239,68,68,0.5))' }}>
-                  {didCashOut ? '💰' : '💥'}
-                </div>
-              </div>
-              <div className={`text-4xl font-black mb-1 ${didCashOut ? 'bg-gradient-to-r from-green-400 to-emerald-400' : 'bg-gradient-to-r from-red-400 to-orange-400'} bg-clip-text text-transparent`}>
-                Streak: {maxStreak || streak}
-              </div>
-              <div className="text-gray-400 mb-5">
-                {didCashOut ? 'Smart move! Coins secured.' : 'Your streak was broken!'}
-              </div>
-              {didCashOut && currentPrize > 0 && (
-                <div className="bg-gradient-to-r from-green-500/10 to-emerald-500/10 border border-green-500/20 rounded-2xl p-4 mb-5">
-                  <div className="text-green-400 font-black text-2xl mb-1">🪙 +{currentPrize}</div>
-                  <div className="text-green-400/60 text-xs">Coins secured</div>
-                </div>
-              )}
-              {!didCashOut && (
-                <div className="bg-gradient-to-r from-red-500/10 to-orange-500/10 border border-red-500/20 rounded-2xl p-4 mb-5">
-                  <div className="text-red-400 font-bold text-lg mb-1">0 Coins</div>
-                  <div className="text-red-400/60 text-xs">Better luck next time!</div>
-                </div>
-              )}
-              <button type="button" onClick={onClose} className="w-full py-4 rounded-2xl font-black text-lg tracking-wide btn-3d btn-3d-purple">
-                Continue
-              </button>
-            </div>
+          {/* Question */}
+          <div style={{ background: C.track, borderRadius: 16, padding: 18, border: `1px solid ${C.line}`, marginBottom: 16, boxShadow: `0 0 0 1px rgba(230,173,74,.12)` }}>
+            <p style={{ fontWeight: 700, textAlign: 'center', lineHeight: 1.5, color: C.text, margin: 0 }}>{question.q}</p>
+          </div>
+
+          {/* Answer Bars */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
+            {question.options.map((opt, i) => {
+              const isCorrect = opt === question.a;
+              const isSelected = opt === selected;
+              let dotColor = C.muted;
+              const optStyle = { width: '100%', display: 'flex', alignItems: 'center', textAlign: 'left', gap: 12, padding: '13px 14px', fontSize: 14 };
+              if (showAnswer && isCorrect) {
+                optStyle.background = 'rgba(79,169,139,.18)'; optStyle.border = `2px solid ${C.green}`;
+                dotColor = C.green; optStyle.animation = 'correctPop 0.4s ease both';
+              } else if (showAnswer && isSelected && !isCorrect) {
+                optStyle.background = 'rgba(229,87,63,.18)'; optStyle.border = `2px solid ${C.red}`;
+                dotColor = C.red; optStyle.animation = 'wrongShake 0.5s ease both';
+              } else if (showAnswer) {
+                optStyle.opacity = 0.45;
+              }
+              return (
+                <OptionBtn key={i} onClick={() => selectAnswer(opt)} disabled={showAnswer} style={optStyle}>
+                  <span style={{ width: 12, height: 12, borderRadius: '50%', background: dotColor, flex: 'none' }} />
+                  <span style={{ flex: 1, fontWeight: 600 }}>{opt}</span>
+                  {showAnswer && isCorrect && <span style={{ color: C.green, fontWeight: 700, fontSize: 16 }}>✓</span>}
+                  {showAnswer && isSelected && !isCorrect && <span style={{ color: C.red, fontWeight: 700, fontSize: 16 }}>✗</span>}
+                </OptionBtn>
+              );
+            })}
+          </div>
+
+          {/* Cash Out Button */}
+          {streak > 0 && !showAnswer && (
+            <GameBtn onClick={cashOut}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>💰 Cash Out — {currentPrize} Coins</span>
+            </GameBtn>
           )}
         </div>
-      </div>
-    </div>
+      )}
+
+      {/* Results */}
+      {phase === 'result' && (
+        <div style={{ textAlign: 'center', padding: '4px 0' }} className="anim-scale-in">
+          <div style={{ fontSize: 66, marginBottom: 10, animation: didCashOut ? 'symbolPop 0.5s ease both, float 2s ease-in-out 0.5s infinite' : 'symbolPop 0.4s ease both' }}>
+            {didCashOut ? '💰' : '💥'}
+          </div>
+          <div style={{ fontSize: 40, fontWeight: 900, marginBottom: 2, color: didCashOut ? C.green : C.red }}>
+            Streak: {maxStreak || streak}
+          </div>
+          <div style={{ color: C.sub, marginBottom: 20 }}>
+            {didCashOut ? 'Smart move! Coins secured.' : 'Your streak was broken!'}
+          </div>
+          {didCashOut && currentPrize > 0 && (
+            <div style={{ background: C.track, border: `1px solid ${C.line}`, borderRadius: 16, padding: 16, marginBottom: 20 }}>
+              <div style={{ color: C.gold, fontWeight: 900, fontSize: 24, marginBottom: 2, display: 'inline-flex', alignItems: 'center', gap: 6 }}>+{currentPrize} <RewardIcon kind="coins" size={20} /></div>
+              <div style={{ color: C.muted, fontSize: 11.5 }}>Coins secured</div>
+            </div>
+          )}
+          {!didCashOut && (
+            <div style={{ background: 'rgba(229,87,63,.1)', border: `1px solid ${C.red}33`, borderRadius: 16, padding: 16, marginBottom: 20 }}>
+              <div style={{ color: C.red, fontWeight: 700, fontSize: 18, marginBottom: 2 }}>0 Coins</div>
+              <div style={{ color: C.muted, fontSize: 11.5 }}>Better luck next time!</div>
+            </div>
+          )}
+          <GameBtn onClick={onClose}>Continue</GameBtn>
+        </div>
+      )}
+    </GameShell>
   );
 }
