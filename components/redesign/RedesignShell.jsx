@@ -52,8 +52,8 @@ export function Thumb({ src, alt, from = '#3a4450', to = '#232a32', h = 92, radi
 }
 
 /** Small 3D currency icon (kind = coins | gem | diamond) from public/ui/reward. */
-export function RewardIcon({ kind = 'coins', size = 15, style }) {
-  return <img src={`/ui/reward/${kind}.png`} alt="" width={size} height={size} style={{ objectFit: 'contain', verticalAlign: 'middle', flex: 'none', ...style }} />;
+export function RewardIcon({ kind = 'coins', size = 15, style, className }) {
+  return <img src={`/ui/reward/${kind}.png`} alt="" width={size} height={size} className={`icon-pop${className ? ' ' + className : ''}`} style={{ objectFit: 'contain', verticalAlign: 'middle', flex: 'none', ...style }} />;
 }
 
 /* ---------------- shell: top bar + sidebar ------------------------------- */

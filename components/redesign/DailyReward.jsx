@@ -38,7 +38,7 @@ export default function DailyReward({ dailyDay = 1, dailyClaimed = false, onClai
         {/* header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
           <div className="rs-dr-title" style={{ fontSize: 25, fontWeight: 800, color: C.text, fontFamily: "var(--font-display, 'Bricolage Grotesque', sans-serif)", display: 'inline-flex', alignItems: 'center', gap: 10, lineHeight: 1 }}>
-            Daily Reward <span style={{ fontSize: 22 }}>🎁</span>
+            Daily Reward <img src={`${IC}/gift.png`} alt="" width={28} height={28} className="anim-wiggle" style={{ objectFit: 'contain' }} />
           </div>
           <div className="rs-dr-count" style={{ fontSize: 21, fontWeight: 800, color: C.text, fontFamily: "var(--font-display, 'Bricolage Grotesque', sans-serif)", whiteSpace: 'nowrap' }}>
             Day {curDay} / {total}
@@ -100,10 +100,10 @@ export default function DailyReward({ dailyDay = 1, dailyClaimed = false, onClai
                   {past ? (
                     <img src={`${IC}/check.png`} alt="" width={32} height={32} style={{ objectFit: 'contain' }} />
                   ) : grand ? (
-                    <img src={`${IC}/diamond.png`} alt="" width={36} height={36} style={{ objectFit: 'contain', filter: 'drop-shadow(0 2px 5px rgba(0,0,0,.35))' }} />
+                    <img src={`${IC}/diamond.png`} alt="" width={36} height={36} className="anim-breathe" style={{ objectFit: 'contain', filter: 'drop-shadow(0 2px 5px rgba(0,0,0,.35))' }} />
                   ) : (
                     <>
-                      <img src={`${IC}/coins.png`} alt="" width={34} height={34} style={{ objectFit: 'contain', opacity: locked ? 0.92 : 1, filter: locked ? 'saturate(.8) brightness(.9)' : 'none' }} />
+                      <img src={`${IC}/coins.png`} alt="" width={34} height={34} className={isToday ? 'anim-bob' : undefined} style={{ objectFit: 'contain', opacity: locked ? 0.92 : 1, filter: locked ? 'saturate(.8) brightness(.9)' : 'none' }} />
                       {locked && <img src={`${IC}/lock.png`} alt="" width={16} height={16} style={{ position: 'absolute', right: -2, bottom: -3, objectFit: 'contain', filter: 'drop-shadow(0 1px 2px rgba(0,0,0,.55))' }} />}
                     </>
                   )}
