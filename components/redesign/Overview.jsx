@@ -4,6 +4,7 @@ import React from 'react';
 import { Coins, Gem } from 'lucide-react';
 import { C } from './tokens';
 import RedesignShell, { Badge, Progress, GreenBtn, SectionTitle, Card, Thumb } from './RedesignShell';
+import DailyReward from './DailyReward';
 import { IMAGES } from '@/lib/data/images';
 import { getDailyMissions, PERMANENT_MISSIONS } from '@/lib/data/missions';
 import { STORE_ITEMS, MINIGAMES } from '@/lib/data/platform';
@@ -67,11 +68,16 @@ function StoreRow({ item, onNavigate }) {
   );
 }
 
-export default function Overview({ points = '2,344', missionsCount = MISSIONS.length, badges = 12, xp = 1200, activeTab = 'home', onNavigate, missionProgress, missionsComplete, onOpenMission } = {}) {
+export default function Overview({ points = '2,344', missionsCount = MISSIONS.length, badges = 12, xp = 1200, activeTab = 'home', onNavigate, missionProgress, missionsComplete, onOpenMission, dailyDay = 1, dailyClaimed = false, onClaimDaily } = {}) {
   const go = (t) => onNavigate && onNavigate(t);
   const latest = pickLatestMissions(missionProgress, missionsComplete);
   return (
     <RedesignShell points={points} missionsCount={missionsCount} badges={badges} xp={xp} activeTab={activeTab} onNavigate={onNavigate}>
+      {!dailyClaimed && (
+        <div style={{ marginBottom: 22 }}>
+          <DailyReward dailyDay={dailyDay} dailyClaimed={dailyClaimed} onClaim={onClaimDaily} />
+        </div>
+      )}
       <div className="rs-ov-grid" style={{ display: 'grid', gridTemplateColumns: '1.35fr 1fr', gap: 26, alignContent: 'start' }}>
 
         <section>

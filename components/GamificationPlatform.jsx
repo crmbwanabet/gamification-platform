@@ -1518,11 +1518,26 @@ export default function GamificationPlatform() {
     onNavigate: navigateTab,
   };
 
+  const claimDailyReward = (el) => {
+    if (user.dailyClaimed) return;
+    const r = DAILY_REWARDS[user.dailyDay - 1] || DAILY_REWARDS[0];
+    addCoins(r.kwacha);
+    if (r.gems) addGems(r.gems);
+    if (r.diamonds) addDiamonds(r.diamonds);
+    addXP(20);
+    setUser(u => ({ ...u, dailyClaimed: true, dailyDay: u.dailyDay >= 7 ? 1 : u.dailyDay + 1, dailyTasksDone: [...new Set([...u.dailyTasksDone, 'claim'])] }));
+    trackMission('dailyClaimed');
+    trackQuest('dailyClaimed', {});
+    showNotif(`🎉 +${r.kwacha} Coins claimed!`);
+    triggerReward('medium', el || null, { coins: r.kwacha, gems: r.gems, diamonds: r.diamonds, xp: 20 });
+  };
+
   // === v2 redesigned Home ===
   if (tab === 'home') {
     return (<>
       <Overview {...v2Stats} activeTab="home"
-        missionProgress={user.missionProgress} missionsComplete={user.missionsComplete} onOpenMission={setSelectedMission} />
+        missionProgress={user.missionProgress} missionsComplete={user.missionsComplete} onOpenMission={setSelectedMission}
+        dailyDay={user.dailyDay} dailyClaimed={user.dailyClaimed} onClaimDaily={claimDailyReward} />
       {gameOverlays}
     </>);
   }
@@ -1536,9 +1551,10 @@ export default function GamificationPlatform() {
   // === v2 redesigned Earn ===
   if (tab === 'earn' || tab.startsWith('earn.')) {
     return (<>
-      <EarnView {...v2Stats} tab={tab === 'earn' ? 'earn.missions' : tab}
+      <EarnView {...v2Stats} tab={tab === 'earn' ? 'earn.missions' : tab} streak={user.streak}
         missionProgress={user.missionProgress} missionsComplete={user.missionsComplete} onOpenMission={setSelectedMission}
-        questProgress={user.questProgress} questsComplete={user.questsComplete} onOpenQuest={setSelectedQuest} />
+        questProgress={user.questProgress} questsComplete={user.questsComplete} onOpenQuest={setSelectedQuest}
+        dailyDay={user.dailyDay} dailyClaimed={user.dailyClaimed} onClaimDaily={claimDailyReward} />
       {gameOverlays}
     </>);
   }
