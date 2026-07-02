@@ -16,11 +16,19 @@ export async function POST(req) {
 
   const result = verifyBwanabetToken(body?.token);
   if (!result.valid || !result.payload?.id) return NextResponse.json({ error: 'invalid_token' }, { status: 401 });
+  // Fail closed: never persist against an unverified (forgeable) token.
+  if (!result.verified && process.env.SSO_ALLOW_UNVERIFIED !== 'true') {
+    return NextResponse.json({ error: 'token_unverified', reason: 'signing_key_not_configured' }, { status: 401 });
+  }
   const uid = Number(result.payload.id);
 
   const patch = {};
   for (const k of NUMERIC) if (typeof body?.[k] === 'number' && Number.isFinite(body[k])) patch[k] = body[k];
-  if (body?.state && typeof body.state === 'object' && !Array.isArray(body.state)) patch.state = body.state;
+  // Cap the state blob so a client can't stuff arbitrarily large JSON into the row.
+  if (body?.state && typeof body.state === 'object' && !Array.isArray(body.state)) {
+    if (JSON.stringify(body.state).length > 20000) return NextResponse.json({ error: 'state_too_large' }, { status: 413 });
+    patch.state = body.state;
+  }
   if (Object.keys(patch).length === 0) return NextResponse.json({ error: 'nothing_to_update' }, { status: 400 });
 
   const { data, error } = await supabaseAdmin

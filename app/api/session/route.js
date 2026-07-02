@@ -16,9 +16,11 @@ export async function POST(req) {
   if (!result.valid || !result.payload?.id) {
     return NextResponse.json({ error: 'invalid_token', reason: result.reason }, { status: 401 });
   }
-  if (!result.verified) {
-    // Loud reminder: we're trusting an unverified token until the signing key is set.
-    console.warn('[session] bwanabet token signature UNVERIFIED (no BWANABET_JWT_SECRET / _PUBLIC_KEY set)');
+  // Fail closed: a token whose signature was NOT verified (no signing key
+  // configured) is forgeable — reject it unless an operator explicitly opts in.
+  if (!result.verified && process.env.SSO_ALLOW_UNVERIFIED !== 'true') {
+    console.error('[session] REJECTED unverified token — set BWANABET_JWT_SECRET/_PUBLIC_KEY (or SSO_ALLOW_UNVERIFIED=true for dev)');
+    return NextResponse.json({ error: 'token_unverified', reason: 'signing_key_not_configured' }, { status: 401 });
   }
 
   const claims = profileFromClaims(result.payload);
