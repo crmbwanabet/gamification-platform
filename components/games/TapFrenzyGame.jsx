@@ -1,7 +1,10 @@
 'use client'
 
 import React, { useState, useEffect, useRef } from 'react';
-import { HelpCircle, X } from 'lucide-react';
+import { C } from '@/components/redesign/tokens';
+import { RewardIcon } from '@/components/redesign/RedesignShell';
+import TutorialModal from '../modals/TutorialModal';
+import { GameShell, GameBtn } from './gameKit';
 
 function TapFrenzyGame({ onClose, onWin, closing }) {
   const [gameState, setGameState] = useState('ready'); // ready, playing, done
@@ -36,11 +39,11 @@ function TapFrenzyGame({ onClose, onWin, closing }) {
 
   const spawnTarget = () => {
     const types = [
-      { emoji: '🪙', points: 1, size: 48, color: '#fbbf24' },
-      { emoji: '💎', points: 3, size: 40, color: '#a855f7' },
-      { emoji: '⭐', points: 2, size: 44, color: '#3b82f6' },
-      { emoji: '💚', points: 5, size: 36, color: '#22c55e' },
-      { emoji: '💣', points: -3, size: 42, color: '#ef4444' },
+      { emoji: '🪙', points: 1, size: 48, color: C.gold },
+      { emoji: '💎', points: 3, size: 40, color: C.teal },
+      { emoji: '⭐', points: 2, size: 44, color: C.gold },
+      { emoji: '💚', points: 5, size: 36, color: C.green },
+      { emoji: '💣', points: -3, size: 42, color: C.red },
     ];
     const weights = [40, 15, 25, 10, 10];
     const rand = Math.random() * 100;
@@ -85,103 +88,99 @@ function TapFrenzyGame({ onClose, onWin, closing }) {
   const getPrize = () => score >= 30 ? 300 : score >= 20 ? 200 : score >= 10 ? 100 : score >= 5 ? 50 : 10;
 
   return (
-    <div className={`fixed inset-0 bg-[#1a0d26]/95 flex items-center justify-center z-[70] p-4 ${closing ? "anim-backdrop-close" : "anim-fade-in"}`} onClick={onClose}>
-      <div className={`bg-gradient-to-b from-[#0a1520] to-[#030810] rounded-3xl max-w-md w-full p-6 border-0 ${closing ? "anim-modal-close" : "anim-scale-in"}`} onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between mb-4">
-          <button type="button" onClick={() => setShowTutorial(true)} className="p-2 hover:bg-white/10 rounded-full">
-            <HelpCircle className="w-6 h-6 text-purple-400" />
-          </button>
-          <h2 className="text-2xl font-bold">⚡ Tap Frenzy</h2>
-          <button type="button" onClick={onClose} className="p-2 hover:bg-white/10 rounded-full">
-            <X className="w-6 h-6" />
-          </button>
-        </div>
+    <GameShell title="⚡ Tap Frenzy" onClose={onClose} closing={closing} onHelp={() => setShowTutorial(true)}>
+      {showTutorial && <TutorialModal tutorialKey="tapfrenzy" onClose={() => setShowTutorial(false)} />}
 
-        {/* Score & Timer */}
-        {gameState !== 'ready' && (
-          <div className="flex justify-between items-center mb-4">
-            <div className="text-xl font-bold">Score: <span className="text-yellow-400">{score}</span></div>
-            <div className={`text-xl font-bold px-4 py-1 rounded-full ${timeLeft <= 3 ? 'bg-red-500/30 text-red-400 animate-pulse' : 'bg-purple-500/20 text-purple-300'}`}>
-              ⏱️ {timeLeft}s
-            </div>
+      {/* Score & Timer */}
+      {gameState !== 'ready' && (
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+          <div style={{ fontSize: 18, fontWeight: 800, color: C.text }}>
+            Score: <span style={{ color: C.gold }}>{score}</span>
+          </div>
+          <div style={{
+            fontSize: 16, fontWeight: 800, padding: '4px 16px', borderRadius: 999,
+            background: timeLeft <= 3 ? 'rgba(229,87,63,.24)' : 'rgba(53,179,166,.18)',
+            color: timeLeft <= 3 ? C.red : C.teal,
+            animation: timeLeft <= 3 ? 'pulseGlow 1s ease-in-out infinite' : 'none',
+          }}>
+            ⏱️ {timeLeft}s
+          </div>
+        </div>
+      )}
+
+      {/* Game Area */}
+      <div
+        style={{ position: 'relative', height: 350, borderRadius: 16, overflow: 'hidden', border: '1px solid rgba(255,255,255,.09)', background: C.track }}
+      >
+        {gameState === 'ready' && (
+          <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+            <div style={{ fontSize: 60, marginBottom: 16 }}>⚡</div>
+            <p style={{ color: C.sub, textAlign: 'center', marginBottom: 8, fontSize: 14 }}>Tap coins & gems as fast as you can! Avoid bombs 💣</p>
+            <p style={{ fontSize: 13, color: C.muted, marginBottom: 24 }}>You have 10 seconds</p>
+            <GameBtn onClick={startGame} full={false} style={{ padding: '14px 32px', fontSize: 17 }}>⚡ START!</GameBtn>
           </div>
         )}
 
-        {/* Game Area */}
-        <div
-          className="relative rounded-2xl border-0 overflow-hidden"
-          style={{ height: 350, background: 'radial-gradient(ellipse at center, #0a1520 0%, #050a15 100%)' }}
-        >
-          {gameState === 'ready' && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <div className="text-6xl mb-4">⚡</div>
-              <p className="text-gray-400 text-center mb-2 px-4">Tap coins & gems as fast as you can! Avoid bombs 💣</p>
-              <p className="text-sm text-gray-500 mb-6">You have 10 seconds</p>
+        {gameState === 'playing' && (
+          <>
+            {/* Targets */}
+            {targets.map(t => (
               <button
+                key={t.id}
                 type="button"
-                onClick={startGame}
-                className="px-8 py-4 bg-gradient-to-r from-yellow-500 to-orange-600 hover:from-yellow-600 hover:to-orange-700 rounded-xl font-bold text-lg shadow-lg shadow-orange-500/30 hover:scale-105 active:scale-95 transition-all"
+                onClick={(e) => tapTarget(t, e)}
+                className="anim-scale-in"
+                style={{
+                  position: 'absolute',
+                  background: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  transition: 'transform .1s',
+                  left: `${t.x}%`, top: `${t.y}%`,
+                  fontSize: t.size,
+                  filter: `drop-shadow(0 0 8px ${t.color})`,
+                  transform: 'translate(-50%, -50%)',
+                }}
+                onMouseDown={(e) => { e.currentTarget.style.transform = 'translate(-50%, -50%) scale(.75)'; }}
+                onMouseUp={(e) => { e.currentTarget.style.transform = 'translate(-50%, -50%)'; }}
               >
-                ⚡ START!
+                {t.emoji}
               </button>
-            </div>
-          )}
+            ))}
 
-          {gameState === 'playing' && (
-            <>
-              {/* Targets */}
-              {targets.map(t => (
-                <button
-                  key={t.id}
-                  type="button"
-                  onClick={(e) => tapTarget(t, e)}
-                  className="absolute transition-transform duration-100 hover:scale-125 active:scale-75 anim-scale-in"
-                  style={{
-                    left: `${t.x}%`, top: `${t.y}%`,
-                    fontSize: t.size,
-                    filter: `drop-shadow(0 0 8px ${t.color})`,
-                    transform: 'translate(-50%, -50%)',
-                  }}
-                >
-                  {t.emoji}
-                </button>
-              ))}
-
-              {/* Tap score popups */}
-              {taps.map(tap => (
-                <div
-                  key={tap.id}
-                  className="absolute font-black text-xl pointer-events-none"
-                  style={{
-                    left: `${tap.x}%`, top: `${tap.y - 5}%`,
-                    color: tap.points > 0 ? '#22c55e' : '#ef4444',
-                    animation: 'scorePopUp 0.7s ease-out forwards',
-                    textShadow: tap.points > 0 ? '0 0 10px rgba(34,197,94,0.5)' : '0 0 10px rgba(239,68,68,0.5)',
-                  }}
-                >
-                  {tap.points > 0 ? `+${tap.points}` : tap.points}
-                </div>
-              ))}
-            </>
-          )}
-
-          {gameState === 'done' && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ animation: 'resultZoom 0.5s cubic-bezier(0.25, 1, 0.5, 1) both' }}>
-              <div className="text-6xl mb-3" style={{ animation: 'symbolPop 0.5s ease both, float 2s ease-in-out 0.5s infinite' }}>{score >= 20 ? '🏆' : score >= 10 ? '⭐' : '👏'}</div>
-              <div className="text-4xl font-black text-yellow-400 mb-2">{score} Points</div>
-              <div className="text-xl text-green-400 font-bold mb-6" style={{ animation: 'correctPop 0.4s ease 0.3s both' }}>+{getPrize()} Coins!</div>
-              <button
-                type="button"
-                onClick={() => { setGameState('ready'); setScore(0); setTimeLeft(10); }}
-                className="px-8 py-3 bg-gradient-to-r from-purple-500 to-purple-700 hover:from-purple-600 hover:to-purple-800 rounded-xl font-bold"
+            {/* Tap score popups */}
+            {taps.map(tap => (
+              <div
+                key={tap.id}
+                style={{
+                  position: 'absolute',
+                  fontWeight: 900,
+                  fontSize: 20,
+                  pointerEvents: 'none',
+                  left: `${tap.x}%`, top: `${tap.y - 5}%`,
+                  color: tap.points > 0 ? C.green : C.red,
+                  animation: 'scorePopUp 0.7s ease-out forwards',
+                  textShadow: tap.points > 0 ? '0 0 10px rgba(79,169,139,0.5)' : '0 0 10px rgba(229,87,63,0.5)',
+                }}
               >
-                Play Again ⚡
-              </button>
+                {tap.points > 0 ? `+${tap.points}` : tap.points}
+              </div>
+            ))}
+          </>
+        )}
+
+        {gameState === 'done' && (
+          <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', animation: 'resultZoom 0.5s cubic-bezier(0.25, 1, 0.5, 1) both' }}>
+            <div style={{ fontSize: 60, marginBottom: 12, animation: 'symbolPop 0.5s ease both, float 2s ease-in-out 0.5s infinite' }}>{score >= 20 ? '🏆' : score >= 10 ? '⭐' : '👏'}</div>
+            <div style={{ fontSize: 36, fontWeight: 900, color: C.gold, marginBottom: 8 }}>{score} Points</div>
+            <div style={{ fontSize: 20, color: C.green, fontWeight: 800, marginBottom: 24, display: 'inline-flex', alignItems: 'center', gap: 6, animation: 'correctPop 0.4s ease 0.3s both' }}>
+              +{getPrize()} <RewardIcon kind="coins" size={18} />
             </div>
-          )}
-        </div>
+            <GameBtn onClick={() => { setGameState('ready'); setScore(0); setTimeLeft(10); }} full={false} style={{ padding: '12px 30px' }}>Play Again ⚡</GameBtn>
+          </div>
+        )}
       </div>
-    </div>
+    </GameShell>
   );
 }
 
