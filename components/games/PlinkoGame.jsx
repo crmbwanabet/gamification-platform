@@ -501,12 +501,12 @@ function PlinkoGame({ onClose, onWin, closing }) {
   const hasActivity = totalSpent > 0;
 
   return (
-    <div className={`fixed inset-0 bg-[#1a0d26]/95 flex items-center justify-center z-[70] p-4 ${closing ? "anim-backdrop-close" : "anim-fade-in"}`} onClick={onClose}>
-      <div className={`bg-gradient-to-b from-[#0a1520] to-[#030810] rounded-3xl max-w-md w-full p-4 border-0 max-h-[95vh] overflow-y-auto ${closing ? "anim-modal-close" : "anim-scale-in"}`} onClick={(e) => e.stopPropagation()} style={{ scrollbarWidth: 'none' }}>
+    <div className={`fixed inset-0 flex items-center justify-center z-[70] p-4 ${closing ? "anim-backdrop-close" : "anim-fade-in"}`} onClick={onClose} style={{ background: 'rgba(8,10,16,.74)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)' }}>
+      <div className={`rounded-3xl max-w-md w-full p-4 max-h-[95vh] overflow-y-auto ${closing ? "anim-modal-close" : "anim-scale-in"}`} onClick={(e) => e.stopPropagation()} style={{ scrollbarWidth: 'none', background: 'linear-gradient(180deg, #5b616d, #474d58)', border: '1px solid rgba(255,255,255,.09)', color: '#f0f2f4' }}>
         {/* Header */}
         <div className="flex items-center justify-between mb-2">
           <button type="button" onClick={() => setShowTutorial(true)} className="p-1.5 hover:bg-white/10 rounded-full">
-            <HelpCircle className="w-5 h-5 text-purple-400" />
+            <HelpCircle className="w-5 h-5" style={{ color: '#c3c9cf' }} />
           </button>
           <h2 className="text-xl font-black tracking-tight">🔮 Plinko Drop</h2>
           <button type="button" onClick={onClose} className="p-1.5 hover:bg-white/10 rounded-full">
@@ -515,9 +515,9 @@ function PlinkoGame({ onClose, onWin, closing }) {
         </div>
 
         {/* Jackpot banner */}
-        <div className="text-center mb-2 py-1.5 rounded-xl bg-gradient-to-r from-yellow-600/20 via-yellow-500/10 to-yellow-600/20 border border-yellow-500/20">
-          <div className="text-[10px] font-bold text-yellow-600 tracking-wider uppercase">Progressive Jackpot</div>
-          <div className="text-xl font-black text-yellow-400" style={{ textShadow: '0 0 10px rgba(251,191,36,0.3)', animation: 'pulseGlow 2s ease-in-out infinite' }}>
+        <div className="text-center mb-2 py-1.5 rounded-xl" style={{ background: 'linear-gradient(90deg, rgba(230,173,74,.14), rgba(230,173,74,.07), rgba(230,173,74,.14))', border: '1px solid rgba(230,173,74,.22)' }}>
+          <div className="text-[10px] font-bold tracking-wider uppercase" style={{ color: '#e6ad4a' }}>Progressive Jackpot</div>
+          <div className="text-xl font-black" style={{ color: '#e6ad4a', textShadow: '0 0 10px rgba(230,173,74,0.3)', animation: 'pulseGlow 2s ease-in-out infinite' }}>
             🏆 {jackpot} × wager
           </div>
         </div>
@@ -526,27 +526,33 @@ function PlinkoGame({ onClose, onWin, closing }) {
         <div className="flex items-center gap-2 mb-2">
           {/* Risk */}
           <div className="flex gap-1 flex-1">
-            {['low', 'medium', 'high'].map(r => (
-              <button key={r} type="button" disabled={activeBalls > 0}
-                onClick={() => { setRisk(r); resetBoard(); }}
-                className={`flex-1 py-1.5 rounded-lg text-[11px] font-black transition-all ${risk === r
-                  ? r === 'low' ? 'bg-green-500/20 text-green-400 border border-green-500/40'
-                  : r === 'medium' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40'
-                  : 'bg-red-500/20 text-red-400 border border-red-500/40'
-                  : 'bg-white/5 text-gray-500 border border-transparent'
-                }`}
-              >{RISK_CONFIG[r].label}</button>
-            ))}
+            {['low', 'medium', 'high'].map(r => {
+              const active = risk === r;
+              const styles = {
+                low: { bg: 'rgba(79,169,139,.18)', color: '#4fa98b', border: 'rgba(79,169,139,.4)' },
+                medium: { bg: 'rgba(230,173,74,.18)', color: '#e6ad4a', border: 'rgba(230,173,74,.4)' },
+                high: { bg: 'rgba(229,87,63,.18)', color: '#e5573f', border: 'rgba(229,87,63,.4)' },
+              }[r];
+              return (
+                <button key={r} type="button" disabled={activeBalls > 0}
+                  onClick={() => { setRisk(r); resetBoard(); }}
+                  className="flex-1 py-1.5 rounded-lg text-[11px] font-black transition-all"
+                  style={active
+                    ? { background: styles.bg, color: styles.color, border: `1px solid ${styles.border}` }
+                    : { background: 'rgba(255,255,255,.05)', color: '#99a0a8', border: '1px solid transparent' }}
+                >{RISK_CONFIG[r].label}</button>
+              );
+            })}
           </div>
           {/* Wager */}
           <div className="flex items-center gap-1 bg-white/5 rounded-lg p-1">
             {WAGERS.map(w => (
               <button key={w} type="button" disabled={activeBalls > 0}
                 onClick={() => setWager(w)}
-                className={`px-2 py-1 rounded-md text-[11px] font-black transition-all ${wager === w
-                  ? 'bg-purple-500/30 text-purple-400 border border-purple-500/40'
-                  : 'text-gray-500 hover:text-gray-300'
-                }`}
+                className="px-2 py-1 rounded-md text-[11px] font-black transition-all"
+                style={wager === w
+                  ? { background: 'rgba(53,179,166,.3)', color: '#35b3a6', border: '1px solid rgba(53,179,166,.4)' }
+                  : { color: '#99a0a8', border: '1px solid transparent' }}
               >{w}🪙</button>
             ))}
           </div>
@@ -554,11 +560,12 @@ function PlinkoGame({ onClose, onWin, closing }) {
 
         {/* Drop position slider */}
         <div className="flex items-center gap-2 mb-2">
-          <span className="text-[10px] text-gray-500 font-bold w-8">DROP</span>
+          <span className="text-[10px] font-bold w-8" style={{ color: '#99a0a8' }}>DROP</span>
           <input
             type="range" min="15" max="85" value={dropX}
             onChange={(e) => setDropX(Number(e.target.value))}
-            className="flex-1 accent-yellow-500 h-1.5"
+            className="flex-1 h-1.5"
+            style={{ accentColor: '#e6ad4a' }}
           />
         </div>
 
@@ -574,9 +581,9 @@ function PlinkoGame({ onClose, onWin, closing }) {
         {/* Stats bar */}
         {hasActivity && (
           <div className="flex justify-between items-center mt-2 px-1 text-[11px] font-bold">
-            <span className="text-gray-500">Spent: <span className="text-white">{totalSpent}🪙</span></span>
-            <span className="text-gray-500">Won: <span className="text-yellow-400">{totalWon}🪙</span></span>
-            <span className={netProfit >= 0 ? 'text-green-400' : 'text-red-400'}>
+            <span style={{ color: '#99a0a8' }}>Spent: <span style={{ color: '#f0f2f4' }}>{totalSpent}🪙</span></span>
+            <span style={{ color: '#99a0a8' }}>Won: <span style={{ color: '#e6ad4a' }}>{totalWon}🪙</span></span>
+            <span style={{ color: netProfit >= 0 ? '#4fa98b' : '#e5573f' }}>
               {netProfit >= 0 ? '+' : ''}{netProfit} net
             </span>
           </div>
@@ -586,14 +593,14 @@ function PlinkoGame({ onClose, onWin, closing }) {
         {lastResult && activeBalls === 0 && (
           <div className="text-center mt-1" style={{ animation: 'resultZoom 0.4s cubic-bezier(0.34,1.56,0.64,1) both' }}>
             {lastResult.type === 'jackpot' && (
-              <div className="text-lg font-black text-yellow-400" style={{ textShadow: '0 0 20px rgba(251,191,36,0.5)' }}>
+              <div className="text-lg font-black" style={{ color: '#e6ad4a', textShadow: '0 0 20px rgba(230,173,74,0.5)' }}>
                 🏆 JACKPOT! +{lastResult.prize}🪙
               </div>
             )}
-            {lastResult.type === 'bomb' && <div className="text-base font-black text-red-400">💣 BOOM! Lost wager</div>}
-            {lastResult.type === 'obstacle' && <div className="text-base font-black text-red-400">💥 Hit obstacle!</div>}
+            {lastResult.type === 'bomb' && <div className="text-base font-black" style={{ color: '#e5573f' }}>💣 BOOM! Lost wager</div>}
+            {lastResult.type === 'obstacle' && <div className="text-base font-black" style={{ color: '#e5573f' }}>💥 Hit obstacle!</div>}
             {lastResult.type === 'win' && lastResult.prize > 0 && (
-              <div className={`text-base font-black ${lastResult.prize >= 50 ? 'text-yellow-400' : 'text-purple-400'}`}>
+              <div className="text-base font-black" style={{ color: lastResult.prize >= 50 ? '#e6ad4a' : '#35b3a6' }}>
                 +{lastResult.prize}🪙
               </div>
             )}
@@ -603,20 +610,23 @@ function PlinkoGame({ onClose, onWin, closing }) {
         {/* Buttons */}
         <div className="mt-2 flex gap-2">
           <button type="button" onClick={dropBall} disabled={autoDropping}
-            className="flex-1 py-3 rounded-xl font-black text-sm transition-all bg-gradient-to-r from-purple-500 to-purple-700 hover:from-purple-600 hover:to-purple-800 shadow-lg shadow-purple-500/25 hover:scale-[1.02] active:scale-95 disabled:opacity-50"
+            className="flex-1 py-3 rounded-xl font-black text-sm transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-50"
+            style={{ background: 'linear-gradient(180deg,#57b795,#3f9a7b)', color: '#08210f', boxShadow: '0 6px 18px rgba(79,169,139,.4)' }}
           >
             🔮 Drop ({wager}🪙)
           </button>
 
           {!autoDropping ? (
             <button type="button" onClick={() => autoDrop(10)} disabled={activeBalls > 15}
-              className="px-3 py-3 rounded-xl font-black text-[11px] bg-gradient-to-r from-[#f59e0b] to-[#d97706] hover:from-[#d97706] hover:to-[#b45309] shadow-lg shadow-amber-500/20 transition-all hover:scale-105 active:scale-95 disabled:opacity-50"
+              className="px-3 py-3 rounded-xl font-black text-[11px] transition-all hover:scale-105 active:scale-95 disabled:opacity-50"
+              style={{ background: 'linear-gradient(180deg,#3fbfb0,#2f9d92)', color: '#052420', boxShadow: '0 6px 18px rgba(53,179,166,.3)' }}
             >
               ×10
             </button>
           ) : (
             <button type="button" onClick={() => { clearInterval(autoDropRef.current); setAutoDropping(false); }}
-              className="px-3 py-3 rounded-xl font-black text-[11px] bg-red-600/30 text-red-400 border border-red-500/40"
+              className="px-3 py-3 rounded-xl font-black text-[11px]"
+              style={{ background: 'rgba(229,87,63,.3)', color: '#e5573f', border: '1px solid rgba(229,87,63,.4)' }}
             >
               Stop
             </button>
@@ -632,10 +642,10 @@ function PlinkoGame({ onClose, onWin, closing }) {
         </div>
 
         {/* Legend */}
-        <div className="flex justify-center gap-3 mt-2 text-[9px] text-gray-500 font-bold">
-          <span><span className="inline-block w-2 h-2 rounded-full bg-indigo-500 mr-0.5" /> Peg</span>
-          <span><span className="inline-block w-2 h-2 rounded-full bg-purple-400 mr-0.5" /> Moving</span>
-          <span><span className="inline-block w-2 h-2 rounded-full bg-red-500 mr-0.5" /> Obstacle</span>
+        <div className="flex justify-center gap-3 mt-2 text-[9px] font-bold" style={{ color: '#99a0a8' }}>
+          <span><span className="inline-block w-2 h-2 rounded-full mr-0.5" style={{ background: '#a5b4fc' }} /> Peg</span>
+          <span><span className="inline-block w-2 h-2 rounded-full mr-0.5" style={{ background: '#67e8f9' }} /> Moving</span>
+          <span><span className="inline-block w-2 h-2 rounded-full mr-0.5" style={{ background: '#e5573f' }} /> Obstacle</span>
           {risk === 'high' && <span>💣 Bomb slot</span>}
           <span>🏆 Jackpot</span>
         </div>
