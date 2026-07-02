@@ -15,6 +15,7 @@ import Overview from './redesign/Overview';
 import PlayView from './redesign/PlayView';
 import EarnView from './redesign/EarnView';
 import StoreView from './redesign/StoreView';
+import LevelUpModal from './redesign/LevelUpModal';
 // SSO session (bwanabet token -> Supabase profile)
 import { useSession } from './session/SessionProvider';
 
@@ -29,7 +30,7 @@ import {
 import { TUTORIALS } from '../lib/data/tutorials';
 import {
   XP_LEVELS, VIP_TIERS, MINIGAMES, STORE_ITEMS, MATCHES,
-  QUESTS, DAILY_REWARDS, DAILY_FREE_SPIN_ROTATION, getDailyFreeSpinGames,
+  QUESTS, DAILY_REWARDS, LEVEL_REWARDS, STREAK_REWARDS, DAILY_FREE_SPIN_ROTATION, getDailyFreeSpinGames,
   getLevel, getNextLevel, getXPProgress, getVIP
 } from '../lib/data/platform';
 import {
@@ -903,12 +904,15 @@ export default function GamificationPlatform() {
   const session = useSession();
   const hydratedRef = useRef(false);
   const saveTimer = useRef(null);
+  const lastLevelRef = useRef(null);
+  const [levelUp, setLevelUp] = useState(null);
   useEffect(() => {
     if (hydratedRef.current) return;
     if (session.status === 'ready' && session.profile) {
       const saved = session.profile.state;
       if (saved && typeof saved === 'object' && Object.keys(saved).length) {
         setUser(u => ({ ...u, ...saved }));
+        lastLevelRef.current = getLevel(saved.xp || 0).level; // don't award levels already earned
       }
       hydratedRef.current = true;
     }
@@ -1285,6 +1289,27 @@ export default function GamificationPlatform() {
   };
   const navigateTab = (id) => setTab(LEGACY_TAB_MAP[id] || id);
 
+  // Level-up: award LEVEL_REWARDS + celebrate when the player's level increases.
+  useEffect(() => {
+    const curLevel = getLevel(user.xp).level;
+    if (lastLevelRef.current === null) { lastLevelRef.current = curLevel; return; }
+    if (curLevel > lastLevelRef.current) {
+      const total = { kwacha: 0, gems: 0, diamonds: 0 };
+      for (let L = lastLevelRef.current + 1; L <= curLevel; L++) {
+        const r = LEVEL_REWARDS[L];
+        if (r) { total.kwacha += r.kwacha || 0; total.gems += r.gems || 0; total.diamonds += r.diamonds || 0; }
+      }
+      lastLevelRef.current = curLevel;
+      if (total.kwacha) addCoins(total.kwacha);
+      if (total.gems) addGems(total.gems);
+      if (total.diamonds) addDiamonds(total.diamonds);
+      const lvl = getLevel(user.xp);
+      setLevelUp({ level: lvl.level, name: lvl.name, icon: lvl.icon, reward: total });
+      showNotif(`🎉 Level up — ${lvl.name}!`);
+      triggerReward('big', null, { coins: total.kwacha || undefined, gems: total.gems || undefined, diamonds: total.diamonds || undefined });
+    }
+  }, [user.xp]);
+
   // Game + trivia overlays are app-global modals. Extracted so the redesigned
   // (early-returned) tabs can render them too and still launch games.
   const gameOverlays = (
@@ -1481,6 +1506,7 @@ export default function GamificationPlatform() {
       {flyingCoins.map(c => (
         <div key={c.id} className="reward-flying-coin" style={{ left: c.fromX, top: c.fromY, '--fly-dx': `${c.toX - c.fromX}px`, '--fly-dy': `${c.toY - c.fromY}px`, '--fly-dx-half': `${(c.toX - c.fromX) * 0.3}px`, '--fly-dy-half': `${(c.toY - c.fromY) * 0.5 - 60}px` }}>{c.emoji}</div>
       ))}
+      <LevelUpModal levelUp={levelUp} onClose={() => setLevelUp(null)} />
     </>
   );
 
@@ -1627,6 +1653,9 @@ export default function GamificationPlatform() {
           </div>
         </div>
       )}
+
+      {/* Level-up celebration (v2 modal, also shown on old-layout tabs) */}
+      <LevelUpModal levelUp={levelUp} onClose={() => setLevelUp(null)} />
 
       {/* Buy Credits Modal */}
       {showBuyModal && (
