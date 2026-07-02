@@ -1,8 +1,10 @@
 'use client';
 
 import React from 'react';
+import { Check } from 'lucide-react';
 import { C } from './tokens';
-import RedesignShell, { GreenBtn, SectionTitle, Card, Thumb, Badge, RewardIcon } from './RedesignShell';
+import RedesignShell, { SectionTitle, Card, Thumb, Badge, RewardIcon } from './RedesignShell';
+import DailyTriviaChallenge from '@/components/ui/DailyTriviaChallenge';
 import { IMAGES } from '@/lib/data/images';
 import { MINIGAMES, MATCHES } from '@/lib/data/platform';
 
@@ -63,55 +65,64 @@ function GamesGrid({ gamePlays, onPlay }) {
   );
 }
 
-function Predictions({ onNavigate }) {
+const PRED_OPTS = [{ key: 'home', label: '1', sub: 'Home' }, { key: 'draw', label: 'X', sub: 'Draw' }, { key: 'away', label: '2', sub: 'Away' }];
+const oddsFor = (m, k) => (k === 'home' ? m.h : k === 'draw' ? m.d : m.a);
+const pickLabel = (m, c) => (c === 'home' ? `${m.home} win` : c === 'away' ? `${m.away} win` : 'Draw');
+
+function Predictions({ predictions, onPredict }) {
   return (
     <section>
+      <style>{`.rs-odds{transition:background .15s,border-color .15s,transform .1s}.rs-odds:hover{background:#2c303b !important;border-color:rgba(79,169,139,.6) !important}.rs-odds:active{transform:scale(.95)}`}</style>
       <SectionTitle>Match Predictions</SectionTitle>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        {MATCHES.slice(0, 6).map((m) => (
-          <Card key={m.id} style={{ padding: 14, display: 'flex', alignItems: 'center', gap: 14 }}>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 11, color: C.muted, marginBottom: 3 }}>{m.flag} {m.league} · {m.time}</div>
-              <div style={{ fontSize: 14, fontWeight: 800, color: C.text }}>{m.home} <span style={{ color: C.muted }}>vs</span> {m.away}</div>
-            </div>
-            <div style={{ display: 'flex', gap: 6 }}>
-              {[['1', m.h], ['X', m.d], ['2', m.a]].map(([k, v]) => (
-                <div key={k} style={{ minWidth: 46, textAlign: 'center', background: C.track, borderRadius: 8, padding: '6px 8px' }}>
-                  <div style={{ fontSize: 9.5, color: C.muted }}>{k}</div>
-                  <div style={{ fontSize: 13, fontWeight: 800, color: C.text }}>{v}</div>
+        {MATCHES.slice(0, 6).map((m) => {
+          const pred = predictions?.find((p) => p.id === m.id);
+          return (
+            <Card key={m.id} style={{ padding: 14, display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+              <div style={{ flex: 1, minWidth: 150 }}>
+                <div style={{ fontSize: 11, color: C.muted, marginBottom: 3 }}>{m.flag} {m.league} · {m.time}</div>
+                <div style={{ fontSize: 14, fontWeight: 800, color: C.text }}>{m.home} <span style={{ color: C.muted }}>vs</span> {m.away}</div>
+              </div>
+              {pred ? (
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '9px 14px', borderRadius: 10, background: 'rgba(79,169,139,.14)', border: `1px solid ${C.green}` }}>
+                  <Check size={16} color={C.green} strokeWidth={3} />
+                  <span style={{ fontSize: 12.5, fontWeight: 800, color: C.text }}>{pickLabel(m, pred.choice)}</span>
+                  <span style={{ fontSize: 11.5, color: C.green, fontWeight: 700 }}>@ {oddsFor(m, pred.choice)}</span>
                 </div>
-              ))}
-            </div>
-            <GreenBtn onClick={() => onNavigate && onNavigate('play.predictions')}>Bet</GreenBtn>
-          </Card>
-        ))}
+              ) : (
+                <div style={{ display: 'flex', gap: 6 }}>
+                  {PRED_OPTS.map((o) => (
+                    <button key={o.key} className="rs-odds" onClick={(e) => onPredict && onPredict(m, o.key, e.currentTarget)}
+                      style={{ minWidth: 54, textAlign: 'center', background: C.track, border: '1px solid rgba(255,255,255,.06)', borderRadius: 8, padding: '7px 8px', cursor: 'pointer' }}>
+                      <div style={{ fontSize: 9, color: C.muted, fontWeight: 700 }}>{o.sub}</div>
+                      <div style={{ fontSize: 14, fontWeight: 800, color: C.text }}>{oddsFor(m, o.key)}</div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </Card>
+          );
+        })}
       </div>
     </section>
   );
 }
 
-function Daily({ onNavigate }) {
+function Daily({ user, onDailyAnswer, onNavigate }) {
   return (
     <section>
-      <SectionTitle>Daily Hub</SectionTitle>
-      <Card style={{ padding: 16, display: 'flex', gap: 14, alignItems: 'center' }}>
-        <div style={{ width: 120, flex: 'none' }}><Thumb src={IMAGES.dailyChallenge || IMAGES.brainQuiz} alt="Daily" h={90} /></div>
-        <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 15, fontWeight: 800, marginBottom: 4 }}>Daily challenge + free spins</div>
-          <div style={{ fontSize: 12, color: C.sub, marginBottom: 12 }}>Answer today's trivia and claim your free spins & coin bonus.</div>
-          <GreenBtn onClick={() => onNavigate && onNavigate('play.daily')}>Open Daily Hub</GreenBtn>
-        </div>
-      </Card>
+      <SectionTitle>Daily Challenge</SectionTitle>
+      <DailyTriviaChallenge user={user} onAnswer={onDailyAnswer} onNavigate={onNavigate} />
     </section>
   );
 }
 
-export default function PlayView({ tab = 'play.minigames', points = '0', missionsCount = 0, badges = 0, xp = 0, gamePlays, onNavigate, onOpenProfile, onPlay }) {
+export default function PlayView({ tab = 'play.minigames', points = '0', missionsCount = 0, badges = 0, xp = 0, gamePlays, onNavigate, onOpenProfile, onPlay, predictions, onPredict, user, onDailyAnswer }) {
   return (
     <RedesignShell points={points} missionsCount={missionsCount} badges={badges} xp={xp} activeTab="play" onNavigate={onNavigate} onOpenProfile={onOpenProfile}>
       <SubNav tab={tab} onNavigate={onNavigate} />
-      {tab === 'play.predictions' && <Predictions onNavigate={onNavigate} />}
-      {tab === 'play.daily' && <Daily onNavigate={onNavigate} />}
+      {tab === 'play.predictions' && <Predictions predictions={predictions} onPredict={onPredict} />}
+      {tab === 'play.daily' && <Daily user={user} onDailyAnswer={onDailyAnswer} onNavigate={onNavigate} />}
       {(tab === 'play' || tab === 'play.minigames' || (!tab.startsWith('play.predictions') && !tab.startsWith('play.daily'))) && <GamesGrid gamePlays={gamePlays} onPlay={onPlay} />}
     </RedesignShell>
   );

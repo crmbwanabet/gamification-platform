@@ -1561,6 +1561,16 @@ export default function GamificationPlatform() {
     triggerReward('medium', el || null, { coins: r.kwacha, gems: r.gems, diamonds: r.diamonds, xp: 20 });
   };
 
+  const placePrediction = (m, choice, el) => {
+    if (user.predictions.find(p => p.id === m.id)) return;
+    const amt = m.featured ? 10 : 5;
+    setUser(u => ({ ...u, predictions: [...u.predictions, { id: m.id, choice }] }));
+    addXP(amt);
+    addCoins(amt);
+    showNotif(`🎯 Prediction placed! +${amt} XP`);
+    triggerReward('small', el || null, { coins: amt, xp: amt });
+  };
+
   // === v2 redesigned Home ===
   if (tab === 'home') {
     return (<>
@@ -1573,7 +1583,9 @@ export default function GamificationPlatform() {
   // === v2 redesigned Play ===
   if (tab === 'play' || tab.startsWith('play.')) {
     return (<>
-      <PlayView {...v2Stats} tab={tab} gamePlays={user.gamePlays} onPlay={playGame} />
+      <PlayView {...v2Stats} tab={tab} gamePlays={user.gamePlays} onPlay={playGame}
+        predictions={user.predictions} onPredict={placePrediction}
+        user={user} onDailyAnswer={handleDailyChallenge} />
       {gameOverlays}
     </>);
   }
