@@ -58,27 +58,29 @@ function StoreRow({ item, onNavigate }) {
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 13.5, fontWeight: 800, color: C.text }}>{item.name}</div>
         {item.desc && <div style={{ fontSize: 11.5, color: C.sub, margin: '2px 0 8px' }}>{item.desc}</div>}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: item.desc ? 0 : 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginTop: item.desc ? 0 : 8 }}>
           <GreenBtn onClick={() => onNavigate && onNavigate('store')}>Buy Now</GreenBtn>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 13, fontWeight: 800, color: C.gold }}><Coins size={15} /> {item.price.kwacha}</span>
-          {item.price.gems && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 13, fontWeight: 800, color: C.teal }}><Gem size={14} /> {item.price.gems}</span>}
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 12 }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 13, fontWeight: 800, color: C.gold }}><Coins size={15} /> {item.price.kwacha}</span>
+            {item.price.gems && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 13, fontWeight: 800, color: C.teal }}><Gem size={14} /> {item.price.gems}</span>}
+          </span>
         </div>
       </div>
     </Card>
   );
 }
 
-export default function Overview({ points = '2,344', missionsCount = MISSIONS.length, badges = 12, xp = 1200, activeTab = 'home', onNavigate, missionProgress, missionsComplete, onOpenMission, dailyDay = 1, dailyClaimed = false, onClaimDaily } = {}) {
+export default function Overview({ points = '2,344', missionsCount = MISSIONS.length, badges = 12, xp = 1200, activeTab = 'home', onNavigate, onOpenProfile, missionProgress, missionsComplete, onOpenMission, dailyDay = 1, dailyClaimed = false, onClaimDaily } = {}) {
   const go = (t) => onNavigate && onNavigate(t);
   const latest = pickLatestMissions(missionProgress, missionsComplete);
   return (
-    <RedesignShell points={points} missionsCount={missionsCount} badges={badges} xp={xp} activeTab={activeTab} onNavigate={onNavigate}>
+    <RedesignShell points={points} missionsCount={missionsCount} badges={badges} xp={xp} activeTab={activeTab} onNavigate={onNavigate} onOpenProfile={onOpenProfile}>
       {!dailyClaimed && (
         <div style={{ marginBottom: 22 }}>
           <DailyReward dailyDay={dailyDay} dailyClaimed={dailyClaimed} onClaim={onClaimDaily} />
         </div>
       )}
-      <div className="rs-ov-grid" style={{ display: 'grid', gridTemplateColumns: '1.35fr 1fr', gap: 26, alignContent: 'start' }}>
+      <div className="rs-ov-grid" style={{ display: 'grid', gridTemplateColumns: '1.35fr 1fr', gap: 26, alignContent: 'start', maxWidth: 1240, margin: '0 auto', width: '100%' }}>
 
         <section>
           <SectionTitle right={<button onClick={() => go('earn')} style={{ all: 'unset', cursor: 'pointer', fontSize: 12, fontWeight: 700, color: C.sub }}>View all ›</button>}>Latest Missions</SectionTitle>
@@ -91,9 +93,10 @@ export default function Overview({ points = '2,344', missionsCount = MISSIONS.le
           <SectionTitle>Featured Reward</SectionTitle>
           <Card style={{ padding: 14, display: 'flex', gap: 14, alignItems: 'center' }}>
             <div style={{ width: 120, flex: 'none' }}><Thumb src={IMAGES[viking.image]} alt={viking.name} h={96} /></div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 15, fontWeight: 800, marginBottom: 10 }}>{viking.name}</div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 15, fontWeight: 800, marginBottom: 4 }}>{viking.name}</div>
+              {viking.desc && <div style={{ fontSize: 12, color: C.sub, marginBottom: 10 }}>{viking.desc}</div>}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14, marginTop: viking.desc ? 0 : 10 }}>
                 <GreenBtn onClick={() => go('store')}>Buy Now</GreenBtn>
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 14, fontWeight: 800, color: C.gold }}><Coins size={16} /> {viking.price.kwacha}</span>
               </div>

@@ -29,9 +29,9 @@ function StoreCard({ item, canBuy, onBuy }) {
   );
 }
 
-export default function StoreView({ points = '0', missionsCount = 0, badges = 0, xp = 0, onNavigate, onBuy, kwacha = 0, gems = 0 }) {
+export default function StoreView({ points = '0', missionsCount = 0, badges = 0, xp = 0, onNavigate, onOpenProfile, onBuy, kwacha = 0, gems = 0 }) {
   return (
-    <RedesignShell points={points} missionsCount={missionsCount} badges={badges} xp={xp} activeTab="store" onNavigate={onNavigate}>
+    <RedesignShell points={points} missionsCount={missionsCount} badges={badges} xp={xp} activeTab="store" onNavigate={onNavigate} onOpenProfile={onOpenProfile}>
       <section>
         <SectionTitle>Rewards Store</SectionTitle>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(168px, 1fr))', gap: 12 }}>

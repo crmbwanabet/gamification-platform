@@ -72,10 +72,10 @@ function Stat({ img, value, label }) {
   );
 }
 
-function TopBar({ points, missionsCount, badges, lvl, nextLvl, xpPct, onNavigate }) {
+function TopBar({ points, missionsCount, badges, lvl, nextLvl, xpPct, onNavigate, onOpenProfile }) {
   return (
     <div className="rs-topbar" style={{ display: 'flex', alignItems: 'center', gap: 26, padding: '14px 22px', background: C.bgTop, borderBottom: `1px solid ${C.line}`, boxShadow: '0 2px 10px rgba(0,0,0,.2)', flexShrink: 0 }}>
-      <button onClick={() => onNavigate && onNavigate('me.profile')} title="Your profile" className="rs-profile" style={{ all: 'unset', display: 'flex', alignItems: 'center', gap: 12, width: 168, flex: 'none', cursor: 'pointer', borderRadius: 12, padding: 2 }}>
+      <button onClick={() => (onOpenProfile ? onOpenProfile() : onNavigate && onNavigate('me.profile'))} title="Your profile" className="rs-profile" style={{ all: 'unset', display: 'flex', alignItems: 'center', gap: 12, width: 168, flex: 'none', cursor: 'pointer', borderRadius: 12, padding: 2 }}>
         <div style={{ width: 46, height: 46, borderRadius: '50%', background: 'linear-gradient(135deg,#7fd7e8,#3a7d8c)', display: 'grid', placeItems: 'center', fontSize: 24, border: `2px solid ${C.teal}` }}>🧑‍🦰</div>
         <div>
           <div style={{ fontSize: 15, fontWeight: 800, color: C.text }}>Player</div>
@@ -139,7 +139,7 @@ function BottomNav({ active = 'home', onNavigate }) {
 
 export default function RedesignShell({
   points = '0', missionsCount = 0, badges = 0, xp = 0,
-  activeTab = 'home', onNavigate, children,
+  activeTab = 'home', onNavigate, onOpenProfile, children,
 }) {
   const lvl = getLevel(xp), nextLvl = getNextLevel(xp), xpPct = getXPProgress(xp);
   return (
@@ -163,7 +163,7 @@ export default function RedesignShell({
           .rs-stats .rs-statlabel { display: none; }
         }
       `}</style>
-      <TopBar points={points} missionsCount={missionsCount} badges={badges} lvl={lvl} nextLvl={nextLvl} xpPct={xpPct} onNavigate={onNavigate} />
+      <TopBar points={points} missionsCount={missionsCount} badges={badges} lvl={lvl} nextLvl={nextLvl} xpPct={xpPct} onNavigate={onNavigate} onOpenProfile={onOpenProfile} />
       <div style={{ flex: 1, minHeight: 0, display: 'flex', alignItems: 'stretch' }}>
         <Sidebar active={activeTab} onNavigate={onNavigate} />
         <main className="rs-main" style={{ flex: 1, minWidth: 0, overflowY: 'auto', WebkitOverflowScrolling: 'touch', padding: '20px 22px' }}>{children}</main>

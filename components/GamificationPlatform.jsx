@@ -16,6 +16,7 @@ import PlayView from './redesign/PlayView';
 import EarnView from './redesign/EarnView';
 import StoreView from './redesign/StoreView';
 import LevelUpModal from './redesign/LevelUpModal';
+import ProfileModal from './redesign/ProfileModal';
 // SSO session (bwanabet token -> Supabase profile)
 import { useSession } from './session/SessionProvider';
 
@@ -907,6 +908,7 @@ export default function GamificationPlatform() {
   const saveTimer = useRef(null);
   const lastLevelRef = useRef(null);
   const [levelUp, setLevelUp] = useState(null);
+  const [showProfile, setShowProfile] = useState(false);
   useEffect(() => {
     if (hydratedRef.current) return;
     if (session.status === 'ready' && session.profile) {
@@ -1524,6 +1526,11 @@ export default function GamificationPlatform() {
         <div key={c.id} className="reward-flying-coin" style={{ left: c.fromX, top: c.fromY, '--fly-dx': `${c.toX - c.fromX}px`, '--fly-dy': `${c.toY - c.fromY}px`, '--fly-dx-half': `${(c.toX - c.fromX) * 0.3}px`, '--fly-dy-half': `${(c.toY - c.fromY) * 0.5 - 60}px` }}>{c.emoji}</div>
       ))}
       <LevelUpModal levelUp={levelUp} onClose={() => setLevelUp(null)} />
+      <ProfileModal
+        open={showProfile} onClose={() => setShowProfile(false)}
+        name={session?.profile?.username || session?.profile?.first_name || 'Player'}
+        level={level} nextLevel={nextLevel} xpPct={xpProgress} vip={vip} user={user}
+      />
     </>
   );
 
@@ -1533,6 +1540,7 @@ export default function GamificationPlatform() {
     badges: user.missionsComplete.length,
     xp: user.xp,
     onNavigate: navigateTab,
+    onOpenProfile: () => setShowProfile(true),
   };
 
   const claimDailyReward = (el) => {
