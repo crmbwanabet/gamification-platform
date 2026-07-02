@@ -1,8 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import { HelpCircle, X } from 'lucide-react';
+import { C } from '@/components/redesign/tokens';
+import { RewardIcon } from '@/components/redesign/RedesignShell';
 import TutorialModal from '../modals/TutorialModal';
+import { GameShell, GameBtn, OptionBtn } from './gameKit';
 
 export default function DiceGame({ onClose, onWin, closing }) {
   const [dice1, setDice1] = useState(1);
@@ -42,28 +44,25 @@ export default function DiceGame({ onClose, onWin, closing }) {
     }, 60);
   };
 
-  const DiceFace = ({ value, color = 'red' }) => {
+  const DiceFace = ({ value, tint }) => {
     const dots = {
-      1: [[50,50]],
-      2: [[25,25],[75,75]],
-      3: [[25,25],[50,50],[75,75]],
-      4: [[25,25],[75,25],[25,75],[75,75]],
-      5: [[25,25],[75,25],[50,50],[25,75],[75,75]],
-      6: [[25,25],[75,25],[25,50],[75,50],[25,75],[75,75]]
+      1: [[50, 50]],
+      2: [[25, 25], [75, 75]],
+      3: [[25, 25], [50, 50], [75, 75]],
+      4: [[25, 25], [75, 25], [25, 75], [75, 75]],
+      5: [[25, 25], [75, 25], [50, 50], [25, 75], [75, 75]],
+      6: [[25, 25], [75, 25], [25, 50], [75, 50], [25, 75], [75, 75]],
     };
-
     return (
-      <div
-        className={`w-24 h-24 rounded-2xl shadow-2xl transition-transform duration-200 ${rolling ? '' : 'hover:scale-105'}`}
-        style={{
-          background: color === 'red' ? 'linear-gradient(135deg, #ef4444, #dc2626)' : 'linear-gradient(135deg, #3b82f6, #2563eb)',
-          animation: rolling ? 'diceRollSpin 0.6s ease infinite' : (result && !rolling ? 'diceLand 0.4s ease-out both' : 'none'),
-          boxShadow: `0 8px 24px ${color === 'red' ? 'rgba(239,68,68,0.3)' : 'rgba(59,130,246,0.3)'}`,
-        }}
-      >
-        <svg viewBox="0 0 100 100" className="w-full h-full p-2">
+      <div style={{
+        width: 92, height: 92, borderRadius: 18,
+        background: 'linear-gradient(150deg, #fbfcf8, #d7dbe1)',
+        boxShadow: `0 10px 26px rgba(0,0,0,.35), inset 0 0 0 2px ${tint}55, inset 0 -8px 14px rgba(0,0,0,.08)`,
+        animation: rolling ? 'diceRollSpin 0.6s ease infinite' : (result && !rolling ? 'diceLand 0.4s ease-out both' : 'none'),
+      }}>
+        <svg viewBox="0 0 100 100" style={{ width: '100%', height: '100%', padding: 8 }}>
           {dots[value]?.map(([x, y], i) => (
-            <circle key={i} cx={x} cy={y} r="12" fill="white" className="drop-shadow-md" />
+            <circle key={i} cx={x} cy={y} r="11" fill={C.bg} />
           ))}
         </svg>
       </div>
@@ -71,73 +70,38 @@ export default function DiceGame({ onClose, onWin, closing }) {
   };
 
   return (
-    <div className={`fixed inset-0 bg-[#1a0d26]/95 flex items-center justify-center z-[70] p-4 ${closing ? "anim-backdrop-close" : "anim-fade-in"}`} onClick={onClose}>
+    <GameShell title="🎲 Lucky Dice" onClose={onClose} closing={closing} onHelp={() => setShowTutorial(true)}>
       {showTutorial && <TutorialModal tutorialKey="dice" onClose={() => setShowTutorial(false)} />}
 
-      <div className={`bg-gradient-to-b from-[#0a1520] to-[#030810] rounded-3xl max-w-md w-full p-6 border-0 ${closing ? "anim-modal-close" : "anim-scale-in"}`} onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between mb-4">
-          <button type="button" onClick={() => setShowTutorial(true)} className="p-2 hover:bg-white/10 rounded-full">
-            <HelpCircle className="w-6 h-6 text-purple-400" />
-          </button>
-          <h2 className="text-2xl font-bold">🎲 Lucky Dice</h2>
-          <button type="button" onClick={onClose} className="p-2 hover:bg-white/10 rounded-full">
-            <X className="w-6 h-6" />
-          </button>
-        </div>
+      <p style={{ textAlign: 'center', color: C.sub, marginBottom: 22, fontSize: 13.5 }}>Guess the total (2–12) and win big!</p>
 
-        <p className="text-center text-gray-400 mb-6">Guess the total (2-12) and win big!</p>
-
-        <div className="flex justify-center gap-8 mb-8 py-4">
-          <DiceFace value={dice1} color="red" />
-          <DiceFace value={dice2} color="blue" />
-        </div>
-
-        {!result && (
-          <>
-            <p className="text-center text-sm text-gray-400 mb-3">Select your guess:</p>
-            <div className="grid grid-cols-6 gap-2 mb-6">
-              {[2,3,4,5,6,7,8,9,10,11,12].map(n => (
-                <button
-                  key={n}
-                  type="button"
-                  onClick={() => setGuess(n)}
-                  disabled={rolling}
-                  className={`py-3 rounded-xl font-bold text-lg transition-all ${guess === n ? 'bg-gradient-to-br from-purple-400 to-purple-600 scale-110 shadow-lg shadow-purple-500/50' : 'bg-[#2d1a3f]/40 hover:bg-purple-900/30 border border-white/10 hover:scale-105'}`}
-                >
-                  {n}
-                </button>
-              ))}
-            </div>
-            <button
-              type="button"
-              onClick={roll}
-              disabled={rolling || guess === null}
-              className={`w-full py-4 rounded-xl font-bold text-lg transition-all ${rolling || guess === null ? 'bg-gray-600' : 'bg-gradient-to-r from-red-500 to-pink-600 hover:from-red-600 hover:to-pink-700 shadow-lg shadow-red-500/30'}`}
-            >
-              {rolling ? '🎲 Rolling...' : '🎲 Roll Dice!'}
-            </button>
-          </>
-        )}
-
-        {result && (
-          <div className="text-center" style={{ animation: 'resultZoom 0.5s cubic-bezier(0.25, 1, 0.5, 1) both' }}>
-            <div className="text-6xl mb-4" style={{ animation: result.won ? 'symbolPop 0.5s ease both, float 2s ease-in-out 0.5s infinite' : 'symbolPop 0.4s ease both' }}>{result.won ? '🎯' : result.close ? '👍' : '😢'}</div>
-            <p className="text-xl mb-2">
-              Total: <span className="text-4xl text-yellow-400 font-black">{result.total}</span>
-            </p>
-            <p className={`text-2xl font-bold mb-6 ${result.won ? 'text-green-400' : result.close ? 'text-yellow-400' : 'text-gray-400'}`} style={{ animation: result.won ? 'correctPop 0.5s ease both' : result.prize === 0 ? 'wrongShake 0.5s ease both' : 'none' }}>
-              {result.won ? `🎉 EXACT! +${result.prize} Coins!` : result.close ? `Close! +${result.prize} Coins` : 'Better luck next time!'}
-            </p>
-            <button
-              type="button"
-              onClick={() => { setResult(null); setGuess(null); }}
-              className="px-8 py-3 bg-gradient-to-r from-purple-500 to-purple-700 hover:from-purple-600 hover:to-purple-800 rounded-xl font-bold text-lg"
-            >
-              Play Again 🎲
-            </button>
-          </div>
-        )}
+      <div style={{ display: 'flex', justifyContent: 'center', gap: 28, marginBottom: 26, padding: '4px 0' }}>
+        <DiceFace value={dice1} tint={C.gold} />
+        <DiceFace value={dice2} tint={C.teal} />
       </div>
-    </div>
+
+      {!result && (
+        <>
+          <p style={{ textAlign: 'center', fontSize: 12.5, color: C.muted, marginBottom: 12, fontWeight: 700 }}>Select your guess</p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 8, marginBottom: 20 }}>
+            {[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((n) => (
+              <OptionBtn key={n} selected={guess === n} disabled={rolling} onClick={() => setGuess(n)}>{n}</OptionBtn>
+            ))}
+          </div>
+          <GameBtn onClick={roll} disabled={rolling || guess === null}>{rolling ? '🎲 Rolling…' : '🎲 Roll Dice!'}</GameBtn>
+        </>
+      )}
+
+      {result && (
+        <div style={{ textAlign: 'center' }} className="anim-scale-in">
+          <div style={{ fontSize: 58, marginBottom: 10, animation: result.won ? 'symbolPop 0.5s ease both, float 2s ease-in-out 0.5s infinite' : 'symbolPop 0.4s ease both' }}>{result.won ? '🎯' : result.close ? '👍' : '😢'}</div>
+          <p style={{ fontSize: 15, color: C.sub, marginBottom: 6 }}>Total: <span style={{ fontSize: 34, color: C.gold, fontWeight: 900, verticalAlign: 'middle' }}>{result.total}</span></p>
+          <p style={{ fontSize: 20, fontWeight: 800, margin: '2px 0 20px', display: 'inline-flex', alignItems: 'center', gap: 7, color: result.won ? C.green : result.close ? C.gold : C.muted, animation: result.won ? 'correctPop 0.5s ease both' : result.prize === 0 ? 'wrongShake 0.5s ease both' : 'none' }}>
+            {result.prize > 0 ? <>{result.won ? '🎉 EXACT!' : 'Close!'} <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>+{result.prize}<RewardIcon kind="coins" size={18} /></span></> : 'Better luck next time!'}
+          </p>
+          <div><GameBtn onClick={() => { setResult(null); setGuess(null); }} full={false} style={{ padding: '12px 30px' }}>Play Again 🎲</GameBtn></div>
+        </div>
+      )}
+    </GameShell>
   );
 }
