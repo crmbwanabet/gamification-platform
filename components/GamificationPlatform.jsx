@@ -29,6 +29,7 @@ import {
   getSpeedQuestions, getRandomQuestion
 } from '../lib/data/trivia';
 import { TUTORIALS } from '../lib/data/tutorials';
+import { predictionWinCoins, PREDICTION_WIN_XP, PREDICTION_PLACE_XP, PREDICTION_PLACE_XP_TOP } from '../lib/predictions';
 import {
   XP_LEVELS, VIP_TIERS, MINIGAMES, STORE_ITEMS, MATCHES,
   QUESTS, DAILY_REWARDS, LEVEL_REWARDS, STREAK_REWARDS, DAILY_FREE_SPIN_ROTATION, getDailyFreeSpinGames,
@@ -1564,19 +1565,21 @@ export default function GamificationPlatform() {
   const placePrediction = (m, choice, el) => {
     if (user.predictions.find(p => p.id === m.id)) return;
     const odds = choice === 'home' ? m.h : choice === 'draw' ? m.d : m.a;
-    const amt = (m.featured || m.top) ? 10 : 5;
-    setUser(u => ({ ...u, predictions: [...u.predictions, { id: m.id, eventId: m.eventId || m.id, choice, odds, home: m.home, away: m.away, league: m.league, time: m.time || null, placedAt: Date.now(), status: 'pending' }] }));
-    addXP(amt);
-    addCoins(amt);
-    showNotif(`🎯 Prediction placed! +${amt} XP`);
-    triggerReward('small', el || null, { coins: amt, xp: amt });
+    const top = !!(m.featured || m.top);
+    const xp = top ? PREDICTION_PLACE_XP_TOP : PREDICTION_PLACE_XP;
+    setUser(u => ({ ...u, bets: (u.bets || 0) + 1, predictions: [...u.predictions, { id: m.id, eventId: m.eventId || m.id, choice, odds, top, home: m.home, away: m.away, league: m.league, time: m.time || null, placedAt: Date.now(), status: 'pending' }] }));
+    addXP(xp);
+    trackMission('betPlaced');
+    trackQuest('betPlaced', {});
+    showNotif(`🎯 Prediction placed! +${xp} XP`);
+    triggerReward('small', el || null, { xp });
   };
 
   // === Prediction settlement: once a predicted match has a published final
   // score (via /api/matches/settle), mark it won/lost and pay out odds-based
   // coins. Retries at most every 10 min so unpublished results don't loop.
   const lastSettleRef = useRef(0);
-  const predWinCoins = (p) => Math.round(20 * (p.odds || 2));
+  const predWinCoins = (p) => predictionWinCoins(p.odds, p.top);
   useEffect(() => {
     const now = Date.now();
     if (now - lastSettleRef.current < 600000) return;
@@ -1594,18 +1597,22 @@ export default function GamificationPlatform() {
         const settled = due.filter(p => res[String(p.eventId)]);
         if (!settled.length) return;
         const wins = settled.filter(p => res[String(p.eventId)].outcome === p.choice);
+        const losses = settled.length - wins.length;
         const coins = wins.reduce((s, p) => s + predWinCoins(p), 0);
-        setUser(u => ({ ...u, predictions: u.predictions.map(p => {
+        setUser(u => ({ ...u, wins: (u.wins || 0) + wins.length, predictions: u.predictions.map(p => {
           const r = p.status === 'pending' && res[String(p.eventId)];
           if (!r) return p;
           const won = r.outcome === p.choice;
           return { ...p, status: won ? 'won' : 'lost', score: r.score, payout: won ? predWinCoins(p) : 0, settledAt: Date.now() };
         }) }));
+        for (let i = 0; i < wins.length; i++) { trackMission('betWon'); trackQuest('betWon', {}); }
+        for (let i = 0; i < losses; i++) trackMission('betLost');
         if (wins.length) {
           addCoins(coins);
-          addXP(15 * wins.length);
+          addXP(PREDICTION_WIN_XP * wins.length);
+          trackQuest('coinsEarned', { amount: coins });
           showNotif(`⚽ ${wins.length > 1 ? `${wins.length} predictions won` : 'Prediction won'}! +${coins} Coins`);
-          triggerReward('big', null, { coins, xp: 15 * wins.length });
+          triggerReward('big', null, { coins, xp: PREDICTION_WIN_XP * wins.length });
         }
       })
       .catch(() => {});

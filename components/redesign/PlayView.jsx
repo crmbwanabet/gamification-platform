@@ -7,6 +7,7 @@ import RedesignShell, { SectionTitle, Card, Thumb, Badge, RewardIcon } from './R
 import DailyTriviaChallenge from '@/components/ui/DailyTriviaChallenge';
 import { IMAGES } from '@/lib/data/images';
 import { MINIGAMES } from '@/lib/data/platform';
+import { predictionWinCoins } from '@/lib/predictions';
 
 const SUBS = [
   { key: 'play.minigames', label: 'Games' },
@@ -159,9 +160,10 @@ function Predictions({ predictions, onPredict }) {
                   <div style={{ display: 'flex', gap: 6 }}>
                     {PRED_OPTS.map((o) => (
                       <button key={o.key} className="rs-odds" onClick={(e) => onPredict && onPredict(m, o.key, e.currentTarget)}
-                        style={{ minWidth: 54, textAlign: 'center', background: C.track, border: '1px solid rgba(255,255,255,.06)', borderRadius: 8, padding: '7px 8px', cursor: 'pointer' }}>
+                        style={{ minWidth: 54, textAlign: 'center', background: C.track, border: '1px solid rgba(255,255,255,.06)', borderRadius: 8, padding: '6px 8px 5px', cursor: 'pointer' }}>
                         <div style={{ fontSize: 9, color: C.muted, fontWeight: 700 }}>{o.sub}</div>
                         <div style={{ fontSize: 14, fontWeight: 800, color: C.text }}>{oddsFor(m, o.key)}</div>
+                        <div style={{ fontSize: 8.5, color: C.gold, fontWeight: 800 }}>+{predictionWinCoins(oddsFor(m, o.key), m.top)}</div>
                       </button>
                     ))}
                   </div>
