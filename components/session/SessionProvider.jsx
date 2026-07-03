@@ -50,6 +50,15 @@ export default function SessionProvider({ children }) {
     };
     window.addEventListener('message', onMsg);
 
+    // Most direct path: if this widget is served same-site as bwanabet (e.g.
+    // gamification.bwanabet.co.zm), the `token` cookie is readable here — no
+    // parent handoff needed. Cross-origin embeds simply won't see it and fall
+    // through to postMessage / hash. The token is validated server-side either way.
+    try {
+      const m = document.cookie.match(/(?:^|;\s*)token=([^;]+)/);
+      if (m && m[1]) exchangeToken(decodeURIComponent(m[1]));
+    } catch { /* ignore */ }
+
     // Fallback: token in the URL hash (#token=...), then scrub it from the address bar.
     try {
       const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''));
