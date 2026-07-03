@@ -6,7 +6,7 @@ import { C } from './tokens';
 import RedesignShell, { SectionTitle, Card, Thumb, Badge, RewardIcon } from './RedesignShell';
 import DailyTriviaChallenge from '@/components/ui/DailyTriviaChallenge';
 import { IMAGES } from '@/lib/data/images';
-import { MINIGAMES, MATCHES } from '@/lib/data/platform';
+import { MINIGAMES } from '@/lib/data/platform';
 
 const SUBS = [
   { key: 'play.minigames', label: 'Games' },
@@ -69,41 +69,76 @@ const PRED_OPTS = [{ key: 'home', label: '1', sub: 'Home' }, { key: 'draw', labe
 const oddsFor = (m, k) => (k === 'home' ? m.h : k === 'draw' ? m.d : m.a);
 const pickLabel = (m, c) => (c === 'home' ? `${m.home} win` : c === 'away' ? `${m.away} win` : 'Draw');
 
+function fmtKick(iso) {
+  const d = new Date(iso);
+  if (isNaN(d)) return '';
+  const hh = String(d.getHours()).padStart(2, '0'), mm = String(d.getMinutes()).padStart(2, '0');
+  const d0 = new Date(d); d0.setHours(0, 0, 0, 0);
+  const n0 = new Date(); n0.setHours(0, 0, 0, 0);
+  const days = Math.round((d0 - n0) / 86400000);
+  const day = days <= 0 ? 'Today' : days === 1 ? 'Tomorrow' : d.toLocaleDateString(undefined, { weekday: 'short' });
+  return `${day} ${hh}:${mm}`;
+}
+
 function Predictions({ predictions, onPredict }) {
+  const [matches, setMatches] = React.useState(null); // null = loading
+  const [err, setErr] = React.useState(false);
+  React.useEffect(() => {
+    let alive = true;
+    fetch('/api/matches')
+      .then((r) => r.json())
+      .then((d) => { if (!alive) return; if (Array.isArray(d.matches)) setMatches(d.matches); else setErr(true); })
+      .catch(() => { if (alive) setErr(true); });
+    return () => { alive = false; };
+  }, []);
+
   return (
     <section>
       <style>{`.rs-odds{transition:background .15s,border-color .15s,transform .1s}.rs-odds:hover{background:#2c303b !important;border-color:rgba(79,169,139,.6) !important}.rs-odds:active{transform:scale(.95)}`}</style>
-      <SectionTitle>Match Predictions</SectionTitle>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        {MATCHES.slice(0, 6).map((m) => {
-          const pred = predictions?.find((p) => p.id === m.id);
-          return (
-            <Card key={m.id} style={{ padding: 14, display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
-              <div style={{ flex: 1, minWidth: 150 }}>
-                <div style={{ fontSize: 11, color: C.muted, marginBottom: 3 }}>{m.flag} {m.league} · {m.time}</div>
-                <div style={{ fontSize: 14, fontWeight: 800, color: C.text }}>{m.home} <span style={{ color: C.muted }}>vs</span> {m.away}</div>
-              </div>
-              {pred ? (
-                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '9px 14px', borderRadius: 10, background: 'rgba(79,169,139,.14)', border: `1px solid ${C.green}` }}>
-                  <Check size={16} color={C.green} strokeWidth={3} />
-                  <span style={{ fontSize: 12.5, fontWeight: 800, color: C.text }}>{pickLabel(m, pred.choice)}</span>
-                  <span style={{ fontSize: 11.5, color: C.green, fontWeight: 700 }}>@ {oddsFor(m, pred.choice)}</span>
+      <SectionTitle right={<span style={{ fontSize: 11, fontWeight: 700, color: C.muted }}>Live odds · bwanabet</span>}>Match Predictions</SectionTitle>
+
+      {err && (!matches || matches.length === 0) && (
+        <Card style={{ padding: 20, textAlign: 'center', color: C.sub, fontSize: 13 }}>Couldn't load matches right now — try again shortly.</Card>
+      )}
+
+      {!err && matches === null && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {[0, 1, 2, 3].map((i) => <Card key={i} className="skeleton" style={{ height: 64 }} />)}
+        </div>
+      )}
+
+      {matches && matches.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {matches.map((m) => {
+            const pred = predictions?.find((p) => p.id === m.id);
+            return (
+              <Card key={m.id} style={{ padding: 14, display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+                <div style={{ flex: 1, minWidth: 150 }}>
+                  <div style={{ fontSize: 11, color: C.muted, marginBottom: 3 }}>⚽ {m.league} · {fmtKick(m.time)}</div>
+                  <div style={{ fontSize: 14, fontWeight: 800, color: C.text }}>{m.home} <span style={{ color: C.muted }}>vs</span> {m.away}</div>
                 </div>
-              ) : (
-                <div style={{ display: 'flex', gap: 6 }}>
-                  {PRED_OPTS.map((o) => (
-                    <button key={o.key} className="rs-odds" onClick={(e) => onPredict && onPredict(m, o.key, e.currentTarget)}
-                      style={{ minWidth: 54, textAlign: 'center', background: C.track, border: '1px solid rgba(255,255,255,.06)', borderRadius: 8, padding: '7px 8px', cursor: 'pointer' }}>
-                      <div style={{ fontSize: 9, color: C.muted, fontWeight: 700 }}>{o.sub}</div>
-                      <div style={{ fontSize: 14, fontWeight: 800, color: C.text }}>{oddsFor(m, o.key)}</div>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </Card>
-          );
-        })}
-      </div>
+                {pred ? (
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '9px 14px', borderRadius: 10, background: 'rgba(79,169,139,.14)', border: `1px solid ${C.green}` }}>
+                    <Check size={16} color={C.green} strokeWidth={3} />
+                    <span style={{ fontSize: 12.5, fontWeight: 800, color: C.text }}>{pickLabel(m, pred.choice)}</span>
+                    <span style={{ fontSize: 11.5, color: C.green, fontWeight: 700 }}>@ {pred.odds ?? oddsFor(m, pred.choice)}</span>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    {PRED_OPTS.map((o) => (
+                      <button key={o.key} className="rs-odds" onClick={(e) => onPredict && onPredict(m, o.key, e.currentTarget)}
+                        style={{ minWidth: 54, textAlign: 'center', background: C.track, border: '1px solid rgba(255,255,255,.06)', borderRadius: 8, padding: '7px 8px', cursor: 'pointer' }}>
+                        <div style={{ fontSize: 9, color: C.muted, fontWeight: 700 }}>{o.sub}</div>
+                        <div style={{ fontSize: 14, fontWeight: 800, color: C.text }}>{oddsFor(m, o.key)}</div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </Card>
+            );
+          })}
+        </div>
+      )}
     </section>
   );
 }

@@ -1563,8 +1563,9 @@ export default function GamificationPlatform() {
 
   const placePrediction = (m, choice, el) => {
     if (user.predictions.find(p => p.id === m.id)) return;
-    const amt = m.featured ? 10 : 5;
-    setUser(u => ({ ...u, predictions: [...u.predictions, { id: m.id, choice }] }));
+    const odds = choice === 'home' ? m.h : choice === 'draw' ? m.d : m.a;
+    const amt = (m.featured || m.top) ? 10 : 5;
+    setUser(u => ({ ...u, predictions: [...u.predictions, { id: m.id, eventId: m.eventId || m.id, choice, odds, home: m.home, away: m.away, league: m.league, placedAt: Date.now(), status: 'pending' }] }));
     addXP(amt);
     addCoins(amt);
     showNotif(`🎯 Prediction placed! +${amt} XP`);
