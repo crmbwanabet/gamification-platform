@@ -1565,12 +1565,51 @@ export default function GamificationPlatform() {
     if (user.predictions.find(p => p.id === m.id)) return;
     const odds = choice === 'home' ? m.h : choice === 'draw' ? m.d : m.a;
     const amt = (m.featured || m.top) ? 10 : 5;
-    setUser(u => ({ ...u, predictions: [...u.predictions, { id: m.id, eventId: m.eventId || m.id, choice, odds, home: m.home, away: m.away, league: m.league, placedAt: Date.now(), status: 'pending' }] }));
+    setUser(u => ({ ...u, predictions: [...u.predictions, { id: m.id, eventId: m.eventId || m.id, choice, odds, home: m.home, away: m.away, league: m.league, time: m.time || null, placedAt: Date.now(), status: 'pending' }] }));
     addXP(amt);
     addCoins(amt);
     showNotif(`🎯 Prediction placed! +${amt} XP`);
     triggerReward('small', el || null, { coins: amt, xp: amt });
   };
+
+  // === Prediction settlement: once a predicted match has a published final
+  // score (via /api/matches/settle), mark it won/lost and pay out odds-based
+  // coins. Retries at most every 10 min so unpublished results don't loop.
+  const lastSettleRef = useRef(0);
+  const predWinCoins = (p) => Math.round(20 * (p.odds || 2));
+  useEffect(() => {
+    const now = Date.now();
+    if (now - lastSettleRef.current < 600000) return;
+    const due = user.predictions.filter(p => p.status === 'pending' && p.eventId &&
+      (Date.parse(p.time) || p.placedAt || 0) + 2 * 3600000 < now); // kickoff (or placement) >2h ago
+    if (!due.length) return;
+    lastSettleRef.current = now;
+    fetch('/api/matches/settle', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ events: due.map(p => ({ eventId: p.eventId, time: p.time || new Date(p.placedAt).toISOString() })) }),
+    })
+      .then(r => r.json())
+      .then(d => {
+        const res = (d && d.results) || {};
+        const settled = due.filter(p => res[String(p.eventId)]);
+        if (!settled.length) return;
+        const wins = settled.filter(p => res[String(p.eventId)].outcome === p.choice);
+        const coins = wins.reduce((s, p) => s + predWinCoins(p), 0);
+        setUser(u => ({ ...u, predictions: u.predictions.map(p => {
+          const r = p.status === 'pending' && res[String(p.eventId)];
+          if (!r) return p;
+          const won = r.outcome === p.choice;
+          return { ...p, status: won ? 'won' : 'lost', score: r.score, payout: won ? predWinCoins(p) : 0, settledAt: Date.now() };
+        }) }));
+        if (wins.length) {
+          addCoins(coins);
+          addXP(15 * wins.length);
+          showNotif(`⚽ ${wins.length > 1 ? `${wins.length} predictions won` : 'Prediction won'}! +${coins} Coins`);
+          triggerReward('big', null, { coins, xp: 15 * wins.length });
+        }
+      })
+      .catch(() => {});
+  }, [user.predictions]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // === v2 redesigned Home ===
   if (tab === 'home') {

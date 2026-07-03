@@ -76,7 +76,9 @@ function fmtKick(iso) {
   const d0 = new Date(d); d0.setHours(0, 0, 0, 0);
   const n0 = new Date(); n0.setHours(0, 0, 0, 0);
   const days = Math.round((d0 - n0) / 86400000);
-  const day = days <= 0 ? 'Today' : days === 1 ? 'Tomorrow' : d.toLocaleDateString(undefined, { weekday: 'short' });
+  const day = days <= 0 ? 'Today' : days === 1 ? 'Tomorrow'
+    : days <= 6 ? d.toLocaleDateString(undefined, { weekday: 'short' })
+    : d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
   return `${day} ${hh}:${mm}`;
 }
 
@@ -92,9 +94,39 @@ function Predictions({ predictions, onPredict }) {
     return () => { alive = false; };
   }, []);
 
+  const picks = (predictions || []).filter((p) => p.home && p.away).slice(-6).reverse();
+
   return (
     <section>
       <style>{`.rs-odds{transition:background .15s,border-color .15s,transform .1s}.rs-odds:hover{background:#2c303b !important;border-color:rgba(79,169,139,.6) !important}.rs-odds:active{transform:scale(.95)}`}</style>
+
+      {picks.length > 0 && (
+        <>
+          <SectionTitle>Your Picks</SectionTitle>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
+            {picks.map((p) => {
+              const st = p.status === 'won'
+                ? { label: `Won +${p.payout}`, color: C.green, bg: 'rgba(79,169,139,.14)' }
+                : p.status === 'lost'
+                  ? { label: 'Lost', color: C.muted, bg: 'rgba(229,87,63,.12)' }
+                  : { label: 'Pending', color: C.gold, bg: 'rgba(230,173,74,.12)' };
+              return (
+                <Card key={p.id} style={{ padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 12.5, fontWeight: 800, color: C.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {p.home} <span style={{ color: C.muted }}>vs</span> {p.away}
+                      {p.score && <span style={{ color: C.sub, fontWeight: 700 }}> · {p.score}</span>}
+                    </div>
+                    <div style={{ fontSize: 10.5, color: C.muted, marginTop: 2 }}>{pickLabel(p, p.choice)} @ {p.odds}</div>
+                  </div>
+                  <span style={{ fontSize: 11, fontWeight: 800, color: st.color, background: st.bg, borderRadius: 8, padding: '4px 10px', whiteSpace: 'nowrap' }}>{st.label}</span>
+                </Card>
+              );
+            })}
+          </div>
+        </>
+      )}
+
       <SectionTitle right={<span style={{ fontSize: 11, fontWeight: 700, color: C.muted }}>Live odds · bwanabet</span>}>Match Predictions</SectionTitle>
 
       {err && (!matches || matches.length === 0) && (
