@@ -10,7 +10,7 @@ import React, { createContext, useContext, useEffect, useState, useCallback, use
 // a `#token=...` URL hash (signed-URL embeds). All trust is enforced server-side
 // in /api/session — this component just relays the token.
 
-const SessionContext = createContext({ status: 'idle', profile: null, verified: false, error: null, saveState: async () => null });
+const SessionContext = createContext({ status: 'idle', profile: null, verified: false, error: null, saveState: async () => null, claimVoucher: async () => null });
 export const useSession = () => useContext(SessionContext);
 
 const ALLOWED_ORIGINS = ['https://bwanabet.com', 'https://www.bwanabet.com'];
@@ -79,8 +79,24 @@ export default function SessionProvider({ children }) {
     }
   }, []);
 
+  // Ask the server to check this player's saved prediction history and send
+  // any newly-earned streak vouchers to the admin Telegram group.
+  const claimVoucher = useCallback(async () => {
+    if (!tokenRef.current) return null;
+    try {
+      const res = await fetch('/api/predictions/voucher', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: tokenRef.current }),
+      });
+      return await res.json();
+    } catch (e) {
+      return { error: String(e) };
+    }
+  }, []);
+
   return (
-    <SessionContext.Provider value={{ ...state, saveState }}>
+    <SessionContext.Provider value={{ ...state, saveState, claimVoucher }}>
       {children}
     </SessionContext.Provider>
   );

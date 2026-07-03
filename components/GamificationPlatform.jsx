@@ -1575,6 +1575,22 @@ export default function GamificationPlatform() {
     triggerReward('small', el || null, { xp });
   };
 
+  // === Streak voucher (real value): every 3 correct predictions in a row
+  // earns a K20 Free Bet, fulfilled MANUALLY by admins from the Telegram group
+  // (same flow as wheel wins). Server-side only for SSO players — the server
+  // recomputes the streak from the saved history and keeps grants idempotent.
+  const checkStreakVoucher = useCallback(() => {
+    session.claimVoucher?.().then((r) => {
+      if (r && r.ok && r.granted > 0) {
+        showNotif(`🎟️ ${r.granted > 1 ? `${r.granted}× ` : ''}${r.voucher} earned — 3 wins in a row! Our team will credit your account shortly.`);
+        triggerReward('big', null, {});
+      }
+    }).catch(() => {});
+  }, [session, showNotif, triggerReward]);
+  // Catch vouchers earned but not yet granted (e.g. the save landed after the
+  // last visit ended) once the SSO profile is loaded.
+  useEffect(() => { if (session.status === 'ready') checkStreakVoucher(); }, [session.status]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // === Prediction settlement: once a predicted match has a published final
   // score (via /api/matches/settle), mark it won/lost and pay out odds-based
   // coins. Retries at most every 10 min so unpublished results don't loop.
@@ -1613,6 +1629,9 @@ export default function GamificationPlatform() {
           trackQuest('coinsEarned', { amount: coins });
           showNotif(`⚽ ${wins.length > 1 ? `${wins.length} predictions won` : 'Prediction won'}! +${coins} Coins`);
           triggerReward('big', null, { coins, xp: PREDICTION_WIN_XP * wins.length });
+          // Real-value bridge: after the debounced state save lands, let the
+          // server check the updated history for a completed win streak.
+          setTimeout(() => checkStreakVoucher(), 5000);
         }
       })
       .catch(() => {});

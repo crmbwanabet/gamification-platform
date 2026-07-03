@@ -28,6 +28,15 @@ export async function POST(req) {
   if (body?.state && typeof body.state === 'object' && !Array.isArray(body.state)) {
     if (JSON.stringify(body.state).length > 20000) return NextResponse.json({ error: 'state_too_large' }, { status: 413 });
     patch.state = body.state;
+    // Server-owned keys (voucher bookkeeping) live inside the same blob but are
+    // written only by /api/predictions/voucher — carry them over so a client
+    // save can never wipe them (which would re-grant already-sent vouchers).
+    const { data: existing } = await supabaseAdmin
+      .from('profiles').select('state').eq('bwanabet_user_id', uid).single();
+    const cur = existing?.state;
+    if (cur && typeof cur === 'object') {
+      for (const k of ['predVouchersGranted', 'voucherLog']) if (k in cur) patch.state[k] = cur[k];
+    }
   }
   if (Object.keys(patch).length === 0) return NextResponse.json({ error: 'nothing_to_update' }, { status: 400 });
 

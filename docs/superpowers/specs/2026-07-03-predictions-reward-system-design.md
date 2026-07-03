@@ -62,8 +62,36 @@ missions/quests/economy rather than building a parallel reward system.
   flow: attractive funnel-to-sportsbook play but needs operator-side workflow;
   separate phase.
 
+## Phase 2 addendum: real-value streak vouchers (2026-07-03)
+
+Every **3 correct predictions in a row** earns a **K20 Free Bet** on bwanabet,
+fulfilled the same way as wheel wins: a message to the Telegram admin group,
+credited manually by admins. No auto-crediting.
+
+- `lib/telegram.js` — `sendVoucherNotification(...)`, same
+  `TELEGRAM_BOT_TOKEN`/`TELEGRAM_CHAT_ID` env convention as the wheel widget
+  (copy values from that project's Vercel env); logs a stub when unset.
+- `POST /api/predictions/voucher { token }` — verifies the SSO JWT (fail
+  closed), loads the player's **saved** prediction history from Supabase,
+  computes entitlement (disjoint 3-win runs over full settled history; loss
+  resets the run), sends one Telegram message per newly-owed voucher, then
+  records `predVouchersGranted`/`voucherLog` in the profile state. Grants are
+  idempotent (entitled − granted); a failed Telegram send stays owed.
+- `/api/state` now **preserves** `predVouchersGranted`/`voucherLog` across
+  client state saves — the client blob can never wipe server-written voucher
+  bookkeeping (would cause duplicate Telegram grants).
+- Client: `session.claimVoucher()` is called once when the SSO profile loads
+  and ~5s after a winning settlement (after the debounced save lands). On
+  `granted > 0` shows a notification + big reward animation.
+- Standalone/demo users (no SSO token) never trigger vouchers — there is no
+  account to credit.
+- Abuse posture: prediction state is client-authoritative (documented platform
+  limitation), but every voucher passes through a human admin before crediting.
+
 ## Open questions (for retro-review)
 - Payout curve (25×, 50–250 clamp) is a judgment call — tune freely; it's one
   constant + clamp in `lib/predictions.js`.
 - Whether placement should still pay a token coin amount (removed here to match
   the tutorial's promise).
+- Voucher milestone (3 wins → K20) and whether higher streaks should scale
+  (e.g. 5 in a row → K50).
