@@ -7,19 +7,19 @@ import { RewardIcon } from '@/components/redesign/RedesignShell';
 import TutorialModal from '../modals/TutorialModal';
 
 // ============================================================================
-// SEGMENTS — 10 slots: K10, K20, K50, K100, K200 + 5 "Try Again" losses
-// (matches the standalone bwanabet.com wheel widget exactly)
+// SEGMENTS — 10 slots: 10, 20, 50, 100, 200 coins + 5 "Try Again" losses.
+// Prizes are platform coins (shown as number + coin icon), not money.
 // ============================================================================
 const WHEEL_SEGMENTS = [
-  { id: 1,  label: 'K10',                prize: { kwacha: 10 },  color: '#00e5ff', isLoss: false },
+  { id: 1,  label: '10',        prize: { kwacha: 10 },  color: '#00e5ff', isLoss: false },
   { id: 2,  label: 'Try Again', prize: null,            color: '#78909c', isLoss: true  },
-  { id: 3,  label: 'K50',                prize: { kwacha: 50 },  color: '#d500f9', isLoss: false },
+  { id: 3,  label: '50',        prize: { kwacha: 50 },  color: '#d500f9', isLoss: false },
   { id: 4,  label: 'Try Again', prize: null,            color: '#78909c', isLoss: true  },
-  { id: 5,  label: 'K200',               prize: { kwacha: 200 }, color: '#ffd600', isLoss: false },
+  { id: 5,  label: '200',       prize: { kwacha: 200 }, color: '#ffd600', isLoss: false },
   { id: 6,  label: 'Try Again', prize: null,            color: '#78909c', isLoss: true  },
-  { id: 7,  label: 'K20',                prize: { kwacha: 20 },  color: '#00e676', isLoss: false },
+  { id: 7,  label: '20',        prize: { kwacha: 20 },  color: '#00e676', isLoss: false },
   { id: 8,  label: 'Try Again', prize: null,            color: '#78909c', isLoss: true  },
-  { id: 9,  label: 'K100',               prize: { kwacha: 100 }, color: '#ff6d00', isLoss: false },
+  { id: 9,  label: '100',       prize: { kwacha: 100 }, color: '#ff6d00', isLoss: false },
   { id: 10, label: 'Try Again', prize: null,            color: '#78909c', isLoss: true  },
 ];
 
@@ -255,7 +255,7 @@ export default function WheelGame({ onClose, onWin, playsLeft, closing }) {
                     spawnParticles(cx, cy, isMobile ? 12 : 25, { spread: 250, speed: 9, life: isMobile ? 25 : 40, gravity: 0.2 });
                     if (!isMobile) spawnParticles(cx, cy, 15, { spread: 180, speed: 6, life: 30, gravity: 0.15 });
                     startLoop();
-                    if (segment.prize?.kwacha) spawnFloatingNumber(`+K${segment.prize.kwacha}`, cx, cy - 40, '#fbbf24');
+                    if (segment.prize?.kwacha) spawnFloatingNumber(`+${segment.prize.kwacha}`, cx, cy - 40, '#fbbf24');
                   }
                   spinFrameRef.current = null;
                 }, 1500);
@@ -462,7 +462,7 @@ export default function WheelGame({ onClose, onWin, playsLeft, closing }) {
                     transition: 'transform 0.05s ease-out',
                     display: 'inline-flex', alignItems: 'center', gap: 8,
                   }}>
-                    K{countUpValue}<RewardIcon kind="coins" size={34} />
+                    {countUpValue}<RewardIcon kind="coins" size={34} />
                   </div>
                 </div>
                 <p className="text-xs mb-5" style={{ color: C.sub }}>Coins added to your balance</p>
@@ -815,12 +815,18 @@ export default function WheelGame({ onClose, onWin, playsLeft, closing }) {
                     );
                   }
                   return (
-                    <text key={`t${i}`} fill="white" fontSize="26" fontWeight="900" fontFamily="Arial Black, Arial, sans-serif"
-                      stroke="rgba(0,0,0,0.6)" strokeWidth="3" paintOrder="stroke" letterSpacing="2">
-                      <textPath href={`#segArc${i}`} startOffset="50%" textAnchor="middle">
-                        {seg.label}
-                      </textPath>
-                    </text>
+                    <g key={`t${i}`}>
+                      <text fill="white" fontSize="26" fontWeight="900" fontFamily="Arial Black, Arial, sans-serif"
+                        stroke="rgba(0,0,0,0.6)" strokeWidth="3" paintOrder="stroke" letterSpacing="2">
+                        <textPath href={`#segArc${i}`} startOffset="50%" textAnchor="middle">
+                          {seg.label}
+                        </textPath>
+                      </text>
+                      <g transform={`rotate(${midAngle}, 150, 150)`}>
+                        <image href="/ui/reward/coins.png" x={150 + 88 - 16} y={150 - 16} width="32" height="32"
+                          transform={`rotate(90, ${150 + 88}, 150)`} />
+                      </g>
+                    </g>
                   );
                 })}
               </svg>
