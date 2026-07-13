@@ -1,351 +1,573 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { HelpCircle, X } from 'lucide-react';
 import TutorialModal from '../modals/TutorialModal';
+
+// ============================================================================
+// SCRATCH & WIN — silver-ticket edition.
+// Three tickets: two hide coin prizes (distinct values from PRIZE_VALUES),
+// one is a blank. The player may scratch ANY ticket and switch between them
+// freely — the prize art sits under the foil and shows through every stroke,
+// like a real scratcher. The first ticket scratched past the threshold is
+// the result; the others then flip over to show what they held.
+// Layout re-shuffles on every play. Visual direction from Grok concept art
+// (silver perforated tickets + torn reveal on the app's dark navy).
+// ============================================================================
+const PRIZE_VALUES = [10, 20, 50, 100, 200];
+const REVEAL_PCT = 55;
+const BRUSH_RADIUS = 24;
+const STAMP_SPACING = 7;
+const TICKET_W = 116;
+const TICKET_H = 178;
+
+const GOLD_TEXT = {
+  background: 'linear-gradient(180deg, #ffeaa0 0%, #ffd700 35%, #ff9500 75%, #cc7000 100%)',
+  WebkitBackgroundClip: 'text',
+  WebkitTextFillColor: 'transparent',
+};
+const SILVER_TEXT = {
+  background: 'linear-gradient(180deg, #ffffff 0%, #d7dae0 38%, #8b919c 55%, #eceef2 78%, #b9bec8 100%)',
+  WebkitBackgroundClip: 'text',
+  WebkitTextFillColor: 'transparent',
+};
 
 export default function ScratchGame({ onClose, onWin, closing }) {
   const canvas0 = useRef(null);
   const canvas1 = useRef(null);
   const canvas2 = useRef(null);
   const canvasRefs = [canvas0, canvas1, canvas2];
-  const [scratching, setScratching] = useState(-1);
+  const [winnerIdx, setWinnerIdx] = useState(-1);   // ticket that crossed the threshold
   const [revealed, setRevealed] = useState([false, false, false]);
-  const [allRevealed, setAllRevealed] = useState(false);
+  const [finished, setFinished] = useState(false);
+  const [othersShown, setOthersShown] = useState(false);
   const [showTutorial, setShowTutorial] = useState(false);
   const [confettiParts, setConfettiParts] = useState([]);
-  const [prizeAnim, setPrizeAnim] = useState(false);
-  const [jackpotFlash, setJackpotFlash] = useState(false);
-  const [jackpotShake, setJackpotShake] = useState(false);
-  const lastPos = useRef({ x: 0, y: 0 });
+  const [bigWinFlash, setBigWinFlash] = useState(false);
+  const [bigWinShake, setBigWinShake] = useState(false);
+  const [flakes, setFlakes] = useState([]);
+  const [scratchPct, setScratchPct] = useState(0);
+  const [activeIdx, setActiveIdx] = useState(-1);   // ticket currently under the finger (visual scale)
+  const activeIdxRef = useRef(-1);                  // same, but sync — gates scratch handling
+  const scratchingRef = useRef(false);
+  const lastPos = useRef(null);
+  const stampCount = useRef(0);
   const percents = useRef([0, 0, 0]);
+  const lastFlakeAt = useRef(0);
+  const flakeId = useRef(0);
 
-  const SYMBOLS = [
-    { icon: '/images/diamond.png', name: 'Diamond', color: '#60A5FA' },
-    { icon: '/images/coin.png', name: 'Gold', color: '#FBBF24' },
-    { icon: '/images/gem.png', name: 'Gem', color: '#34D399' },
-    { icon: '/images/wheel/fire.png', name: 'Fire', color: '#F87171' },
-    { icon: '/images/wheel/star.png', name: 'Star', color: '#A78BFA' },
-    { icon: '/images/wheel/lucky-clover.png', name: 'Lucky', color: '#4ADE80' },
-  ];
-
-  const [symbols] = useState(() => {
-    const roll = Math.random();
-    if (roll < 0.20) {
-      const s = SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)];
-      return [s, s, s];
-    } else if (roll < 0.55) {
-      const s = SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)];
-      let other;
-      do { other = SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)]; } while (other.icon === s.icon);
-      const arr = [s, s, other];
-      const pos = Math.floor(Math.random() * 3);
-      [arr[pos], arr[2]] = [arr[2], arr[pos]];
-      return arr;
-    } else {
-      const picked = [];
-      while (picked.length < 3) {
-        const s = SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)];
-        if (picked.length < 2 || !picked.every(p => p.icon === s.icon)) picked.push(s);
-        else picked.push(SYMBOLS[(SYMBOLS.indexOf(s) + 1) % SYMBOLS.length]);
-      }
-      return picked;
-    }
+  const [cards] = useState(() => {
+    const pool = [...PRIZE_VALUES].sort(() => Math.random() - 0.5);
+    return [{ value: pool[0] }, { value: pool[1] }, { value: 0 }].sort(() => Math.random() - 0.5);
   });
 
-  const matchCount = symbols[0].icon === symbols[1].icon && symbols[1].icon === symbols[2].icon ? 3
-    : (symbols[0].icon === symbols[1].icon || symbols[1].icon === symbols[2].icon || symbols[0].icon === symbols[2].icon) ? 2 : 0;
+  const chosen = winnerIdx >= 0 ? cards[winnerIdx] : null;
+  const won = finished && chosen && chosen.value > 0;
+  const bigWin = won && chosen.value >= 100;
 
-  const prize = matchCount === 3 ? [200, 300, 500][Math.floor(Math.random() * 3)]
-    : matchCount === 2 ? [50, 75, 100][Math.floor(Math.random() * 3)]
-    : [10, 15, 25][Math.floor(Math.random() * 3)];
-
-  // Draw gold foil on each canvas
+  // Silver foil + printed ticket details on each canvas
   useEffect(() => {
     canvasRefs.forEach((ref) => {
       const c = ref.current;
       if (!c) return;
-      const ctx = c.getContext('2d');
+      const ctx = c.getContext('2d', { willReadFrequently: true });
       const w = c.width, h = c.height;
       const g = ctx.createLinearGradient(0, 0, w, h);
-      g.addColorStop(0, '#D4A017');
-      g.addColorStop(0.2, '#F5D060');
-      g.addColorStop(0.4, '#C8960C');
-      g.addColorStop(0.6, '#F5D060');
-      g.addColorStop(0.8, '#D4A017');
-      g.addColorStop(1, '#E8C840');
+      g.addColorStop(0, '#b9bec8');
+      g.addColorStop(0.18, '#eef0f4');
+      g.addColorStop(0.38, '#9aa0aa');
+      g.addColorStop(0.55, '#e4e6ea');
+      g.addColorStop(0.75, '#a7adb7');
+      g.addColorStop(1, '#d5d8de');
       ctx.fillStyle = g;
       ctx.fillRect(0, 0, w, h);
-      for (let i = 0; i < 800; i++) {
-        ctx.fillStyle = `rgba(255,255,255,${Math.random() * 0.15})`;
-        ctx.fillRect(Math.random() * w, Math.random() * h, 1, 1);
+      // brushed-metal noise
+      for (let i = 0; i < 900; i++) {
+        ctx.fillStyle = `rgba(255,255,255,${Math.random() * 0.16})`;
+        ctx.fillRect(Math.random() * w, Math.random() * h, 1.5, 1);
       }
-      for (let i = 0; i < 400; i++) {
-        ctx.fillStyle = `rgba(0,0,0,${Math.random() * 0.1})`;
-        ctx.fillRect(Math.random() * w, Math.random() * h, 1, 1);
+      for (let i = 0; i < 500; i++) {
+        ctx.fillStyle = `rgba(40,46,58,${Math.random() * 0.12})`;
+        ctx.fillRect(Math.random() * w, Math.random() * h, 1.5, 1);
       }
-      ctx.fillStyle = 'rgba(180,140,20,0.6)';
-      ctx.font = 'bold 14px Arial';
+      // ticket stub: dotted tear line near the top
+      ctx.strokeStyle = 'rgba(60,66,78,0.5)';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([3, 4]);
+      ctx.beginPath();
+      ctx.moveTo(8, 26);
+      ctx.lineTo(w - 8, 26);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      // printed inner frame
+      ctx.strokeStyle = 'rgba(60,66,78,0.35)';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(10, 38, w - 20, h - 52);
+      ctx.fillStyle = 'rgba(70,76,88,0.55)';
+      ctx.font = 'bold 12px Arial';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText('SCRATCH', w / 2, h / 2);
+      ctx.font = 'bold 7px Arial';
+      ctx.fillStyle = 'rgba(70,76,88,0.4)';
+      ctx.fillText('SCRATCH & WIN · 100X', w / 2, 16);
     });
   }, []);
 
-  const doScratch = (e, idx) => {
-    if (scratching !== idx || revealed[idx]) return;
-    const c = canvasRefs[idx].current;
-    const ctx = c.getContext('2d');
-    const rect = c.getBoundingClientRect();
-    const cx = (e.clientX || e.touches?.[0]?.clientX);
-    const cy = (e.clientY || e.touches?.[0]?.clientY);
-    if (!cx || !cy) return;
-    const x = (cx - rect.left) * (c.width / rect.width);
-    const y = (cy - rect.top) * (c.height / rect.height);
+  const stamp = (ctx, x, y) => {
+    const g = ctx.createRadialGradient(x, y, BRUSH_RADIUS * 0.45, x, y, BRUSH_RADIUS);
+    g.addColorStop(0, 'rgba(0,0,0,1)');
+    g.addColorStop(1, 'rgba(0,0,0,0)');
     ctx.globalCompositeOperation = 'destination-out';
+    ctx.fillStyle = g;
     ctx.beginPath();
-    ctx.arc(x, y, 20, 0, Math.PI * 2);
+    ctx.arc(x, y, BRUSH_RADIUS, 0, Math.PI * 2);
     ctx.fill();
-    if (lastPos.current.x) {
-      ctx.lineWidth = 40;
-      ctx.lineCap = 'round';
-      ctx.beginPath();
-      ctx.moveTo(lastPos.current.x, lastPos.current.y);
-      ctx.lineTo(x, y);
-      ctx.stroke();
-    }
-    lastPos.current = { x, y };
+  };
+
+  const spawnFlakes = (cardX, cardY) => {
+    const now = performance.now();
+    if (now - lastFlakeAt.current < 50) return;
+    lastFlakeAt.current = now;
+    const batch = Array.from({ length: 2 }, () => ({
+      id: flakeId.current++,
+      x: cardX + (Math.random() - 0.5) * 18,
+      y: cardY + (Math.random() - 0.5) * 10,
+      size: 2.5 + Math.random() * 2.5,
+      drift: (Math.random() - 0.5) * 26,
+      dur: 0.5 + Math.random() * 0.3,
+      color: Math.random() > 0.5 ? '#eceef2' : '#a7adb7',
+    }));
+    setFlakes(prev => [...prev.slice(-24), ...batch]);
+    batch.forEach(f => setTimeout(() => {
+      setFlakes(prev => prev.filter(p => p.id !== f.id));
+    }, f.dur * 1000 + 100));
+  };
+
+  const measurePct = (c) => {
+    const ctx = c.getContext('2d', { willReadFrequently: true });
     const imageData = ctx.getImageData(0, 0, c.width, c.height);
     let transparent = 0;
     for (let i = 3; i < imageData.data.length; i += 4) {
       if (imageData.data[i] === 0) transparent++;
     }
-    const pct = (transparent / (c.width * c.height)) * 100;
-    percents.current[idx] = pct;
-    if (pct > 45 && !revealed[idx]) {
-      ctx.clearRect(0, 0, c.width, c.height);
-      const newRevealed = [...revealed];
-      newRevealed[idx] = true;
-      setRevealed(newRevealed);
-      if (newRevealed.every(r => r)) {
-        setAllRevealed(true);
-        setPrizeAnim(true);
-        // Jackpot effects
-        if (matchCount === 3) {
-          setJackpotFlash(true);
-          setJackpotShake(true);
-          setTimeout(() => setJackpotFlash(false), 600);
-          setTimeout(() => setJackpotShake(false), 800);
-        }
-        // Confetti
-        const parts = [];
-        const count = matchCount === 3 ? 80 : matchCount === 2 ? 50 : 30;
-        for (let i = 0; i < count; i++) {
-          parts.push({
-            id: i, x: 30 + Math.random() * 40, y: 30 + Math.random() * 20,
-            color: ['#FBBF24', '#F87171', '#34D399', '#60A5FA', '#A78BFA', '#F472B6', '#FB923C'][i % 7],
-            size: 4 + Math.random() * 7, rotation: Math.random() * 360,
-            delay: Math.random() * 0.5, duration: 1.5 + Math.random() * 1.5,
-          });
-        }
-        setConfettiParts(parts);
-        onWin(prize);
+    return (transparent / (c.width * c.height)) * 100;
+  };
+
+  const settleResult = useCallback((idx) => {
+    setWinnerIdx(idx);
+    setRevealed(r => r.map((v, i) => (i === idx ? true : v)));
+    setFinished(true);
+    setScratchPct(100);
+    scratchingRef.current = false;
+    try { navigator.vibrate?.(30); } catch (e) {}
+
+    const card = cards[idx];
+    const isWin = card.value > 0;
+    if (isWin && card.value >= 100) {
+      setBigWinFlash(true);
+      setBigWinShake(true);
+      setTimeout(() => setBigWinFlash(false), 600);
+      setTimeout(() => setBigWinShake(false), 800);
+    }
+    if (isWin) {
+      const parts = [];
+      const count = card.value >= 200 ? 80 : card.value >= 100 ? 60 : 40;
+      for (let i = 0; i < count; i++) {
+        parts.push({
+          id: i, x: 30 + Math.random() * 40, y: 30 + Math.random() * 20,
+          color: ['#ffd700', '#eceef2', '#f5d060', '#c9ccd2', '#e6ad4a', '#fff'][i % 6],
+          size: 4 + Math.random() * 7, rotation: Math.random() * 360,
+          delay: Math.random() * 0.5, duration: 1.5 + Math.random() * 1.5,
+        });
       }
+      setConfettiParts(parts);
+      onWin(card.value);
+    }
+    setTimeout(() => {
+      setRevealed([true, true, true]);
+      setOthersShown(true);
+    }, 800);
+  }, [cards, onWin]);
+
+  const doScratch = (e, idx) => {
+    if (!scratchingRef.current || activeIdxRef.current !== idx || finished || revealed[idx]) return;
+    const c = canvasRefs[idx].current;
+    if (!c) return;
+    const ctx = c.getContext('2d', { willReadFrequently: true });
+    const rect = c.getBoundingClientRect();
+    const cx = e.clientX, cy = e.clientY;
+    if (cx == null || cy == null) return;
+    const x = (cx - rect.left) * (c.width / rect.width);
+    const y = (cy - rect.top) * (c.height / rect.height);
+
+    if (lastPos.current) {
+      const dx = x - lastPos.current.x, dy = y - lastPos.current.y;
+      const dist = Math.hypot(dx, dy);
+      const steps = Math.max(1, Math.floor(dist / STAMP_SPACING));
+      for (let s = 1; s <= steps; s++) {
+        stamp(ctx, lastPos.current.x + (dx * s) / steps, lastPos.current.y + (dy * s) / steps);
+        stampCount.current++;
+      }
+    } else {
+      stamp(ctx, x, y);
+      stampCount.current++;
+    }
+    lastPos.current = { x, y };
+    spawnFlakes(cx - rect.left, cy - rect.top);
+    try { if (stampCount.current % 14 === 0) navigator.vibrate?.(4); } catch (err) {}
+
+    if (stampCount.current % 8 === 0) {
+      const pct = measurePct(c);
+      percents.current[idx] = pct;
+      setScratchPct(Math.max(...percents.current));
+      if (pct > REVEAL_PCT && !finished) settleResult(idx);
     }
   };
 
-  const startScratch = (idx) => { setScratching(idx); lastPos.current = { x: 0, y: 0 }; };
-  const stopScratch = () => setScratching(-1);
-
-  // Check if two symbols match for pulse effect
-  const isMatched = (idx) => {
-    if (!allRevealed) return false;
-    return symbols.filter(s => s.icon === symbols[idx].icon).length >= 2;
+  const startScratch = (e, idx) => {
+    if (finished || revealed[idx]) return;
+    scratchingRef.current = true;
+    lastPos.current = null;
+    activeIdxRef.current = idx;
+    setActiveIdx(idx);
+    try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) {}
+    // stamp immediately so a tap leaves a mark (activeIdx state hasn't flushed yet)
+    doScratchImmediate(e, idx);
+  };
+  const doScratchImmediate = (e, idx) => {
+    const c = canvasRefs[idx].current;
+    if (!c) return;
+    const ctx = c.getContext('2d', { willReadFrequently: true });
+    const rect = c.getBoundingClientRect();
+    const x = (e.clientX - rect.left) * (c.width / rect.width);
+    const y = (e.clientY - rect.top) * (c.height / rect.height);
+    stamp(ctx, x, y);
+    stampCount.current++;
+    lastPos.current = { x, y };
+  };
+  const stopScratch = (idx) => {
+    scratchingRef.current = false;
+    lastPos.current = null;
+    if (!finished && !revealed[idx] && canvasRefs[idx]?.current) {
+      const pct = measurePct(canvasRefs[idx].current);
+      percents.current[idx] = pct;
+      setScratchPct(Math.max(...percents.current));
+      if (pct > REVEAL_PCT) settleResult(idx);
+    }
   };
 
   return (
     <div className={`fixed inset-0 flex items-center justify-center z-[70] p-4 ${closing ? 'anim-backdrop-close' : 'anim-fade-in'}`} style={{ background: 'rgba(8,10,16,.74)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)' }} onClick={onClose}>
       {showTutorial && <TutorialModal tutorialKey="scratch" onClose={() => setShowTutorial(false)} />}
 
-      {/* Jackpot screen flash */}
-      {jackpotFlash && (
+      <style>{`
+        @keyframes flakeFall {
+          0% { transform: translate(0, 0) rotate(0deg); opacity: 1; }
+          100% { transform: translate(var(--fdrift), 46px) rotate(140deg); opacity: 0; }
+        }
+        @keyframes stampIn {
+          0% { transform: rotate(-14deg) scale(2.2); opacity: 0; }
+          55% { transform: rotate(-14deg) scale(0.92); opacity: 1; }
+          75% { transform: rotate(-14deg) scale(1.06); }
+          100% { transform: rotate(-14deg) scale(1); opacity: 1; }
+        }
+        @keyframes glintSweep {
+          0%, 100% { opacity: .5; }
+          50% { opacity: 1; }
+        }
+        @keyframes collectSheen {
+          0%, 55%, 100% { transform: translateX(-130%) skewX(-18deg); }
+          25%, 40% { transform: translateX(230%) skewX(-18deg); }
+        }
+      `}</style>
+
+      {bigWinFlash && (
         <div className="fixed inset-0 z-[80] pointer-events-none bg-yellow-400" style={{ animation: 'jackpotFlash 0.6s ease-out forwards' }} />
       )}
 
       <div
-        className={`max-w-lg w-full ${closing ? 'anim-modal-close' : 'anim-scale-in'}`}
-        style={jackpotShake ? { animation: 'jackpotShake 0.8s ease-out' } : {}}
+        className={`max-w-md w-full ${closing ? 'anim-modal-close' : 'anim-scale-in'}`}
+        style={bigWinShake ? { animation: 'jackpotShake 0.8s ease-out' } : {}}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="rounded-3xl overflow-hidden relative" style={{ background: 'linear-gradient(180deg, #1a1000 0%, #0d0800 100%)', border: '3px solid #D4A017', boxShadow: '0 0 40px rgba(212,160,23,0.2), 0 20px 60px rgba(0,0,0,0.5)' }}>
+        <div className="rounded-3xl overflow-hidden relative" style={{
+          background: 'linear-gradient(180deg, #2a2438 0%, #1a1626 55%, #141220 100%)',
+          border: '1px solid rgba(255,255,255,.09)',
+          boxShadow: '0 24px 60px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.06)',
+        }}>
+
+          {/* Gold glint line across the top */}
+          <div className="absolute top-0 left-0 right-0 pointer-events-none" style={{ height: 2 }}>
+            <div className="absolute inset-0" style={{ background: 'linear-gradient(90deg, transparent 5%, rgba(230,173,74,.75) 50%, transparent 95%)' }} />
+            <div className="absolute" style={{
+              left: '50%', top: -7, width: 90, height: 16, transform: 'translateX(-50%)',
+              background: 'radial-gradient(ellipse, rgba(255,200,110,.55) 0%, transparent 70%)',
+              animation: 'glintSweep 3s ease-in-out infinite',
+            }} />
+          </div>
 
           {/* Header */}
-          <div className="relative px-6 pt-5 pb-4">
+          <div className="relative px-6 pt-5 pb-2">
             <div className="flex items-center justify-between">
               <button type="button" onClick={() => setShowTutorial(true)} className="p-2 hover:bg-white/10 rounded-full transition-colors">
-                <HelpCircle className="w-5 h-5 text-yellow-500/70" />
+                <HelpCircle className="w-5 h-5" style={{ color: '#8b919c' }} />
               </button>
-              <div className="text-center">
-                <div className="text-xs font-bold tracking-[0.3em] text-yellow-600 mb-1">✦ PREMIUM ✦</div>
-                <h2 className="text-2xl font-black text-yellow-400" style={{ textShadow: '0 2px 8px rgba(251,191,36,0.3)' }}>SCRATCH & WIN</h2>
-              </div>
+              <h2 className="text-[26px] font-black tracking-wide" style={{
+                ...SILVER_TEXT,
+                fontFamily: 'Georgia, "Times New Roman", serif',
+                filter: 'drop-shadow(0 2px 3px rgba(0,0,0,0.8))',
+                letterSpacing: '0.04em',
+              }}>SCRATCH &amp; WIN</h2>
               <button type="button" onClick={onClose} className="p-2 hover:bg-white/10 rounded-full transition-colors">
                 <X className="w-5 h-5 text-gray-500" />
               </button>
             </div>
-            <p className="text-center text-yellow-700 text-sm mt-2 font-medium">Match 3 symbols for the jackpot!</p>
-            <div className="mt-4 h-px bg-gradient-to-r from-transparent via-yellow-600/40 to-transparent" />
           </div>
 
-          {/* Prize tiers */}
-          <div className="flex justify-center gap-4 px-6 pb-4">
-            {[
-              { label: '3×', text: 'JACKPOT', bg: 'bg-yellow-500/10', border: 'border-yellow-500/20', textColor: 'text-yellow-300', labelColor: 'text-yellow-400' },
-              { label: '2×', text: 'WIN', bg: 'bg-white/5', border: 'border-white/10', textColor: 'text-gray-300', labelColor: 'text-gray-400' },
-              { label: '0×', text: 'BONUS', bg: 'bg-white/5', border: 'border-white/10', textColor: 'text-gray-400', labelColor: 'text-gray-500' },
-            ].map((t, i) => (
-              <div key={i} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg ${t.bg} border ${t.border}`}>
-                <span className={`${t.labelColor} text-xs font-bold`}>{t.label}</span>
-                <span className={`${t.textColor} text-xs font-black`}>{t.text}</span>
+          {/* Prize row — heavier metal at higher values, like the concept */}
+          <div className="flex items-end justify-center gap-4 px-6 pb-1">
+            {PRIZE_VALUES.map(v => (
+              <div key={v} className="flex items-center gap-0.5">
+                {v >= 100 && <img src="/ui/reward/coins.png" alt="" width={v >= 200 ? 24 : 20} height={v >= 200 ? 24 : 20} style={{ objectFit: 'contain', marginBottom: 2 }} />}
+                <span className="font-black tabular-nums" style={{
+                  ...GOLD_TEXT,
+                  fontSize: v >= 100 ? 24 : 20,
+                  filter: 'drop-shadow(0 2px 2px rgba(0,0,0,0.7))',
+                }}>{v}</span>
               </div>
             ))}
           </div>
+          <p className="text-center text-xs pb-3" style={{ color: '#8b919c' }}>
+            {finished ? ' ' : 'Scratch any ticket — two hide coin prizes'}
+          </p>
 
-          {/* 3 Scratch Zones */}
-          <div className="flex gap-4 px-6 pb-2 justify-center">
-            {[0, 1, 2].map(idx => (
-              <div key={idx} className="relative" style={{ width: 130, height: 150 }}>
-                <div className="absolute inset-0 rounded-2xl overflow-hidden" style={{
-                  border: revealed[idx] ? `3px solid ${symbols[idx].color}` : '3px solid rgba(212,160,23,0.4)',
-                  boxShadow: revealed[idx] ? `0 0 25px ${symbols[idx].color}50, inset 0 0 25px ${symbols[idx].color}20` : '0 0 10px rgba(212,160,23,0.1)',
-                  transition: 'all 0.5s ease',
-                }}>
-                  {/* Prize underneath */}
-                  <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ background: revealed[idx] ? `radial-gradient(circle, ${symbols[idx].color}15 0%, rgba(5,10,20,0.95) 70%)` : 'rgba(5,10,20,0.95)' }}>
-                    {/* Reveal burst ring */}
-                    {revealed[idx] && (
-                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                        <div className="w-16 h-16 rounded-full border-2" style={{ borderColor: symbols[idx].color, animation: 'revealBurst 0.6s ease-out forwards' }} />
+          {/* === TICKETS === */}
+          <div className="flex justify-center gap-4 px-4">
+            {[0, 1, 2].map(idx => {
+              const card = cards[idx];
+              const isBlank = card.value === 0;
+              const isWinner = idx === winnerIdx;
+              const dimmed = revealed[idx] && !isWinner;
+              const accent = isBlank ? '#8b919c' : '#e6ad4a';
+              return (
+                <div
+                  key={idx}
+                  className="relative"
+                  style={{
+                    width: TICKET_W, height: TICKET_H, flex: 'none',
+                    transform: activeIdx === idx && !finished ? 'scale(1.05)' : 'scale(1)',
+                    transition: 'transform .25s ease',
+                  }}
+                >
+                  {/* Ticket body */}
+                  <div className="absolute inset-0 overflow-hidden" style={{
+                    borderRadius: 7,
+                    background: '#10131c',
+                    border: revealed[idx] && isWinner ? `2px solid ${accent}` : '1px solid rgba(255,255,255,.14)',
+                    boxShadow: revealed[idx] && isWinner
+                      ? `0 14px 34px rgba(0,0,0,.6), 0 0 26px ${isBlank ? 'rgba(140,146,156,.18)' : 'rgba(230,173,74,.3)'}`
+                      : activeIdx === idx && !finished
+                        ? '0 10px 26px rgba(0,0,0,.55), 0 0 18px rgba(230,220,200,.1)'
+                        : '0 8px 22px rgba(0,0,0,.5)',
+                    transition: 'box-shadow .3s ease, border-color .4s ease',
+                  }}>
+                    {/* Contents — ALWAYS under the foil, so they show through
+                        every scratched stroke like a real ticket */}
+                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-1" style={{
+                      background: revealed[idx] && isWinner && !isBlank
+                        ? 'radial-gradient(circle at 50% 42%, rgba(230,173,74,.16) 0%, #10131c 72%)'
+                        : '#10131c',
+                      opacity: dimmed ? 0.55 : 1,
+                      transition: 'opacity .4s ease',
+                    }}>
+                      {isBlank ? (
+                        <div style={{
+                          border: '2.5px solid #8b919c',
+                          borderRadius: 4, padding: '5px 8px',
+                          transform: 'rotate(-12deg)',
+                        }}>
+                          <div className="font-black text-center leading-tight" style={{ color: '#8b919c', fontSize: 11, letterSpacing: '.12em' }}>
+                            NO<br />PRIZE
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          {/* coin pile — stacked copies of the 3D coin icon */}
+                          <div className="relative" style={{
+                            width: 54, height: 44,
+                            filter: revealed[idx] && isWinner ? 'drop-shadow(0 0 12px rgba(230,173,74,.55))' : 'none',
+                            transition: 'filter .4s ease',
+                          }}>
+                            <img src="/ui/reward/coins.png" alt="" width={34} height={34} className="absolute" style={{ left: 0, bottom: 0, objectFit: 'contain' }} />
+                            <img src="/ui/reward/coins.png" alt="" width={30} height={30} className="absolute" style={{ right: 0, bottom: 2, objectFit: 'contain', transform: 'scaleX(-1)' }} />
+                            <img src="/ui/reward/coins.png" alt="" width={30} height={30} className="absolute" style={{ left: 12, top: 0, objectFit: 'contain' }} />
+                          </div>
+                          <div className="font-black tabular-nums" style={{
+                            ...GOLD_TEXT,
+                            fontSize: 26,
+                            filter: 'drop-shadow(0 2px 2px rgba(0,0,0,.7))',
+                          }}>
+                            {card.value}
+                          </div>
+                          <div className="font-bold" style={{ color: '#8b919c', fontSize: 8, letterSpacing: '.2em' }}>
+                            COINS
+                          </div>
+                        </>
+                      )}
+                    </div>
+
+                    {/* Torn-edge frame once the winner's foil is gone */}
+                    {revealed[idx] && isWinner && (
+                      <div className="absolute inset-x-0 top-0 pointer-events-none" style={{
+                        height: 10,
+                        background: 'linear-gradient(180deg, rgba(210,214,222,.9), rgba(150,156,168,.45) 55%, transparent)',
+                        clipPath: 'polygon(0 0, 100% 0, 100% 42%, 93% 78%, 85% 40%, 76% 88%, 68% 48%, 59% 95%, 50% 52%, 41% 90%, 33% 45%, 24% 84%, 16% 42%, 8% 76%, 0 38%)',
+                      }} />
+                    )}
+
+                    {/* Silver foil scratch canvas */}
+                    <canvas
+                      ref={canvasRefs[idx]}
+                      width={TICKET_W}
+                      height={TICKET_H}
+                      className="absolute inset-0 touch-none"
+                      style={{
+                        width: '100%', height: '100%',
+                        cursor: finished || revealed[idx] ? 'default' : 'crosshair',
+                        opacity: revealed[idx] ? 0 : 1,
+                        transition: 'opacity 0.45s ease',
+                        pointerEvents: finished || revealed[idx] ? 'none' : 'auto',
+                      }}
+                      onPointerDown={(e) => startScratch(e, idx)}
+                      onPointerUp={() => stopScratch(idx)}
+                      onPointerCancel={() => stopScratch(idx)}
+                      onPointerMove={(e) => doScratch(e, idx)}
+                    />
+
+                    {/* Silver flakes while scratching this ticket */}
+                    {activeIdx === idx && flakes.length > 0 && (
+                      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+                        {flakes.map(f => (
+                          <div key={f.id} className="absolute rounded-[1px]" style={{
+                            left: f.x, top: f.y, width: f.size, height: f.size,
+                            background: f.color, boxShadow: `0 0 3px ${f.color}`,
+                            '--fdrift': `${f.drift}px`,
+                            animation: `flakeFall ${f.dur}s ease-in forwards`,
+                          }} />
+                        ))}
                       </div>
                     )}
-                    {/* Symbol with pop animation */}
-                    <img
-                      src={symbols[idx].icon}
-                      alt={symbols[idx].name}
-                      className="w-16 h-16 object-contain"
-                      style={{
-                        animation: revealed[idx]
-                          ? `symbolPop 0.5s cubic-bezier(0.25, 1, 0.5, 1) both${isMatched(idx) ? ', matchPulse 1.2s ease-in-out 0.6s infinite' : ''}`
-                          : 'none',
-                        opacity: revealed[idx] ? 1 : 0.2,
-                        transform: revealed[idx] ? 'scale(1)' : 'scale(0.4)',
-                        filter: revealed[idx] ? `drop-shadow(0 0 14px ${symbols[idx].color}90)` : 'none',
-                      }}
-                    />
-                    {/* Sparkle particles orbiting */}
-                    {revealed[idx] && [0, 1, 2, 3].map(si => (
-                      <div key={si} className="absolute pointer-events-none" style={{
-                        top: '50%', left: '50%', marginTop: -4, marginLeft: -4,
-                        width: 8, height: 8, borderRadius: '50%',
-                        background: `radial-gradient(circle, white, ${symbols[idx].color})`,
-                        animation: `sparkleOrbit ${2 + si * 0.3}s linear ${si * 0.4}s infinite`,
-                        boxShadow: `0 0 6px ${symbols[idx].color}`,
-                      }} />
-                    ))}
-                    <div className={`text-xs font-black mt-2 tracking-wider transition-all duration-500 ${revealed[idx] ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`} style={{ color: symbols[idx].color, transitionDelay: '0.3s' }}>
-                      {symbols[idx].name.toUpperCase()}
-                    </div>
                   </div>
 
-                  {/* Gold foil canvas + shimmer overlay */}
-                  {!revealed[idx] && (
-                    <>
-                      <canvas
-                        ref={canvasRefs[idx]}
-                        width={130}
-                        height={150}
-                        className="absolute inset-0 cursor-crosshair touch-none rounded-2xl"
-                        style={{ width: '100%', height: '100%' }}
-                        onMouseDown={() => startScratch(idx)}
-                        onMouseUp={stopScratch}
-                        onMouseLeave={stopScratch}
-                        onMouseMove={(e) => doScratch(e, idx)}
-                        onTouchStart={() => startScratch(idx)}
-                        onTouchEnd={stopScratch}
-                        onTouchMove={(e) => doScratch(e, idx)}
-                      />
-                      {/* Gold shimmer sweep */}
-                      <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-2xl">
-                        <div className="absolute top-0 w-[30%] h-full" style={{
-                          background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent)',
-                          animation: 'goldShimmer 3s ease-in-out infinite',
-                          animationDelay: `${idx * 0.8}s`,
+                  {/* Perforated edges — punched holes against the modal bg */}
+                  {[0, 1].map(edge => (
+                    <div key={edge} className="absolute left-0 right-0 flex justify-around pointer-events-none" style={{ [edge ? 'bottom' : 'top']: -3 }}>
+                      {Array.from({ length: 8 }, (_, i) => (
+                        <span key={i} style={{
+                          width: 6, height: 6, borderRadius: '50%',
+                          background: '#1a1626',
+                          boxShadow: 'inset 0 1px 1px rgba(0,0,0,.6)',
                         }} />
-                      </div>
-                    </>
-                  )}
+                      ))}
+                    </div>
+                  ))}
                 </div>
-                {/* Zone number */}
-                <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-6 h-6 rounded-full flex items-center justify-center text-xs font-black" style={{ background: revealed[idx] ? symbols[idx].color : 'rgba(212,160,23,0.8)', color: '#000' }}>
-                  {revealed[idx] ? '✓' : idx + 1}
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
-          {/* Status dots */}
-          <div className="px-6 py-4">
-            <div className="flex items-center justify-center gap-3 mb-3">
-              {[0, 1, 2].map(idx => (
-                <div key={idx} className="transition-all duration-300" style={{
-                  width: revealed[idx] ? 14 : 10, height: revealed[idx] ? 14 : 10, borderRadius: '50%',
-                  background: revealed[idx] ? '#4ADE80' : '#374151',
-                  boxShadow: revealed[idx] ? '0 0 10px rgba(74,222,128,0.6)' : 'none',
-                  animation: revealed[idx] ? 'symbolPop 0.3s ease both' : 'none',
-                }} />
-              ))}
-              <span className="text-xs text-gray-500 ml-2">{revealed.filter(r => r).length}/3 revealed</span>
-            </div>
-
-            {/* Prize result */}
-            {allRevealed && (
-              <div className={`text-center py-5 rounded-2xl mb-4`} style={{
-                animation: 'resultZoom 0.5s cubic-bezier(0.25, 1, 0.5, 1) both',
-                background: matchCount === 3 ? 'linear-gradient(135deg, rgba(230,173,74,0.15) 0%, rgba(207,154,59,0.05) 100%)' : matchCount === 2 ? 'linear-gradient(135deg, rgba(53,179,166,0.12) 0%, rgba(79,169,139,0.05) 100%)' : 'rgba(255,255,255,0.03)',
-                border: matchCount === 3 ? '2px solid rgba(230,173,74,0.4)' : matchCount === 2 ? '2px solid rgba(53,179,166,0.35)' : '2px solid rgba(255,255,255,0.1)',
-              }}>
-                <div className="text-4xl mb-2" style={{ animation: 'float 2s ease-in-out infinite' }}>
-                  {matchCount === 3 ? '🎰' : matchCount === 2 ? '🎉' : '🪙'}
+          {/* Progress + result + CTA */}
+          <div className="px-6 pt-3 pb-5">
+            {!finished ? (
+              <>
+                <div className="mx-auto mb-2 h-1.5 rounded-full overflow-hidden" style={{ width: 180, background: 'rgba(255,255,255,.07)', opacity: scratchPct > 0 ? 1 : 0.35, transition: 'opacity .3s' }}>
+                  <div className="h-full rounded-full transition-all duration-200" style={{
+                    width: `${Math.min(100, (scratchPct / REVEAL_PCT) * 100)}%`,
+                    background: 'linear-gradient(90deg, #cc9a2e, #ffd700)',
+                    boxShadow: '0 0 8px rgba(255,215,0,.45)',
+                  }} />
                 </div>
-                <div className="text-sm font-bold mb-1" style={{ color: matchCount === 3 ? '#e6ad4a' : matchCount === 2 ? '#35b3a6' : '#99a0a8' }}>
-                  {matchCount === 3 ? '🔥 JACKPOT! 3 MATCHES! 🔥' : matchCount === 2 ? '✨ 2 MATCHES!' : 'Bonus Prize'}
-                </div>
-                <div className="text-5xl font-black tabular-nums" style={{ color: matchCount === 3 ? '#e6ad4a' : matchCount === 2 ? '#35b3a6' : '#c3c9cf', textShadow: matchCount === 3 ? '0 0 30px rgba(230,173,74,0.5)' : 'none' }}>
-                  {prize}
-                </div>
-                <div className="text-sm font-bold" style={{ color: matchCount === 3 ? '#e6ad4a' : matchCount === 2 ? '#35b3a6' : '#99a0a8' }}>
-                  KWACHA
-                </div>
+                <p className="text-center text-xs" style={{ color: '#6b7280' }}>
+                  {scratchPct > 0 ? 'Switch tickets anytime — first fully scratched is your prize' : 'Tickets shuffle with every play'}
+                </p>
+              </>
+            ) : (
+              <div className="text-center mb-4" style={{ animation: 'resultZoom 0.5s cubic-bezier(0.25, 1, 0.5, 1) both' }}>
+                {won ? (
+                  <>
+                    <div className="text-xs font-bold uppercase mb-1" style={{ color: bigWin ? '#e6ad4a' : '#8fd3bd', letterSpacing: '3px' }}>
+                      {bigWin ? '🔥 BIG WIN 🔥' : 'YOU WON'}
+                    </div>
+                    <div className="flex items-center justify-center gap-2">
+                      <span className="text-4xl font-black tabular-nums" style={{ ...GOLD_TEXT, filter: 'drop-shadow(0 2px 3px rgba(0,0,0,.7))' }}>
+                        {chosen.value}
+                      </span>
+                      <img src="/ui/reward/coins.png" alt="" width={32} height={32} style={{ objectFit: 'contain' }} />
+                    </div>
+                    <div className="text-xs mt-1" style={{ color: '#8b919c' }}>Coins added to your balance</div>
+                  </>
+                ) : (
+                  <>
+                    <div className="text-sm font-bold" style={{ color: '#c3c9cf', letterSpacing: '1px' }}>
+                      BETTER LUCK NEXT TIME
+                    </div>
+                    <div className="text-xs mt-1" style={{ color: '#6b7280' }}>
+                      {othersShown ? 'The prizes were hiding in the other tickets…' : ' '}
+                    </div>
+                  </>
+                )}
               </div>
             )}
 
-            {/* Collect button with pulse */}
-            {allRevealed ? (
-              <button
-                type="button"
-                onClick={onClose}
-                className="w-full py-4 rounded-2xl font-black text-lg transition-all hover:scale-[1.02] active:scale-95"
-                style={{
-                  background: matchCount === 3 ? 'linear-gradient(180deg, #ecc665 0%, #cf9a3b 100%)' : 'linear-gradient(180deg, #57b795 0%, #3f9a7b 100%)',
-                  color: '#08210f',
-                  boxShadow: matchCount === 3 ? '0 6px 20px rgba(230,173,74,0.4)' : '0 6px 20px rgba(79,169,139,0.4)',
-                  animation: 'collectBtnPulse 2s ease-in-out infinite',
-                }}
-              >
-                💰 Collect {prize} Coins!
-              </button>
-            ) : (
-              <p className="text-center text-gray-500 text-sm">Scratch each zone to reveal your symbols</p>
+            {/* COLLECT — chamfered metal plate from the concept art */}
+            {finished && (
+              won ? (
+                <div className="relative mx-auto" style={{ width: 230, filter: 'drop-shadow(0 8px 18px rgba(0,0,0,.55)) drop-shadow(0 0 18px rgba(230,173,74,.22))' }}>
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="relative block w-full py-3.5 font-black text-lg transition-transform hover:scale-[1.03] active:scale-95 overflow-hidden"
+                    style={{
+                      clipPath: 'polygon(11px 0, calc(100% - 11px) 0, 100% 50%, calc(100% - 11px) 100%, 11px 100%, 0 50%)',
+                      background: 'linear-gradient(180deg, #ffffff 0%, #d7dae0 30%, #9ea3ad 50%, #c7cbd3 52%, #eceef2 82%, #a7adb7 100%)',
+                      color: '#151922',
+                      letterSpacing: '.14em',
+                      textShadow: '0 1px 0 rgba(255,255,255,.65)',
+                    }}
+                  >
+                    {/* moving sheen */}
+                    <span className="absolute top-0 bottom-0 pointer-events-none" style={{
+                      width: '34%',
+                      background: 'linear-gradient(90deg, transparent, rgba(255,255,255,.75), transparent)',
+                      animation: 'collectSheen 2.6s ease-in-out infinite',
+                    }} />
+                    {/* engraved edge lines */}
+                    <span className="absolute inset-x-6 top-[5px] pointer-events-none" style={{ height: 1, background: 'rgba(255,255,255,.8)' }} />
+                    <span className="absolute inset-x-6 bottom-[5px] pointer-events-none" style={{ height: 1, background: 'rgba(20,24,32,.35)' }} />
+                    <span className="relative inline-flex items-center gap-2">
+                      COLLECT
+                      <img src="/ui/reward/coins.png" alt="" width={20} height={20} style={{ objectFit: 'contain' }} />
+                      <span className="tabular-nums">{chosen.value}</span>
+                    </span>
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="block mx-auto px-12 py-3 font-black text-base transition-all hover:scale-[1.03] active:scale-95"
+                  style={{
+                    clipPath: 'polygon(11px 0, calc(100% - 11px) 0, 100% 50%, calc(100% - 11px) 100%, 11px 100%, 0 50%)',
+                    background: 'rgba(255,255,255,0.08)',
+                    border: '1px solid rgba(255,255,255,0.14)',
+                    color: '#c3c9cf',
+                    letterSpacing: '.1em',
+                  }}
+                >
+                  GOT IT
+                </button>
+              )
             )}
           </div>
 

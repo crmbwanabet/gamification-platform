@@ -72,6 +72,18 @@ const useReducedMotion = () => {
   return reduced;
 };
 
+// Daily free allowance per game. All games refresh back to these values at
+// 6am local time every day; plays ABOVE the allowance (earned/purchased
+// extras) carry over untouched — the refresh only tops up, never removes.
+const DAILY_GAME_PLAYS = { wheel: 3, scratch: 5, dice: 5, highlow: 5, plinko: 5, tapfrenzy: 5, stopclock: 5 };
+const DAILY_TRIVIA_PLAYS = { classicQuiz: 3, speedRound: 5, streakTrivia: 3 };
+// Identifies the current "game day" — a new one starts at 6am.
+const playsRefreshKey = () => {
+  const d = new Date();
+  if (d.getHours() < 6) d.setDate(d.getDate() - 1);
+  return d.toDateString();
+};
+
 export default function GamificationPlatform() {
   const prefersReducedMotion = useReducedMotion();
   const [tab, setTab] = useState('home');
@@ -882,8 +894,9 @@ export default function GamificationPlatform() {
     dailyClaimed: false,
     lastDailyClaim: null,
     referrals: 0,
-    gamePlays: { wheel: 3, scratch: 5, dice: 5, highlow: 5, plinko: 5, tapfrenzy: 5, stopclock: 5 },
-    triviaPlays: { classicQuiz: 3, speedRound: 5, streakTrivia: 3 },
+    gamePlays: { ...DAILY_GAME_PLAYS },
+    triviaPlays: { ...DAILY_TRIVIA_PLAYS },
+    lastPlaysRefresh: null,
     dailyChallengeAnswered: false,
     dailyChallengeCorrect: false,
     dailyTasksDone: [],
@@ -933,6 +946,34 @@ export default function GamificationPlatform() {
     }, 1500);
     return () => { if (saveTimer.current) clearTimeout(saveTimer.current); };
   }, [user, session.status]);
+
+  // 6am play refresh: top every game's plays back up to the daily allowance
+  // when a new game day starts. Extras above the allowance are kept (max, not
+  // overwrite). Runs on mount, when SSO hydration lands, and every minute so
+  // a session left open across 6am refreshes live.
+  const refreshDailyPlays = useCallback(() => {
+    setUser(u => {
+      const key = playsRefreshKey();
+      if (u.lastPlaysRefresh === key) return u;
+      const topUp = (cur, defs) => Object.fromEntries(
+        Object.keys(defs).map(k => [k, Math.max(cur?.[k] ?? 0, defs[k])])
+      );
+      return {
+        ...u,
+        lastPlaysRefresh: key,
+        gamePlays: topUp(u.gamePlays, DAILY_GAME_PLAYS),
+        triviaPlays: topUp(u.triviaPlays, DAILY_TRIVIA_PLAYS),
+      };
+    });
+  }, []);
+  useEffect(() => {
+    refreshDailyPlays();
+    const iv = setInterval(refreshDailyPlays, 60000);
+    return () => clearInterval(iv);
+  }, [refreshDailyPlays]);
+  useEffect(() => {
+    if (session.status === 'ready') refreshDailyPlays();
+  }, [session.status, refreshDailyPlays]);
 
   // Daily-reward day rollover: once a new calendar day begins since the last
   // claim, re-open the claim. Runs on mount and whenever the stored claim date
