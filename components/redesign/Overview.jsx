@@ -9,8 +9,9 @@ import { getDailyMissions, PERMANENT_MISSIONS } from '@/lib/data/missions';
 import { STORE_ITEMS, MINIGAMES } from '@/lib/data/platform';
 
 const MISSIONS = [...getDailyMissions(), ...PERMANENT_MISSIONS];
-const viking = STORE_ITEMS.find(i => i.id === 'viking') || STORE_ITEMS[0];
-const storeMore = STORE_ITEMS.filter(i => i.id !== viking.id).slice(0, 2);
+// Store may be empty until the admin dashboard populates it
+const featuredItem = STORE_ITEMS.find(i => i.featured) || STORE_ITEMS[0] || null;
+const storeMore = featuredItem ? STORE_ITEMS.filter(i => i.id !== featuredItem.id).slice(0, 2) : [];
 const wheelGame = MINIGAMES.find(g => g.id === 'wheel');
 
 // Pick 3 missions that best reflect the player's current progress:
@@ -88,20 +89,22 @@ export default function Overview({ points = '2,344', missionsCount = MISSIONS.le
           </div>
         </section>
 
-        <section>
-          <SectionTitle>Featured Reward</SectionTitle>
-          <Card style={{ padding: 14, display: 'flex', gap: 14, alignItems: 'center' }}>
-            <div style={{ width: 120, flex: 'none' }}><Thumb src={IMAGES[viking.image]} alt={viking.name} h={96} /></div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 15, fontWeight: 800, marginBottom: 4 }}>{viking.name}</div>
-              {viking.desc && <div style={{ fontSize: 12, color: C.sub, marginBottom: 10 }}>{viking.desc}</div>}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14, marginTop: viking.desc ? 0 : 10 }}>
-                <GreenBtn onClick={() => go('store')}>Buy Now</GreenBtn>
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 14, fontWeight: 800, color: C.gold }}><RewardIcon kind="coins" size={17} /> {viking.price.kwacha}</span>
+        {featuredItem && (
+          <section>
+            <SectionTitle>Featured Reward</SectionTitle>
+            <Card style={{ padding: 14, display: 'flex', gap: 14, alignItems: 'center' }}>
+              <div style={{ width: 120, flex: 'none' }}><Thumb src={IMAGES[featuredItem.image]} alt={featuredItem.name} h={96} /></div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 15, fontWeight: 800, marginBottom: 4 }}>{featuredItem.name}</div>
+                {featuredItem.desc && <div style={{ fontSize: 12, color: C.sub, marginBottom: 10 }}>{featuredItem.desc}</div>}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14, marginTop: featuredItem.desc ? 0 : 10 }}>
+                  <GreenBtn onClick={() => go('store')}>Buy Now</GreenBtn>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 14, fontWeight: 800, color: C.gold }}><RewardIcon kind="coins" size={17} /> {featuredItem.price.kwacha}</span>
+                </div>
               </div>
-            </div>
-          </Card>
-        </section>
+            </Card>
+          </section>
+        )}
 
         <section className="rs-ov-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
           <div>
@@ -140,12 +143,14 @@ export default function Overview({ points = '2,344', missionsCount = MISSIONS.le
           </div>
         </section>
 
-        <section>
-          <SectionTitle>More in the store</SectionTitle>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            {storeMore.map(item => <StoreRow key={item.id} item={item} onNavigate={onNavigate} />)}
-          </div>
-        </section>
+        {storeMore.length > 0 && (
+          <section>
+            <SectionTitle>More in the store</SectionTitle>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {storeMore.map(item => <StoreRow key={item.id} item={item} onNavigate={onNavigate} />)}
+            </div>
+          </section>
+        )}
       </div>
     </RedesignShell>
   );

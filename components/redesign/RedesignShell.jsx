@@ -93,7 +93,7 @@ const NAV = [
   { label: 'Home', img: 'home', tab: 'home' },
   { label: 'Play', img: 'play', tab: 'play', n: MINIGAMES.length },
   { label: 'Earn', img: 'earn', tab: 'earn', n: [...getDailyMissions(), ...PERMANENT_MISSIONS].length },
-  { label: 'Store', img: 'store', tab: 'store', n: STORE_ITEMS.length },
+  { label: 'Store', img: 'store', tab: 'store', n: STORE_ITEMS.length || null },
 ];
 
 function Stat({ img, value, label, cls }) {

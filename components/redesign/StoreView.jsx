@@ -33,12 +33,23 @@ export default function StoreView({ points = '0', missionsCount = 0, badges = 0,
     <RedesignShell points={points} missionsCount={missionsCount} badges={badges} xp={xp} activeTab="store" onNavigate={onNavigate} onOpenProfile={onOpenProfile}>
       <section>
         <SectionTitle>Rewards Store</SectionTitle>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(168px, 1fr))', gap: 12 }}>
-          {STORE_ITEMS.map((item, i) => {
-            const canBuy = kwacha >= item.price.kwacha && (!item.price.gems || gems >= item.price.gems);
-            return <StoreCard key={item.id} i={i} item={item} canBuy={canBuy} onBuy={onBuy} />;
-          })}
-        </div>
+        {STORE_ITEMS.length === 0 ? (
+          <Card style={{ padding: '46px 24px', textAlign: 'center' }}>
+            <div style={{ fontSize: 44, marginBottom: 12 }}>🛍️</div>
+            <div style={{ fontSize: 16, fontWeight: 800, color: C.text, marginBottom: 6 }}>Restocking the shelves…</div>
+            <div style={{ fontSize: 13, color: C.sub, maxWidth: 340, margin: '0 auto' }}>
+              New rewards are on their way — free spins, free bets and exclusive merch.
+              Keep earning coins so you're ready when they land!
+            </div>
+          </Card>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(168px, 1fr))', gap: 12 }}>
+            {STORE_ITEMS.map((item, i) => {
+              const canBuy = kwacha >= item.price.kwacha && (!item.price.gems || gems >= item.price.gems);
+              return <StoreCard key={item.id} i={i} item={item} canBuy={canBuy} onBuy={onBuy} />;
+            })}
+          </div>
+        )}
       </section>
     </RedesignShell>
   );
