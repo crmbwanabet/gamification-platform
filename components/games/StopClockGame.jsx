@@ -142,7 +142,7 @@ function StopClockGame({ onClose, onWin, closing }) {
         .sc-beam {
           position: absolute; top: -6%; height: 110%; width: 110px;
           transform-origin: 50% 0; pointer-events: none; mix-blend-mode: screen;
-          background: linear-gradient(180deg, rgba(214,255,224,.38), rgba(214,255,224,.13) 55%, rgba(214,255,224,0) 82%);
+          background: linear-gradient(180deg, rgba(255,244,190,.42), rgba(255,244,190,.14) 55%, rgba(255,244,190,0) 82%);
           clip-path: polygon(42% 0, 58% 0, 100% 100%, 0 100%);
           filter: blur(5px);
           animation: scBeamSway var(--sway, 8s) ease-in-out infinite alternate;
@@ -178,7 +178,7 @@ function StopClockGame({ onClose, onWin, closing }) {
       <div style={{
         position: 'relative', borderRadius: 16, overflow: 'hidden', padding: '14px 14px 18px',
         border: '1px solid rgba(255,255,255,.09)',
-        backgroundImage: "linear-gradient(rgba(8,10,18,.38), rgba(8,10,18,.18) 45%, rgba(8,10,18,.3)), url('/ui/stopclock/woods.webp')",
+        backgroundImage: "linear-gradient(rgba(10,10,20,.16), rgba(10,10,20,.04) 45%, rgba(10,10,20,.12)), url('/ui/stopclock/woods.webp')",
         backgroundSize: 'cover', backgroundPosition: 'center 80%',
         userSelect: 'none', WebkitUserSelect: 'none',
       }}>
@@ -197,8 +197,8 @@ function StopClockGame({ onClose, onWin, closing }) {
               return (
                 <div key={s.name} style={{
                   fontSize: 11, fontWeight: 800, letterSpacing: '.05em', padding: '3px 10px', borderRadius: 999,
-                  background: done ? 'rgba(79,169,139,.25)' : active ? `${s.color}33` : 'rgba(255,255,255,.07)',
-                  color: done ? C.green : active ? s.color : C.muted,
+                  background: done ? 'rgba(12,30,24,.72)' : active ? 'rgba(12,7,24,.72)' : 'rgba(12,7,24,.55)',
+                  color: done ? '#7fd4ae' : active ? s.color : 'rgba(255,255,255,.75)',
                   border: `1px solid ${done ? C.green : active ? s.color : 'transparent'}44`,
                 }}>
                   {done ? '✓' : i + 1} {s.name}
@@ -206,7 +206,7 @@ function StopClockGame({ onClose, onWin, closing }) {
               );
             })}
           </div>
-          <div style={{ fontSize: 13, fontWeight: 800, color: C.gold, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+          <div style={{ fontSize: 13, fontWeight: 800, color: C.gold, display: 'inline-flex', alignItems: 'center', gap: 4, background: 'rgba(12,7,24,.6)', borderRadius: 999, padding: '3px 10px' }}>
             {banked} <RewardIcon kind="coins" size={14} />
           </div>
         </div>
@@ -214,10 +214,10 @@ function StopClockGame({ onClose, onWin, closing }) {
         {/* Target */}
         <div style={{ position: 'relative', textAlign: 'center', height: 34, marginBottom: 2 }}>
           {targetNum !== null && gameState !== 'ready' && gameState !== 'done' && (
-            <>
-              <span style={{ color: C.sub, fontSize: 13 }}>Target </span>
-              <span style={{ fontSize: 24, fontWeight: 900, color: stageColor, fontVariantNumeric: 'tabular-nums' }}>{String(targetNum).padStart(2, '0')}</span>
-            </>
+            <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 6, background: 'rgba(12,7,24,.66)', borderRadius: 999, padding: '3px 14px' }}>
+              <span style={{ color: 'rgba(255,255,255,.8)', fontSize: 13 }}>Target</span>
+              <span style={{ fontSize: 22, fontWeight: 900, color: stageColor, fontVariantNumeric: 'tabular-nums' }}>{String(targetNum).padStart(2, '0')}</span>
+            </span>
           )}
         </div>
 
