@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { C } from '@/components/redesign/tokens';
 import { RewardIcon } from '@/components/redesign/RedesignShell';
 import TutorialModal from '../modals/TutorialModal';
-import { GameShell, GameBtn } from './gameKit';
+import { GameShell } from './gameKit';
 
 const STAGES = [
   { name: 'WARM-UP',   lap: 4000, color: '#4fa98b', prizes: [150, 70, 40, 20, 10] },
@@ -12,6 +12,29 @@ const STAGES = [
   { name: 'LIGHTNING', lap: 1500, color: '#e5573f', prizes: [400, 200, 100, 50, 25] },
 ];
 const STREAK_BONUS = 200; // every stage within ±5
+
+function ScBtn({ children, onClick, variant = 'green', disabled, full = true, style }) {
+  const v = {
+    green: { top: '#5ecb8f', bot: '#2e9c66', edge: '#1c6a44' },
+    red:   { top: '#ff7a5c', bot: '#e5432a', edge: '#9c2917' },
+  }[variant];
+  return (
+    <button
+      type="button"
+      className="sc-btn"
+      onClick={onClick}
+      disabled={disabled}
+      style={{
+        width: full ? '100%' : 'auto',
+        background: `linear-gradient(180deg, ${v.top}, ${v.bot})`,
+        '--edge': v.edge,
+        ...style,
+      }}
+    >
+      {children}
+    </button>
+  );
+}
 
 const wrapDiff = (a, b) => {
   const d = Math.abs(a - b);
@@ -119,7 +142,7 @@ function StopClockGame({ onClose, onWin, closing }) {
         .sc-beam {
           position: absolute; top: -6%; height: 110%; width: 110px;
           transform-origin: 50% 0; pointer-events: none; mix-blend-mode: screen;
-          background: linear-gradient(180deg, rgba(200,170,255,.4), rgba(200,170,255,.14) 55%, rgba(200,170,255,0) 82%);
+          background: linear-gradient(180deg, rgba(214,255,224,.38), rgba(214,255,224,.13) 55%, rgba(214,255,224,0) 82%);
           clip-path: polygon(42% 0, 58% 0, 100% 100%, 0 100%);
           filter: blur(5px);
           animation: scBeamSway var(--sway, 8s) ease-in-out infinite alternate;
@@ -129,6 +152,22 @@ function StopClockGame({ onClose, onWin, closing }) {
           background: radial-gradient(circle, rgba(255,244,200,.95) 0%, rgba(255,214,90,.5) 45%, rgba(255,214,90,0) 70%);
           animation: scSparkleFloat var(--dur, 5s) linear infinite;
         }
+        .sc-btn {
+          position: relative;
+          border: 2.5px solid rgba(16,10,24,.9);
+          border-radius: 16px;
+          padding: 13px 26px;
+          font-size: 17px; font-weight: 900; letter-spacing: .02em;
+          color: #fff; text-shadow: 0 2px 0 rgba(0,0,0,.35);
+          cursor: pointer;
+          box-shadow: 0 5px 0 var(--edge), 0 10px 18px rgba(0,0,0,.45), inset 0 2px 0 rgba(255,255,255,.35);
+          transition: transform .06s ease, box-shadow .06s ease, filter .15s ease;
+        }
+        .sc-btn:active:not(:disabled) {
+          transform: translateY(4px);
+          box-shadow: 0 1px 0 var(--edge), 0 4px 10px rgba(0,0,0,.4), inset 0 2px 0 rgba(255,255,255,.25);
+        }
+        .sc-btn:disabled { filter: grayscale(.55) brightness(.75); cursor: default; }
         @media (prefers-reduced-motion: reduce) {
           .sc-beam { animation: none; }
           .sc-sparkle { display: none; animation: none; }
@@ -139,8 +178,8 @@ function StopClockGame({ onClose, onWin, closing }) {
       <div style={{
         position: 'relative', borderRadius: 16, overflow: 'hidden', padding: '14px 14px 18px',
         border: '1px solid rgba(255,255,255,.09)',
-        backgroundImage: "linear-gradient(rgba(10,6,20,.44), rgba(10,6,20,.28)), url('/ui/stopclock/bg.webp')",
-        backgroundSize: 'cover', backgroundPosition: 'center 70%',
+        backgroundImage: "linear-gradient(rgba(8,10,18,.38), rgba(8,10,18,.18) 45%, rgba(8,10,18,.3)), url('/ui/stopclock/woods.webp')",
+        backgroundSize: 'cover', backgroundPosition: 'center 80%',
         userSelect: 'none', WebkitUserSelect: 'none',
       }}>
         <div className="sc-beam" style={{ left: '14%', '--sway': '8s' }} />
@@ -255,10 +294,10 @@ function StopClockGame({ onClose, onWin, closing }) {
 
         {/* Button row */}
         <div style={{ position: 'relative', minHeight: 54 }}>
-          {gameState === 'ready' && <GameBtn onClick={startGame}>⏱️ Start — 3 Stages!</GameBtn>}
-          {gameState === 'spinning' && <GameBtn onClick={stopSpin} variant="danger" style={{ animation: 'pulseGlow 1s ease-in-out infinite' }}>🛑 STOP!</GameBtn>}
+          {gameState === 'ready' && <ScBtn onClick={startGame}>⏱️ Start — 3 Stages!</ScBtn>}
+          {gameState === 'spinning' && <ScBtn onClick={stopSpin} variant="red" style={{ animation: 'pulseGlow 1s ease-in-out infinite' }}>🛑 STOP!</ScBtn>}
           {(gameState === 'intro' || gameState === 'stageResult') && (
-            <GameBtn disabled style={{ opacity: .45, cursor: 'default' }}>{gameState === 'intro' ? 'Get ready…' : stage < 2 ? 'Next stage…' : 'Totting up…'}</GameBtn>
+            <ScBtn disabled>{gameState === 'intro' ? 'Get ready…' : stage < 2 ? 'Next stage…' : 'Totting up…'}</ScBtn>
           )}
 
           {gameState === 'done' && (
@@ -285,9 +324,9 @@ function StopClockGame({ onClose, onWin, closing }) {
                 {total > 0 ? <>Total +{total} <RewardIcon kind="coins" size={20} /></> : 'No luck this time!'}
               </div>
               <div>
-                <GameBtn full={false} style={{ padding: '12px 30px' }} onClick={() => { setGameState('ready'); setResults([]); setStage(0); setTargetNum(null); setCurrentNum(0); }}>
+                <ScBtn full={false} style={{ padding: '12px 30px' }} onClick={() => { setGameState('ready'); setResults([]); setStage(0); setTargetNum(null); setCurrentNum(0); }}>
                   Play Again ⏱️
-                </GameBtn>
+                </ScBtn>
               </div>
             </div>
           )}
