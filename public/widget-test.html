@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Widget embed test — stand-in for bwanabet.com</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 0; min-height: 200vh;
+           background: linear-gradient(#f4f5f7, #dfe3e8); color: #333; }
+    header { background: #14233c; color: #fff; padding: 18px 24px; font-weight: 800; }
+    main { padding: 32px 24px; max-width: 720px; }
+  </style>
+</head>
+<body>
+  <header>bwanabet.com — host page stand-in</header>
+  <main>
+    <h1>Widget embed test</h1>
+    <p>The rewards launcher should float bottom-right with a red ✕ badge.
+       Clicking the bubble opens the platform full-screen; the red ✕ inside
+       the app closes it back to this page.</p>
+    <p>Scroll down — the launcher stays fixed.</p>
+  </main>
+  <script>window.X100_WIDGET = { uid: 'BW-483920' };</script>
+  <script src="/widget.js" defer></script>
+</body>
+</html>

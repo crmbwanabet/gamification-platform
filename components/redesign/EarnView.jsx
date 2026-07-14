@@ -143,9 +143,9 @@ function QuestCard({ q, questProgress, questsComplete, onOpen }) {
   );
 }
 
-export default function EarnView({ tab = 'earn.missions', points = '0', missionsCount = 0, badges = 0, xp = 0, streak = 1, onNavigate, onOpenProfile, missionProgress, missionsComplete, onOpenMission, questProgress, questsComplete, onOpenQuest, dailyDay = 1, dailyClaimed = false, onClaimDaily }) {
+export default function EarnView({ tab = 'earn.missions', points = '0', missionsCount = 0, badges = 0, xp = 0, streak = 1, onNavigate, onOpenProfile, missionProgress, missionsComplete, onOpenMission, questProgress, questsComplete, onOpenQuest, dailyDay = 1, dailyClaimed = false, onClaimDaily, userId = null, navBadges = {} }) {
   return (
-    <RedesignShell points={points} missionsCount={missionsCount} badges={badges} xp={xp} activeTab="earn" onNavigate={onNavigate} onOpenProfile={onOpenProfile}>
+    <RedesignShell points={points} missionsCount={missionsCount} badges={badges} xp={xp} userId={userId} navBadges={navBadges} activeTab="earn" onNavigate={onNavigate} onOpenProfile={onOpenProfile}>
       <SubNav tab={tab} onNavigate={onNavigate} />
       {tab === 'earn.rewards' && (
         <RewardsSection xp={xp} streak={streak} dailyDay={dailyDay} dailyClaimed={dailyClaimed} onClaimDaily={onClaimDaily} />

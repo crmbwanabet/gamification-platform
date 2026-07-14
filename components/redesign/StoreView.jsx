@@ -28,9 +28,9 @@ function StoreCard({ item, canBuy, onBuy, i = 0 }) {
   );
 }
 
-export default function StoreView({ points = '0', missionsCount = 0, badges = 0, xp = 0, onNavigate, onOpenProfile, onBuy, kwacha = 0, gems = 0 }) {
+export default function StoreView({ points = '0', missionsCount = 0, badges = 0, xp = 0, onNavigate, onOpenProfile, onBuy, kwacha = 0, gems = 0, userId = null, navBadges = {} }) {
   return (
-    <RedesignShell points={points} missionsCount={missionsCount} badges={badges} xp={xp} activeTab="store" onNavigate={onNavigate} onOpenProfile={onOpenProfile}>
+    <RedesignShell points={points} missionsCount={missionsCount} badges={badges} xp={xp} userId={userId} navBadges={navBadges} activeTab="store" onNavigate={onNavigate} onOpenProfile={onOpenProfile}>
       <section>
         <SectionTitle>Rewards Store</SectionTitle>
         {STORE_ITEMS.length === 0 ? (

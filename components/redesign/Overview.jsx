@@ -70,11 +70,11 @@ function StoreRow({ item, onNavigate }) {
   );
 }
 
-export default function Overview({ points = '2,344', missionsCount = MISSIONS.length, badges = 12, xp = 1200, activeTab = 'home', onNavigate, onOpenProfile, missionProgress, missionsComplete, onOpenMission, dailyDay = 1, dailyClaimed = false, onClaimDaily } = {}) {
+export default function Overview({ points = '2,344', missionsCount = MISSIONS.length, badges = 12, xp = 1200, activeTab = 'home', onNavigate, onOpenProfile, missionProgress, missionsComplete, onOpenMission, dailyDay = 1, dailyClaimed = false, onClaimDaily, userId = null, navBadges = {} } = {}) {
   const go = (t) => onNavigate && onNavigate(t);
   const latest = pickLatestMissions(missionProgress, missionsComplete);
   return (
-    <RedesignShell points={points} missionsCount={missionsCount} badges={badges} xp={xp} activeTab={activeTab} onNavigate={onNavigate} onOpenProfile={onOpenProfile}>
+    <RedesignShell points={points} missionsCount={missionsCount} badges={badges} xp={xp} userId={userId} navBadges={navBadges} activeTab={activeTab} onNavigate={onNavigate} onOpenProfile={onOpenProfile}>
       {!dailyClaimed && (
         <div style={{ marginBottom: 22 }}>
           <DailyReward dailyDay={dailyDay} dailyClaimed={dailyClaimed} onClaim={onClaimDaily} />

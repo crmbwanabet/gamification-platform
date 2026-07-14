@@ -89,11 +89,13 @@ export function RewardIcon({ kind = 'coins', size = 15, style, className }) {
 
 /* ---------------- shell: top bar + sidebar ------------------------------- */
 
+// Badge counts come from the navBadges prop — things to attend to
+// (unplayed free games, open missions/claims), not catalog sizes.
 const NAV = [
   { label: 'Home', img: 'home', tab: 'home' },
-  { label: 'Play', img: 'play', tab: 'play', n: MINIGAMES.length },
-  { label: 'Earn', img: 'earn', tab: 'earn', n: [...getDailyMissions(), ...PERMANENT_MISSIONS].length },
-  { label: 'Store', img: 'store', tab: 'store', n: STORE_ITEMS.length || null },
+  { label: 'Play', img: 'play', tab: 'play' },
+  { label: 'Earn', img: 'earn', tab: 'earn' },
+  { label: 'Store', img: 'store', tab: 'store' },
 ];
 
 function Stat({ img, value, label, cls }) {
@@ -108,13 +110,13 @@ function Stat({ img, value, label, cls }) {
   );
 }
 
-function TopBar({ points, missionsCount, badges, lvl, nextLvl, xpPct, onNavigate, onOpenProfile }) {
+function TopBar({ points, missionsCount, badges, lvl, nextLvl, xpPct, onNavigate, onOpenProfile, userId }) {
   return (
     <div className="rs-topbar" style={{ display: 'flex', alignItems: 'center', gap: 26, padding: '14px 22px', background: C.bgTop, borderBottom: `1px solid ${C.line}`, boxShadow: '0 2px 10px rgba(0,0,0,.2)', flexShrink: 0 }}>
       <button onClick={() => (onOpenProfile ? onOpenProfile() : onNavigate && onNavigate('me.profile'))} title="Your profile" className="rs-profile" style={{ all: 'unset', display: 'flex', alignItems: 'center', gap: 12, width: 168, flex: 'none', cursor: 'pointer', borderRadius: 12, padding: 2 }}>
         <div style={{ width: 46, height: 46, borderRadius: '50%', background: 'linear-gradient(135deg,#7fd7e8,#3a7d8c)', display: 'grid', placeItems: 'center', fontSize: 24, border: `2px solid ${C.teal}` }}>🧑‍🦰</div>
         <div>
-          <div style={{ fontSize: 15, fontWeight: 800, color: C.text }}>Player</div>
+          <div style={{ fontSize: 15, fontWeight: 800, color: C.text, maxWidth: 116, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{userId || 'Player'}</div>
           <span style={{ fontSize: 10, fontWeight: 700, color: C.text, background: C.panel2, padding: '2px 8px', borderRadius: 999 }}>{lvl.name}</span>
         </div>
       </button>
@@ -134,18 +136,19 @@ function TopBar({ points, missionsCount, badges, lvl, nextLvl, xpPct, onNavigate
   );
 }
 
-function Sidebar({ active = 'home', onNavigate }) {
+function Sidebar({ active = 'home', onNavigate, navBadges = {} }) {
   return (
     <aside className="rs-sidebar" style={{ width: 200, flex: 'none', background: C.side, padding: '16px 12px', display: 'flex', flexDirection: 'column', gap: 4, borderRight: `1px solid ${C.line}` }}>
       {NAV.map((it, i) => {
         const isActive = it.tab === active;
+        const n = navBadges[it.tab];
         return (
           <button key={i} onClick={() => onNavigate && onNavigate(it.tab)} style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '9px 12px', borderRadius: 10, border: 'none', cursor: 'pointer', background: isActive ? C.green : 'transparent', color: isActive ? '#08210f' : C.sub, textAlign: 'left', width: '100%' }}>
             <span style={{ width: 30, height: 30, flex: 'none', display: 'grid', placeItems: 'center', borderRadius: 8, background: isActive ? 'rgba(6,24,14,.24)' : 'transparent' }}>
               <img src={`/ui/nav/${it.img}.png`} alt="" width={24} height={24} style={{ objectFit: 'contain' }} />
             </span>
             <span style={{ fontSize: 13.5, fontWeight: isActive ? 800 : 600, flex: 1 }}>{it.label}</span>
-            {it.n != null && <span style={{ minWidth: 22, height: 20, padding: '0 6px', borderRadius: 999, fontSize: 11, fontWeight: 800, display: 'grid', placeItems: 'center', background: isActive ? 'rgba(8,33,15,.18)' : C.panel2, color: isActive ? '#08210f' : C.sub }}>+{it.n}</span>}
+            {n != null && n > 0 && <span style={{ minWidth: 22, height: 20, padding: '0 6px', borderRadius: 999, fontSize: 11, fontWeight: 800, display: 'grid', placeItems: 'center', background: isActive ? 'rgba(8,33,15,.22)' : C.green, color: '#08210f', boxShadow: isActive ? 'none' : '0 2px 8px rgba(79,169,139,.4)' }}>{n}</span>}
           </button>
         );
       })}
@@ -157,14 +160,20 @@ function Sidebar({ active = 'home', onNavigate }) {
  * Full redesign shell: navy background + top bar + sidebar, with the view's
  * content rendered in <main>. Prop-driven so every screen shares one shell.
  */
-function BottomNav({ active = 'home', onNavigate }) {
+function BottomNav({ active = 'home', onNavigate, navBadges = {} }) {
   return (
     <nav className="rs-bottomnav" style={{ display: 'none', position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 50, background: C.bgTop, borderTop: `1px solid ${C.line}`, padding: '6px 6px calc(6px + env(safe-area-inset-bottom))', justifyContent: 'space-around', boxShadow: '0 -4px 14px rgba(0,0,0,.35)' }}>
       {NAV.map((it, i) => {
         const isActive = it.tab === active;
+        const n = navBadges[it.tab];
         return (
           <button key={i} onClick={() => onNavigate && onNavigate(it.tab)} style={{ all: 'unset', flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, padding: '6px 0', cursor: 'pointer', color: isActive ? C.green : C.muted }}>
-            <img src={`/ui/nav/${it.img}.png`} alt="" width={24} height={24} style={{ objectFit: 'contain', opacity: isActive ? 1 : 0.75 }} />
+            <span style={{ position: 'relative', display: 'inline-block' }}>
+              <img src={`/ui/nav/${it.img}.png`} alt="" width={24} height={24} style={{ objectFit: 'contain', opacity: isActive ? 1 : 0.75, display: 'block' }} />
+              {n != null && n > 0 && (
+                <span style={{ position: 'absolute', top: -5, right: -9, minWidth: 16, height: 16, padding: '0 4px', borderRadius: 999, fontSize: 9.5, fontWeight: 800, display: 'grid', placeItems: 'center', background: C.green, color: '#08210f', boxShadow: '0 2px 6px rgba(0,0,0,.4)' }}>{n}</span>
+              )}
+            </span>
             <span style={{ fontSize: 10.5, fontWeight: isActive ? 800 : 600 }}>{it.label}</span>
           </button>
         );
@@ -176,6 +185,7 @@ function BottomNav({ active = 'home', onNavigate }) {
 export default function RedesignShell({
   points = '0', missionsCount = 0, badges = 0, xp = 0,
   activeTab = 'home', onNavigate, onOpenProfile, children,
+  userId = null, navBadges = {},
 }) {
   const lvl = getLevel(xp), nextLvl = getNextLevel(xp), xpPct = getXPProgress(xp);
   return (
@@ -199,12 +209,12 @@ export default function RedesignShell({
           .rs-stats .rs-statlabel { display: none; }
         }
       `}</style>
-      <TopBar points={points} missionsCount={missionsCount} badges={badges} lvl={lvl} nextLvl={nextLvl} xpPct={xpPct} onNavigate={onNavigate} onOpenProfile={onOpenProfile} />
+      <TopBar points={points} missionsCount={missionsCount} badges={badges} lvl={lvl} nextLvl={nextLvl} xpPct={xpPct} onNavigate={onNavigate} onOpenProfile={onOpenProfile} userId={userId} />
       <div style={{ flex: 1, minHeight: 0, display: 'flex', alignItems: 'stretch' }}>
-        <Sidebar active={activeTab} onNavigate={onNavigate} />
+        <Sidebar active={activeTab} onNavigate={onNavigate} navBadges={navBadges} />
         <main className="rs-main" style={{ flex: 1, minWidth: 0, overflowY: 'auto', WebkitOverflowScrolling: 'touch', padding: '20px 22px' }}>{children}</main>
       </div>
-      <BottomNav active={activeTab} onNavigate={onNavigate} />
+      <BottomNav active={activeTab} onNavigate={onNavigate} navBadges={navBadges} />
     </div>
   );
 }

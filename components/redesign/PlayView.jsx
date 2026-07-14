@@ -186,9 +186,9 @@ function Daily({ user, onDailyAnswer, onNavigate }) {
   );
 }
 
-export default function PlayView({ tab = 'play.minigames', points = '0', missionsCount = 0, badges = 0, xp = 0, gamePlays, onNavigate, onOpenProfile, onPlay, predictions, onPredict, user, onDailyAnswer }) {
+export default function PlayView({ tab = 'play.minigames', points = '0', missionsCount = 0, badges = 0, xp = 0, gamePlays, onNavigate, onOpenProfile, onPlay, predictions, onPredict, user, onDailyAnswer, userId = null, navBadges = {} }) {
   return (
-    <RedesignShell points={points} missionsCount={missionsCount} badges={badges} xp={xp} activeTab="play" onNavigate={onNavigate} onOpenProfile={onOpenProfile}>
+    <RedesignShell points={points} missionsCount={missionsCount} badges={badges} xp={xp} userId={userId} navBadges={navBadges} activeTab="play" onNavigate={onNavigate} onOpenProfile={onOpenProfile}>
       <SubNav tab={tab} onNavigate={onNavigate} />
       {tab === 'play.predictions' && <Predictions predictions={predictions} onPredict={onPredict} />}
       {tab === 'play.daily' && <Daily user={user} onDailyAnswer={onDailyAnswer} onNavigate={onNavigate} />}

@@ -918,6 +918,17 @@ export default function GamificationPlatform() {
   // When embedded on bwanabet with a valid token, session.status becomes 'ready'.
   // Standalone (no token) it stays idle -> app runs on local state as before.
   const session = useSession();
+
+  // Widget mode: the platform runs as a popup (iframe) on bwanabet.com.
+  // Detected via iframe embedding or ?widget=1; the host passes ?uid=.
+  // Resolved after mount so the first client render matches SSR (hydration).
+  const [{ isWidget, widgetUid }, setWidgetCtx] = useState({ isWidget: false, widgetUid: null });
+  useEffect(() => {
+    let inIframe = false;
+    try { inIframe = window.self !== window.top; } catch (e) { inIframe = true; }
+    const params = new URLSearchParams(window.location.search);
+    setWidgetCtx({ isWidget: inIframe || params.get('widget') === '1', widgetUid: params.get('uid') });
+  }, []);
   const hydratedRef = useRef(false);
   const saveTimer = useRef(null);
   const lastLevelRef = useRef(null);
@@ -1383,6 +1394,25 @@ export default function GamificationPlatform() {
   // (early-returned) tabs can render them too and still launch games.
   const gameOverlays = (
     <>
+      {/* Widget mode: prominent red close button — tells the host page to hide the popup */}
+      {isWidget && (
+        <button
+          type="button"
+          aria-label="Close 100xBet Rewards"
+          onClick={() => { try { window.parent.postMessage({ type: '100x-widget:close' }, '*'); } catch (e) {} }}
+          style={{
+            position: 'fixed', top: 10, right: 10, zIndex: 130,
+            width: 46, height: 46, borderRadius: '50%',
+            border: '2px solid rgba(255,255,255,.3)',
+            background: 'linear-gradient(180deg, #f0684f, #d43a22)',
+            color: '#fff', fontSize: 20, fontWeight: 900, lineHeight: 1,
+            cursor: 'pointer', display: 'grid', placeItems: 'center',
+            boxShadow: '0 6px 18px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.3)',
+          }}
+        >
+          ✕
+        </button>
+      )}
       {activeGame === 'wheel' && (
         <WheelGame
           onClose={() => animateClose(() => setActiveGame(null))} closing={closingModal}
@@ -1545,7 +1575,7 @@ export default function GamificationPlatform() {
         />
       )}
       {notif && (
-        <div className={`fixed top-4 right-4 z-[100] px-6 py-3 rounded-xl shadow-2xl ${notifLeaving ? 'anim-slide-out' : 'anim-slide-down'} ${notif.type === 'success' ? 'bg-gradient-to-r from-green-500 to-emerald-600 shadow-green-500/30' : 'bg-gradient-to-r from-red-500 to-rose-600 shadow-red-500/30'}`}>
+        <div className={`fixed top-4 z-[100] px-6 py-3 rounded-xl shadow-2xl ${notifLeaving ? 'anim-slide-out' : 'anim-slide-down'} ${notif.type === 'success' ? 'bg-gradient-to-r from-green-500 to-emerald-600 shadow-green-500/30' : 'bg-gradient-to-r from-red-500 to-rose-600 shadow-red-500/30'}`} style={{ right: isWidget ? 66 : 16 }}>
           <div className="flex items-center gap-2">
             <Sparkles className="w-5 h-5" />
             <span className="font-bold">{notif.msg}</span>
@@ -1585,13 +1615,22 @@ export default function GamificationPlatform() {
     </>
   );
 
+  const openMissionsCount = [...getDailyMissions(), ...PERMANENT_MISSIONS].filter(m => !user.missionsComplete.includes(m.id)).length;
   const v2Stats = {
     points: user.kwacha,
-    missionsCount: [...getDailyMissions(), ...PERMANENT_MISSIONS].filter(m => !user.missionsComplete.includes(m.id)).length,
+    missionsCount: openMissionsCount,
     badges: user.missionsComplete.length,
     xp: user.xp,
     onNavigate: navigateTab,
     onOpenProfile: () => setShowProfile(true),
+    // the header shows the bwanabet user id once the SSO session resolves
+    userId: session?.profile?.bwanabet_user_id || session?.profile?.username || widgetUid || null,
+    // nav badges = things to attend to, not catalog sizes
+    navBadges: {
+      play: MINIGAMES.filter(g => (user.gamePlays[g.id] || 0) > 0).length || null,
+      earn: (openMissionsCount + (user.dailyClaimed ? 0 : 1)) || null,
+      store: null, // store is empty until the admin dashboard stocks it
+    },
   };
 
   const claimDailyReward = (el) => {
