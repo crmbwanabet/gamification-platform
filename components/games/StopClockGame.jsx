@@ -22,8 +22,8 @@ const prizeFor = (diff, stageIdx) => {
   return diff === 0 ? p[0] : diff <= 2 ? p[1] : diff <= 5 ? p[2] : diff <= 10 ? p[3] : diff <= 20 ? p[4] : 0;
 };
 
-// watch.png face geometry (512x512 art): center (238,262), radius 112
-const FC = { x: 238, y: 262, r: 112 };
+// watch.png face geometry (512x512 art): center (245,273), radius 139
+const FC = { x: 245, y: 273, r: 139 };
 
 function StopClockGame({ onClose, onWin, closing }) {
   const [gameState, setGameState] = useState('ready'); // ready, intro, spinning, stageResult, done
@@ -183,7 +183,7 @@ function StopClockGame({ onClose, onWin, closing }) {
         </div>
 
         {/* Watch */}
-        <div style={{ position: 'relative', width: 272, height: 272, margin: '0 auto 6px' }}>
+        <div style={{ position: 'relative', width: 'min(340px, 82vw)', aspectRatio: '1', margin: '0 auto 6px' }}>
           <img src="/ui/stopclock/watch.png" alt="" draggable={false} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', filter: 'drop-shadow(0 10px 22px rgba(0,0,0,.45))' }} />
           <svg viewBox="0 0 512 512" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}>
             {/* tick ring */}
@@ -225,7 +225,7 @@ function StopClockGame({ onClose, onWin, closing }) {
           </svg>
 
           {/* big number */}
-          <div style={{ position: 'absolute', left: `${(FC.x / 512) * 100}%`, top: `${((FC.y + 52) / 512) * 100}%`, transform: 'translate(-50%, -50%)', fontSize: 34, fontWeight: 900, fontVariantNumeric: 'tabular-nums', color: gameState === 'spinning' ? '#fff' : last && gameState !== 'ready' ? (last.diff <= 5 ? C.green : C.gold) : 'rgba(255,255,255,.5)', textShadow: '0 2px 8px rgba(0,0,0,.6)' }}>
+          <div style={{ position: 'absolute', left: `${(FC.x / 512) * 100}%`, top: `${((FC.y + 64) / 512) * 100}%`, transform: 'translate(-50%, -50%)', fontSize: 44, fontWeight: 900, fontVariantNumeric: 'tabular-nums', color: gameState === 'spinning' ? '#fff' : last && gameState !== 'ready' ? (last.diff <= 5 ? C.green : C.gold) : 'rgba(255,255,255,.5)', textShadow: '0 2px 8px rgba(0,0,0,.6)' }}>
             {String(gameState === 'ready' ? 0 : currentNum).padStart(2, '0')}
           </div>
 
