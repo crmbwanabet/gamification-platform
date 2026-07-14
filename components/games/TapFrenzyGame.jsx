@@ -169,8 +169,22 @@ function TapFrenzyGame({ onClose, onWin, closing }) {
           background: radial-gradient(circle, rgba(255,244,200,.95) 0%, rgba(255,214,90,.5) 45%, rgba(255,214,90,0) 70%);
           animation: tfSparkleFloat var(--dur, 5s) linear infinite;
         }
+        @keyframes tfGridScroll { from { background-position: 0 0; } to { background-position: 0 44px; } }
+        .tf-grid {
+          position: absolute; left: -25%; right: -25%; bottom: -4%; height: 52%;
+          pointer-events: none; mix-blend-mode: screen; opacity: .5;
+          background-image:
+            repeating-linear-gradient(0deg, rgba(255,214,90,.55) 0 2px, transparent 2px 44px),
+            repeating-linear-gradient(90deg, rgba(255,214,90,.4) 0 2px, transparent 2px 52px);
+          transform: perspective(260px) rotateX(58deg);
+          transform-origin: 50% 100%;
+          -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 45%);
+          mask-image: linear-gradient(180deg, transparent 0%, #000 45%);
+          animation: tfGridScroll 2.6s linear infinite;
+        }
+        .tf-frenzy .tf-grid { animation-duration: 1s; opacity: .7; }
         @media (prefers-reduced-motion: reduce) {
-          .tf-beam, .tf-sparkle { animation: none; }
+          .tf-beam, .tf-sparkle, .tf-grid { animation: none; }
           .tf-sparkle { display: none; }
         }
       `}</style>
@@ -204,6 +218,7 @@ function TapFrenzyGame({ onClose, onWin, closing }) {
         }}
       >
         {/* Ambient moving lights (behind everything, always on) */}
+        <div className="tf-grid" />
         <div className="tf-beam" style={{ left: '16%', '--sway': '7s' }} />
         <div className="tf-beam" style={{ left: '62%', '--sway': '9.5s', animationDelay: '-4.2s' }} />
         {SPARKLES.map((s, i) => (
