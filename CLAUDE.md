@@ -7,14 +7,18 @@
 - **GitHub**: crmbwanabet/gamification-platform
 
 ## Architecture
-- Main container: `components/GamificationPlatform.jsx` (~3600 lines after modular split)
-- `components/games/` — 7 games: Dice (real rigid-body 3D physics), HighLow (casino felt + printed cards), Plinko (2D canvas physics, coin wagers), Scratch (silver tickets, pick-any + peek-through), StopClock, TapFrenzy, Wheel — plus 3 trivia games and `gameKit.jsx` (GameShell/GameBtn/OptionBtn)
+- Main container: `components/GamificationPlatform.jsx` (~3900 lines, single client component)
+- `components/games/` — 7 games: Dice (real rigid-body 3D physics), HighLow (casino felt + printed cards), Plinko (2D canvas physics, coin wagers), Scratch (silver tickets, first scratch locks the others), StopClock (3 escalating stages, cartoon stopwatch), TapFrenzy (cartoon icons + difficulty ramp + FRENZY), Wheel — plus `gameKit.jsx` (GameShell/GameBtn/OptionBtn). Trivia is REMOVED from the platform (components remain but are unreachable in v2 — cleanup candidates)
+- **Economy** (`GAME_ECONOMY` in `lib/data/platform.js`, future admin dashboard drives it): max win per game = 200 coins, extra play = 50 coins (a deliberate gamble). All pay tables scaled to the cap
 - Game rewards are COINS displayed as number + `/ui/reward/coins.png` icon (never "K"-money labels)
-- Daily plays: all game + trivia plays refresh to their allowance at 6am local (`refreshDailyPlays` — top-up, extras carry over)
-- `components/modals/` — MissionDetailModal, QuestDetailModal, TutorialModal
-- `components/ui/` — AnimatedGradientBG (WebGL2 shader), DailyTriviaChallenge
-- `lib/data/` — images, missions, platform, trivia, tutorials
-- Features: missions, quests, VIP, store, predictions, referrals, leaderboard, daily trivia
+- Daily plays: all game plays refresh to their allowance at 6am local (`refreshDailyPlays` — top-up, extras carry over); `playGame` charges the extra-play cost when free plays run out
+- **Widget mode**: the platform embeds on bwanabet.com as a full-screen popup — `public/widget.js` launcher (red-X dismissable bubble) + iframe (`?widget=1&uid=`); in-app red X (top-right) postMessages `100x-widget:close`. Test harness: `/widget-test.html`
+- Header shows the user ID (SSO `bwanabet_user_id` → username → `?uid` → 'Player'); nav badges are things-to-attend-to in platform green (Play = free plays left, Earn = open missions + unclaimed daily)
+- Missions: difficulty = time budget (easy ~1 day, medium ~3 days, hard ~1 week); progress persists across days; missions with `gameId` open that game directly from the mission modal
+- Store: `STORE_ITEMS` is EMPTY until the admin dashboard populates it (StoreView shows a restocking state; Overview hides store sections)
+- `components/modals/` — MissionDetailModal (v2 design), QuestDetailModal + TutorialModal (still old design)
+- `lib/data/` — images, missions, platform, trivia (legacy), tutorials
+- Features: missions, quests, VIP, store, predictions, referrals, leaderboard
 - Currency system: Kwacha (coins), Gems, Diamonds, XP
 - Tabs use hierarchical keys (`home`, `play.*`, `earn.*`, `me.*`) with `LEGACY_TAB_MAP` for CTA compatibility
 
