@@ -7,10 +7,11 @@ import TutorialModal from '../modals/TutorialModal';
 // ============================================================================
 // SCRATCH & WIN — silver-ticket edition.
 // Three tickets: two hide coin prizes (distinct values from PRIZE_VALUES),
-// one is a blank. The player may scratch ANY ticket and switch between them
-// freely — the prize art sits under the foil and shows through every stroke,
-// like a real scratcher. The first ticket scratched past the threshold is
-// the result; the others then flip over to show what they held.
+// one is a blank. The FIRST stroke commits the player to that ticket — the
+// other two lock immediately (closes the corner-peek exploit). The prize art
+// sits under the foil and shows through every stroke, like a real scratcher;
+// past the threshold the ticket settles and the others flip to show what
+// they held.
 // Layout re-shuffles on every play. Visual direction from Grok concept art
 // (silver perforated tickets + torn reveal on the app's dark navy).
 // ============================================================================
@@ -49,6 +50,8 @@ export default function ScratchGame({ onClose, onWin, closing }) {
   const [scratchPct, setScratchPct] = useState(0);
   const [activeIdx, setActiveIdx] = useState(-1);   // ticket currently under the finger (visual scale)
   const activeIdxRef = useRef(-1);                  // same, but sync — gates scratch handling
+  const [committedIdx, setCommittedIdx] = useState(-1); // first ticket scratched — the others lock
+  const committedRef = useRef(-1);
   const scratchingRef = useRef(false);
   const lastPos = useRef(null);
   const stampCount = useRef(0);
@@ -227,6 +230,12 @@ export default function ScratchGame({ onClose, onWin, closing }) {
 
   const startScratch = (e, idx) => {
     if (finished || revealed[idx]) return;
+    // first stroke commits this ticket; the other two are locked from then on
+    if (committedRef.current >= 0 && committedRef.current !== idx) return;
+    if (committedRef.current < 0) {
+      committedRef.current = idx;
+      setCommittedIdx(idx);
+    }
     scratchingRef.current = true;
     lastPos.current = null;
     activeIdxRef.current = idx;
@@ -279,6 +288,10 @@ export default function ScratchGame({ onClose, onWin, closing }) {
         @keyframes collectSheen {
           0%, 55%, 100% { transform: translateX(-130%) skewX(-18deg); }
           25%, 40% { transform: translateX(230%) skewX(-18deg); }
+        }
+        @keyframes scLockIn {
+          0% { transform: scale(1.8); opacity: 0; }
+          100% { transform: scale(1); opacity: 1; }
         }
       `}</style>
 
@@ -339,7 +352,7 @@ export default function ScratchGame({ onClose, onWin, closing }) {
             ))}
           </div>
           <p className="text-center text-xs pb-3" style={{ color: '#8b919c' }}>
-            {finished ? ' ' : 'Scratch any ticket — two hide coin prizes'}
+            {finished ? ' ' : committedIdx >= 0 ? 'Ticket locked in — no switching!' : 'Pick ONE ticket — your first scratch commits it'}
           </p>
 
           {/* === TICKETS === */}
@@ -349,6 +362,7 @@ export default function ScratchGame({ onClose, onWin, closing }) {
               const isBlank = card.value === 0;
               const isWinner = idx === winnerIdx;
               const dimmed = revealed[idx] && !isWinner;
+              const locked = !finished && committedIdx >= 0 && committedIdx !== idx;
               const accent = isBlank ? '#8b919c' : '#e6ad4a';
               return (
                 <div
@@ -356,8 +370,10 @@ export default function ScratchGame({ onClose, onWin, closing }) {
                   className="relative"
                   style={{
                     width: TICKET_W, height: TICKET_H, flex: 'none',
-                    transform: activeIdx === idx && !finished ? 'scale(1.05)' : 'scale(1)',
-                    transition: 'transform .25s ease',
+                    transform: activeIdx === idx && !finished ? 'scale(1.05)' : locked ? 'scale(.96)' : 'scale(1)',
+                    opacity: locked ? 0.45 : 1,
+                    filter: locked ? 'grayscale(.5)' : 'none',
+                    transition: 'transform .25s ease, opacity .3s ease, filter .3s ease',
                   }}
                 >
                   {/* Ticket body */}
@@ -434,10 +450,10 @@ export default function ScratchGame({ onClose, onWin, closing }) {
                       className="absolute inset-0 touch-none"
                       style={{
                         width: '100%', height: '100%',
-                        cursor: finished || revealed[idx] ? 'default' : 'crosshair',
+                        cursor: finished || revealed[idx] ? 'default' : locked ? 'not-allowed' : 'crosshair',
                         opacity: revealed[idx] ? 0 : 1,
                         transition: 'opacity 0.45s ease',
-                        pointerEvents: finished || revealed[idx] ? 'none' : 'auto',
+                        pointerEvents: finished || revealed[idx] || locked ? 'none' : 'auto',
                       }}
                       onPointerDown={(e) => startScratch(e, idx)}
                       onPointerUp={() => stopScratch(idx)}
@@ -459,6 +475,16 @@ export default function ScratchGame({ onClose, onWin, closing }) {
                       </div>
                     )}
                   </div>
+
+                  {/* Lock badge on the tickets you can no longer scratch */}
+                  {locked && (
+                    <div className="absolute inset-0 grid place-items-center pointer-events-none" style={{ zIndex: 2 }}>
+                      <span style={{
+                        fontSize: 22, filter: 'drop-shadow(0 2px 4px rgba(0,0,0,.7))',
+                        animation: 'scLockIn .25s ease both',
+                      }}>🔒</span>
+                    </div>
+                  )}
 
                   {/* Perforated edges — punched holes against the modal bg */}
                   {[0, 1].map(edge => (
@@ -489,7 +515,7 @@ export default function ScratchGame({ onClose, onWin, closing }) {
                   }} />
                 </div>
                 <p className="text-center text-xs" style={{ color: '#6b7280' }}>
-                  {scratchPct > 0 ? 'Switch tickets anytime — first fully scratched is your prize' : 'Tickets shuffle with every play'}
+                  {scratchPct > 0 ? 'Keep scratching to reveal your prize' : 'Tickets shuffle with every play'}
                 </p>
               </>
             ) : (
