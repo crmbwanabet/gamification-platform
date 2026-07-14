@@ -6,12 +6,13 @@ import { RewardIcon } from '@/components/redesign/RedesignShell';
 import TutorialModal from '../modals/TutorialModal';
 import { GameShell } from './gameKit';
 
+// Max per play = 200: three exacts (30+50+80) + sharpshooter bonus (40)
 const STAGES = [
-  { name: 'WARM-UP',   lap: 4000, color: '#4fa98b', prizes: [150, 70, 40, 20, 10] },
-  { name: 'PRO',       lap: 2400, color: '#e6ad4a', prizes: [250, 120, 60, 30, 15] },
-  { name: 'LIGHTNING', lap: 1500, color: '#e5573f', prizes: [400, 200, 100, 50, 25] },
+  { name: 'WARM-UP',   lap: 4000, color: '#4fa98b', prizes: [30, 15, 8, 4, 2] },
+  { name: 'PRO',       lap: 2400, color: '#e6ad4a', prizes: [50, 25, 12, 6, 3] },
+  { name: 'LIGHTNING', lap: 1500, color: '#e5573f', prizes: [80, 40, 20, 10, 5] },
 ];
-const STREAK_BONUS = 200; // every stage within ±5
+const STREAK_BONUS = 40; // every stage within ±5
 
 function ScBtn({ children, onClick, variant = 'green', disabled, full = true, style }) {
   const v = {
@@ -343,7 +344,7 @@ function StopClockGame({ onClose, onWin, closing }) {
               </div>
             ))}
             <div style={{ gridColumn: '1 / -1', color: C.sub, fontSize: 11.5 }}>
-              🎯 All 3 stages within ±5 = <b style={{ color: C.gold }}>+{STREAK_BONUS} bonus</b> — perfect game pays <b style={{ color: C.gold }}>1,000</b>
+              🎯 All 3 stages within ±5 = <b style={{ color: C.gold }}>+{STREAK_BONUS} bonus</b> — perfect game pays <b style={{ color: C.gold }}>200</b>
             </div>
           </div>
         )}
