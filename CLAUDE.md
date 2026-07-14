@@ -1,14 +1,16 @@
 # 100xBet Gamification Platform
 
 ## Project
-- **Stack**: Next.js 14 (App Router), Tailwind CSS, Supabase, Lucide React
+- **Stack**: Next.js 14 (App Router), Tailwind CSS, Supabase, Lucide React, three.js + cannon-es (lazy-loaded, Lucky Dice physics)
 - **Deploy**: Vercel — https://100xbet-gamification.vercel.app
 - **Vercel account**: crmbwanabet-2500
 - **GitHub**: crmbwanabet/gamification-platform
 
 ## Architecture
 - Main container: `components/GamificationPlatform.jsx` (~3600 lines after modular split)
-- `components/games/` — 7 games: Dice, HighLow, Plinko, Scratch, StopClock, TapFrenzy, Wheel
+- `components/games/` — 7 games: Dice (real rigid-body 3D physics), HighLow (casino felt + printed cards), Plinko (2D canvas physics, coin wagers), Scratch (silver tickets, pick-any + peek-through), StopClock, TapFrenzy, Wheel — plus 3 trivia games and `gameKit.jsx` (GameShell/GameBtn/OptionBtn)
+- Game rewards are COINS displayed as number + `/ui/reward/coins.png` icon (never "K"-money labels)
+- Daily plays: all game + trivia plays refresh to their allowance at 6am local (`refreshDailyPlays` — top-up, extras carry over)
 - `components/modals/` — MissionDetailModal, QuestDetailModal, TutorialModal
 - `components/ui/` — AnimatedGradientBG (WebGL2 shader), DailyTriviaChallenge
 - `lib/data/` — images, missions, platform, trivia, tutorials
