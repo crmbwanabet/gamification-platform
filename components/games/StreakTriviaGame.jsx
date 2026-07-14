@@ -5,6 +5,7 @@ import { getRandomQuestion } from '../../lib/data/trivia';
 import { C } from '@/components/redesign/tokens';
 import { RewardIcon } from '@/components/redesign/RedesignShell';
 import { GameShell, GameBtn, OptionBtn } from './gameKit';
+import { GAME_ECONOMY } from '@/lib/data/platform';
 
 export default function StreakTriviaGame({ onClose, onWin, closing }) {
   const [phase, setPhase] = useState('ready');
@@ -67,7 +68,7 @@ export default function StreakTriviaGame({ onClose, onWin, closing }) {
   const cashOut = () => {
     clearInterval(timerRef.current);
     setDidCashOut(true);
-    const coins = streak * 25;
+    const coins = Math.min(streak * 25, GAME_ECONOMY.MAX_WIN);
     if (coins > 0) onWin(coins, { triviaStreak: streak, triviaType: 'streak' });
     setPhase('result');
   };
@@ -76,7 +77,7 @@ export default function StreakTriviaGame({ onClose, onWin, closing }) {
     setPhase('result');
   };
 
-  const currentPrize = streak * 25;
+  const currentPrize = Math.min(streak * 25, GAME_ECONOMY.MAX_WIN);
   const timerPct = (timer / 15) * 100;
   const circumference = 2 * Math.PI * 22;
 

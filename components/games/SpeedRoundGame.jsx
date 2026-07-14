@@ -26,7 +26,7 @@ export default function SpeedRoundGame({ onClose, onWin, closing }) {
         if (t <= 1) {
           clearInterval(timerRef.current);
           const s = scoreRef.current;
-          const coins = s * 5 + (s >= 20 ? 500 : s >= 15 ? 200 : 0);
+          const coins = s * 5 + (s >= 20 ? 100 : s >= 15 ? 50 : 0);
           if (coins > 0) onWin(coins, { triviaCorrect: s, triviaType: 'speed' });
           setPhase('result');
           return 0;
@@ -57,7 +57,7 @@ export default function SpeedRoundGame({ onClose, onWin, closing }) {
         clearInterval(timerRef.current);
         setPhase('result');
         const final = correct ? score + 1 : score;
-        const totalCoins = final * 5 + (final >= 20 ? 500 : final >= 15 ? 200 : 0);
+        const totalCoins = final * 5 + (final >= 20 ? 100 : final >= 15 ? 50 : 0);
         if (totalCoins > 0) onWin(totalCoins, { triviaCorrect: final, triviaType: 'speed' });
       } else {
         setQIndex(i => i + 1);
@@ -66,7 +66,7 @@ export default function SpeedRoundGame({ onClose, onWin, closing }) {
   };
 
   const finalScore = score;
-  const finalCoins = finalScore * 5 + (finalScore >= 20 ? 500 : finalScore >= 15 ? 200 : 0);
+  const finalCoins = finalScore * 5 + (finalScore >= 20 ? 100 : finalScore >= 15 ? 50 : 0);
   const timerPct = (timer / 60) * 100;
   const circumference = 2 * Math.PI * 38;
 
@@ -188,7 +188,7 @@ export default function SpeedRoundGame({ onClose, onWin, closing }) {
           <div style={{ background: C.track, border: `1px solid ${C.line}`, borderRadius: 16, padding: 16, marginBottom: 20 }}>
             <div style={{ color: C.gold, fontWeight: 900, fontSize: 24, marginBottom: 2, display: 'inline-flex', alignItems: 'center', gap: 6 }}>+{finalCoins} <RewardIcon kind="coins" size={20} /></div>
             <div style={{ color: C.muted, fontSize: 11.5 }}>Coins earned</div>
-            {finalScore >= 15 && <div style={{ color: C.green, fontSize: 13, marginTop: 8, fontWeight: 700 }}>⚡ Speed bonus: +{finalScore >= 20 ? 500 : 200}!</div>}
+            {finalScore >= 15 && <div style={{ color: C.green, fontSize: 13, marginTop: 8, fontWeight: 700 }}>⚡ Speed bonus: +{finalScore >= 20 ? 100 : 50}!</div>}
           </div>
           <GameBtn onClick={onClose}>Continue</GameBtn>
         </div>

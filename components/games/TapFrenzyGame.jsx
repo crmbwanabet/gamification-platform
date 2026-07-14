@@ -36,7 +36,7 @@ const curve = (p) => ({
   scale: 1 - 0.2 * p,                          // targets shrink
 });
 
-const getPrize = (score) => score >= 60 ? 300 : score >= 45 ? 200 : score >= 30 ? 100 : score >= 15 ? 50 : 10;
+const getPrize = (score) => score >= 60 ? 200 : score >= 45 ? 100 : score >= 30 ? 50 : score >= 15 ? 25 : 10;
 
 function TapFrenzyGame({ onClose, onWin, closing }) {
   const [gameState, setGameState] = useState('ready'); // ready, playing, done

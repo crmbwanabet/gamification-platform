@@ -61,7 +61,7 @@ export default function ClassicQuizGame({ onClose, onWin, closing }) {
   const nextQuestion = () => {
     if (qIndex >= 9) {
       setPhase('result');
-      const totalCoins = score * 10 + (score >= 10 ? 500 : score >= 7 ? 150 : score >= 5 ? 50 : 0);
+      const totalCoins = score * 10 + (score >= 10 ? 100 : score >= 7 ? 50 : score >= 5 ? 25 : 0);
       if (totalCoins > 0) onWin(totalCoins, { triviaCorrect: score, triviaType: 'classic' });
       return;
     }
@@ -92,7 +92,7 @@ export default function ClassicQuizGame({ onClose, onWin, closing }) {
   };
 
   const q = questions[qIndex];
-  const finalCoins = score * 10 + (score >= 10 ? 500 : score >= 7 ? 150 : score >= 5 ? 50 : 0);
+  const finalCoins = score * 10 + (score >= 10 ? 100 : score >= 7 ? 50 : score >= 5 ? 25 : 0);
   const timerPct = (timer / 15) * 100;
   const circumference = 2 * Math.PI * 22;
   const catName = TRIVIA_CATEGORIES.find(c => c.id === category)?.name;
@@ -228,7 +228,7 @@ export default function ClassicQuizGame({ onClose, onWin, closing }) {
           <div style={{ background: C.track, border: `1px solid ${C.line}`, borderRadius: 16, padding: 16, marginBottom: 20 }}>
             <div style={{ color: C.gold, fontWeight: 900, fontSize: 24, marginBottom: 2, display: 'inline-flex', alignItems: 'center', gap: 6 }}>+{finalCoins} <RewardIcon kind="coins" size={20} /></div>
             <div style={{ color: C.muted, fontSize: 11.5 }}>Coins earned</div>
-            {score >= 7 && <div style={{ color: C.green, fontSize: 13, marginTop: 8, fontWeight: 700 }}>🎉 Bonus: +{score >= 10 ? 500 : 150} for {score >= 10 ? 'perfect' : 'great'} score!</div>}
+            {score >= 7 && <div style={{ color: C.green, fontSize: 13, marginTop: 8, fontWeight: 700 }}>🎉 Bonus: +{score >= 10 ? 100 : 50} for {score >= 10 ? 'perfect' : 'great'} score!</div>}
           </div>
           <GameBtn onClick={onClose}>Continue</GameBtn>
         </div>

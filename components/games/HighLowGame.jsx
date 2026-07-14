@@ -5,6 +5,7 @@ import { C } from '@/components/redesign/tokens';
 import { RewardIcon } from '@/components/redesign/RedesignShell';
 import TutorialModal from '../modals/TutorialModal';
 import { GameShell } from './gameKit';
+import { GAME_ECONOMY } from '@/lib/data/platform';
 
 // ============================================================================
 // HIGHER OR LOWER — casino-felt edition (visual direction from Grok concept:
@@ -231,7 +232,9 @@ export default function HighLowGame({ onClose, onWin, closing }) {
   const timers = useRef([]);
   const later = (fn, ms) => { timers.current.push(setTimeout(fn, ms)); };
 
-  const pot = streak * 25;
+  // pot caps at GAME_ECONOMY.MAX_WIN — streak 8+ holds the max
+  const pot = Math.min(streak * 25, GAME_ECONOMY.MAX_WIN);
+  const potMaxed = streak > 0 && streak * 25 >= GAME_ECONOMY.MAX_WIN;
 
   const guess = (higher) => {
     if (revealing || gameOver) return;
@@ -445,7 +448,7 @@ export default function HighLowGame({ onClose, onWin, closing }) {
           <div style={{ textAlign: 'center' }}>
             <button type="button" className="hl-cashout" disabled={revealing || streak === 0} onClick={cashOut}>
               <RewardIcon kind="coins" size={18} />
-              CASH OUT {streak > 0 ? pot : ''}
+              CASH OUT {streak > 0 ? pot : ''}{potMaxed ? ' MAX' : ''}
             </button>
           </div>
         </>

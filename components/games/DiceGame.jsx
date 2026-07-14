@@ -265,7 +265,7 @@ export default function DiceGame({ onClose, onWin, closing }) {
     const g = guessRef.current;
     const won = total === g;
     const close = Math.abs(total - g) <= 2 && !won;
-    const prize = won ? 500 : close ? 100 : 0;
+    const prize = won ? 200 : close ? 40 : 0;
     setResult({ total, won, close, prize, d1: values[0], d2: values[1], guess: g });
     setRolling(false);
     if (won) {

@@ -5,6 +5,7 @@ import { HelpCircle, X, RotateCcw } from 'lucide-react';
 import { C } from '@/components/redesign/tokens';
 import { RewardIcon } from '@/components/redesign/RedesignShell';
 import TutorialModal from '../modals/TutorialModal';
+import { GAME_ECONOMY } from '@/lib/data/platform';
 
 // ============================================================================
 // PLINKO DROP — polish pass (2026-07-13). Same game, same physics, same
@@ -531,7 +532,7 @@ function PlinkoGame({ onClose, onWin, closing }) {
             });
           }
         } else if (slotVal === 'JP') {
-          const jpWin = jackpotRef.current * b.wager;
+          const jpWin = Math.min(jackpotRef.current * b.wager, GAME_ECONOMY.MAX_WIN);
           onWin(jpWin);
           setTotalWon(prev => prev + jpWin);
           setLastResult({ type: 'jackpot', prize: jpWin });
@@ -554,7 +555,7 @@ function PlinkoGame({ onClose, onWin, closing }) {
           jackpotRef.current += 5;
           setJackpot(jackpotRef.current);
         } else {
-          const prize = slotVal * b.wager;
+          const prize = Math.min(slotVal * b.wager, GAME_ECONOMY.MAX_WIN);
           if (prize > 0) onWin(prize);
           setTotalWon(prev => prev + prize);
           setLastResult({ type: 'win', prize });
@@ -667,6 +668,7 @@ function PlinkoGame({ onClose, onWin, closing }) {
           <div className="text-xl font-black inline-flex items-center gap-1.5" style={{ color: C.gold, textShadow: '0 0 12px rgba(230,173,74,0.35)', animation: 'pulseGlow 2s ease-in-out infinite' }}>
             🏆 {jackpot} <span className="text-[11px] font-bold" style={{ color: '#caa25c' }}>× wager</span>
           </div>
+          <div className="text-[10px] font-bold flex items-center justify-center gap-1" style={{ color: '#caa25c' }}>max win {GAME_ECONOMY.MAX_WIN} <RewardIcon kind="coins" size={10} /></div>
         </div>
 
         {/* Risk + Wager row */}
