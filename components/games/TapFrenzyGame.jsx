@@ -6,90 +6,133 @@ import { RewardIcon } from '@/components/redesign/RedesignShell';
 import TutorialModal from '../modals/TutorialModal';
 import { GameShell, GameBtn } from './gameKit';
 
+const GAME_LEN = 15;   // seconds per round
+const FRENZY_AT = 4;   // final seconds: 2x points, faster spawns
+
+const REWARD_TYPES = [
+  { key: 'coin',    icon: '/ui/icons/coin.png',    points: 1, size: 48, weight: 40, glow: 'rgba(243,196,69,.65)' },
+  { key: 'gem',     icon: '/ui/icons/gem.png',     points: 2, size: 44, weight: 24, glow: 'rgba(168,85,247,.6)' },
+  { key: 'diamond', icon: '/ui/icons/diamond.png', points: 3, size: 42, weight: 14, glow: 'rgba(56,209,224,.6)' },
+  { key: 'bolt',    icon: '/ui/icons/bolt.png',    points: 5, size: 40, weight: 8,  glow: 'rgba(255,214,90,.75)' },
+];
+const BOMB = { key: 'bomb', icon: '/ui/icons/bomb.png', points: -5, size: 46, glow: 'rgba(229,87,63,.55)' };
+
+// Difficulty curve — p is round progress 0→1
+const curve = (p) => ({
+  life: 1400 - 800 * p,                        // ms a target stays up
+  gap: 550 - 300 * p,                          // ms between spawns
+  maxTargets: p < 0.3 ? 1 : p < 0.65 ? 2 : 3,  // simultaneous targets
+  bombPct: 10 + 15 * p,                        // bomb share of spawns
+  scale: 1 - 0.2 * p,                          // targets shrink
+});
+
+const getPrize = (score) => score >= 60 ? 300 : score >= 45 ? 200 : score >= 30 ? 100 : score >= 15 ? 50 : 10;
+
 function TapFrenzyGame({ onClose, onWin, closing }) {
   const [gameState, setGameState] = useState('ready'); // ready, playing, done
   const [score, setScore] = useState(0);
-  const [timeLeft, setTimeLeft] = useState(10);
+  const [timeLeft, setTimeLeft] = useState(GAME_LEN);
   const [targets, setTargets] = useState([]);
   const [taps, setTaps] = useState([]);
+  const [bombHit, setBombHit] = useState(0);
   const [showTutorial, setShowTutorial] = useState(false);
-  const timerRef = useRef(null);
-  const targetRef = useRef(null);
+  const idRef = useRef(0);
 
   const startGame = () => {
-    setGameState('playing');
     setScore(0);
-    setTimeLeft(10);
+    setTimeLeft(GAME_LEN);
+    setTargets([]);
     setTaps([]);
-    spawnTarget();
-
-    timerRef.current = setInterval(() => {
-      setTimeLeft(t => {
-        if (t <= 1) {
-          clearInterval(timerRef.current);
-          clearTimeout(targetRef.current);
-          setGameState('done');
-          setTargets([]);
-          return 0;
-        }
-        return t - 1;
-      });
-    }, 1000);
+    setBombHit(0);
+    setGameState('playing');
   };
 
-  const spawnTarget = () => {
-    const types = [
-      { emoji: '🪙', points: 1, size: 48, color: C.gold },
-      { emoji: '💎', points: 3, size: 40, color: C.teal },
-      { emoji: '⭐', points: 2, size: 44, color: C.gold },
-      { emoji: '💚', points: 5, size: 36, color: C.green },
-      { emoji: '💣', points: -3, size: 42, color: C.red },
-    ];
-    const weights = [40, 15, 25, 10, 10];
-    const rand = Math.random() * 100;
-    let sum = 0;
-    let type = types[0];
-    for (let i = 0; i < types.length; i++) {
-      sum += weights[i];
-      if (rand < sum) { type = types[i]; break; }
-    }
-
-    const target = {
-      id: Date.now(),
-      x: 10 + Math.random() * 75,
-      y: 10 + Math.random() * 65,
-      ...type,
+  // Timer + spawn engine live entirely inside this effect so the ready→playing
+  // transition can't clear them (the old version killed its own interval that way)
+  useEffect(() => {
+    if (gameState !== 'playing') return;
+    const start = performance.now();
+    const elapsed = () => (performance.now() - start) / 1000;
+    const timeouts = new Set();
+    const later = (fn, ms) => {
+      const id = setTimeout(() => { timeouts.delete(id); fn(); }, ms);
+      timeouts.add(id);
     };
-    setTargets([target]);
 
-    targetRef.current = setTimeout(() => {
-      setTargets(prev => prev.filter(t => t.id !== target.id));
-      spawnTarget();
-    }, 800 + Math.random() * 600);
-  };
+    const spawn = () => {
+      const el = elapsed();
+      if (el >= GAME_LEN) return;
+      const cv = curve(Math.min(1, el / GAME_LEN));
+      const frenzyNow = GAME_LEN - el <= FRENZY_AT;
+
+      setTargets(prev => {
+        if (prev.length >= cv.maxTargets) return prev;
+        const roll = Math.random() * 100;
+        let type = BOMB;
+        if (roll >= cv.bombPct) {
+          const totalW = REWARD_TYPES.reduce((s, r) => s + r.weight, 0);
+          let r = ((roll - cv.bombPct) / (100 - cv.bombPct)) * totalW;
+          type = REWARD_TYPES[0];
+          for (const rt of REWARD_TYPES) { r -= rt.weight; if (r < 0) { type = rt; break; } }
+        }
+        // keep new targets clear of live ones
+        let x = 12 + Math.random() * 76, y = 14 + Math.random() * 62;
+        for (let i = 0; i < 8; i++) {
+          const cx = 12 + Math.random() * 76, cy = 14 + Math.random() * 62;
+          if (prev.every(o => Math.hypot(cx - o.x, (cy - o.y) * 1.6) > 24)) { x = cx; y = cy; break; }
+        }
+        const target = {
+          id: ++idRef.current, x, y, ...type,
+          points: frenzyNow && type.points > 0 ? type.points * 2 : type.points,
+          size: Math.round(type.size * cv.scale),
+          frenzy: frenzyNow && type.points > 0,
+        };
+        later(() => setTargets(p => p.filter(o => o.id !== target.id)), cv.life);
+        return [...prev, target];
+      });
+
+      later(spawn, cv.gap * (0.8 + Math.random() * 0.4) * (frenzyNow ? 0.8 : 1));
+    };
+    spawn();
+
+    const iv = setInterval(() => {
+      const remain = GAME_LEN - Math.floor(elapsed());
+      setTimeLeft(Math.max(0, remain));
+      if (remain <= 0) {
+        clearInterval(iv);
+        setTargets([]);
+        setGameState('done');
+      }
+    }, 200);
+
+    return () => { clearInterval(iv); timeouts.forEach(clearTimeout); };
+  }, [gameState]);
+
+  useEffect(() => {
+    if (gameState !== 'done') return;
+    const prize = getPrize(score);
+    if (prize > 0) onWin(prize, { score });
+  }, [gameState]);
 
   const tapTarget = (target, e) => {
     e.stopPropagation();
     setScore(s => Math.max(0, s + target.points));
-    setTaps(prev => [...prev.slice(-8), { id: Date.now(), x: target.x, y: target.y, points: target.points }]);
+    setTaps(prev => [...prev.slice(-8), { id: ++idRef.current, x: target.x, y: target.y, points: target.points }]);
     setTargets(prev => prev.filter(t => t.id !== target.id));
-    clearTimeout(targetRef.current);
-    spawnTarget();
+    if (target.points < 0) setBombHit(n => n + 1);
   };
 
-  useEffect(() => {
-    if (gameState === 'done') {
-      const prize = score >= 30 ? 300 : score >= 20 ? 200 : score >= 10 ? 100 : score >= 5 ? 50 : 10;
-      if (prize > 0) onWin(prize, { score });
-    }
-    return () => { clearInterval(timerRef.current); clearTimeout(targetRef.current); };
-  }, [gameState]);
-
-  const getPrize = () => score >= 30 ? 300 : score >= 20 ? 200 : score >= 10 ? 100 : score >= 5 ? 50 : 10;
+  const frenzy = gameState === 'playing' && timeLeft <= FRENZY_AT && timeLeft > 0;
 
   return (
     <GameShell title="⚡ Tap Frenzy" onClose={onClose} closing={closing} onHelp={() => setShowTutorial(true)}>
       {showTutorial && <TutorialModal tutorialKey="tapfrenzy" onClose={() => setShowTutorial(false)} />}
+
+      <style>{`
+        @keyframes tfFrenzyPulse { 0%, 100% { transform: translateX(-50%) scale(1); } 50% { transform: translateX(-50%) scale(1.08); } }
+        @keyframes tfBombFlash { 0% { opacity: 1; } 100% { opacity: 0; } }
+        @keyframes tfFrenzyVignette { 0%, 100% { opacity: .55; } 50% { opacity: 1; } }
+      `}</style>
 
       {/* Score & Timer */}
       {gameState !== 'ready' && (
@@ -99,8 +142,8 @@ function TapFrenzyGame({ onClose, onWin, closing }) {
           </div>
           <div style={{
             fontSize: 16, fontWeight: 800, padding: '4px 16px', borderRadius: 999,
-            background: timeLeft <= 3 ? 'rgba(229,87,63,.24)' : 'rgba(53,179,166,.18)',
-            color: timeLeft <= 3 ? C.red : C.teal,
+            background: timeLeft <= 3 ? 'rgba(229,87,63,.24)' : frenzy ? 'rgba(243,192,69,.22)' : 'rgba(53,179,166,.18)',
+            color: timeLeft <= 3 ? C.red : frenzy ? C.gold : C.teal,
             animation: timeLeft <= 3 ? 'pulseGlow 1s ease-in-out infinite' : 'none',
           }}>
             ⏱️ {timeLeft}s
@@ -110,41 +153,84 @@ function TapFrenzyGame({ onClose, onWin, closing }) {
 
       {/* Game Area */}
       <div
-        style={{ position: 'relative', height: 350, borderRadius: 16, overflow: 'hidden', border: '1px solid rgba(255,255,255,.09)', background: C.track }}
+        style={{
+          position: 'relative', height: 350, borderRadius: 16, overflow: 'hidden',
+          border: '1px solid rgba(255,255,255,.09)',
+          backgroundImage: "linear-gradient(rgba(10,6,20,.42), rgba(10,6,20,.12) 35%, rgba(10,6,20,.22)), url('/ui/art/tapfrenzy-arena.webp')",
+          backgroundSize: 'cover', backgroundPosition: 'center',
+          userSelect: 'none', WebkitUserSelect: 'none', touchAction: 'manipulation',
+        }}
       >
         {gameState === 'ready' && (
-          <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-            <div style={{ fontSize: 60, marginBottom: 16 }}>⚡</div>
-            <p style={{ color: C.sub, textAlign: 'center', marginBottom: 8, fontSize: 14 }}>Tap coins & gems as fast as you can! Avoid bombs 💣</p>
-            <p style={{ fontSize: 13, color: C.muted, marginBottom: 24 }}>You have 10 seconds</p>
+          <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 16, background: 'rgba(10,6,20,.35)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
+              <img src="/ui/icons/coin.png" alt="" width={44} height={44} draggable={false} style={{ filter: 'drop-shadow(0 0 10px rgba(243,196,69,.5))' }} />
+              <img src="/ui/icons/gem.png" alt="" width={40} height={40} draggable={false} style={{ filter: 'drop-shadow(0 0 10px rgba(168,85,247,.5))' }} />
+              <img src="/ui/icons/diamond.png" alt="" width={40} height={40} draggable={false} style={{ filter: 'drop-shadow(0 0 10px rgba(56,209,224,.5))' }} />
+              <img src="/ui/icons/bolt.png" alt="" width={36} height={36} draggable={false} style={{ filter: 'drop-shadow(0 0 10px rgba(255,214,90,.6))' }} />
+              <img src="/ui/icons/bomb.png" alt="bomb" width={44} height={44} draggable={false} style={{ filter: 'drop-shadow(0 0 10px rgba(229,87,63,.55))', marginLeft: 6 }} />
+            </div>
+            <p style={{ color: C.text, textAlign: 'center', marginBottom: 6, fontSize: 14, fontWeight: 600 }}>Tap the loot as fast as you can — never the bomb!</p>
+            <p style={{ fontSize: 13, color: C.sub, marginBottom: 24, textAlign: 'center' }}>{GAME_LEN} seconds. It gets faster — the last {FRENZY_AT}s are ×2 FRENZY 🔥</p>
             <GameBtn onClick={startGame} full={false} style={{ padding: '14px 32px', fontSize: 17 }}>⚡ START!</GameBtn>
           </div>
         )}
 
         {gameState === 'playing' && (
           <>
+            {/* Frenzy vignette + banner */}
+            {frenzy && (
+              <>
+                <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', boxShadow: 'inset 0 0 46px rgba(243,192,69,.4)', animation: 'tfFrenzyVignette 0.8s ease-in-out infinite', zIndex: 1 }} />
+                <div style={{
+                  position: 'absolute', top: 10, left: '50%', transform: 'translateX(-50%)', zIndex: 2, pointerEvents: 'none',
+                  padding: '5px 16px', borderRadius: 999, fontSize: 14, fontWeight: 900, letterSpacing: '.06em',
+                  color: '#1a1226', background: 'linear-gradient(180deg, #ffd75e, #e6ad4a)', boxShadow: '0 0 18px rgba(243,192,69,.65)',
+                  animation: 'tfFrenzyPulse 0.7s ease-in-out infinite',
+                }}>
+                  🔥 FRENZY ×2
+                </div>
+              </>
+            )}
+
+            {/* Bomb hit flash */}
+            {bombHit > 0 && (
+              <div key={bombHit} style={{ position: 'absolute', inset: 0, pointerEvents: 'none', background: 'rgba(229,87,63,.28)', boxShadow: 'inset 0 0 60px rgba(229,87,63,.55)', animation: 'tfBombFlash 0.4s ease-out forwards', zIndex: 3 }} />
+            )}
+
             {/* Targets */}
             {targets.map(t => (
               <button
                 key={t.id}
                 type="button"
-                onClick={(e) => tapTarget(t, e)}
+                onPointerDown={(e) => tapTarget(t, e)}
                 className="anim-scale-in"
                 style={{
                   position: 'absolute',
                   background: 'transparent',
                   border: 'none',
+                  padding: 6,
                   cursor: 'pointer',
-                  transition: 'transform .1s',
                   left: `${t.x}%`, top: `${t.y}%`,
-                  fontSize: t.size,
-                  filter: `drop-shadow(0 0 8px ${t.color})`,
                   transform: 'translate(-50%, -50%)',
+                  WebkitTapHighlightColor: 'transparent',
+                  zIndex: 2,
                 }}
-                onMouseDown={(e) => { e.currentTarget.style.transform = 'translate(-50%, -50%) scale(.75)'; }}
-                onMouseUp={(e) => { e.currentTarget.style.transform = 'translate(-50%, -50%)'; }}
               >
-                {t.emoji}
+                <img
+                  src={t.icon}
+                  alt={t.key}
+                  width={t.size} height={t.size}
+                  draggable={false}
+                  style={{ display: 'block', filter: `drop-shadow(0 0 ${t.frenzy ? 14 : 9}px ${t.glow})`, pointerEvents: 'none' }}
+                />
+                {t.frenzy && (
+                  <span style={{
+                    position: 'absolute', top: -2, right: -6, fontSize: 11, fontWeight: 900, color: '#1a1226',
+                    background: 'linear-gradient(180deg, #ffd75e, #e6ad4a)', borderRadius: 999, padding: '1px 6px',
+                    boxShadow: '0 0 8px rgba(243,192,69,.7)', pointerEvents: 'none',
+                  }}>×2</span>
+                )}
               </button>
             ))}
 
@@ -161,6 +247,7 @@ function TapFrenzyGame({ onClose, onWin, closing }) {
                   color: tap.points > 0 ? C.green : C.red,
                   animation: 'scorePopUp 0.7s ease-out forwards',
                   textShadow: tap.points > 0 ? '0 0 10px rgba(79,169,139,0.5)' : '0 0 10px rgba(229,87,63,0.5)',
+                  zIndex: 4,
                 }}
               >
                 {tap.points > 0 ? `+${tap.points}` : tap.points}
@@ -170,13 +257,13 @@ function TapFrenzyGame({ onClose, onWin, closing }) {
         )}
 
         {gameState === 'done' && (
-          <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', animation: 'resultZoom 0.5s cubic-bezier(0.25, 1, 0.5, 1) both' }}>
-            <div style={{ fontSize: 60, marginBottom: 12, animation: 'symbolPop 0.5s ease both, float 2s ease-in-out 0.5s infinite' }}>{score >= 20 ? '🏆' : score >= 10 ? '⭐' : '👏'}</div>
+          <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'rgba(10,6,20,.5)', animation: 'resultZoom 0.5s cubic-bezier(0.25, 1, 0.5, 1) both' }}>
+            <div style={{ fontSize: 60, marginBottom: 12, animation: 'symbolPop 0.5s ease both, float 2s ease-in-out 0.5s infinite' }}>{score >= 45 ? '🏆' : score >= 30 ? '⭐' : '👏'}</div>
             <div style={{ fontSize: 36, fontWeight: 900, color: C.gold, marginBottom: 8 }}>{score} Points</div>
             <div style={{ fontSize: 20, color: C.green, fontWeight: 800, marginBottom: 24, display: 'inline-flex', alignItems: 'center', gap: 6, animation: 'correctPop 0.4s ease 0.3s both' }}>
-              +{getPrize()} <RewardIcon kind="coins" size={18} />
+              +{getPrize(score)} <RewardIcon kind="coins" size={18} />
             </div>
-            <GameBtn onClick={() => { setGameState('ready'); setScore(0); setTimeLeft(10); }} full={false} style={{ padding: '12px 30px' }}>Play Again ⚡</GameBtn>
+            <GameBtn onClick={() => { setGameState('ready'); setScore(0); setTimeLeft(GAME_LEN); }} full={false} style={{ padding: '12px 30px' }}>Play Again ⚡</GameBtn>
           </div>
         )}
       </div>
