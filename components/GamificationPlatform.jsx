@@ -1240,7 +1240,15 @@ export default function GamificationPlatform() {
       useGamePlay(gameId);
       setActiveGame(gameId);
     } else {
-      showNotif('No free plays!', 'error');
+      // extra plays are a paid gamble: EXTRA_PLAY_COST vs the MAX_WIN ceiling
+      const game = MINIGAMES.find(g => g.id === gameId);
+      if (game && user.kwacha >= game.cost) {
+        addCoins(-game.cost);
+        showNotif(`Extra play — ${game.cost} Coins`);
+        setActiveGame(gameId);
+      } else {
+        showNotif('Not enough Coins for an extra play!', 'error');
+      }
     }
   };
 
@@ -1533,6 +1541,7 @@ export default function GamificationPlatform() {
           done={user.missionsComplete.includes(selectedMission.id)}
           onClose={() => animateClose(() => setSelectedMission(null))} closing={closingModal}
           onNavigate={(tabId) => navigateTab(tabId)}
+          onPlayGame={(gameId) => { navigateTab('minigames'); playGame(gameId); }}
         />
       )}
       {notif && (
@@ -2067,6 +2076,7 @@ export default function GamificationPlatform() {
           done={user.missionsComplete.includes(selectedMission.id)}
           onClose={() => animateClose(() => setSelectedMission(null))} closing={closingModal}
           onNavigate={(tabId) => navigateTab(tabId)}
+          onPlayGame={(gameId) => { navigateTab('minigames'); playGame(gameId); }}
         />
       )}
 

@@ -1,107 +1,118 @@
 'use client';
 
 import React from 'react';
-import { X, ChevronRight } from 'lucide-react';
-import { DIFFICULTY_CONFIG } from '../../lib/data/missions';
+import { X, ChevronRight, Check } from 'lucide-react';
+import { C } from '../redesign/tokens';
+import { Badge, Progress, RewardIcon, GreenBtn } from '../redesign/RedesignShell';
 import { IMAGES } from '../../lib/data/images';
 
-const IMG_BASE = 'https://raw.githubusercontent.com/aichatbotbwanabet/gamification-platform/main/public/images';
+const DIFF = { easy: { label: 'Easy', c: C.green }, medium: { label: 'Medium', c: C.gold }, hard: { label: 'Hard', c: C.red } };
 
-export default function MissionDetailModal({ mission, progress, done, onClose, onNavigate, closing }) {
-  const diff = DIFFICULTY_CONFIG[mission.difficulty];
+export default function MissionDetailModal({ mission, progress, done, onClose, onNavigate, onPlayGame, closing }) {
+  const d = DIFF[mission.difficulty] || DIFF.easy;
+  const pct = done ? 100 : Math.min(100, Math.round(((progress || 0) / mission.target) * 100));
+
+  const handleCta = () => {
+    if (mission.gameId && onPlayGame) {
+      onPlayGame(mission.gameId);
+    } else if (mission.cta && onNavigate) {
+      onNavigate(mission.cta);
+    }
+    onClose();
+  };
 
   return (
-    <div className={`fixed inset-0 bg-black/90 flex items-center justify-center z-[80] p-4 ${closing ? 'anim-backdrop-close' : 'anim-fade-in'}`} onClick={onClose}>
-      <div className={`bg-gradient-to-b from-[#0a1520] to-[#030810] rounded-3xl max-w-md w-full overflow-hidden border-0 shadow-2xl shadow-purple-900/50 max-h-[90vh] overflow-y-auto ${closing ? 'anim-modal-close' : 'anim-scale-in'}`} onClick={(e) => e.stopPropagation()}>
-        {/* Header Image */}
-        <div className="relative h-44 overflow-hidden">
-          <img src={IMAGES[mission.image]} alt="" className="w-full h-full object-cover" />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#0a1520] via-transparent to-transparent" />
+    <div
+      className={`fixed inset-0 z-[80] ${closing ? 'anim-backdrop-close' : 'anim-fade-in'}`}
+      style={{ background: 'rgba(10,11,18,.78)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, backdropFilter: 'blur(3px)' }}
+      onClick={onClose}
+    >
+      <div
+        className={closing ? 'anim-modal-close' : 'anim-scale-in'}
+        style={{
+          width: '100%', maxWidth: 400, maxHeight: '90vh', overflowY: 'auto',
+          background: `linear-gradient(180deg, ${C.panelHi}, ${C.panelLo})`,
+          borderRadius: 18, border: '1px solid rgba(255,255,255,0.09)',
+          boxShadow: '0 24px 60px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.07)',
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header image */}
+        <div style={{ position: 'relative', height: 150, overflow: 'hidden', borderRadius: '18px 18px 0 0' }}>
+          <img src={IMAGES[mission.image]} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+          <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(180deg, rgba(0,0,0,.1), transparent 40%, ${C.panelHi})` }} />
 
-          {/* Difficulty ribbon - top right corner */}
-          <div className={`absolute top-0 right-6 ${diff.color} px-3 py-1.5 rounded-b-lg font-bold text-sm shadow-lg`}>
-            {diff.label}
-          </div>
+          <span style={{ position: 'absolute', top: 12, left: 12, display: 'inline-flex', gap: 6 }}>
+            <Badge bg={done ? C.green : d.c}>{done ? 'Done' : d.label}</Badge>
+            {mission.hot && !done && <Badge bg={C.red} color="#fff">🔥 Hot</Badge>}
+          </span>
 
-          {/* HOT badge */}
-          {mission.hot && !done && (
-            <span className="absolute top-3 left-3 px-2 py-1 bg-red-500 rounded-lg text-sm font-bold shadow-lg">
-              🔥 HOT
-            </span>
-          )}
-
-          {/* Done overlay */}
-          {done && (
-            <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
-              <img src={`${IMG_BASE}/green_bubble.jpg`} alt="" className="w-28 h-28 object-cover rounded-full anim-check-pop" style={{ mixBlendMode: "screen" }} />
-            </div>
-          )}
-
-          {/* Close button */}
           <button
             type="button"
             onClick={onClose}
-            className="absolute top-3 right-3 p-2 bg-black/50 hover:bg-black/70 rounded-full z-10 transition-all hover:rotate-90 duration-300"
+            aria-label="Close"
+            style={{
+              position: 'absolute', top: 10, right: 10, width: 32, height: 32, borderRadius: 999,
+              border: '1px solid rgba(255,255,255,.14)', background: 'rgba(12,13,20,.62)',
+              color: C.text, display: 'grid', placeItems: 'center', cursor: 'pointer',
+            }}
           >
-            <X className="w-5 h-5" />
+            <X size={16} />
           </button>
+
+          {done && (
+            <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', background: 'rgba(10,12,18,.45)' }}>
+              <div className="anim-check-pop" style={{ width: 64, height: 64, borderRadius: 999, background: C.green, display: 'grid', placeItems: 'center', boxShadow: '0 0 30px rgba(79,169,139,.6)' }}>
+                <Check size={34} color="#08210f" strokeWidth={3} />
+              </div>
+            </div>
+          )}
         </div>
 
-        <div className="p-6">
-          {/* Title & Description */}
-          <h2 className="text-2xl font-bold mb-1">{mission.name}</h2>
-          <p className="text-gray-400 mb-4">{mission.desc}</p>
+        <div style={{ padding: '16px 18px 18px' }}>
+          {/* Title */}
+          <h2 style={{ margin: '0 0 3px', fontSize: 20, fontWeight: 800, color: C.text, letterSpacing: '-.01em' }}>{mission.name}</h2>
+          <p style={{ margin: '0 0 14px', fontSize: 13.5, color: C.sub }}>{mission.desc}</p>
 
           {/* Progress */}
-          <div className="mb-4">
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-sm text-gray-400">Progress</span>
-              <span className={`text-sm font-bold ${done ? 'text-green-400' : 'text-cyan-300'}`}>
-                {done ? '✅ Complete!' : `${Math.min(progress, mission.target)} / ${mission.target}`}
+          <div style={{ marginBottom: 14 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 7 }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '.05em' }}>Progress</span>
+              <span style={{ fontSize: 13, fontWeight: 800, color: done ? C.green : C.teal, fontVariantNumeric: 'tabular-nums' }}>
+                {done ? 'Complete!' : `${Math.min(progress || 0, mission.target)} / ${mission.target}`}
               </span>
             </div>
-            <div className="h-3 bg-black/50 rounded-full overflow-hidden">
-              <div
-                className={`h-full rounded-full transition-all duration-500 ${done ? 'bg-green-500' : 'bg-gradient-to-r from-cyan-400 to-blue-500'}`}
-                style={{ width: `${Math.min(100, (progress / mission.target) * 100)}%` }}
-              />
-            </div>
+            <Progress value={pct} color={done ? C.green : C.teal} />
           </div>
 
           {/* Rewards */}
-          <div className="bg-black/60 rounded-xl p-4 border border-white/10 mb-4">
-            <div className="text-sm text-gray-400 mb-2 font-semibold">Rewards</div>
-            <div className="flex items-center gap-4 flex-wrap">
-              {mission.reward.kwacha && (
-                <div className="flex items-center gap-1.5">
-                  <span className="text-lg">🪙</span>
-                  <span className="text-yellow-400 font-bold text-lg">{mission.reward.kwacha}</span>
-                  <span className="text-gray-500 text-sm">Coins</span>
-                </div>
-              )}
-              {mission.reward.gems && (
-                <div className="flex items-center gap-1.5">
-                  <span className="text-lg">💚</span>
-                  <span className="text-green-400 font-bold text-lg">{mission.reward.gems}</span>
-                  <span className="text-gray-500 text-sm">Gems</span>
-                </div>
-              )}
-              <div className="flex items-center gap-1.5">
-                <span className="text-lg">⚡</span>
-                <span className="text-purple-400 font-bold text-lg">{mission.xp}</span>
-                <span className="text-gray-500 text-sm">XP</span>
-              </div>
+          <div style={{ background: C.track, borderRadius: 12, padding: '11px 14px', marginBottom: 12, border: '1px solid rgba(255,255,255,.05)' }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 8 }}>Rewards</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 18, flexWrap: 'wrap' }}>
+              {mission.reward.kwacha ? (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 16, fontWeight: 800, color: C.gold }}>
+                  <RewardIcon kind="coins" size={19} />{mission.reward.kwacha}
+                </span>
+              ) : null}
+              {mission.reward.gems ? (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 16, fontWeight: 800, color: C.teal }}>
+                  <RewardIcon kind="gem" size={17} />{mission.reward.gems}
+                </span>
+              ) : null}
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 16, fontWeight: 800, color: '#b9a5e8' }}>
+                ⚡ {mission.xp} <span style={{ fontSize: 11.5, fontWeight: 700, color: C.muted }}>XP</span>
+              </span>
             </div>
           </div>
 
           {/* Tips */}
-          {mission.tips && mission.tips.length > 0 && (
-            <div className="bg-black/60 rounded-xl p-4 border border-white/10 mb-4">
-              <div className="text-sm text-gray-400 mb-2 font-semibold">💡 Tips</div>
-              <div className="space-y-1.5">
+          {mission.tips?.length > 0 && (
+            <div style={{ background: C.track, borderRadius: 12, padding: '11px 14px', marginBottom: 12, border: '1px solid rgba(255,255,255,.05)' }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 7 }}>💡 Tips</div>
+              <div style={{ display: 'grid', gap: 5 }}>
                 {mission.tips.map((tip, i) => (
-                  <div key={i} className="text-sm text-gray-300 flex items-start gap-2">
-                    <span className="text-purple-400 mt-0.5">•</span>
+                  <div key={i} style={{ fontSize: 12.5, color: C.sub, display: 'flex', gap: 7 }}>
+                    <span style={{ color: C.green }}>•</span>
                     <span>{tip}</span>
                   </div>
                 ))}
@@ -109,20 +120,15 @@ export default function MissionDetailModal({ mission, progress, done, onClose, o
             </div>
           )}
 
-          {/* CTA Button */}
-          {!done && mission.cta && (
-            <button
-              type="button"
-              onClick={() => { onNavigate(mission.cta); onClose(); }}
-              className="w-full py-3.5 bg-gradient-to-r from-purple-500 to-purple-700 hover:from-purple-600 hover:to-purple-800 rounded-xl font-bold text-lg transition-all hover:scale-[1.02] active:scale-95 shadow-lg shadow-purple-500/30 flex items-center justify-center gap-2"
-            >
-              {mission.ctaLabel || 'Go'} <ChevronRight className="w-5 h-5" />
-            </button>
+          {/* CTA */}
+          {!done && (mission.gameId || mission.cta) && (
+            <GreenBtn full onClick={handleCta}>
+              {mission.gameId ? `Play Now` : (mission.ctaLabel || 'Go')} <ChevronRight size={16} />
+            </GreenBtn>
           )}
-
           {done && (
-            <div className="text-center py-3 text-green-400 font-bold text-lg">
-              ✅ Mission Complete!
+            <div style={{ textAlign: 'center', padding: '8px 0 2px', color: C.green, fontWeight: 800, fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+              <Check size={16} /> Mission Complete
             </div>
           )}
         </div>
