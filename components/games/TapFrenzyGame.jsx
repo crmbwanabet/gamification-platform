@@ -10,12 +10,22 @@ const GAME_LEN = 15;   // seconds per round
 const FRENZY_AT = 4;   // final seconds: 2x points, faster spawns
 
 const REWARD_TYPES = [
-  { key: 'coin',    icon: '/ui/icons/coin.png',    points: 1, size: 48, weight: 40, glow: 'rgba(243,196,69,.65)' },
-  { key: 'gem',     icon: '/ui/icons/gem.png',     points: 2, size: 44, weight: 24, glow: 'rgba(168,85,247,.6)' },
-  { key: 'diamond', icon: '/ui/icons/diamond.png', points: 3, size: 42, weight: 14, glow: 'rgba(56,209,224,.6)' },
-  { key: 'bolt',    icon: '/ui/icons/bolt.png',    points: 5, size: 40, weight: 8,  glow: 'rgba(255,214,90,.75)' },
+  { key: 'coin',    icon: '/ui/tapfrenzy/coin.png',    points: 1, size: 48, weight: 40, glow: 'rgba(243,196,69,.65)' },
+  { key: 'gem',     icon: '/ui/tapfrenzy/gem.png',     points: 2, size: 44, weight: 24, glow: 'rgba(168,85,247,.6)' },
+  { key: 'diamond', icon: '/ui/tapfrenzy/diamond.png', points: 3, size: 42, weight: 14, glow: 'rgba(56,209,224,.6)' },
+  { key: 'bolt',    icon: '/ui/tapfrenzy/bolt.png',    points: 5, size: 40, weight: 8,  glow: 'rgba(255,214,90,.75)' },
 ];
-const BOMB = { key: 'bomb', icon: '/ui/icons/bomb.png', points: -5, size: 46, glow: 'rgba(229,87,63,.55)' };
+const BOMB = { key: 'bomb', icon: '/ui/tapfrenzy/bomb.png', points: -5, size: 46, glow: 'rgba(229,87,63,.55)' };
+
+const SPARKLES = [
+  { left: '8%',  size: 5, dur: 5.2, delay: 0 },
+  { left: '22%', size: 3, dur: 4.1, delay: -2.2 },
+  { left: '38%', size: 6, dur: 6.0, delay: -3.5 },
+  { left: '52%', size: 4, dur: 4.6, delay: -1.4 },
+  { left: '66%', size: 5, dur: 5.6, delay: -4.1 },
+  { left: '81%', size: 3, dur: 4.3, delay: -0.8 },
+  { left: '92%', size: 6, dur: 6.4, delay: -2.9 },
+];
 
 // Difficulty curve — p is round progress 0→1
 const curve = (p) => ({
@@ -37,6 +47,8 @@ function TapFrenzyGame({ onClose, onWin, closing }) {
   const [bombHit, setBombHit] = useState(0);
   const [showTutorial, setShowTutorial] = useState(false);
   const idRef = useRef(0);
+  const targetsRef = useRef([]);
+  useEffect(() => { targetsRef.current = targets; }, [targets]);
 
   const startGame = () => {
     setScore(0);
@@ -65,8 +77,10 @@ function TapFrenzyGame({ onClose, onWin, closing }) {
       const cv = curve(Math.min(1, el / GAME_LEN));
       const frenzyNow = GAME_LEN - el <= FRENZY_AT;
 
-      setTargets(prev => {
-        if (prev.length >= cv.maxTargets) return prev;
+      // build the target outside setTargets so the updater stays pure
+      // (StrictMode double-invokes updaters; a later() inside one leaks timers)
+      const live = targetsRef.current;
+      if (live.length < cv.maxTargets) {
         const roll = Math.random() * 100;
         let type = BOMB;
         if (roll >= cv.bombPct) {
@@ -79,7 +93,7 @@ function TapFrenzyGame({ onClose, onWin, closing }) {
         let x = 12 + Math.random() * 76, y = 14 + Math.random() * 62;
         for (let i = 0; i < 8; i++) {
           const cx = 12 + Math.random() * 76, cy = 14 + Math.random() * 62;
-          if (prev.every(o => Math.hypot(cx - o.x, (cy - o.y) * 1.6) > 24)) { x = cx; y = cy; break; }
+          if (live.every(o => Math.hypot(cx - o.x, (cy - o.y) * 1.6) > 24)) { x = cx; y = cy; break; }
         }
         const target = {
           id: ++idRef.current, x, y, ...type,
@@ -88,8 +102,8 @@ function TapFrenzyGame({ onClose, onWin, closing }) {
           frenzy: frenzyNow && type.points > 0,
         };
         later(() => setTargets(p => p.filter(o => o.id !== target.id)), cv.life);
-        return [...prev, target];
-      });
+        setTargets(prev => prev.length >= cv.maxTargets ? prev : [...prev, target]);
+      }
 
       later(spawn, cv.gap * (0.8 + Math.random() * 0.4) * (frenzyNow ? 0.8 : 1));
     };
@@ -105,7 +119,9 @@ function TapFrenzyGame({ onClose, onWin, closing }) {
       }
     }, 200);
 
-    return () => { clearInterval(iv); timeouts.forEach(clearTimeout); };
+    // clearing targets here also removes the spawn a StrictMode dev
+    // double-mount leaves behind after its despawn timer is cleared
+    return () => { clearInterval(iv); timeouts.forEach(clearTimeout); setTargets([]); };
   }, [gameState]);
 
   useEffect(() => {
@@ -132,6 +148,31 @@ function TapFrenzyGame({ onClose, onWin, closing }) {
         @keyframes tfFrenzyPulse { 0%, 100% { transform: translateX(-50%) scale(1); } 50% { transform: translateX(-50%) scale(1.08); } }
         @keyframes tfBombFlash { 0% { opacity: 1; } 100% { opacity: 0; } }
         @keyframes tfFrenzyVignette { 0%, 100% { opacity: .55; } 50% { opacity: 1; } }
+        @keyframes tfBeamSway { from { transform: rotate(-14deg); } to { transform: rotate(14deg); } }
+        @keyframes tfSparkleFloat {
+          0%   { transform: translateY(0) scale(.6); opacity: 0; }
+          15%  { opacity: .9; }
+          80%  { opacity: .5; }
+          100% { transform: translateY(-330px) scale(1.1); opacity: 0; }
+        }
+        .tf-beam {
+          position: absolute; top: -6%; height: 115%; width: 120px;
+          transform-origin: 50% 0; pointer-events: none; mix-blend-mode: screen;
+          background: linear-gradient(180deg, rgba(255,232,170,.5), rgba(255,232,170,.18) 55%, rgba(255,232,170,0) 82%);
+          clip-path: polygon(42% 0, 58% 0, 100% 100%, 0 100%);
+          filter: blur(5px);
+          animation: tfBeamSway var(--sway, 7s) ease-in-out infinite alternate;
+        }
+        .tf-frenzy .tf-beam { animation-duration: 1.6s; background: linear-gradient(180deg, rgba(255,208,94,.65), rgba(255,208,94,.22) 55%, rgba(255,208,94,0) 82%); }
+        .tf-sparkle {
+          position: absolute; bottom: -8px; border-radius: 999px; pointer-events: none;
+          background: radial-gradient(circle, rgba(255,244,200,.95) 0%, rgba(255,214,90,.5) 45%, rgba(255,214,90,0) 70%);
+          animation: tfSparkleFloat var(--dur, 5s) linear infinite;
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .tf-beam, .tf-sparkle { animation: none; }
+          .tf-sparkle { display: none; }
+        }
       `}</style>
 
       {/* Score & Timer */}
@@ -153,22 +194,29 @@ function TapFrenzyGame({ onClose, onWin, closing }) {
 
       {/* Game Area */}
       <div
+        className={frenzy ? 'tf-frenzy' : undefined}
         style={{
           position: 'relative', height: 350, borderRadius: 16, overflow: 'hidden',
           border: '1px solid rgba(255,255,255,.09)',
-          backgroundImage: "linear-gradient(rgba(10,6,20,.42), rgba(10,6,20,.12) 35%, rgba(10,6,20,.22)), url('/ui/art/tapfrenzy-arena.webp')",
+          backgroundImage: "linear-gradient(rgba(10,6,20,.3), rgba(10,6,20,.08) 35%, rgba(10,6,20,.16)), url('/ui/tapfrenzy/arena.webp')",
           backgroundSize: 'cover', backgroundPosition: 'center',
           userSelect: 'none', WebkitUserSelect: 'none', touchAction: 'manipulation',
         }}
       >
+        {/* Ambient moving lights (behind everything, always on) */}
+        <div className="tf-beam" style={{ left: '16%', '--sway': '7s' }} />
+        <div className="tf-beam" style={{ left: '62%', '--sway': '9.5s', animationDelay: '-4.2s' }} />
+        {SPARKLES.map((s, i) => (
+          <div key={i} className="tf-sparkle" style={{ left: s.left, width: s.size, height: s.size, '--dur': `${s.dur}s`, animationDelay: `${s.delay}s` }} />
+        ))}
         {gameState === 'ready' && (
           <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 16, background: 'rgba(10,6,20,.35)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
-              <img src="/ui/icons/coin.png" alt="" width={44} height={44} draggable={false} style={{ filter: 'drop-shadow(0 0 10px rgba(243,196,69,.5))' }} />
-              <img src="/ui/icons/gem.png" alt="" width={40} height={40} draggable={false} style={{ filter: 'drop-shadow(0 0 10px rgba(168,85,247,.5))' }} />
-              <img src="/ui/icons/diamond.png" alt="" width={40} height={40} draggable={false} style={{ filter: 'drop-shadow(0 0 10px rgba(56,209,224,.5))' }} />
-              <img src="/ui/icons/bolt.png" alt="" width={36} height={36} draggable={false} style={{ filter: 'drop-shadow(0 0 10px rgba(255,214,90,.6))' }} />
-              <img src="/ui/icons/bomb.png" alt="bomb" width={44} height={44} draggable={false} style={{ filter: 'drop-shadow(0 0 10px rgba(229,87,63,.55))', marginLeft: 6 }} />
+              <img src="/ui/tapfrenzy/coin.png" alt="" width={44} height={44} draggable={false} style={{ filter: 'drop-shadow(0 0 10px rgba(243,196,69,.5))' }} />
+              <img src="/ui/tapfrenzy/gem.png" alt="" width={40} height={40} draggable={false} style={{ filter: 'drop-shadow(0 0 10px rgba(168,85,247,.5))' }} />
+              <img src="/ui/tapfrenzy/diamond.png" alt="" width={40} height={40} draggable={false} style={{ filter: 'drop-shadow(0 0 10px rgba(56,209,224,.5))' }} />
+              <img src="/ui/tapfrenzy/bolt.png" alt="" width={36} height={36} draggable={false} style={{ filter: 'drop-shadow(0 0 10px rgba(255,214,90,.6))' }} />
+              <img src="/ui/tapfrenzy/bomb.png" alt="bomb" width={44} height={44} draggable={false} style={{ filter: 'drop-shadow(0 0 10px rgba(229,87,63,.55))', marginLeft: 6 }} />
             </div>
             <p style={{ color: C.text, textAlign: 'center', marginBottom: 6, fontSize: 14, fontWeight: 600 }}>Tap the loot as fast as you can — never the bomb!</p>
             <p style={{ fontSize: 13, color: C.sub, marginBottom: 24, textAlign: 'center' }}>{GAME_LEN} seconds. It gets faster — the last {FRENZY_AT}s are ×2 FRENZY 🔥</p>
