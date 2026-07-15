@@ -20,7 +20,8 @@ export async function GET() {
       ]);
       rows = cfgRes.data || [];
       items = itemRes.data || [];
-    } catch (e) { /* defaults */ }
+      if (cfgRes.error || itemRes.error) console.error('[api/config] degraded to defaults:', cfgRes.error || itemRes.error);
+    } catch (e) { console.error('[api/config] degraded to defaults:', e); }
   }
   const config = mergeConfig(DEFAULT_CONFIG, rows);
   config.storeItems = items
