@@ -53,23 +53,23 @@ function GameCard({ g, free, onPlay, i = 0 }) {
   );
 }
 
-function GamesGrid({ gamePlays, onPlay }) {
+function GamesGrid({ gamePlays, onPlay, games }) {
   return (
     <section>
       <SectionTitle>Minigames</SectionTitle>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 12 }}>
-        {MINIGAMES.map((g, i) => <GameCard key={g.id} i={i} g={g} free={gamePlays?.[g.id] ?? 0} onPlay={onPlay} />)}
+        {(games || MINIGAMES).map((g, i) => <GameCard key={g.id} i={i} g={g} free={gamePlays?.[g.id] ?? 0} onPlay={onPlay} />)}
       </div>
     </section>
   );
 }
 
-export default function PlayView({ tab = 'play.minigames', points = '0', missionsCount = 0, badges = 0, xp = 0, gamePlays, onNavigate, onOpenProfile, onPlay, userId = null, navBadges = {} }) {
+export default function PlayView({ tab = 'play.minigames', points = '0', missionsCount = 0, badges = 0, xp = 0, gamePlays, onNavigate, onOpenProfile, onPlay, userId = null, navBadges = {}, games = null }) {
   return (
     <RedesignShell points={points} missionsCount={missionsCount} badges={badges} xp={xp} userId={userId} navBadges={navBadges} activeTab="play" onNavigate={onNavigate} onOpenProfile={onOpenProfile}>
       <SubNav tab={tab} onNavigate={onNavigate} />
       {/* Predictions + Daily (trivia) parked — see parked/components/redesign/PlayView.parked.jsx */}
-      <GamesGrid gamePlays={gamePlays} onPlay={onPlay} />
+      <GamesGrid gamePlays={gamePlays} onPlay={onPlay} games={games} />
     </RedesignShell>
   );
 }

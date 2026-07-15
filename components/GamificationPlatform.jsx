@@ -19,6 +19,8 @@ import LevelUpModal from './redesign/LevelUpModal';
 import ProfileModal from './redesign/ProfileModal';
 // SSO session (bwanabet token -> Supabase profile)
 import { useSession } from './session/SessionProvider';
+import { useRemoteConfig } from '@/lib/config/useRemoteConfig';
+import { DEFAULT_DAILY_PLAYS } from '@/lib/config/defaults';
 
 // Data imports
 import { IMG_BASE, CURRENCY_ICONS, IMAGES, WHEEL_IMAGES } from '../lib/data/images';
@@ -62,7 +64,8 @@ const useReducedMotion = () => {
 // Daily free allowance per game. All games refresh back to these values at
 // 6am local time every day; plays ABOVE the allowance (earned/purchased
 // extras) carry over untouched — the refresh only tops up, never removes.
-const DAILY_GAME_PLAYS = { wheel: 3, scratch: 5, dice: 5, highlow: 5, plinko: 5, tapfrenzy: 5, stopclock: 5 };
+// The default values now live in lib/config/defaults.js (DEFAULT_DAILY_PLAYS);
+// remote config (per-game dailyPlays / enabled) overrides them at runtime.
 // Identifies the current "game day" — a new one starts at 6am.
 const playsRefreshKey = () => {
   const d = new Date();
@@ -72,6 +75,10 @@ const playsRefreshKey = () => {
 
 export default function GamificationPlatform() {
   const prefersReducedMotion = useReducedMotion();
+  const cfg = useRemoteConfig();
+  // Games list the UI shows: enabled games only, extra-play cost from config.
+  const activeGames = MINIGAMES.filter(g => cfg.games[g.id]?.enabled !== false)
+    .map(g => ({ ...g, cost: cfg.economy.extraPlayCost }));
   const [tab, setTab] = useState('home');
   const [activeGame, setActiveGame] = useState(null);
   const [selectedMission, setSelectedMission] = useState(null);
@@ -862,7 +869,7 @@ export default function GamificationPlatform() {
     dailyClaimed: false,
     lastDailyClaim: null,
     referrals: 0,
-    gamePlays: { ...DAILY_GAME_PLAYS },
+    gamePlays: { ...DEFAULT_DAILY_PLAYS },
     lastPlaysRefresh: null,
     dailyTasksDone: [],
     dailyBonusClaimed: false,
@@ -927,6 +934,13 @@ export default function GamificationPlatform() {
   // when a new game day starts. Extras above the allowance are kept (max, not
   // overwrite). Runs on mount, when SSO hydration lands, and every minute so
   // a session left open across 6am refreshes live.
+  const dailyPlaysRef = useRef(DEFAULT_DAILY_PLAYS);
+  useEffect(() => {
+    // Disabled games stop refreshing; allowances come from config.
+    dailyPlaysRef.current = Object.fromEntries(
+      Object.entries(cfg.games).filter(([, g]) => g.enabled !== false).map(([id, g]) => [id, g.dailyPlays])
+    );
+  }, [cfg]);
   const refreshDailyPlays = useCallback(() => {
     setUser(u => {
       const key = playsRefreshKey();
@@ -937,7 +951,7 @@ export default function GamificationPlatform() {
       return {
         ...u,
         lastPlaysRefresh: key,
-        gamePlays: topUp(u.gamePlays, DAILY_GAME_PLAYS),
+        gamePlays: topUp(u.gamePlays, dailyPlaysRef.current),
       };
     });
   }, []);
@@ -1134,7 +1148,7 @@ export default function GamificationPlatform() {
       setActiveGame(gameId);
     } else {
       // extra plays are a paid gamble: EXTRA_PLAY_COST vs the MAX_WIN ceiling
-      const game = MINIGAMES.find(g => g.id === gameId);
+      const game = activeGames.find(g => g.id === gameId);
       if (game && user.kwacha >= game.cost) {
         addCoins(-game.cost);
         showNotif(`Extra play — ${game.cost} Coins`);
@@ -1368,10 +1382,12 @@ export default function GamificationPlatform() {
     userId: session?.profile?.bwanabet_user_id || session?.profile?.username || widgetUid || null,
     // nav badges = things to attend to, not catalog sizes
     navBadges: {
-      play: MINIGAMES.filter(g => (user.gamePlays[g.id] || 0) > 0).length || null,
+      play: activeGames.filter(g => (user.gamePlays[g.id] || 0) > 0).length || null,
       earn: (openMissionsCount + (user.dailyClaimed ? 0 : 1)) || null,
       store: null, // store is empty until the admin dashboard stocks it
     },
+    games: activeGames,
+    storeItems: cfg.storeItems,
   };
 
   const claimDailyReward = (el) => {

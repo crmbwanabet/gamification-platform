@@ -9,10 +9,6 @@ import { getDailyMissions, PERMANENT_MISSIONS } from '@/lib/data/missions';
 import { STORE_ITEMS, MINIGAMES } from '@/lib/data/platform';
 
 const MISSIONS = [...getDailyMissions(), ...PERMANENT_MISSIONS];
-// Store may be empty until the admin dashboard populates it
-const featuredItem = STORE_ITEMS.find(i => i.featured) || STORE_ITEMS[0] || null;
-const storeMore = featuredItem ? STORE_ITEMS.filter(i => i.id !== featuredItem.id).slice(0, 2) : [];
-const wheelGame = MINIGAMES.find(g => g.id === 'wheel');
 
 // Pick 3 missions that best reflect the player's current progress:
 // in-progress first, then not-started, then completed.
@@ -54,7 +50,7 @@ function StoreRow({ item, onNavigate }) {
   return (
     <Card style={{ padding: 12, display: 'flex', gap: 12, alignItems: 'center', position: 'relative', overflow: 'hidden' }}>
       {item.isNew && <div style={{ position: 'absolute', top: 10, left: -28, transform: 'rotate(-45deg)', background: C.red, color: '#fff', fontSize: 9, fontWeight: 900, padding: '2px 30px', zIndex: 2 }}>NEW</div>}
-      <div style={{ width: 96, flex: 'none' }}><Thumb src={IMAGES[item.image]} alt={item.name} h={72} /></div>
+      <div style={{ width: 96, flex: 'none' }}><Thumb src={item.imageUrl || IMAGES[item.image]} alt={item.name} h={72} /></div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 13.5, fontWeight: 800, color: C.text }}>{item.name}</div>
         {item.desc && <div style={{ fontSize: 11.5, color: C.sub, margin: '2px 0 8px' }}>{item.desc}</div>}
@@ -70,9 +66,15 @@ function StoreRow({ item, onNavigate }) {
   );
 }
 
-export default function Overview({ points = '2,344', missionsCount = MISSIONS.length, badges = 12, xp = 1200, activeTab = 'home', onNavigate, onOpenProfile, missionProgress, missionsComplete, onOpenMission, dailyDay = 1, dailyClaimed = false, onClaimDaily, userId = null, navBadges = {} } = {}) {
+export default function Overview({ points = '2,344', missionsCount = MISSIONS.length, badges = 12, xp = 1200, activeTab = 'home', onNavigate, onOpenProfile, missionProgress, missionsComplete, onOpenMission, dailyDay = 1, dailyClaimed = false, onClaimDaily, userId = null, navBadges = {}, games = null, storeItems = null } = {}) {
   const go = (t) => onNavigate && onNavigate(t);
   const latest = pickLatestMissions(missionProgress, missionsComplete);
+  // Store may be empty until the admin dashboard populates it
+  const items = storeItems || STORE_ITEMS;
+  const gameList = games || MINIGAMES;
+  const featuredItem = items.find(i => i.featured) || items[0] || null;
+  const storeMore = featuredItem ? items.filter(i => i.id !== featuredItem.id).slice(0, 2) : [];
+  const wheelGame = gameList.find(g => g.id === 'wheel');
   return (
     <RedesignShell points={points} missionsCount={missionsCount} badges={badges} xp={xp} userId={userId} navBadges={navBadges} activeTab={activeTab} onNavigate={onNavigate} onOpenProfile={onOpenProfile}>
       {!dailyClaimed && (
@@ -93,7 +95,7 @@ export default function Overview({ points = '2,344', missionsCount = MISSIONS.le
           <section>
             <SectionTitle>Featured Reward</SectionTitle>
             <Card style={{ padding: 14, display: 'flex', gap: 14, alignItems: 'center' }}>
-              <div style={{ width: 120, flex: 'none' }}><Thumb src={IMAGES[featuredItem.image]} alt={featuredItem.name} h={96} /></div>
+              <div style={{ width: 120, flex: 'none' }}><Thumb src={featuredItem.imageUrl || IMAGES[featuredItem.image]} alt={featuredItem.name} h={96} /></div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 15, fontWeight: 800, marginBottom: 4 }}>{featuredItem.name}</div>
                 {featuredItem.desc && <div style={{ fontSize: 12, color: C.sub, marginBottom: 10 }}>{featuredItem.desc}</div>}
@@ -115,10 +117,10 @@ export default function Overview({ points = '2,344', missionsCount = MISSIONS.le
                 <span style={{ position: 'absolute', top: 10, left: 12, background: '#111', color: C.gold, fontSize: 12, fontWeight: 900, padding: '3px 10px', borderRadius: 6, letterSpacing: '.06em', zIndex: 2 }}>BIG PRIZE</span>
               </div>
               <div style={{ padding: 12 }}>
-                <div style={{ fontSize: 11, color: C.muted, marginBottom: 4 }}>{MINIGAMES.length}+ minigames</div>
+                <div style={{ fontSize: 11, color: C.muted, marginBottom: 4 }}>{gameList.length}+ minigames</div>
                 <div style={{ fontSize: 13, fontWeight: 700, color: C.text, marginBottom: 10 }}>Play &amp; win the daily jackpot</div>
                 <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-                  {[['Entry', 'Free'], ['Games', String(MINIGAMES.length)], ['Prize', 'Jackpot']].map(([k, v]) => (
+                  {[['Entry', 'Free'], ['Games', String(gameList.length)], ['Prize', 'Jackpot']].map(([k, v]) => (
                     <div key={k} style={{ flex: 1 }}>
                       <div style={{ fontSize: 9.5, color: C.muted, marginBottom: 3 }}>{k}</div>
                       <div style={{ fontSize: 12, fontWeight: 800, background: C.track, borderRadius: 7, padding: '6px 8px', textAlign: 'center' }}>{v}</div>
@@ -130,17 +132,19 @@ export default function Overview({ points = '2,344', missionsCount = MISSIONS.le
             </Card>
           </div>
 
-          <div>
-            <SectionTitle>Spin the wheel</SectionTitle>
-            <Card style={{ overflow: 'hidden' }}>
-              <Thumb src={IMAGES.wheel} alt="Wheel of Fortune" h={104} radius={0} />
-              <div style={{ padding: 12, textAlign: 'center' }}>
-                <div style={{ fontSize: 14, fontWeight: 800, marginBottom: 4 }}>{wheelGame ? wheelGame.name : 'Wheel of Fortune'}</div>
-                <div style={{ fontSize: 11.5, color: C.sub, marginBottom: 12, lineHeight: 1.5 }}>{wheelGame ? wheelGame.desc : 'Spin to win amazing prizes!'}</div>
-                <GreenBtn full onClick={() => go('play')}>Free to spin</GreenBtn>
-              </div>
-            </Card>
-          </div>
+          {wheelGame && (
+            <div>
+              <SectionTitle>Spin the wheel</SectionTitle>
+              <Card style={{ overflow: 'hidden' }}>
+                <Thumb src={IMAGES.wheel} alt="Wheel of Fortune" h={104} radius={0} />
+                <div style={{ padding: 12, textAlign: 'center' }}>
+                  <div style={{ fontSize: 14, fontWeight: 800, marginBottom: 4 }}>{wheelGame.name}</div>
+                  <div style={{ fontSize: 11.5, color: C.sub, marginBottom: 12, lineHeight: 1.5 }}>{wheelGame.desc}</div>
+                  <GreenBtn full onClick={() => go('play')}>Free to spin</GreenBtn>
+                </div>
+              </Card>
+            </div>
+          )}
         </section>
 
         {storeMore.length > 0 && (

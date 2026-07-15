@@ -10,7 +10,7 @@ function StoreCard({ item, canBuy, onBuy, i = 0 }) {
   return (
     <Card className="card-enter" style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column', animationDelay: `${i * 45}ms` }}>
       <div style={{ position: 'relative' }}>
-        <Thumb src={IMAGES[item.image]} alt={item.name} h={90} radius={0} />
+        <Thumb src={item.imageUrl || IMAGES[item.image]} alt={item.name} h={90} radius={0} />
         {item.featured && <span style={{ position: 'absolute', top: 6, left: 6, zIndex: 2 }}><Badge bg={C.gold}>Featured</Badge></span>}
         {item.isNew && <span style={{ position: 'absolute', top: 6, right: 6, zIndex: 2 }}><Badge bg={C.red} color="#fff">New</Badge></span>}
       </div>
@@ -28,12 +28,13 @@ function StoreCard({ item, canBuy, onBuy, i = 0 }) {
   );
 }
 
-export default function StoreView({ points = '0', missionsCount = 0, badges = 0, xp = 0, onNavigate, onOpenProfile, onBuy, kwacha = 0, gems = 0, userId = null, navBadges = {} }) {
+export default function StoreView({ points = '0', missionsCount = 0, badges = 0, xp = 0, onNavigate, onOpenProfile, onBuy, kwacha = 0, gems = 0, userId = null, navBadges = {}, storeItems = null }) {
+  const items = storeItems || STORE_ITEMS;
   return (
     <RedesignShell points={points} missionsCount={missionsCount} badges={badges} xp={xp} userId={userId} navBadges={navBadges} activeTab="store" onNavigate={onNavigate} onOpenProfile={onOpenProfile}>
       <section>
         <SectionTitle>Rewards Store</SectionTitle>
-        {STORE_ITEMS.length === 0 ? (
+        {items.length === 0 ? (
           <Card style={{ padding: '46px 24px', textAlign: 'center' }}>
             <div style={{ fontSize: 44, marginBottom: 12 }}>🛍️</div>
             <div style={{ fontSize: 16, fontWeight: 800, color: C.text, marginBottom: 6 }}>Restocking the shelves…</div>
@@ -44,7 +45,7 @@ export default function StoreView({ points = '0', missionsCount = 0, badges = 0,
           </Card>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(168px, 1fr))', gap: 12 }}>
-            {STORE_ITEMS.map((item, i) => {
+            {items.map((item, i) => {
               const canBuy = kwacha >= item.price.kwacha && (!item.price.gems || gems >= item.price.gems);
               return <StoreCard key={item.id} i={i} item={item} canBuy={canBuy} onBuy={onBuy} />;
             })}
