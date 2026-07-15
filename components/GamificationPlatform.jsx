@@ -1467,6 +1467,13 @@ export default function GamificationPlatform() {
   // === v2 redesigned Store ===
   if (tab === 'store') {
     const buyStoreItem = (item, el) => {
+      // Purchases are DISABLED until the fulfillment flow ships (/api/purchase,
+      // admin queue + Telegram — Plan C). Without it a buy would deduct coins
+      // into a void, so block even if admins stock store_items early.
+      showNotif('The store opens soon — purchases are not live yet!', 'error');
+      return;
+      // Kept for Plan C to replace with the server-backed purchase call:
+      // eslint-disable-next-line no-unreachable
       const canBuy = user.kwacha >= item.price.kwacha && (!item.price.gems || user.gems >= item.price.gems);
       if (!canBuy) { showNotif('Not enough balance!', 'error'); return; }
       addCoins(-item.price.kwacha);

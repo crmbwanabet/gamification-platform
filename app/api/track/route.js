@@ -20,7 +20,8 @@ export async function POST(req) {
         type: e.type,
         game_id: e.gameId ? String(e.gameId).slice(0, 32) : null,
         amount: Number.isFinite(e.amount) ? Math.max(0, Math.min(Math.trunc(e.amount), 100000)) : null,
-        meta: e.meta && typeof e.meta === 'object' ? e.meta : null,
+        // meta capped at 1KB serialized — public endpoint, keep rows small
+        meta: e.meta && typeof e.meta === 'object' && JSON.stringify(e.meta).length <= 1024 ? e.meta : null,
       }));
     if (rows.length && supabaseAdmin) {
       const { error } = await supabaseAdmin.from('activity_events').insert(rows);
