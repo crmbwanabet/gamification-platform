@@ -9,7 +9,6 @@ import { XP_LEVELS, LEVEL_REWARDS, STREAK_REWARDS, getLevel } from '@/lib/data/p
 import { Check, Lock } from 'lucide-react';
 import DailyReward from './DailyReward';
 
-const ALL_MISSIONS = [...getDailyMissions(), ...PERMANENT_MISSIONS];
 const DIFF = { easy: { label: 'Easy', c: C.green }, medium: { label: 'Medium', c: C.gold }, hard: { label: 'Hard', c: C.red } };
 
 const SUBS = [
@@ -44,27 +43,29 @@ function MilestoneRow({ icon, title, sub, reward, reached, current }) {
   );
 }
 
-function RewardsSection({ xp = 0, streak = 1, dailyDay, dailyClaimed, onClaimDaily }) {
+function RewardsSection({ xp = 0, streak = 1, dailyDay, dailyClaimed, onClaimDaily, dailyRewards = null, streakRewards = null, levelRewards = null }) {
   const curLevel = getLevel(xp).level;
+  const lvlRewards = levelRewards || LEVEL_REWARDS;
+  const strRewards = streakRewards || STREAK_REWARDS;
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
       <section>
         <SectionTitle>Daily Reward</SectionTitle>
-        <DailyReward dailyDay={dailyDay} dailyClaimed={dailyClaimed} onClaim={onClaimDaily} />
+        <DailyReward dailyDay={dailyDay} dailyClaimed={dailyClaimed} onClaim={onClaimDaily} rewards={dailyRewards} />
       </section>
       <section>
         <SectionTitle>Level Milestones</SectionTitle>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {XP_LEVELS.filter(l => LEVEL_REWARDS[l.level]).map(l => (
+          {XP_LEVELS.filter(l => lvlRewards[l.level]).map(l => (
             <MilestoneRow key={l.level} icon={l.icon} title={l.name} sub={`Reach level ${l.level} · ${l.xp.toLocaleString()} XP`}
-              reward={LEVEL_REWARDS[l.level]} reached={curLevel >= l.level} current={curLevel + 1 === l.level} />
+              reward={lvlRewards[l.level]} reached={curLevel >= l.level} current={curLevel + 1 === l.level} />
           ))}
         </div>
       </section>
       <section>
         <SectionTitle>Streak Bonuses</SectionTitle>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {STREAK_REWARDS.map(s => (
+          {strRewards.map(s => (
             <MilestoneRow key={s.days} icon="🔥" title={`${s.days}-day streak`} sub={`Log in ${s.days} days in a row · you're on ${streak}`}
               reward={s} reached={streak >= s.days} current={false} />
           ))}
@@ -113,19 +114,20 @@ function MissionCard({ m, progress, done, onOpen, i = 0 }) {
   );
 }
 
-export default function EarnView({ tab = 'earn.missions', points = '0', missionsCount = 0, badges = 0, xp = 0, streak = 1, onNavigate, onOpenProfile, missionProgress, missionsComplete, onOpenMission, dailyDay = 1, dailyClaimed = false, onClaimDaily, userId = null, navBadges = {} }) {
+export default function EarnView({ tab = 'earn.missions', points = '0', missionsCount = 0, badges = 0, xp = 0, streak = 1, onNavigate, onOpenProfile, missionProgress, missionsComplete, onOpenMission, dailyDay = 1, dailyClaimed = false, onClaimDaily, userId = null, navBadges = {}, missions = null, dailyRewards = null, streakRewards = null, levelRewards = null }) {
+  const allMissions = missions || [...getDailyMissions(), ...PERMANENT_MISSIONS];
   return (
     <RedesignShell points={points} missionsCount={missionsCount} badges={badges} xp={xp} userId={userId} navBadges={navBadges} activeTab="earn" onNavigate={onNavigate} onOpenProfile={onOpenProfile}>
       <SubNav tab={tab} onNavigate={onNavigate} />
       {tab === 'earn.rewards' && (
-        <RewardsSection xp={xp} streak={streak} dailyDay={dailyDay} dailyClaimed={dailyClaimed} onClaimDaily={onClaimDaily} />
+        <RewardsSection xp={xp} streak={streak} dailyDay={dailyDay} dailyClaimed={dailyClaimed} onClaimDaily={onClaimDaily} dailyRewards={dailyRewards} streakRewards={streakRewards} levelRewards={levelRewards} />
       )}
       {/* Quests parked — see parked/components/redesign/EarnView.QuestCard.parked.jsx */}
       {tab !== 'earn.rewards' && (
         <section>
           <SectionTitle>Missions</SectionTitle>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(168px, 1fr))', gap: 12 }}>
-            {ALL_MISSIONS.map((m, i) => (
+            {allMissions.map((m, i) => (
               <MissionCard key={m.id} i={i} m={m} progress={missionProgress?.[m.id]} done={missionsComplete?.includes(m.id)} onOpen={onOpenMission} />
             ))}
           </div>

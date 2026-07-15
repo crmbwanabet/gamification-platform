@@ -8,13 +8,11 @@ import { IMAGES } from '@/lib/data/images';
 import { getDailyMissions, PERMANENT_MISSIONS } from '@/lib/data/missions';
 import { STORE_ITEMS, MINIGAMES } from '@/lib/data/platform';
 
-const MISSIONS = [...getDailyMissions(), ...PERMANENT_MISSIONS];
-
 // Pick 3 missions that best reflect the player's current progress:
 // in-progress first, then not-started, then completed.
-function pickLatestMissions(missionProgress, missionsComplete) {
+function pickLatestMissions(allMissions, missionProgress, missionsComplete) {
   const rank = (x) => (x.done ? 2 : x.progress > 0 ? 0 : 1);
-  return [...getDailyMissions(), ...PERMANENT_MISSIONS]
+  return allMissions
     .map((m) => ({ m, progress: (missionProgress && missionProgress[m.id]) || 0, done: !!(missionsComplete && missionsComplete.includes(m.id)) }))
     .sort((a, b) => rank(a) - rank(b))
     .slice(0, 3);
@@ -66,9 +64,10 @@ function StoreRow({ item, onNavigate }) {
   );
 }
 
-export default function Overview({ points = '2,344', missionsCount = MISSIONS.length, badges = 12, xp = 1200, activeTab = 'home', onNavigate, onOpenProfile, missionProgress, missionsComplete, onOpenMission, dailyDay = 1, dailyClaimed = false, onClaimDaily, userId = null, navBadges = {}, games = null, storeItems = null } = {}) {
+export default function Overview({ points = '2,344', missionsCount = 0, badges = 12, xp = 1200, activeTab = 'home', onNavigate, onOpenProfile, missionProgress, missionsComplete, onOpenMission, dailyDay = 1, dailyClaimed = false, onClaimDaily, userId = null, navBadges = {}, games = null, storeItems = null, missions = null, dailyRewards = null } = {}) {
   const go = (t) => onNavigate && onNavigate(t);
-  const latest = pickLatestMissions(missionProgress, missionsComplete);
+  const allMissions = missions || [...getDailyMissions(), ...PERMANENT_MISSIONS];
+  const latest = pickLatestMissions(allMissions, missionProgress, missionsComplete);
   // Store may be empty until the admin dashboard populates it
   const items = storeItems || STORE_ITEMS;
   const gameList = games || MINIGAMES;
@@ -79,7 +78,7 @@ export default function Overview({ points = '2,344', missionsCount = MISSIONS.le
     <RedesignShell points={points} missionsCount={missionsCount} badges={badges} xp={xp} userId={userId} navBadges={navBadges} activeTab={activeTab} onNavigate={onNavigate} onOpenProfile={onOpenProfile}>
       {!dailyClaimed && (
         <div style={{ marginBottom: 22 }}>
-          <DailyReward dailyDay={dailyDay} dailyClaimed={dailyClaimed} onClaim={onClaimDaily} />
+          <DailyReward dailyDay={dailyDay} dailyClaimed={dailyClaimed} onClaim={onClaimDaily} rewards={dailyRewards} />
         </div>
       )}
       <div className="rs-ov-grid" style={{ display: 'grid', gridTemplateColumns: '1.35fr 1fr', gap: 26, alignContent: 'start', maxWidth: 1240, margin: '0 auto', width: '100%' }}>

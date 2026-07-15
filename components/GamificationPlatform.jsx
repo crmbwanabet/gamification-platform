@@ -22,13 +22,14 @@ import { useSession } from './session/SessionProvider';
 import { useRemoteConfig } from '@/lib/config/useRemoteConfig';
 import { DEFAULT_DAILY_PLAYS } from '@/lib/config/defaults';
 import { playsFromConfig } from '@/lib/config/plays.mjs';
+import { applyMissionOverrides } from '@/lib/config/missions.mjs';
 
 // Data imports
 import { IMG_BASE, CURRENCY_ICONS, IMAGES, WHEEL_IMAGES } from '../lib/data/images';
 // trivia + predictions libs parked — see parked/lib/
 import {
   XP_LEVELS, VIP_TIERS, MINIGAMES, STORE_ITEMS,
-  DAILY_REWARDS, LEVEL_REWARDS, STREAK_REWARDS, DAILY_FREE_SPIN_ROTATION, getDailyFreeSpinGames,
+  STREAK_REWARDS, DAILY_FREE_SPIN_ROTATION, getDailyFreeSpinGames,
   getLevel, getNextLevel, getXPProgress, getVIP
 } from '../lib/data/platform';
 import {
@@ -79,6 +80,12 @@ export default function GamificationPlatform() {
   const cfg = useRemoteConfig();
   // Games list the UI shows: enabled games only, extra-play cost from config.
   const activeGames = useMemo(() => MINIGAMES.filter(g => cfg.games[g.id]?.enabled !== false).map(g => ({ ...g, cost: cfg.economy.extraPlayCost })), [cfg]);
+  const activeMissions = useMemo(
+    () => applyMissionOverrides([...getDailyMissions(), ...PERMANENT_MISSIONS], cfg.missionOverrides),
+    [cfg]
+  );
+  const cfgRef = useRef(cfg);
+  useEffect(() => { cfgRef.current = cfg; }, [cfg]);
   const [tab, setTab] = useState('home');
   const [activeGame, setActiveGame] = useState(null);
   const [selectedMission, setSelectedMission] = useState(null);
@@ -1032,7 +1039,7 @@ export default function GamificationPlatform() {
   const [gamesPlayedToday, setGamesPlayedToday] = useState(new Set());
   
   const trackMission = useCallback((actionType, metadata = {}) => {
-    const allActive = [...getDailyMissions(), ...WEEKLY_MISSIONS, ...PERMANENT_MISSIONS];
+    const allActive = applyMissionOverrides([...getDailyMissions(), ...WEEKLY_MISSIONS, ...PERMANENT_MISSIONS], cfgRef.current.missionOverrides);
     
     setUser(prev => {
       const newProgress = { ...prev.missionProgress };
@@ -1195,14 +1202,14 @@ export default function GamificationPlatform() {
   };
   const navigateTab = (id) => setTab(LEGACY_TAB_MAP[id] || id);
 
-  // Level-up: award LEVEL_REWARDS + celebrate when the player's level increases.
+  // Level-up: award cfg.levelRewards + celebrate when the player's level increases.
   useEffect(() => {
     const curLevel = getLevel(user.xp).level;
     if (lastLevelRef.current === null) { lastLevelRef.current = curLevel; return; }
     if (curLevel > lastLevelRef.current) {
       const total = { kwacha: 0, gems: 0, diamonds: 0 };
       for (let L = lastLevelRef.current + 1; L <= curLevel; L++) {
-        const r = LEVEL_REWARDS[L];
+        const r = cfg.levelRewards[L];
         if (r) { total.kwacha += r.kwacha || 0; total.gems += r.gems || 0; total.diamonds += r.diamonds || 0; }
       }
       lastLevelRef.current = curLevel;
@@ -1376,7 +1383,7 @@ export default function GamificationPlatform() {
     </>
   );
 
-  const openMissionsCount = [...getDailyMissions(), ...PERMANENT_MISSIONS].filter(m => !user.missionsComplete.includes(m.id)).length;
+  const openMissionsCount = activeMissions.filter(m => !user.missionsComplete.includes(m.id)).length;
   const v2Stats = {
     points: user.kwacha,
     missionsCount: openMissionsCount,
@@ -1394,11 +1401,15 @@ export default function GamificationPlatform() {
     },
     games: activeGames,
     storeItems: cfg.storeItems,
+    missions: activeMissions,
+    dailyRewards: cfg.dailyRewards,
+    streakRewards: cfg.streakRewards,
+    levelRewards: cfg.levelRewards,
   };
 
   const claimDailyReward = (el) => {
     if (user.dailyClaimed) return;
-    const r = DAILY_REWARDS[user.dailyDay - 1] || DAILY_REWARDS[0];
+    const r = cfg.dailyRewards[user.dailyDay - 1] || cfg.dailyRewards[0];
     addCoins(r.kwacha);
     if (r.gems) addGems(r.gems);
     if (r.diamonds) addDiamonds(r.diamonds);

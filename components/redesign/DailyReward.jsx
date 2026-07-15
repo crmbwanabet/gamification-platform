@@ -12,8 +12,9 @@ const IC = '/ui/reward'; // generated 3D reward icons
  * Glassy panel with a streak rail, a glowing "today" tile, locked upcoming days,
  * and a gold grand-prize Day 7. The claim button overlaps the panel's bottom edge.
  */
-export default function DailyReward({ dailyDay = 1, dailyClaimed = false, onClaim }) {
-  const total = DAILY_REWARDS.length; // 7
+export default function DailyReward({ dailyDay = 1, dailyClaimed = false, onClaim, rewards = null }) {
+  const list = rewards || DAILY_REWARDS;
+  const total = list.length; // 7
   const curDay = Math.min(dailyDay, total);
 
   return (
@@ -49,7 +50,7 @@ export default function DailyReward({ dailyDay = 1, dailyClaimed = false, onClai
         <div style={{ position: 'relative', height: 16, margin: '0 0 12px' }}>
           <div style={{ position: 'absolute', top: '50%', left: `${100 / (total * 2)}%`, right: `${100 / (total * 2)}%`, height: 2, background: 'rgba(255,255,255,.12)', transform: 'translateY(-50%)' }} />
           <div style={{ position: 'relative', display: 'grid', gridTemplateColumns: `repeat(${total},1fr)`, height: '100%' }}>
-            {DAILY_REWARDS.map((r, i) => {
+            {list.map((r, i) => {
               const day = i + 1;
               const past = day < dailyDay;
               const isToday = day === dailyDay && !dailyClaimed;
@@ -68,7 +69,7 @@ export default function DailyReward({ dailyDay = 1, dailyClaimed = false, onClai
 
         {/* day tiles */}
         <div style={{ display: 'grid', gridTemplateColumns: `repeat(${total},1fr)`, gap: 8 }}>
-          {DAILY_REWARDS.map((r, i) => {
+          {list.map((r, i) => {
             const day = i + 1;
             const past = day < dailyDay;
             const isToday = day === dailyDay && !dailyClaimed;
