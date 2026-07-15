@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Gamepad2, Target, Trophy, Flame, Users, TrendingUp, X } from 'lucide-react';
+import { Gamepad2, Target, Trophy, Flame, Users, X } from 'lucide-react';
 import { C } from './tokens';
 import { Progress, RewardIcon } from './RedesignShell';
 
@@ -18,18 +18,13 @@ export default function ProfileModal({ open, onClose, name = 'Player', level, ne
     { icon: <RewardIcon kind="gem" size={24} />, label: 'Gems', value: (u.gems || 0).toLocaleString(), color: C.teal },
     { icon: <RewardIcon kind="diamond" size={24} />, label: 'Diamonds', value: (u.diamonds || 0).toLocaleString(), color: '#7db8ff' },
   ];
-  const preds = u.predictions || [];
-  const predWon = preds.filter((p) => p.status === 'won').length;
-  const predLost = preds.filter((p) => p.status === 'lost').length;
-  const predOpen = preds.length - predWon - predLost;
   const stats = [
     { icon: <Gamepad2 size={16} />, label: 'Games played', value: u.gamesPlayed || 0 },
     { icon: <Target size={16} />, label: 'Missions done', value: (u.missionsComplete || []).length },
     { icon: <Trophy size={16} />, label: 'Wins', value: u.wins || 0 },
     { icon: <Flame size={16} />, label: 'Day streak', value: u.streak || 0 },
     { icon: <Users size={16} />, label: 'Referrals', value: u.referrals || 0 },
-    // Predictions hidden for now — restore this row to bring the stat back
-    // { icon: <TrendingUp size={16} />, label: predOpen > 0 ? `Predictions · ${predOpen} open` : 'Predictions', value: preds.length === 0 ? 0 : `${predWon}W · ${predLost}L` },
+    // Predictions stat row parked with the predictions feature — see git history
   ];
   return (
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 120, display: 'grid', placeItems: 'center', padding: 16, background: 'rgba(8,10,16,.72)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)', fontFamily: "var(--font-body, 'Onest', system-ui, sans-serif)", animation: 'rs-pm-fade .16s ease-out' }}>

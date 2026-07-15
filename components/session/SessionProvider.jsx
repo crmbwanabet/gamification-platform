@@ -10,7 +10,7 @@ import React, { createContext, useContext, useEffect, useState, useCallback, use
 // a `#token=...` URL hash (signed-URL embeds). All trust is enforced server-side
 // in /api/session — this component just relays the token.
 
-const SessionContext = createContext({ status: 'idle', profile: null, verified: false, error: null, saveState: async () => null, claimVoucher: async () => null });
+const SessionContext = createContext({ status: 'idle', profile: null, verified: false, error: null, saveState: async () => null });
 export const useSession = () => useContext(SessionContext);
 
 // The live operator site is bwanabet.co.zm (Zambia); .com kept for any legacy
@@ -92,24 +92,11 @@ export default function SessionProvider({ children }) {
     }
   }, []);
 
-  // Ask the server to check this player's saved prediction history and send
-  // any newly-earned streak vouchers to the admin Telegram group.
-  const claimVoucher = useCallback(async () => {
-    if (!tokenRef.current) return null;
-    try {
-      const res = await fetch('/api/predictions/voucher', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: tokenRef.current }),
-      });
-      return await res.json();
-    } catch (e) {
-      return { error: String(e) };
-    }
-  }, []);
+  // claimVoucher (streak-voucher via /api/predictions/voucher) parked with the
+  // predictions feature on 2026-07-15 — see parked/ + git history to restore.
 
   return (
-    <SessionContext.Provider value={{ ...state, saveState, claimVoucher }}>
+    <SessionContext.Provider value={{ ...state, saveState }}>
       {children}
     </SessionContext.Provider>
   );

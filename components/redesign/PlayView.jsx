@@ -1,19 +1,15 @@
 'use client';
 
 import React from 'react';
-import { Check } from 'lucide-react';
 import { C } from './tokens';
 import RedesignShell, { SectionTitle, Card, Thumb, Badge, RewardIcon } from './RedesignShell';
-import DailyTriviaChallenge from '@/components/ui/DailyTriviaChallenge';
 import { IMAGES } from '@/lib/data/images';
 import { MINIGAMES } from '@/lib/data/platform';
-import { predictionWinCoins } from '@/lib/predictions';
 
 const SUBS = [
   { key: 'play.minigames', label: 'Games' },
-  // Predictions + Daily (trivia) hidden for now — re-add here to restore
-  // { key: 'play.predictions', label: 'Predict' },
-  // { key: 'play.daily', label: 'Daily' },
+  // Predictions + Daily (trivia) PARKED — components live in
+  // parked/components/redesign/PlayView.parked.jsx; re-add entries here to restore
 ];
 
 function SubNav({ tab, onNavigate }) {
@@ -68,133 +64,11 @@ function GamesGrid({ gamePlays, onPlay }) {
   );
 }
 
-const PRED_OPTS = [{ key: 'home', label: '1', sub: 'Home' }, { key: 'draw', label: 'X', sub: 'Draw' }, { key: 'away', label: '2', sub: 'Away' }];
-const oddsFor = (m, k) => (k === 'home' ? m.h : k === 'draw' ? m.d : m.a);
-const pickLabel = (m, c) => (c === 'home' ? `${m.home} win` : c === 'away' ? `${m.away} win` : 'Draw');
-
-function fmtKick(iso) {
-  const d = new Date(iso);
-  if (isNaN(d)) return '';
-  const hh = String(d.getHours()).padStart(2, '0'), mm = String(d.getMinutes()).padStart(2, '0');
-  const d0 = new Date(d); d0.setHours(0, 0, 0, 0);
-  const n0 = new Date(); n0.setHours(0, 0, 0, 0);
-  const days = Math.round((d0 - n0) / 86400000);
-  const day = days <= 0 ? 'Today' : days === 1 ? 'Tomorrow'
-    : days <= 6 ? d.toLocaleDateString(undefined, { weekday: 'short' })
-    : d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
-  return `${day} ${hh}:${mm}`;
-}
-
-function Predictions({ predictions, onPredict }) {
-  const [matches, setMatches] = React.useState(null); // null = loading
-  const [err, setErr] = React.useState(false);
-  React.useEffect(() => {
-    let alive = true;
-    fetch('/api/matches')
-      .then((r) => r.json())
-      .then((d) => { if (!alive) return; if (Array.isArray(d.matches)) setMatches(d.matches); else setErr(true); })
-      .catch(() => { if (alive) setErr(true); });
-    return () => { alive = false; };
-  }, []);
-
-  const picks = (predictions || []).filter((p) => p.home && p.away).slice(-6).reverse();
-
-  return (
-    <section>
-      <style>{`.rs-odds{transition:background .15s,border-color .15s,transform .1s}.rs-odds:hover{background:#2c303b !important;border-color:rgba(79,169,139,.6) !important}.rs-odds:active{transform:scale(.95)}`}</style>
-
-      {picks.length > 0 && (
-        <>
-          <SectionTitle>Your Picks</SectionTitle>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
-            {picks.map((p) => {
-              const st = p.status === 'won'
-                ? { label: `Won +${p.payout}`, color: C.green, bg: 'rgba(79,169,139,.14)' }
-                : p.status === 'lost'
-                  ? { label: 'Lost', color: C.muted, bg: 'rgba(229,87,63,.12)' }
-                  : { label: 'Pending', color: C.gold, bg: 'rgba(230,173,74,.12)' };
-              return (
-                <Card key={p.id} style={{ padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 12.5, fontWeight: 800, color: C.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {p.home} <span style={{ color: C.muted }}>vs</span> {p.away}
-                      {p.score && <span style={{ color: C.sub, fontWeight: 700 }}> · {p.score}</span>}
-                    </div>
-                    <div style={{ fontSize: 10.5, color: C.muted, marginTop: 2 }}>{pickLabel(p, p.choice)} @ {p.odds}</div>
-                  </div>
-                  <span style={{ fontSize: 11, fontWeight: 800, color: st.color, background: st.bg, borderRadius: 8, padding: '4px 10px', whiteSpace: 'nowrap' }}>{st.label}</span>
-                </Card>
-              );
-            })}
-          </div>
-        </>
-      )}
-
-      <SectionTitle right={<span style={{ fontSize: 11, fontWeight: 700, color: C.muted }}>Live odds · bwanabet</span>}>Match Predictions</SectionTitle>
-
-      {err && (!matches || matches.length === 0) && (
-        <Card style={{ padding: 20, textAlign: 'center', color: C.sub, fontSize: 13 }}>Couldn't load matches right now — try again shortly.</Card>
-      )}
-
-      {!err && matches === null && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {[0, 1, 2, 3].map((i) => <Card key={i} className="skeleton" style={{ height: 64 }} />)}
-        </div>
-      )}
-
-      {matches && matches.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {matches.map((m) => {
-            const pred = predictions?.find((p) => p.id === m.id);
-            return (
-              <Card key={m.id} style={{ padding: 14, display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
-                <div style={{ flex: 1, minWidth: 150 }}>
-                  <div style={{ fontSize: 11, color: C.muted, marginBottom: 3 }}>⚽ {m.league} · {fmtKick(m.time)}</div>
-                  <div style={{ fontSize: 14, fontWeight: 800, color: C.text }}>{m.home} <span style={{ color: C.muted }}>vs</span> {m.away}</div>
-                </div>
-                {pred ? (
-                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '9px 14px', borderRadius: 10, background: 'rgba(79,169,139,.14)', border: `1px solid ${C.green}` }}>
-                    <Check size={16} color={C.green} strokeWidth={3} />
-                    <span style={{ fontSize: 12.5, fontWeight: 800, color: C.text }}>{pickLabel(m, pred.choice)}</span>
-                    <span style={{ fontSize: 11.5, color: C.green, fontWeight: 700 }}>@ {pred.odds ?? oddsFor(m, pred.choice)}</span>
-                  </div>
-                ) : (
-                  <div style={{ display: 'flex', gap: 6 }}>
-                    {PRED_OPTS.map((o) => (
-                      <button key={o.key} className="rs-odds" onClick={(e) => onPredict && onPredict(m, o.key, e.currentTarget)}
-                        style={{ minWidth: 54, textAlign: 'center', background: C.track, border: '1px solid rgba(255,255,255,.06)', borderRadius: 8, padding: '6px 8px 5px', cursor: 'pointer' }}>
-                        <div style={{ fontSize: 9, color: C.muted, fontWeight: 700 }}>{o.sub}</div>
-                        <div style={{ fontSize: 14, fontWeight: 800, color: C.text }}>{oddsFor(m, o.key)}</div>
-                        <div style={{ fontSize: 8.5, color: C.gold, fontWeight: 800 }}>+{predictionWinCoins(oddsFor(m, o.key), m.top)}</div>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </Card>
-            );
-          })}
-        </div>
-      )}
-    </section>
-  );
-}
-
-function Daily({ user, onDailyAnswer, onNavigate }) {
-  return (
-    <section>
-      <SectionTitle>Daily Challenge</SectionTitle>
-      <DailyTriviaChallenge user={user} onAnswer={onDailyAnswer} onNavigate={onNavigate} />
-    </section>
-  );
-}
-
-export default function PlayView({ tab = 'play.minigames', points = '0', missionsCount = 0, badges = 0, xp = 0, gamePlays, onNavigate, onOpenProfile, onPlay, predictions, onPredict, user, onDailyAnswer, userId = null, navBadges = {} }) {
+export default function PlayView({ tab = 'play.minigames', points = '0', missionsCount = 0, badges = 0, xp = 0, gamePlays, onNavigate, onOpenProfile, onPlay, userId = null, navBadges = {} }) {
   return (
     <RedesignShell points={points} missionsCount={missionsCount} badges={badges} xp={xp} userId={userId} navBadges={navBadges} activeTab="play" onNavigate={onNavigate} onOpenProfile={onOpenProfile}>
       <SubNav tab={tab} onNavigate={onNavigate} />
-      {/* Predictions + Daily (trivia) hidden for now — restore the two lines below (and their SUBS entries) to bring them back */}
-      {/* {tab === 'play.predictions' && <Predictions predictions={predictions} onPredict={onPredict} />} */}
-      {/* {tab === 'play.daily' && <Daily user={user} onDailyAnswer={onDailyAnswer} onNavigate={onNavigate} />} */}
+      {/* Predictions + Daily (trivia) parked — see parked/components/redesign/PlayView.parked.jsx */}
       <GamesGrid gamePlays={gamePlays} onPlay={onPlay} />
     </RedesignShell>
   );

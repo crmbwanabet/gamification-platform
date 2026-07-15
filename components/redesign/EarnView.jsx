@@ -5,7 +5,7 @@ import { C } from './tokens';
 import RedesignShell, { GreenBtn, SectionTitle, Card, Thumb, Badge, Progress, RewardIcon } from './RedesignShell';
 import { IMAGES } from '@/lib/data/images';
 import { getDailyMissions, PERMANENT_MISSIONS } from '@/lib/data/missions';
-import { QUESTS, XP_LEVELS, LEVEL_REWARDS, STREAK_REWARDS, getLevel } from '@/lib/data/platform';
+import { XP_LEVELS, LEVEL_REWARDS, STREAK_REWARDS, getLevel } from '@/lib/data/platform';
 import { Check, Lock } from 'lucide-react';
 import DailyReward from './DailyReward';
 
@@ -14,8 +14,7 @@ const DIFF = { easy: { label: 'Easy', c: C.green }, medium: { label: 'Medium', c
 
 const SUBS = [
   { key: 'earn.missions', label: 'Missions' },
-  // Quests hidden for now — re-add here to restore
-  // { key: 'earn.quests', label: 'Quests' },
+  // Quests PARKED — QuestCard lives in parked/components/redesign/EarnView.QuestCard.parked.jsx
   { key: 'earn.rewards', label: 'Rewards' },
 ];
 
@@ -114,53 +113,14 @@ function MissionCard({ m, progress, done, onOpen, i = 0 }) {
   );
 }
 
-function QuestCard({ q, questProgress, questsComplete, onOpen }) {
-  const done = questsComplete?.includes(q.id);
-  const prog = questProgress?.[q.id] || {};
-  const stepsDone = q.steps.filter(s => (prog[s.id] || 0) >= s.target).length;
-  const pct = done ? 100 : Math.round((stepsDone / q.steps.length) * 100);
-  const d = DIFF[q.difficulty] || DIFF.easy;
-  return (
-    <Card style={{ padding: 14, display: 'flex', gap: 14, alignItems: 'center', cursor: 'pointer' }}>
-      <button onClick={() => onOpen && onOpen(q)} style={{ all: 'unset', display: 'flex', gap: 14, alignItems: 'center', cursor: 'pointer', width: '100%' }}>
-        <div style={{ width: 110, flex: 'none' }}><Thumb src={IMAGES[q.image]} alt={q.name} h={84} /></div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
-            <span style={{ fontSize: 15, fontWeight: 800, color: C.text }}>{q.name}</span>
-            <Badge bg={done ? C.green : d.c}>{done ? 'Done' : d.label}</Badge>
-          </div>
-          <div style={{ fontSize: 12, color: C.sub, marginBottom: 10 }}>{q.desc}</div>
-          <Progress value={pct} />
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10, fontSize: 12, fontWeight: 800 }}>
-              <span style={{ color: C.gold, display: 'inline-flex', alignItems: 'center', gap: 4 }}><RewardIcon kind="coins" size={15} />{q.reward.kwacha}</span>
-              {q.reward.gems && <span style={{ color: C.teal, display: 'inline-flex', alignItems: 'center', gap: 4 }}><RewardIcon kind="gem" size={14} />{q.reward.gems}</span>}
-            </span>
-            <span style={{ fontSize: 11, color: C.muted }}>{stepsDone}/{q.steps.length} steps</span>
-          </div>
-        </div>
-      </button>
-    </Card>
-  );
-}
-
-export default function EarnView({ tab = 'earn.missions', points = '0', missionsCount = 0, badges = 0, xp = 0, streak = 1, onNavigate, onOpenProfile, missionProgress, missionsComplete, onOpenMission, questProgress, questsComplete, onOpenQuest, dailyDay = 1, dailyClaimed = false, onClaimDaily, userId = null, navBadges = {} }) {
+export default function EarnView({ tab = 'earn.missions', points = '0', missionsCount = 0, badges = 0, xp = 0, streak = 1, onNavigate, onOpenProfile, missionProgress, missionsComplete, onOpenMission, dailyDay = 1, dailyClaimed = false, onClaimDaily, userId = null, navBadges = {} }) {
   return (
     <RedesignShell points={points} missionsCount={missionsCount} badges={badges} xp={xp} userId={userId} navBadges={navBadges} activeTab="earn" onNavigate={onNavigate} onOpenProfile={onOpenProfile}>
       <SubNav tab={tab} onNavigate={onNavigate} />
       {tab === 'earn.rewards' && (
         <RewardsSection xp={xp} streak={streak} dailyDay={dailyDay} dailyClaimed={dailyClaimed} onClaimDaily={onClaimDaily} />
       )}
-      {/* Quests hidden for now — restore the block below (and the SUBS entry) to bring them back
-      {tab === 'earn.quests' && (
-        <section>
-          <SectionTitle>Quests</SectionTitle>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            {QUESTS.map(q => <QuestCard key={q.id} q={q} questProgress={questProgress} questsComplete={questsComplete} onOpen={onOpenQuest} />)}
-          </div>
-        </section>
-      )}
-      */}
+      {/* Quests parked — see parked/components/redesign/EarnView.QuestCard.parked.jsx */}
       {tab !== 'earn.rewards' && (
         <section>
           <SectionTitle>Missions</SectionTitle>
