@@ -8,6 +8,8 @@ import { C } from '@/components/redesign/tokens';
 // gold accents. Reuses the anim-* keyframes injected by GamificationPlatform.
 
 const iconBtn = { border: 'none', background: 'rgba(255,255,255,.08)', color: C.sub, cursor: 'pointer', width: 34, height: 34, borderRadius: 10, display: 'grid', placeItems: 'center', flex: 'none' };
+// Red close — same family as the widget-mode red X so "exit" always reads the same
+const closeBtn = { ...iconBtn, background: 'linear-gradient(180deg, #f0684f, #d43a22)', color: '#fff', border: '1px solid rgba(255,255,255,.25)', boxShadow: '0 3px 10px rgba(212,58,34,.35)' };
 
 export function GameShell({ title, onClose, closing, onHelp, children, maxWidth = 440 }) {
   return (
@@ -18,7 +20,7 @@ export function GameShell({ title, onClose, closing, onHelp, children, maxWidth 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, gap: 8 }}>
           {onHelp ? <button type="button" onClick={onHelp} title="How to play" style={iconBtn}><HelpCircle size={18} /></button> : <span style={{ width: 34 }} />}
           <h2 style={{ margin: 0, fontSize: 19, fontWeight: 800, color: C.text, fontFamily: "var(--font-display, 'Bricolage Grotesque', sans-serif)", textAlign: 'center', flex: 1 }}>{title}</h2>
-          <button type="button" onClick={onClose} title="Close" style={iconBtn}><X size={18} /></button>
+          <button type="button" onClick={onClose} title="Close" style={closeBtn}><X size={18} strokeWidth={2.75} /></button>
         </div>
         {children}
       </div>

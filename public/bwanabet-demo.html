@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>bwanabet demo — 100xBet Rewards widget in context</title>
+  <style>
+    /* Local DEMO page mimicking bwanabet.com (dark #13161c / lime #8ec714 /
+       yellow #fff100) to preview the 100xBet Rewards widget in context. */
+    * { box-sizing: border-box; margin: 0; }
+    body { font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; background: #f3f4f6; color: #13161c; min-height: 140vh; }
+
+    .demo-ribbon { background: repeating-linear-gradient(45deg, #fff100 0 14px, #13161c 14px 28px); height: 6px; }
+    .demo-note { background: #fffbd6; color: #6b6400; font-size: 12px; font-weight: 600; text-align: center; padding: 6px 12px; }
+
+    header { background: #13161c; color: #fff; position: sticky; top: 0; z-index: 50; }
+    .topbar { display: flex; align-items: center; gap: 18px; max-width: 1080px; margin: 0 auto; padding: 12px 16px; }
+    .logo { font-size: 22px; font-weight: 900; letter-spacing: -0.5px; }
+    .logo em { font-style: normal; color: #8ec714; }
+    .topnav { display: flex; gap: 4px; flex: 1; }
+    .topnav a { color: #cbd2d9; text-decoration: none; font-size: 13.5px; font-weight: 700; padding: 8px 12px; border-radius: 8px; }
+    .topnav a.active, .topnav a:hover { color: #fff100; background: rgba(255,255,255,.06); }
+    .balance { font-size: 13px; font-weight: 800; color: #fff100; white-space: nowrap; }
+    .btn-deposit { background: #8ec714; color: #13161c; border: none; font-weight: 900; font-size: 13px; padding: 9px 18px; border-radius: 8px; cursor: pointer; }
+
+    .sportstrip { background: #1b1f27; overflow-x: auto; }
+    .sportstrip .inner { display: flex; gap: 6px; max-width: 1080px; margin: 0 auto; padding: 8px 16px; }
+    .chip { color: #aab3bd; font-size: 12.5px; font-weight: 700; padding: 7px 14px; border-radius: 999px; white-space: nowrap; cursor: pointer; }
+    .chip.on { background: #8ec714; color: #13161c; }
+
+    main { max-width: 1080px; margin: 0 auto; padding: 18px 16px 60px; }
+
+    .promo { border-radius: 14px; padding: 26px 24px; color: #13161c; margin-bottom: 22px;
+             background: linear-gradient(105deg, #8ec714 0 58%, #fff100 58.2%); box-shadow: 0 8px 24px rgba(19,22,28,.14); }
+    .promo h1 { font-size: 24px; font-weight: 900; letter-spacing: -0.5px; }
+    .promo p { font-size: 13.5px; font-weight: 600; margin-top: 6px; opacity: .85; max-width: 420px; }
+    .promo button { margin-top: 14px; background: #13161c; color: #fff100; border: none; font-weight: 900; font-size: 13px; padding: 10px 20px; border-radius: 8px; cursor: pointer; }
+
+    h2.sec { font-size: 15px; font-weight: 900; margin: 20px 0 10px; display: flex; align-items: center; gap: 8px; }
+    h2.sec::before { content: ''; width: 4px; height: 16px; background: #8ec714; border-radius: 2px; }
+
+    .match { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 13px 16px; margin-bottom: 10px;
+             display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+    .match .meta { font-size: 11px; color: #6b7280; font-weight: 700; margin-bottom: 3px; }
+    .match .meta .live { color: #e5372b; }
+    .match .teams { flex: 1; min-width: 180px; }
+    .match .teams b { font-size: 14.5px; }
+    .match .teams span { color: #9aa1a9; font-weight: 700; font-size: 12px; padding: 0 6px; }
+    .odds { display: flex; gap: 6px; }
+    .odd { min-width: 62px; background: #f3f4f6; border: 1px solid #e5e7eb; border-radius: 8px; padding: 6px 8px 5px; text-align: center; cursor: pointer; transition: background .12s, border-color .12s; }
+    .odd:hover { background: #eaf6d3; border-color: #8ec714; }
+    .odd small { display: block; font-size: 9.5px; color: #6b7280; font-weight: 800; }
+    .odd b { font-size: 14.5px; }
+
+    footer { background: #13161c; color: #79828c; font-size: 11.5px; padding: 22px 16px 90px; text-align: center; line-height: 1.7; }
+    footer b { color: #8ec714; }
+    @media (max-width: 640px) { .topnav { display: none; } .odds { width: 100%; } .odd { flex: 1; } }
+  </style>
+</head>
+<body>
+  <div class="demo-ribbon"></div>
+  <div class="demo-note">LOCAL DEMO — bwanabet.com stand-in page for testing the 100xBet Rewards widget (green coin bubble, bottom-right)</div>
+
+  <header>
+    <div class="topbar">
+      <div class="logo">BWANA<em>BET</em></div>
+      <nav class="topnav">
+        <a class="active" href="#">Sports</a><a href="#">Live</a><a href="#">Casino</a><a href="#">Virtuals</a><a href="#">Aviator</a><a href="#">Promotions</a>
+      </nav>
+      <div class="balance">K 250.00</div>
+      <button class="btn-deposit">DEPOSIT</button>
+    </div>
+    <div class="sportstrip"><div class="inner">
+      <span class="chip on">⚽ Football</span><span class="chip">🏀 Basketball</span><span class="chip">🎾 Tennis</span>
+      <span class="chip">🏏 Cricket</span><span class="chip">🥊 Boxing</span><span class="chip">🏉 Rugby</span><span class="chip">🎮 eSports</span>
+    </div></div>
+  </header>
+
+  <main>
+    <section class="promo">
+      <h1>Weekend Odds Boost — up to 100x</h1>
+      <p>Stack 10+ legs on your multibet and BwanaBet boosts your winnings. Play free games in Rewards to earn coins while you wait for kickoff.</p>
+      <button>BUILD MULTIBET</button>
+    </section>
+
+    <h2 class="sec">Zambia Super League</h2>
+    <div class="match">
+      <div class="teams"><div class="meta"><span class="live">● LIVE 63'</span> · MTN Super League</div><b>Zesco United</b><span>1 – 0</span><b>Power Dynamos</b></div>
+      <div class="odds"><div class="odd"><small>1</small><b>1.62</b></div><div class="odd"><small>X</small><b>3.80</b></div><div class="odd"><small>2</small><b>6.50</b></div></div>
+    </div>
+    <div class="match">
+      <div class="teams"><div class="meta">Today 15:00 · MTN Super League</div><b>Green Buffaloes</b><span>vs</span><b>Nkana FC</b></div>
+      <div class="odds"><div class="odd"><small>1</small><b>2.30</b></div><div class="odd"><small>X</small><b>3.05</b></div><div class="odd"><small>2</small><b>3.20</b></div></div>
+    </div>
+
+    <h2 class="sec">Premier League</h2>
+    <div class="match">
+      <div class="teams"><div class="meta">Sat 16:30 · England · Premier League</div><b>Manchester City</b><span>vs</span><b>Liverpool</b></div>
+      <div class="odds"><div class="odd"><small>1</small><b>1.85</b></div><div class="odd"><small>X</small><b>3.60</b></div><div class="odd"><small>2</small><b>4.20</b></div></div>
+    </div>
+    <div class="match">
+      <div class="teams"><div class="meta">Sat 18:45 · England · Premier League</div><b>Arsenal</b><span>vs</span><b>Chelsea</b></div>
+      <div class="odds"><div class="odd"><small>1</small><b>1.72</b></div><div class="odd"><small>X</small><b>3.80</b></div><div class="odd"><small>2</small><b>4.50</b></div></div>
+    </div>
+    <div class="match">
+      <div class="teams"><div class="meta">Sun 17:00 · Spain · La Liga</div><b>Real Madrid</b><span>vs</span><b>Barcelona</b></div>
+      <div class="odds"><div class="odd"><small>1</small><b>2.10</b></div><div class="odd"><small>X</small><b>3.40</b></div><div class="odd"><small>2</small><b>3.50</b></div></div>
+    </div>
+
+    <p style="font-size:12px;color:#6b7280;margin-top:18px">Scroll — the Rewards launcher stays pinned bottom-right. Click it to open the platform full-screen; the red ✕ inside returns here.</p>
+  </main>
+
+  <footer>
+    <b>BWANABET</b> — demo footer. 18+ only. Bet responsibly.<br>
+    This page is a local test harness (public/bwanabet-demo.html); it never leaves this machine.
+  </footer>
+
+  <!-- ===== 100xBet Rewards widget embed (the two lines bwanabet adds) ===== -->
+  <script>window.X100_WIDGET = { uid: 'BW-483920' };</script>
+  <script src="/widget.js" defer></script>
+</body>
+</html>
