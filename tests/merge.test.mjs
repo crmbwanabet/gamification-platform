@@ -42,3 +42,17 @@ test('malformed row values are ignored, not fatal', () => {
   const out = mergeConfig(DEFAULTS, [{ key: 'economy', value: 'not-an-object' }, { key: 'daily_rewards', value: 7 }]);
   assert.deepEqual(out, DEFAULTS);
 });
+
+test('unknown keys are ignored', () => {
+  assert.deepEqual(mergeConfig(DEFAULTS, [{ key: 'bogus', value: {} }, { key: 'toString', value: {} }]), DEFAULTS);
+});
+
+test('null/undefined rows -> defaults unchanged', () => {
+  assert.deepEqual(mergeConfig(DEFAULTS, null), DEFAULTS);
+  assert.deepEqual(mergeConfig(DEFAULTS, undefined), DEFAULTS);
+});
+
+test('prototype-chain game ids are not injected', () => {
+  const out = mergeConfig(DEFAULTS, [{ key: 'games', value: { constructor: { enabled: true } } }]);
+  assert.equal(Object.hasOwn(out.games, 'constructor'), false);
+});
