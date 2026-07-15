@@ -21,6 +21,7 @@ The directory structure mirrors where each file used to live; to restore a file,
 | `lib/data/trivia.js` | `lib/data/` | Trivia question bank + helpers |
 | `lib/data/quests-matches.js` | extracted from `lib/data/platform.js` | QUESTS + MATCHES (static predictions fixtures) |
 | `lib/data/missions.predictions.js` | extracted from `lib/data/missions.js` | Bet/prediction missions pulled from the pools |
+| `lib/data/tutorials.predictions.js` | extracted from `lib/data/tutorials.js` | The predictions how-to-play tutorial entry |
 | `lib/predictions.js` | `lib/` | Prediction reward economy (odds → coins) |
 | `lib/telegram.js` | `lib/` | Voucher-win Telegram notification |
 | `app/api/matches/route.js` | `app/api/matches/` | Live fixtures/odds from bwanabet API |
@@ -33,4 +34,4 @@ The directory structure mirrors where each file used to live; to restore a file,
 - `/api/state/route.js` still protects `predVouchersGranted` / `voucherLog` keys in saved state so old voucher bookkeeping survives; leave that in place.
 - User state still carries `predictions` / `bets` / `wins` / quest keys so existing player history is preserved in Supabase.
 - `LEGACY_TAB_MAP` in `GamificationPlatform.jsx` remaps `predict`/`predictions`/`daily`/`quests` CTAs to live tabs — restore the original targets when un-parking.
-- `lib/data/tutorials.js` still contains trivia/predictions tutorial entries (data only, unreferenced).
+- `lib/data/tutorials.js` keeps only live-feature tutorials; the predictions entry is parked here.
