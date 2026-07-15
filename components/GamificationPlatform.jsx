@@ -23,6 +23,7 @@ import { useRemoteConfig } from '@/lib/config/useRemoteConfig';
 import { DEFAULT_DAILY_PLAYS } from '@/lib/config/defaults';
 import { playsFromConfig } from '@/lib/config/plays.mjs';
 import { applyMissionOverrides } from '@/lib/config/missions.mjs';
+import { track, setTrackUid } from '@/lib/track';
 
 // Data imports
 import { IMG_BASE, CURRENCY_ICONS, IMAGES, WHEEL_IMAGES } from '../lib/data/images';
@@ -908,6 +909,11 @@ export default function GamificationPlatform() {
     const params = new URLSearchParams(window.location.search);
     setWidgetCtx({ isWidget: inIframe || params.get('widget') === '1', widgetUid: params.get('uid') });
   }, []);
+  useEffect(() => {
+    const id = session?.profile?.bwanabet_user_id || session?.profile?.username || widgetUid;
+    if (id) setTrackUid(id);
+  }, [session?.profile, widgetUid]);
+  useEffect(() => { track('session_start'); }, []);
   const hydratedRef = useRef(false);
   const saveTimer = useRef(null);
   const lastLevelRef = useRef(null);
@@ -1039,6 +1045,7 @@ export default function GamificationPlatform() {
   const [gamesPlayedToday, setGamesPlayedToday] = useState(new Set());
   
   const trackMission = useCallback((actionType, metadata = {}) => {
+    if (actionType === 'gamePlayed') track('game_played', { gameId: metadata.gameId, amount: metadata.coinsWon || 0 });
     const allActive = applyMissionOverrides([...getDailyMissions(), ...WEEKLY_MISSIONS, ...PERMANENT_MISSIONS], cfgRef.current.missionOverrides);
     
     setUser(prev => {
@@ -1132,6 +1139,7 @@ export default function GamificationPlatform() {
           justCompleted.forEach(m => {
             showNotif('✅ Mission Complete: ' + m.name + '!');
             triggerReward('small', null, { coins: m.reward?.kwacha || 0, gems: m.reward?.gems || 0, xp: m.xp || 0 });
+            track('mission_completed', { meta: { missionId: m.id } });
             // Track weekly mission for daily missions completed
             if (m.id.startsWith('d_')) {
               trackMission('missionCompleted', { missionId: m.id });
@@ -1219,6 +1227,7 @@ export default function GamificationPlatform() {
       const lvl = getLevel(user.xp);
       setLevelUp({ level: lvl.level, name: lvl.name, icon: lvl.icon, reward: total });
       showNotif(`🎉 Level up — ${lvl.name}!`);
+      track('level_up', { meta: { level: lvl.level } });
       triggerReward('big', null, { coins: total.kwacha || undefined, gems: total.gems || undefined, diamonds: total.diamonds || undefined });
     }
   }, [user.xp]);
@@ -1422,6 +1431,7 @@ export default function GamificationPlatform() {
       return { ...u, dailyClaimed: true, lastDailyClaim: today, dailyDay: u.dailyDay >= 7 ? 1 : u.dailyDay + 1, streak: wasYesterday ? u.streak + 1 : u.streak, dailyTasksDone: [...new Set([...u.dailyTasksDone, 'claim'])] };
     });
     trackMission('dailyClaimed');
+    track('daily_claimed', { amount: r.kwacha });
     showNotif(`🎉 +${r.kwacha} Coins claimed!`);
     triggerReward('medium', el || null, { coins: r.kwacha, gems: r.gems, diamonds: r.diamonds, xp: 20 });
   };
