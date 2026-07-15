@@ -332,8 +332,8 @@ export default function ScratchGame({ onClose, onWin, closing }) {
                 filter: 'drop-shadow(0 2px 3px rgba(0,0,0,0.8))',
                 letterSpacing: '0.04em',
               }}>SCRATCH &amp; WIN</h2>
-              <button type="button" onClick={onClose} className="p-2 hover:bg-white/10 rounded-full transition-colors">
-                <X className="w-5 h-5 text-gray-500" />
+              <button type="button" onClick={onClose} className="p-2 rounded-full transition-colors hover:brightness-110" style={{ background: 'linear-gradient(180deg, #f0684f, #d43a22)', border: '1px solid rgba(255,255,255,.25)', boxShadow: '0 3px 10px rgba(212,58,34,.35)' }}>
+                <X className="w-5 h-5 text-white" strokeWidth={2.75} />
               </button>
             </div>
           </div>

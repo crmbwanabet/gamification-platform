@@ -7,7 +7,8 @@
  * Renders a floating launcher bubble (bottom-right). Clicking it opens the
  * platform in a full-screen iframe popup. The popup closes via the red X
  * inside the app (postMessage '100x-widget:close'); the launcher itself can
- * be dismissed for the session via its own red X badge.
+ * be dismissed via its own red X badge — it stays hidden while the visitor
+ * browses between pages, but comes back on a page RELOAD.
  */
 (function () {
   'use strict';
@@ -23,6 +24,16 @@
   var HIDE_KEY = 'x100-widget-hidden';
   var cfg = window.X100_WIDGET || {};
   var uid = cfg.uid ? String(cfg.uid) : '';
+
+  // Dismissed = hidden while the visitor moves between pages (nav type
+  // 'navigate'/'back_forward'), but an explicit RELOAD clears the flag so the
+  // launcher returns. sessionStorage alone would survive reloads too.
+  try {
+    var navEntry = performance.getEntriesByType && performance.getEntriesByType('navigation')[0];
+    var navType = navEntry ? navEntry.type
+      : (performance.navigation && performance.navigation.type === 1 ? 'reload' : '');
+    if (navType === 'reload') sessionStorage.removeItem(HIDE_KEY);
+  } catch (e) { /* very old browsers: keep sessionStorage behaviour */ }
 
   if (sessionStorage.getItem(HIDE_KEY) === '1') return;
 

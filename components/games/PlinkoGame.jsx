@@ -657,8 +657,8 @@ function PlinkoGame({ onClose, onWin, closing }) {
             <HelpCircle className="w-5 h-5" style={{ color: C.sub }} />
           </button>
           <h2 className="text-xl font-black tracking-tight" style={{ fontFamily: "var(--font-display, 'Bricolage Grotesque', sans-serif)" }}>🔮 Plinko Drop</h2>
-          <button type="button" onClick={onClose} className="p-1.5 hover:bg-white/10 rounded-full">
-            <X className="w-5 h-5" />
+          <button type="button" onClick={onClose} className="p-1.5 rounded-full hover:brightness-110" style={{ background: 'linear-gradient(180deg, #f0684f, #d43a22)', border: '1px solid rgba(255,255,255,.25)', boxShadow: '0 3px 10px rgba(212,58,34,.35)' }}>
+            <X className="w-5 h-5 text-white" strokeWidth={2.75} />
           </button>
         </div>
 

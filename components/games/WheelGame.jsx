@@ -558,9 +558,9 @@ export default function WheelGame({ onClose, onWin, playsLeft, closing }) {
           type="button"
           onClick={onClose}
           className="absolute top-3 right-3 z-40 w-9 h-9 rounded-full flex items-center justify-center transition-all hover:scale-110 active:scale-90"
-          style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)' }}
+          style={{ background: 'linear-gradient(180deg, #f0684f, #d43a22)', border: '1px solid rgba(255,255,255,.25)', boxShadow: '0 3px 10px rgba(212,58,34,.35)' }}
         >
-          <X className="w-5 h-5" strokeWidth={3} style={{ color: C.sub }} />
+          <X className="w-5 h-5" strokeWidth={3} style={{ color: '#fff' }} />
         </button>
 
         {/* === CONTENT === */}
