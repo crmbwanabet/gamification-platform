@@ -1351,11 +1351,14 @@ export default function GamificationPlatform() {
     home: 'home',
     store: 'store',
     minigames: 'play.minigames',
-    predict: 'play.predictions',
-    predictions: 'play.predictions',
-    daily: 'play.daily',
+    // Predictions / Daily trivia / Quests hidden for now — legacy CTAs land on
+    // the nearest live tab instead of a dead route. Restore the originals
+    // (play.predictions / play.daily / earn.quests) to bring them back.
+    predict: 'play.minigames',
+    predictions: 'play.minigames',
+    daily: 'earn.rewards',
     missions: 'earn.missions',
-    quests: 'earn.quests',
+    quests: 'earn.missions',
     profile: 'me.profile',
     vip: 'me.vip',
     refer: 'me.referrals',

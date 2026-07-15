@@ -28,7 +28,8 @@ export default function ProfileModal({ open, onClose, name = 'Player', level, ne
     { icon: <Trophy size={16} />, label: 'Wins', value: u.wins || 0 },
     { icon: <Flame size={16} />, label: 'Day streak', value: u.streak || 0 },
     { icon: <Users size={16} />, label: 'Referrals', value: u.referrals || 0 },
-    { icon: <TrendingUp size={16} />, label: predOpen > 0 ? `Predictions · ${predOpen} open` : 'Predictions', value: preds.length === 0 ? 0 : `${predWon}W · ${predLost}L` },
+    // Predictions hidden for now — restore this row to bring the stat back
+    // { icon: <TrendingUp size={16} />, label: predOpen > 0 ? `Predictions · ${predOpen} open` : 'Predictions', value: preds.length === 0 ? 0 : `${predWon}W · ${predLost}L` },
   ];
   return (
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 120, display: 'grid', placeItems: 'center', padding: 16, background: 'rgba(8,10,16,.72)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)', fontFamily: "var(--font-body, 'Onest', system-ui, sans-serif)", animation: 'rs-pm-fade .16s ease-out' }}>

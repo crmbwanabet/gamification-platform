@@ -11,11 +11,13 @@ import { predictionWinCoins } from '@/lib/predictions';
 
 const SUBS = [
   { key: 'play.minigames', label: 'Games' },
-  { key: 'play.predictions', label: 'Predict' },
-  { key: 'play.daily', label: 'Daily' },
+  // Predictions + Daily (trivia) hidden for now — re-add here to restore
+  // { key: 'play.predictions', label: 'Predict' },
+  // { key: 'play.daily', label: 'Daily' },
 ];
 
 function SubNav({ tab, onNavigate }) {
+  if (SUBS.length < 2) return null;
   return (
     <div style={{ display: 'flex', gap: 8, marginBottom: 18 }}>
       {SUBS.map((s) => {
@@ -190,9 +192,10 @@ export default function PlayView({ tab = 'play.minigames', points = '0', mission
   return (
     <RedesignShell points={points} missionsCount={missionsCount} badges={badges} xp={xp} userId={userId} navBadges={navBadges} activeTab="play" onNavigate={onNavigate} onOpenProfile={onOpenProfile}>
       <SubNav tab={tab} onNavigate={onNavigate} />
-      {tab === 'play.predictions' && <Predictions predictions={predictions} onPredict={onPredict} />}
-      {tab === 'play.daily' && <Daily user={user} onDailyAnswer={onDailyAnswer} onNavigate={onNavigate} />}
-      {(tab === 'play' || tab === 'play.minigames' || (!tab.startsWith('play.predictions') && !tab.startsWith('play.daily'))) && <GamesGrid gamePlays={gamePlays} onPlay={onPlay} />}
+      {/* Predictions + Daily (trivia) hidden for now — restore the two lines below (and their SUBS entries) to bring them back */}
+      {/* {tab === 'play.predictions' && <Predictions predictions={predictions} onPredict={onPredict} />} */}
+      {/* {tab === 'play.daily' && <Daily user={user} onDailyAnswer={onDailyAnswer} onNavigate={onNavigate} />} */}
+      <GamesGrid gamePlays={gamePlays} onPlay={onPlay} />
     </RedesignShell>
   );
 }

@@ -14,7 +14,8 @@ const DIFF = { easy: { label: 'Easy', c: C.green }, medium: { label: 'Medium', c
 
 const SUBS = [
   { key: 'earn.missions', label: 'Missions' },
-  { key: 'earn.quests', label: 'Quests' },
+  // Quests hidden for now — re-add here to restore
+  // { key: 'earn.quests', label: 'Quests' },
   { key: 'earn.rewards', label: 'Rewards' },
 ];
 
@@ -150,6 +151,7 @@ export default function EarnView({ tab = 'earn.missions', points = '0', missions
       {tab === 'earn.rewards' && (
         <RewardsSection xp={xp} streak={streak} dailyDay={dailyDay} dailyClaimed={dailyClaimed} onClaimDaily={onClaimDaily} />
       )}
+      {/* Quests hidden for now — restore the block below (and the SUBS entry) to bring them back
       {tab === 'earn.quests' && (
         <section>
           <SectionTitle>Quests</SectionTitle>
@@ -158,7 +160,8 @@ export default function EarnView({ tab = 'earn.missions', points = '0', missions
           </div>
         </section>
       )}
-      {tab !== 'earn.quests' && tab !== 'earn.rewards' && (
+      */}
+      {tab !== 'earn.rewards' && (
         <section>
           <SectionTitle>Missions</SectionTitle>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(168px, 1fr))', gap: 12 }}>
