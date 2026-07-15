@@ -4,6 +4,7 @@ import { DEFAULT_CONFIG } from '@/lib/config/defaults';
 import { mergeConfig } from '@/lib/config/merge.mjs';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 // Public, read-only merged config. Failure of any DB read degrades to the
 // hardcoded defaults — the dashboard being down must never break players.
