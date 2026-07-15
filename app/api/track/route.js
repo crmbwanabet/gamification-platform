@@ -19,10 +19,13 @@ export async function POST(req) {
         uid,
         type: e.type,
         game_id: e.gameId ? String(e.gameId).slice(0, 32) : null,
-        amount: Number.isFinite(e.amount) ? Math.trunc(e.amount) : null,
+        amount: Number.isFinite(e.amount) ? Math.max(0, Math.min(Math.trunc(e.amount), 100000)) : null,
         meta: e.meta && typeof e.meta === 'object' ? e.meta : null,
       }));
-    if (rows.length && supabaseAdmin) await supabaseAdmin.from('activity_events').insert(rows);
+    if (rows.length && supabaseAdmin) {
+      const { error } = await supabaseAdmin.from('activity_events').insert(rows);
+      if (error) console.error('[track] insert failed:', error.message);
+    }
   } catch (e) { /* drop */ }
   return NextResponse.json({ ok: true });
 }
