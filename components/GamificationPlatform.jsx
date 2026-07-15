@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { 
   Trophy, Star, Gift, Target, Crown, Gem, Diamond, Gamepad2, Store, Medal, 
   Zap, ChevronRight, Check, X, Users, Award, Sparkles, 
@@ -21,6 +21,7 @@ import ProfileModal from './redesign/ProfileModal';
 import { useSession } from './session/SessionProvider';
 import { useRemoteConfig } from '@/lib/config/useRemoteConfig';
 import { DEFAULT_DAILY_PLAYS } from '@/lib/config/defaults';
+import { playsFromConfig } from '@/lib/config/plays.mjs';
 
 // Data imports
 import { IMG_BASE, CURRENCY_ICONS, IMAGES, WHEEL_IMAGES } from '../lib/data/images';
@@ -77,8 +78,7 @@ export default function GamificationPlatform() {
   const prefersReducedMotion = useReducedMotion();
   const cfg = useRemoteConfig();
   // Games list the UI shows: enabled games only, extra-play cost from config.
-  const activeGames = MINIGAMES.filter(g => cfg.games[g.id]?.enabled !== false)
-    .map(g => ({ ...g, cost: cfg.economy.extraPlayCost }));
+  const activeGames = useMemo(() => MINIGAMES.filter(g => cfg.games[g.id]?.enabled !== false).map(g => ({ ...g, cost: cfg.economy.extraPlayCost })), [cfg]);
   const [tab, setTab] = useState('home');
   const [activeGame, setActiveGame] = useState(null);
   const [selectedMission, setSelectedMission] = useState(null);
@@ -937,9 +937,7 @@ export default function GamificationPlatform() {
   const dailyPlaysRef = useRef(DEFAULT_DAILY_PLAYS);
   useEffect(() => {
     // Disabled games stop refreshing; allowances come from config.
-    dailyPlaysRef.current = Object.fromEntries(
-      Object.entries(cfg.games).filter(([, g]) => g.enabled !== false).map(([id, g]) => [id, g.dailyPlays])
-    );
+    dailyPlaysRef.current = playsFromConfig(cfg.games);
   }, [cfg]);
   const refreshDailyPlays = useCallback(() => {
     setUser(u => {
@@ -951,18 +949,24 @@ export default function GamificationPlatform() {
       return {
         ...u,
         lastPlaysRefresh: key,
-        gamePlays: topUp(u.gamePlays, dailyPlaysRef.current),
+        // Spread over the existing balances so disabled games (absent from the
+        // ref) keep their stored plays — incl. purchased extras — untouched.
+        gamePlays: { ...u.gamePlays, ...topUp(u.gamePlays, dailyPlaysRef.current) },
       };
     });
   }, []);
+  // Wait for config to settle before the first refresh so raised allowances
+  // land on day one. LOWERING an allowance is inherently next-day (topUp is
+  // max-based by design).
   useEffect(() => {
+    if (!cfg.ready) return;
     refreshDailyPlays();
     const iv = setInterval(refreshDailyPlays, 60000);
     return () => clearInterval(iv);
-  }, [refreshDailyPlays]);
+  }, [cfg.ready, refreshDailyPlays]);
   useEffect(() => {
-    if (session.status === 'ready') refreshDailyPlays();
-  }, [session.status, refreshDailyPlays]);
+    if (cfg.ready && session.status === 'ready') refreshDailyPlays();
+  }, [cfg.ready, session.status, refreshDailyPlays]);
 
   // Daily-reward day rollover: once a new calendar day begins since the last
   // claim, re-open the claim. Runs on mount and whenever the stored claim date
@@ -1143,6 +1147,8 @@ export default function GamificationPlatform() {
   // trackQuest + claimQuest parked — see parked/components/GamificationPlatform.removed-wiring.jsx
 
   const playGame = (gameId) => {
+    // Disabled games can still be reached via mission modals — block them.
+    if (!activeGames.some(g => g.id === gameId)) { showNotif('This game is unavailable right now', 'error'); return; }
     if (user.gamePlays[gameId] > 0) {
       useGamePlay(gameId);
       setActiveGame(gameId);
