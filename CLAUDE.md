@@ -7,8 +7,9 @@
 - **GitHub**: crmbwanabet/gamification-platform
 
 ## Architecture
-- Main container: `components/GamificationPlatform.jsx` (~3900 lines, single client component)
-- `components/games/` — 7 games: Dice (real rigid-body 3D physics), HighLow (casino felt + printed cards), Plinko (2D canvas physics, coin wagers), Scratch (silver tickets, first scratch locks the others), StopClock (3 escalating stages, cartoon stopwatch), TapFrenzy (cartoon icons + difficulty ramp + FRENZY), Wheel — plus `gameKit.jsx` (GameShell/GameBtn/OptionBtn). Trivia is REMOVED from the platform (components remain but are unreachable in v2 — cleanup candidates)
+- Main container: `components/GamificationPlatform.jsx` (~1500 lines, single client component; the old pre-v2 shell was excised 2026-07-15)
+- **`parked/`** — predictions, trivia, and quests were REMOVED from the platform 2026-07-15; all their code lives in `parked/` (mirror structure + README with restore notes). Nothing in `parked/` is compiled. Don't re-import from it — `git mv` files back to restore
+- `components/games/` — 7 games: Dice (real rigid-body 3D physics), HighLow (casino felt + printed cards), Plinko (2D canvas physics, coin wagers), Scratch (silver tickets, first scratch locks the others), StopClock (3 escalating stages, cartoon stopwatch), TapFrenzy (cartoon icons + difficulty ramp + FRENZY), Wheel — plus `gameKit.jsx` (GameShell/GameBtn/OptionBtn)
 - **Economy** (`GAME_ECONOMY` in `lib/data/platform.js`, future admin dashboard drives it): max win per game = 200 coins, extra play = 50 coins (a deliberate gamble). All pay tables scaled to the cap
 - Game rewards are COINS displayed as number + `/ui/reward/coins.png` icon (never "K"-money labels)
 - Daily plays: all game plays refresh to their allowance at 6am local (`refreshDailyPlays` — top-up, extras carry over); `playGame` charges the extra-play cost when free plays run out
@@ -16,9 +17,9 @@
 - Header shows the user ID (SSO `bwanabet_user_id` → username → `?uid` → 'Player'); nav badges are things-to-attend-to in platform green (Play = free plays left, Earn = open missions + unclaimed daily)
 - Missions: difficulty = time budget (easy ~1 day, medium ~3 days, hard ~1 week); progress persists across days; missions with `gameId` open that game directly from the mission modal
 - Store: `STORE_ITEMS` is EMPTY until the admin dashboard populates it (StoreView shows a restocking state; Overview hides store sections)
-- `components/modals/` — MissionDetailModal (v2 design), QuestDetailModal + TutorialModal (still old design)
-- `lib/data/` — images, missions, platform, trivia (legacy), tutorials
-- Features: missions, quests, VIP, store, predictions, referrals, leaderboard
+- `components/modals/` — MissionDetailModal (v2 design), TutorialModal (old design, opened from games' help buttons)
+- `lib/data/` — images, missions, platform, tutorials
+- Features: missions, VIP, store, referrals, leaderboard (quests/predictions/trivia parked; user state keeps their keys so saved player history survives)
 - Currency system: Kwacha (coins), Gems, Diamonds, XP
 - Tabs use hierarchical keys (`home`, `play.*`, `earn.*`, `me.*`) with `LEGACY_TAB_MAP` for CTA compatibility
 
