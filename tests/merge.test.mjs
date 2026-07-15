@@ -33,6 +33,12 @@ test('array keys replace wholesale', () => {
   assert.deepEqual(out.dailyRewards, [{ kwacha: 99 }]);
 });
 
+test('empty arrays are rejected, defaults kept', () => {
+  const out = mergeConfig(DEFAULTS, [{ key: 'daily_rewards', value: [] }, { key: 'streak_rewards', value: [] }]);
+  assert.deepEqual(out.dailyRewards, DEFAULTS.dailyRewards);
+  assert.deepEqual(out.streakRewards, DEFAULTS.streakRewards);
+});
+
 test('mission_overrides passes through', () => {
   const out = mergeConfig(DEFAULTS, [{ key: 'mission_overrides', value: { d_spin: { enabled: false } } }]);
   assert.deepEqual(out.missionOverrides, { d_spin: { enabled: false } });

@@ -1410,6 +1410,7 @@ export default function GamificationPlatform() {
   const claimDailyReward = (el) => {
     if (user.dailyClaimed) return;
     const r = cfg.dailyRewards[user.dailyDay - 1] || cfg.dailyRewards[0];
+    if (!r) return;
     addCoins(r.kwacha);
     if (r.gems) addGems(r.gems);
     if (r.diamonds) addDiamonds(r.diamonds);
@@ -1417,6 +1418,7 @@ export default function GamificationPlatform() {
     const today = new Date().toDateString();
     setUser(u => {
       const wasYesterday = u.lastDailyClaim && Math.round((new Date(today) - new Date(u.lastDailyClaim)) / 86400000) === 1;
+      // 7-day rollover assumes the rewards table has 7 entries (admin dashboard validates at write time)
       return { ...u, dailyClaimed: true, lastDailyClaim: today, dailyDay: u.dailyDay >= 7 ? 1 : u.dailyDay + 1, streak: wasYesterday ? u.streak + 1 : u.streak, dailyTasksDone: [...new Set([...u.dailyTasksDone, 'claim'])] };
     });
     trackMission('dailyClaimed');
