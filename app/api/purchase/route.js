@@ -17,10 +17,11 @@ function authedUid(token) {
   return String(Number(result.payload.id));
 }
 
-// Server-backed store purchase. Validates the item + stock atomically via the
-// purchase_item RPC and requires an existing SSO profile (purchases must be
-// fulfillable + refundable). Coin balances are client-held (existing trust
-// model) — the client deducts only after ok:true.
+// Server-backed store purchase. The purchase_item RPC atomically: verifies
+// the profile exists, verifies the SERVER-HELD balance covers the price,
+// deducts it (state jsonb + mirror columns), decrements stock, and inserts
+// the pending purchase. The client mirrors the deduction locally so its next
+// absolute state save agrees with the DB.
 export async function POST(req) {
   if (!supabaseAdmin) return NextResponse.json({ error: 'not_configured' }, { status: 500 });
   const ip = (req.headers.get('x-forwarded-for') || 'unknown').split(',')[0].trim();
@@ -33,16 +34,15 @@ export async function POST(req) {
   const itemId = String(body?.itemId || '').trim();
   if (!UUID_RE.test(itemId)) return NextResponse.json({ error: 'bad_request' }, { status: 400 });
 
-  // SSO players only: profile row must exist (also blocks forged-uid spam).
-  const { data: prof } = await supabaseAdmin.from('profiles').select('bwanabet_user_id').eq('bwanabet_user_id', uid).limit(1);
-  if (!prof || !prof.length) return NextResponse.json({ error: 'profile_required' }, { status: 403 });
-
   const { data, error } = await supabaseAdmin.rpc('purchase_item', { p_uid: uid, p_item_id: itemId });
   if (error) {
     console.error('[purchase] rpc failed:', error.message);
     return NextResponse.json({ error: 'purchase_failed' }, { status: 500 });
   }
-  if (data?.error) return NextResponse.json({ error: data.error }, { status: 400 });
+  if (data?.error) {
+    const status = data.error === 'profile_required' ? 403 : 400;
+    return NextResponse.json({ error: data.error }, { status });
+  }
 
   const p = data.purchase;
   const messageId = await sendPurchase(purchaseMessage(p), p.id);
@@ -50,7 +50,11 @@ export async function POST(req) {
     .update(messageId ? { telegram_message_id: messageId } : { telegram_error: true })
     .eq('id', p.id);
 
-  return NextResponse.json({ ok: true, purchase: { id: p.id, item_name: p.item_name, price_kwacha: p.price_kwacha, price_gems: p.price_gems, status: p.status } });
+  return NextResponse.json({
+    ok: true,
+    purchase: { id: p.id, item_name: p.item_name, price_kwacha: p.price_kwacha, price_gems: p.price_gems, status: p.status },
+    balance: data.balance || null, // server-held balance after deduction
+  });
 }
 
 // The player's own purchase list — used by the app on session load to

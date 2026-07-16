@@ -1514,6 +1514,9 @@ export default function GamificationPlatform() {
           const msg = d && d.error === 'out_of_stock' ? 'Sold out — someone beat you to it!'
             : d && d.error === 'slow_down' ? 'Too many attempts — wait a minute.'
             : d && d.error === 'invalid_token' ? 'Session expired — reload the page.'
+            // Server-held balance was short: recent winnings may not have
+            // synced yet (saves are debounced ~1.5s) — a retry usually works.
+            : d && d.error === 'insufficient_funds' ? 'Balance not synced yet — try again in a moment.'
             : 'Purchase failed — try again.';
           showNotif(msg, 'error');
           return;
