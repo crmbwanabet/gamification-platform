@@ -10,7 +10,7 @@ import React, { createContext, useContext, useEffect, useState, useCallback, use
 // a `#token=...` URL hash (signed-URL embeds). All trust is enforced server-side
 // in /api/session — this component just relays the token.
 
-const SessionContext = createContext({ status: 'idle', profile: null, verified: false, error: null, saveState: async () => null });
+const SessionContext = createContext({ status: 'idle', profile: null, verified: false, error: null, saveState: async () => null, buyItem: async () => null, listPurchases: async () => null });
 export const useSession = () => useContext(SessionContext);
 
 // The live operator site is bwanabet.co.zm (Zambia); .com kept for any legacy
@@ -92,11 +92,32 @@ export default function SessionProvider({ children }) {
     }
   }, []);
 
+  // Buy a store item as the authenticated player (identity from the token).
+  const buyItem = useCallback(async (itemId) => {
+    if (!tokenRef.current) return null;
+    try {
+      const res = await fetch('/api/purchase', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: tokenRef.current, itemId }),
+      });
+      return await res.json();
+    } catch (e) { return { error: String(e) }; }
+  }, []);
+
+  // The player's own purchase list (refund reconciliation).
+  const listPurchases = useCallback(async () => {
+    if (!tokenRef.current) return null;
+    try {
+      const res = await fetch('/api/purchase', { headers: { Authorization: `Bearer ${tokenRef.current}` } });
+      return res.ok ? await res.json() : null;
+    } catch (e) { return null; }
+  }, []);
+
   // claimVoucher (streak-voucher via /api/predictions/voucher) parked with the
   // predictions feature on 2026-07-15 — see parked/ + git history to restore.
 
   return (
-    <SessionContext.Provider value={{ ...state, saveState }}>
+    <SessionContext.Provider value={{ ...state, saveState, buyItem, listPurchases }}>
       {children}
     </SessionContext.Provider>
   );

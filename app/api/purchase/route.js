@@ -1,11 +1,21 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
-import { purchaseMessage } from '@/lib/telegram/format.mjs';
+import { verifyBwanabetToken } from '@/lib/auth/bwanabetToken';
+import { purchaseMessage, UUID_RE } from '@/lib/telegram/format.mjs';
 import { sendPurchase } from '@/lib/telegram/client';
 import { rateLimit } from '@/lib/rateLimit';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+
+// Identity comes from the verified bwanabet JWT — mirrors /api/state. The
+// client can't purchase (or list) as anyone but themselves.
+function authedUid(token) {
+  const result = verifyBwanabetToken(token);
+  if (!result.valid || !result.payload?.id) return null;
+  if (!result.verified && process.env.SSO_ALLOW_UNVERIFIED !== 'true') return null;
+  return String(Number(result.payload.id));
+}
 
 // Server-backed store purchase. Validates the item + stock atomically via the
 // purchase_item RPC and requires an existing SSO profile (purchases must be
@@ -18,9 +28,10 @@ export async function POST(req) {
 
   let body;
   try { body = await req.json(); } catch { return NextResponse.json({ error: 'bad_request' }, { status: 400 }); }
-  const uid = String(body?.uid || '').trim().slice(0, 64);
+  const uid = authedUid(body?.token);
+  if (!uid || uid === 'NaN') return NextResponse.json({ error: 'invalid_token' }, { status: 401 });
   const itemId = String(body?.itemId || '').trim();
-  if (!uid || !/^[0-9a-f-]{36}$/i.test(itemId)) return NextResponse.json({ error: 'bad_request' }, { status: 400 });
+  if (!UUID_RE.test(itemId)) return NextResponse.json({ error: 'bad_request' }, { status: 400 });
 
   // SSO players only: profile row must exist (also blocks forged-uid spam).
   const { data: prof } = await supabaseAdmin.from('profiles').select('bwanabet_user_id').eq('bwanabet_user_id', uid).limit(1);
@@ -46,8 +57,9 @@ export async function POST(req) {
 // reconcile rejected-purchase refunds (exactly once, via refundedPurchaseIds).
 export async function GET(req) {
   if (!supabaseAdmin) return NextResponse.json({ purchases: [] });
-  const uid = String(new URL(req.url).searchParams.get('uid') || '').trim().slice(0, 64);
-  if (!uid) return NextResponse.json({ purchases: [] });
+  const token = (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '');
+  const uid = authedUid(token);
+  if (!uid || uid === 'NaN') return NextResponse.json({ error: 'invalid_token' }, { status: 401 });
   const { data } = await supabaseAdmin.from('purchases')
     .select('id,item_name,price_kwacha,price_gems,status,created_at')
     .eq('uid', uid).order('created_at', { ascending: false }).limit(50);

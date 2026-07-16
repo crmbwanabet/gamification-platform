@@ -10,7 +10,7 @@
 
 **Conventions:** Same as Plans A/B (main + auto-deploy; Supabase MCP + secrets = coordinator-run; gamification repo deploys via `git push` + `vercel --prod`, CRM auto-deploys on push so CRM pushes happen only at ship time).
 
-**Trust model reminders (from the spec):** the server validates price/stock and profile existence, NOT the player's coin balance (balances live in the client-saved state blob — unchanged). Purchases are restricted to SSO players (profile row must exist) so they are fulfillable and refundable. Rejection restores stock and refunds coins on the player's next session load, exactly once.
+**Trust model reminders (from the spec):** the server validates price/stock and profile existence, NOT the player's coin balance (balances live in the client-saved state blob — unchanged). Purchases are restricted to SSO players (profile row must exist) so they are fulfillable and refundable. Rejection restores stock and refunds coins on the player's next session load, exactly once. Identity is NEVER client-supplied — both /api/purchase methods derive uid from the verified bwanabet JWT (mirrors /api/state); balances remain client-held per the accepted trust model.
 
 **Task order:** 1 (coordinator: RPCs + env) → 2 (telegram lib) → 3 (purchase routes) → 4 (webhook) → 5 (player client) → 6 (coordinator: deploy + webhook registration + prod smoke) → 7 (CRM ops) → 8 (CRM Fulfillment UI) → 9 (ship + QA + docs + final review).
 
@@ -151,7 +151,8 @@ Run `npm test` → new file FAILS (module not found); existing 16 green.
 
 ```js
 // Pure Telegram message shaping for the purchase flow — node-testable.
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+// UUID_RE is exported: /api/purchase reuses it for itemId validation.
+export const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export function purchaseMessage(p) {
   const price = [
@@ -262,12 +263,22 @@ export function rateLimit(key, max = 5, windowMs = 60000) {
 ```js
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
-import { purchaseMessage } from '@/lib/telegram/format.mjs';
+import { verifyBwanabetToken } from '@/lib/auth/bwanabetToken';
+import { purchaseMessage, UUID_RE } from '@/lib/telegram/format.mjs';
 import { sendPurchase } from '@/lib/telegram/client';
 import { rateLimit } from '@/lib/rateLimit';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+
+// Identity comes from the verified bwanabet JWT — mirrors /api/state. The
+// client can't purchase (or list) as anyone but themselves.
+function authedUid(token) {
+  const result = verifyBwanabetToken(token);
+  if (!result.valid || !result.payload?.id) return null;
+  if (!result.verified && process.env.SSO_ALLOW_UNVERIFIED !== 'true') return null;
+  return String(Number(result.payload.id));
+}
 
 // Server-backed store purchase. Validates the item + stock atomically via the
 // purchase_item RPC and requires an existing SSO profile (purchases must be
@@ -280,9 +291,10 @@ export async function POST(req) {
 
   let body;
   try { body = await req.json(); } catch { return NextResponse.json({ error: 'bad_request' }, { status: 400 }); }
-  const uid = String(body?.uid || '').trim().slice(0, 64);
+  const uid = authedUid(body?.token);
+  if (!uid || uid === 'NaN') return NextResponse.json({ error: 'invalid_token' }, { status: 401 });
   const itemId = String(body?.itemId || '').trim();
-  if (!uid || !/^[0-9a-f-]{36}$/i.test(itemId)) return NextResponse.json({ error: 'bad_request' }, { status: 400 });
+  if (!UUID_RE.test(itemId)) return NextResponse.json({ error: 'bad_request' }, { status: 400 });
 
   // SSO players only: profile row must exist (also blocks forged-uid spam).
   const { data: prof } = await supabaseAdmin.from('profiles').select('bwanabet_user_id').eq('bwanabet_user_id', uid).limit(1);
@@ -308,8 +320,9 @@ export async function POST(req) {
 // reconcile rejected-purchase refunds (exactly once, via refundedPurchaseIds).
 export async function GET(req) {
   if (!supabaseAdmin) return NextResponse.json({ purchases: [] });
-  const uid = String(new URL(req.url).searchParams.get('uid') || '').trim().slice(0, 64);
-  if (!uid) return NextResponse.json({ purchases: [] });
+  const token = (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '');
+  const uid = authedUid(token);
+  if (!uid || uid === 'NaN') return NextResponse.json({ error: 'invalid_token' }, { status: 401 });
   const { data } = await supabaseAdmin.from('purchases')
     .select('id,item_name,price_kwacha,price_gems,status,created_at')
     .eq('uid', uid).order('created_at', { ascending: false }).limit(50);
@@ -317,7 +330,7 @@ export async function GET(req) {
 }
 ```
 
-- [ ] **Step 3: Verify locally.** You cannot run SQL — verify shape only: `curl -s -X POST http://localhost:PORT/api/purchase -H "Content-Type: application/json" -d "{}"` → 400 `bad_request`; `curl -s -X POST ... -d "{\"uid\":\"999999999\",\"itemId\":\"00000000-0000-0000-0000-000000000000\"}"` → 403 `profile_required` (uid not in profiles); `curl -s "http://localhost:PORT/api/purchase?uid=none"` → `{"purchases":[]}`. The full positive path is the coordinator's Task 6.
+- [ ] **Step 3: Verify locally.** You cannot run SQL — verify shape only: `curl -s -X POST http://localhost:PORT/api/purchase -H "Content-Type: application/json" -d "{}"` → 401 `invalid_token` (no token; or 429 if the rate bucket is warm — both prove the gate); `curl -s -X POST ... -d "{\"token\":\"garbage\",\"itemId\":\"00000000-0000-0000-0000-000000000000\"}"` → 401 `invalid_token`; `curl -s "http://localhost:PORT/api/purchase"` (no Authorization header) → 401 `invalid_token`. The full positive path is the coordinator's Task 6.
 
 - [ ] **Step 4:** `npm test` (20/20), `npm run build` clean (route shows λ).
 
@@ -402,19 +415,15 @@ git commit -m "api: telegram webhook — credit-button taps update the fulfillme
 
 ```js
     const buyStoreItem = async (item, el) => {
-      const uid = session?.profile?.bwanabet_user_id || null;
-      if (!uid) { showNotif('Connect via bwanabet to buy store items', 'error'); return; }
+      if (session.status !== 'ready') { showNotif('Connect via bwanabet to buy store items', 'error'); return; }
       const canBuy = user.kwacha >= item.price.kwacha && (!item.price.gems || user.gems >= item.price.gems);
       if (!canBuy) { showNotif('Not enough balance!', 'error'); return; }
       try {
-        const r = await fetch('/api/purchase', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ uid: String(uid), itemId: item.id }),
-        });
-        const d = await r.json().catch(() => ({}));
-        if (!r.ok || !d.ok) {
-          const msg = d.error === 'out_of_stock' ? 'Sold out — someone beat you to it!'
-            : d.error === 'slow_down' ? 'Too many attempts — wait a minute.'
+        const d = await session.buyItem(item.id);
+        if (!d || !d.ok) {
+          const msg = d && d.error === 'out_of_stock' ? 'Sold out — someone beat you to it!'
+            : d && d.error === 'slow_down' ? 'Too many attempts — wait a minute.'
+            : d && d.error === 'invalid_token' ? 'Session expired — reload the page.'
             : 'Purchase failed — try again.';
           showNotif(msg, 'error');
           return;
@@ -447,8 +456,7 @@ Delete the now-dead old body below it (the `// Kept for Plan C to replace...` co
     const uid = session?.profile?.bwanabet_user_id;
     if (!uid) return;
     refundRanRef.current = true;
-    fetch('/api/purchase?uid=' + encodeURIComponent(String(uid)))
-      .then(r => (r.ok ? r.json() : null))
+    session.listPurchases()
       .then(d => {
         if (!d || !Array.isArray(d.purchases)) return;
         setUser(u => {
