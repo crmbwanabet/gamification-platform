@@ -887,6 +887,7 @@ export default function GamificationPlatform() {
     // existing players' saved history survives the parked features (2026-07-15)
     questProgress: {},
     questsComplete: [],
+    refundedPurchaseIds: [],
   });
 
   const level = getLevel(user.xp);
@@ -942,6 +943,37 @@ export default function GamificationPlatform() {
     }, 1500);
     return () => { if (saveTimer.current) clearTimeout(saveTimer.current); };
   }, [user, session.status]);
+
+  // Rejected store purchases are refunded HERE, exactly once: compare the
+  // server's rejected list against refundedPurchaseIds in saved state. Runs
+  // only for hydrated SSO sessions — anonymous state isn't persisted, so
+  // reconciling there would refund on every visit.
+  const refundRanRef = useRef(false);
+  useEffect(() => {
+    if (refundRanRef.current || session.status !== 'ready' || !hydratedRef.current) return;
+    const uid = session?.profile?.bwanabet_user_id;
+    if (!uid) return;
+    refundRanRef.current = true;
+    session.listPurchases()
+      .then(d => {
+        if (!d || !Array.isArray(d.purchases)) return;
+        setUser(u => {
+          const done = new Set(u.refundedPurchaseIds || []);
+          const toRefund = d.purchases.filter(p => p.status === 'rejected' && !done.has(p.id));
+          if (!toRefund.length) return u;
+          const coins = toRefund.reduce((s, p) => s + (p.price_kwacha || 0), 0);
+          const gems = toRefund.reduce((s, p) => s + (p.price_gems || 0), 0);
+          showNotif(`↩️ ${toRefund.length > 1 ? toRefund.length + ' purchases' : 'A purchase'} was refunded: +${coins} coins`);
+          return {
+            ...u,
+            kwacha: u.kwacha + coins,
+            gems: u.gems + gems,
+            refundedPurchaseIds: [...(u.refundedPurchaseIds || []), ...toRefund.map(p => p.id)],
+          };
+        });
+      })
+      .catch(() => {});
+  }, [session.status, session?.profile]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 6am play refresh: top every game's plays back up to the daily allowance
   // when a new game day starts. Extras above the allowance are kept (max, not
@@ -1466,21 +1498,30 @@ export default function GamificationPlatform() {
   }
   // === v2 redesigned Store ===
   if (tab === 'store') {
-    const buyStoreItem = (item, el) => {
-      // Purchases are DISABLED until the fulfillment flow ships (/api/purchase,
-      // admin queue + Telegram — Plan C). Without it a buy would deduct coins
-      // into a void, so block even if admins stock store_items early.
-      showNotif('The store opens soon — purchases are not live yet!', 'error');
-      return;
-      // Kept for Plan C to replace with the server-backed purchase call:
-      // eslint-disable-next-line no-unreachable
+    const buyStoreItem = async (item, el) => {
+      if (session.status !== 'ready') { showNotif('Connect via bwanabet to buy store items', 'error'); return; }
       const canBuy = user.kwacha >= item.price.kwacha && (!item.price.gems || user.gems >= item.price.gems);
       if (!canBuy) { showNotif('Not enough balance!', 'error'); return; }
-      addCoins(-item.price.kwacha);
-      if (item.price.gems) addGems(-item.price.gems);
-      trackMission('storePurchase', { amount: item.price.kwacha });
-      showNotif(`Purchased ${item.name}!`);
-      triggerReward('small', el || null, { coins: 0 });
+      try {
+        const d = await session.buyItem(item.id);
+        if (!d || !d.ok) {
+          const msg = d && d.error === 'out_of_stock' ? 'Sold out — someone beat you to it!'
+            : d && d.error === 'slow_down' ? 'Too many attempts — wait a minute.'
+            : d && d.error === 'invalid_token' ? 'Session expired — reload the page.'
+            : 'Purchase failed — try again.';
+          showNotif(msg, 'error');
+          return;
+        }
+        // Server accepted: deduct locally, celebrate, track.
+        addCoins(-item.price.kwacha);
+        if (item.price.gems) addGems(-item.price.gems);
+        trackMission('storePurchase', { amount: item.price.kwacha });
+        track('purchase', { amount: item.price.kwacha, meta: { itemId: item.id } });
+        showNotif(`🛒 ${item.name} purchased — our team will credit it shortly!`);
+        triggerReward('medium', el || null, { coins: 0 });
+      } catch (e) {
+        showNotif('Purchase failed — try again.', 'error');
+      }
     };
     return (<>
       <StoreView {...v2Stats} onBuy={buyStoreItem} kwacha={user.kwacha} gems={user.gems} />
