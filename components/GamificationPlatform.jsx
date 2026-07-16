@@ -957,13 +957,16 @@ export default function GamificationPlatform() {
     session.listPurchases()
       .then(d => {
         if (!d || !Array.isArray(d.purchases)) return;
+        // Compute outside the updater so it stays pure (StrictMode double-
+        // invokes updaters in dev; the toast must fire once).
+        let applied = null;
         setUser(u => {
           const done = new Set(u.refundedPurchaseIds || []);
           const toRefund = d.purchases.filter(p => p.status === 'rejected' && !done.has(p.id));
           if (!toRefund.length) return u;
           const coins = toRefund.reduce((s, p) => s + (p.price_kwacha || 0), 0);
           const gems = toRefund.reduce((s, p) => s + (p.price_gems || 0), 0);
-          showNotif(`↩️ ${toRefund.length > 1 ? toRefund.length + ' purchases' : 'A purchase'} was refunded: +${coins} coins`);
+          applied = { count: toRefund.length, coins };
           return {
             ...u,
             kwacha: u.kwacha + coins,
@@ -971,6 +974,9 @@ export default function GamificationPlatform() {
             refundedPurchaseIds: [...(u.refundedPurchaseIds || []), ...toRefund.map(p => p.id)],
           };
         });
+        setTimeout(() => {
+          if (applied) showNotif(`↩️ ${applied.count > 1 ? applied.count + ' purchases' : 'A purchase'} was refunded: +${applied.coins} coins`);
+        }, 0);
       })
       .catch(() => {});
   }, [session.status, session?.profile]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -1512,11 +1518,15 @@ export default function GamificationPlatform() {
           showNotif(msg, 'error');
           return;
         }
-        // Server accepted: deduct locally, celebrate, track.
-        addCoins(-item.price.kwacha);
-        if (item.price.gems) addGems(-item.price.gems);
-        trackMission('storePurchase', { amount: item.price.kwacha });
-        track('purchase', { amount: item.price.kwacha, meta: { itemId: item.id } });
+        // Server accepted: deduct the SERVER-CONFIRMED price (the client's
+        // config snapshot may be stale after an admin repriced the item) —
+        // keeps the deduction equal to any later refund.
+        const paidCoins = d.purchase?.price_kwacha ?? item.price.kwacha;
+        const paidGems = d.purchase?.price_gems ?? (item.price.gems || 0);
+        addCoins(-paidCoins);
+        if (paidGems) addGems(-paidGems);
+        trackMission('storePurchase', { amount: paidCoins });
+        track('purchase', { amount: paidCoins, meta: { itemId: item.id } });
         showNotif(`🛒 ${item.name} purchased — our team will credit it shortly!`);
         triggerReward('medium', el || null, { coins: 0 });
       } catch (e) {
