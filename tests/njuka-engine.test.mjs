@@ -147,3 +147,13 @@ test('applySwap throws two cards un-claimably, then swapdraw refills to 3', () =
   assert.equal(S.hands[0].length, 3);
   assert.equal(S.phase, 'end');
 });
+
+test('discardCard rejects out-of-range indices', () => {
+  const S = createRound(4, seededRng(6));
+  drawCard(S); // phase 'discard', hand of 4
+  assert.throws(() => discardCard(S, 4), /bad discard index/);
+  assert.throws(() => discardCard(S, -1), /bad discard index/);
+  assert.throws(() => discardCard(S, 1.5), /bad discard index/);
+  assert.equal(S.hands[0].length, 4); // hand untouched
+  assert.equal(S.phase, 'discard');   // phase untouched
+});
