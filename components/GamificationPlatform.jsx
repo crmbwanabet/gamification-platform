@@ -47,6 +47,7 @@ import HighLowGame from './games/HighLowGame';
 import PlinkoGame from './games/PlinkoGame';
 import TapFrenzyGame from './games/TapFrenzyGame';
 import StopClockGame from './games/StopClockGame';
+import NjukaGame from './games/NjukaGame';
 // trivia games parked — see parked/components/games/
 
 // Respect the user's OS-level motion preference.
@@ -1202,6 +1203,9 @@ export default function GamificationPlatform() {
   const playGame = (gameId) => {
     // Disabled games can still be reached via mission modals — block them.
     if (!activeGames.some(g => g.id === gameId)) { showNotif('This game is unavailable right now', 'error'); return; }
+    // Stake-per-round games (njuka): entry is free — no daily play consumed,
+    // no extra-play charge. Every round is paid inside the game via onSpend.
+    if (activeGames.find(g => g.id === gameId)?.stakeOnly) { setActiveGame(gameId); return; }
     if (user.gamePlays[gameId] > 0) {
       useGamePlay(gameId);
       setActiveGame(gameId);
@@ -1375,6 +1379,22 @@ export default function GamificationPlatform() {
             setUser(u => ({ ...u, gamesPlayed: u.gamesPlayed + 1, dailyTasksDone: [...new Set([...u.dailyTasksDone, 'game'])] }));
             setGamesPlayedToday(prev => new Set([...prev, 'stopclock']));
             trackMission('gamePlayed', { gameId: 'stopclock', coinsWon: n, clockDiff: meta?.diff, gamesSet: gamesPlayedToday });
+          }}
+        />
+      )}
+      {activeGame === 'njuka' && (
+        <NjukaGame
+          onClose={() => animateClose(() => setActiveGame(null))} closing={closingModal}
+          balance={user.kwacha}
+          onSpend={(n) => addCoins(-n)}
+          onRefund={(n) => { addCoins(n); showNotif(`Round void — ${n} Coins returned`); }}
+          onWin={(n, meta) => {
+            addCoins(n);
+            showNotif(`🎉 +${meta?.net ?? n} Coins!`);
+            triggerReward('big', null, { coins: meta?.net ?? n });
+            setUser(u => ({ ...u, gamesPlayed: u.gamesPlayed + 1, dailyTasksDone: [...new Set([...u.dailyTasksDone, 'game'])] }));
+            setGamesPlayedToday(prev => new Set([...prev, 'njuka']));
+            trackMission('gamePlayed', { gameId: 'njuka', coinsWon: meta?.net ?? n, gamesSet: gamesPlayedToday });
           }}
         />
       )}
