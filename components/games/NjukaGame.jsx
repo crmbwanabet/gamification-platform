@@ -73,6 +73,7 @@ export default function NjukaGame({ onClose, closing, onWin, onSpend, onRefund, 
   const timersRef = useRef([]);
   const turnTimerRef = useRef(null);
   const claimFireRef = useRef(null);
+  const playerActedRef = useRef(false);
   const stakeRef = useRef(10);
   const balanceRef = useRef(balance);
   balanceRef.current = balance;
@@ -97,6 +98,8 @@ export default function NjukaGame({ onClose, closing, onWin, onSpend, onRefund, 
   // ---- round lifecycle ----
   const startRound = (st = stakeRef.current) => {
     clearTimers(); setBanner(null); setSwapSel(null); setClaimable(false); setNextIn(null); setTimerFrac(1);
+    playerActedRef.current = false;
+    claimFireRef.current = null;
     if (balanceRef.current < st) {
       roundRef.current = null; setScreen('stake');
       setHint('Not enough coins for that stake — visit Earn to top up');
@@ -115,7 +118,7 @@ export default function NjukaGame({ onClose, closing, onWin, onSpend, onRefund, 
 
   const beginTurn = () => {
     const S = roundRef.current; if (!S || S.winner) return;
-    S.phase = 'draw'; setTimerFrac(1); rerender();
+    setTimerFrac(1); rerender();
     if (S.turn === 0) {
       setHint('Your turn — tap the deck to draw');
       startTurnTimer();
@@ -127,9 +130,10 @@ export default function NjukaGame({ onClose, closing, onWin, onSpend, onRefund, 
 
   const startTurnTimer = () => {
     stopTurnTimer();
-    let left = TURN_MS;
+    const deadline = Date.now() + TURN_MS;
     turnTimerRef.current = setInterval(() => {
-      left -= 250; setTimerFrac(Math.max(0, left / TURN_MS));
+      const left = deadline - Date.now();
+      setTimerFrac(Math.max(0, left / TURN_MS));
       if (left <= 0) { stopTurnTimer(); autoPlay(); }
     }, 250);
   };
@@ -142,6 +146,7 @@ export default function NjukaGame({ onClose, closing, onWin, onSpend, onRefund, 
 
   // ---- player actions ----
   const playerDraw = () => {
+    playerActedRef.current = true;
     const S = roundRef.current;
     if (!S || S.winner || S.turn !== 0 || (S.phase !== 'draw' && S.phase !== 'swapdraw')) return;
     const wasSwap = S.phase === 'swapdraw';
@@ -159,12 +164,14 @@ export default function NjukaGame({ onClose, closing, onWin, onSpend, onRefund, 
   };
 
   const declareWin = () => {
+    playerActedRef.current = true;
     const S = roundRef.current;
     if (!S || S.winner || S.turn !== 0 || S.phase !== 'discard' || !isWin(handRanks(S.hands[0]))) return;
     finishWin(0, 'formed the hand', S.hands[0].slice());
   };
 
   const playerDiscard = (idx) => {
+    playerActedRef.current = true;
     const S = roundRef.current;
     if (!S || S.winner || S.turn !== 0 || S.phase !== 'discard' || swapSel) return;
     stopTurnTimer();
@@ -183,6 +190,7 @@ export default function NjukaGame({ onClose, closing, onWin, onSpend, onRefund, 
   };
 
   const confirmSwap = () => {
+    playerActedRef.current = true;
     const S = roundRef.current;
     if (!S || S.winner || S.turn !== 0 || S.phase !== 'discard') return;
     if (!swapSel || swapSel.length !== 2) return;
@@ -246,7 +254,7 @@ export default function NjukaGame({ onClose, closing, onWin, onSpend, onRefund, 
     if (!elig.length) { later(endTurn, 450); return; }
     let resolved = false;
     const fire = (seat) => {
-      if (resolved || !roundRef.current || roundRef.current.winner) return;
+      if (resolved || roundRef.current !== S || S.winner) return;
       resolved = true;
       setClaimable(false); claimFireRef.current = null;
       S.discard.pop();
@@ -262,7 +270,7 @@ export default function NjukaGame({ onClose, closing, onWin, onSpend, onRefund, 
     if (elig.includes(0)) {
       setHint(`⚡ The ${label(card.r)} completes your hand — TAP the pile to WIN!`);
       setClaimable(true);
-      claimFireRef.current = () => fire(0);
+      claimFireRef.current = () => { playerActedRef.current = true; fire(0); };
       later(() => {
         if (!resolved) {
           resolved = true; setClaimable(false); claimFireRef.current = null;
@@ -304,6 +312,7 @@ export default function NjukaGame({ onClose, closing, onWin, onSpend, onRefund, 
   };
 
   const scheduleNext = () => {
+    if (!playerActedRef.current) { setNextIn(null); return; }
     let n = Math.round(NEXT_MS / 1000);
     setNextIn(n);
     const tick = () => {
@@ -317,6 +326,7 @@ export default function NjukaGame({ onClose, closing, onWin, onSpend, onRefund, 
 
   const leaveTable = () => {
     clearTimers(); roundRef.current = null;
+    claimFireRef.current = null;
     setBanner(null); setNextIn(null); setScreen('stake'); setHint('');
   };
 
