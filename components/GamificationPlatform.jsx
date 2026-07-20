@@ -967,11 +967,13 @@ export default function GamificationPlatform() {
           if (!toRefund.length) return u;
           const coins = toRefund.reduce((s, p) => s + (p.price_kwacha || 0), 0);
           const gems = toRefund.reduce((s, p) => s + (p.price_gems || 0), 0);
+          const diamonds = toRefund.reduce((s, p) => s + (p.price_diamonds || 0), 0);
           applied = { count: toRefund.length, coins };
           return {
             ...u,
             kwacha: u.kwacha + coins,
             gems: u.gems + gems,
+            diamonds: u.diamonds + diamonds,
             refundedPurchaseIds: [...(u.refundedPurchaseIds || []), ...toRefund.map(p => p.id)],
           };
         });
@@ -1568,12 +1570,13 @@ export default function GamificationPlatform() {
   if (tab === 'store') {
     const buyStoreItem = async (item, el) => {
       if (session.status !== 'ready') { showNotif('Connect via bwanabet to buy store items', 'error'); return; }
-      const canBuy = user.kwacha >= item.price.kwacha && (!item.price.gems || user.gems >= item.price.gems);
+      const canBuy = user.kwacha >= item.price.kwacha && (!item.price.gems || user.gems >= item.price.gems) && (!item.price.diamonds || user.diamonds >= item.price.diamonds);
       if (!canBuy) { showNotif('Not enough balance!', 'error'); return; }
       try {
         const d = await session.buyItem(item.id);
         if (!d || !d.ok) {
-          const msg = d && d.error === 'out_of_stock' ? 'Sold out — someone beat you to it!'
+          const msg = d && d.error === 'weekly_limit' ? 'Money prizes are limited to one per week — come back soon!'
+            : d && d.error === 'out_of_stock' ? 'Sold out — someone beat you to it!'
             : d && d.error === 'slow_down' ? 'Too many attempts — wait a minute.'
             : d && d.error === 'invalid_token' ? 'Session expired — reload the page.'
             // Server-held balance was short: recent winnings may not have
@@ -1588,8 +1591,10 @@ export default function GamificationPlatform() {
         // keeps the deduction equal to any later refund.
         const paidCoins = d.purchase?.price_kwacha ?? item.price.kwacha;
         const paidGems = d.purchase?.price_gems ?? (item.price.gems || 0);
+        const paidDiamonds = d.purchase?.price_diamonds ?? (item.price.diamonds || 0);
         addCoins(-paidCoins);
         if (paidGems) addGems(-paidGems);
+        if (paidDiamonds) addDiamonds(-paidDiamonds);
         trackMission('storePurchase', { amount: paidCoins });
         track('purchase', { amount: paidCoins, meta: { itemId: item.id } });
         showNotif(`🛒 ${item.name} purchased — our team will credit it shortly!`);
@@ -1599,7 +1604,7 @@ export default function GamificationPlatform() {
       }
     };
     return (<>
-      <StoreView {...v2Stats} onBuy={buyStoreItem} kwacha={user.kwacha} gems={user.gems} />
+      <StoreView {...v2Stats} onBuy={buyStoreItem} kwacha={user.kwacha} gems={user.gems} diamonds={user.diamonds} />
       {gameOverlays}
     </>);
   }

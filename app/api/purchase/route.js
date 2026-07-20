@@ -52,7 +52,7 @@ export async function POST(req) {
 
   return NextResponse.json({
     ok: true,
-    purchase: { id: p.id, item_name: p.item_name, price_kwacha: p.price_kwacha, price_gems: p.price_gems, status: p.status },
+    purchase: { id: p.id, item_name: p.item_name, price_kwacha: p.price_kwacha, price_gems: p.price_gems, price_diamonds: p.price_diamonds, status: p.status },
     balance: data.balance || null, // server-held balance after deduction
   });
 }
@@ -65,7 +65,7 @@ export async function GET(req) {
   const uid = authedUid(token);
   if (!uid || uid === 'NaN') return NextResponse.json({ error: 'invalid_token' }, { status: 401 });
   const { data } = await supabaseAdmin.from('purchases')
-    .select('id,item_name,price_kwacha,price_gems,status,created_at')
+    .select('id,item_name,price_kwacha,price_gems,price_diamonds,status,created_at')
     .eq('uid', uid).order('created_at', { ascending: false }).limit(50);
   return NextResponse.json({ purchases: data || [] });
 }

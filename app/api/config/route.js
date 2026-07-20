@@ -15,7 +15,7 @@ export async function GET() {
     try {
       const [cfgRes, itemRes] = await Promise.all([
         supabaseAdmin.from('platform_config').select('key,value'),
-        supabaseAdmin.from('store_items').select('id,name,descr,price_kwacha,price_gems,image_url,stock,featured,is_new,sort')
+        supabaseAdmin.from('store_items').select('id,name,descr,price_kwacha,price_gems,price_diamonds,is_money,image_url,stock,featured,is_new,sort')
           .eq('active', true).order('sort', { ascending: true }),
       ]);
       rows = cfgRes.data || [];
@@ -28,7 +28,8 @@ export async function GET() {
     .filter(i => i.stock === null || i.stock > 0)
     .map(i => ({
       id: i.id, name: i.name, desc: i.descr,
-      price: { kwacha: i.price_kwacha, ...(i.price_gems ? { gems: i.price_gems } : {}) },
+      price: { kwacha: i.price_kwacha, ...(i.price_gems ? { gems: i.price_gems } : {}), ...(i.price_diamonds ? { diamonds: i.price_diamonds } : {}) },
+      isMoney: !!i.is_money,
       imageUrl: i.image_url || null, featured: i.featured, isNew: i.is_new,
     }));
   return NextResponse.json(config, {

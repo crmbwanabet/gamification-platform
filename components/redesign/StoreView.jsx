@@ -18,8 +18,9 @@ function StoreCard({ item, canBuy, onBuy, i = 0 }) {
         <div style={{ fontSize: 13, fontWeight: 800, color: C.text, lineHeight: 1.2 }}>{item.name}</div>
         <div style={{ marginTop: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 12, fontWeight: 800 }}>
-            <span style={{ color: C.gold, display: 'inline-flex', alignItems: 'center', gap: 4 }}><RewardIcon kind="coins" size={15} />{item.price.kwacha}</span>
-            {item.price.gems && <span style={{ color: C.teal, display: 'inline-flex', alignItems: 'center', gap: 4 }}><RewardIcon kind="gem" size={14} />{item.price.gems}</span>}
+            {(item.price.kwacha > 0 || (!item.price.gems && !item.price.diamonds)) && <span style={{ color: C.gold, display: 'inline-flex', alignItems: 'center', gap: 4 }}><RewardIcon kind="coins" size={15} />{item.price.kwacha}</span>}
+            {item.price.gems ? <span style={{ color: C.teal, display: 'inline-flex', alignItems: 'center', gap: 4 }}><RewardIcon kind="gem" size={14} />{item.price.gems}</span> : null}
+            {item.price.diamonds ? <span style={{ color: '#7fd8f5', display: 'inline-flex', alignItems: 'center', gap: 4 }}><RewardIcon kind="diamond" size={14} />{item.price.diamonds}</span> : null}
           </span>
           <button onClick={(e) => canBuy && onBuy && onBuy(item, e?.currentTarget)} disabled={!canBuy} style={{ border: 'none', cursor: canBuy ? 'pointer' : 'not-allowed', fontSize: 11, fontWeight: 800, padding: '6px 14px', borderRadius: 8, background: canBuy ? C.green : C.track, color: canBuy ? '#08210f' : C.muted }}>Buy</button>
         </div>
@@ -28,7 +29,7 @@ function StoreCard({ item, canBuy, onBuy, i = 0 }) {
   );
 }
 
-export default function StoreView({ points = '0', missionsCount = 0, badges = 0, xp = 0, onNavigate, onOpenProfile, onBuy, kwacha = 0, gems = 0, userId = null, navBadges = {}, storeItems = null }) {
+export default function StoreView({ points = '0', missionsCount = 0, badges = 0, xp = 0, onNavigate, onOpenProfile, onBuy, kwacha = 0, gems = 0, diamonds = 0, userId = null, navBadges = {}, storeItems = null }) {
   const items = storeItems || STORE_ITEMS;
   return (
     <RedesignShell points={points} missionsCount={missionsCount} badges={badges} xp={xp} userId={userId} navBadges={navBadges} activeTab="store" onNavigate={onNavigate} onOpenProfile={onOpenProfile}>
@@ -46,7 +47,7 @@ export default function StoreView({ points = '0', missionsCount = 0, badges = 0,
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(168px, 1fr))', gap: 12 }}>
             {items.map((item, i) => {
-              const canBuy = kwacha >= item.price.kwacha && (!item.price.gems || gems >= item.price.gems);
+              const canBuy = kwacha >= item.price.kwacha && (!item.price.gems || gems >= item.price.gems) && (!item.price.diamonds || diamonds >= item.price.diamonds);
               return <StoreCard key={item.id} i={i} item={item} canBuy={canBuy} onBuy={onBuy} />;
             })}
           </div>
