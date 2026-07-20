@@ -47,7 +47,7 @@ import HighLowGame from './games/HighLowGame';
 import PlinkoGame from './games/PlinkoGame';
 import TapFrenzyGame from './games/TapFrenzyGame';
 import StopClockGame from './games/StopClockGame';
-import NjukaGame from './games/NjukaGame';
+import NjukaGame from './games/njuka/NjukaGame';
 // trivia games parked — see parked/components/games/
 
 // Respect the user's OS-level motion preference.

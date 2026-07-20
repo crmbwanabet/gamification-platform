@@ -11,11 +11,19 @@ const iconBtn = { border: 'none', background: 'rgba(255,255,255,.08)', color: C.
 // Red close — same family as the widget-mode red X so "exit" always reads the same
 const closeBtn = { ...iconBtn, background: 'linear-gradient(180deg, #f0684f, #d43a22)', color: '#fff', border: '1px solid rgba(255,255,255,.25)', boxShadow: '0 3px 10px rgba(212,58,34,.35)' };
 
-export function GameShell({ title, onClose, closing, onHelp, children, maxWidth = 440 }) {
+// fullBleed: below 640px the shell becomes a full-viewport takeover (poker-table
+// style) instead of a margined dialog; desktop keeps the centered modal.
+export function GameShell({ title, onClose, closing, onHelp, children, maxWidth = 440, fullBleed = false }) {
   return (
-    <div onClick={onClose} className={closing ? 'anim-backdrop-close' : 'anim-fade-in'}
+    <div onClick={onClose} className={(closing ? 'anim-backdrop-close' : 'anim-fade-in') + (fullBleed ? ' gs-bleed-bd' : '')}
       style={{ position: 'fixed', inset: 0, zIndex: 70, display: 'grid', placeItems: 'center', padding: 16, background: 'rgba(8,10,16,.74)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)', fontFamily: "var(--font-body, 'Onest', system-ui, sans-serif)" }}>
-      <div onClick={(e) => e.stopPropagation()} className={closing ? 'anim-modal-close' : 'anim-scale-in'}
+      {fullBleed && <style>{`
+        @media (max-width: 640px) {
+          .gs-bleed-bd { padding: 0 !important; }
+          .gs-bleed-card { max-width: none !important; height: 100dvh; max-height: none !important; border-radius: 0 !important; padding: 14px 12px calc(12px + env(safe-area-inset-bottom)) !important; display: flex; flex-direction: column; }
+        }
+      `}</style>}
+      <div onClick={(e) => e.stopPropagation()} className={(closing ? 'anim-modal-close' : 'anim-scale-in') + (fullBleed ? ' gs-bleed-card' : '')}
         style={{ width: '100%', maxWidth, maxHeight: '92vh', overflowY: 'auto', borderRadius: 20, background: `linear-gradient(180deg, ${C.panelHi}, ${C.panelLo})`, border: '1px solid rgba(255,255,255,.09)', boxShadow: '0 24px 60px rgba(0,0,0,.55)', color: C.text, position: 'relative', padding: 22 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, gap: 8 }}>
           {onHelp ? <button type="button" onClick={onHelp} title="How to play" style={iconBtn}><HelpCircle size={18} /></button> : <span style={{ width: 34 }} />}
