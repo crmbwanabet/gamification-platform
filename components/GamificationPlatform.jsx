@@ -29,7 +29,7 @@ import { track, setTrackUid } from '@/lib/track';
 import { IMG_BASE, CURRENCY_ICONS, IMAGES, WHEEL_IMAGES } from '../lib/data/images';
 // trivia + predictions libs parked — see parked/lib/
 import {
-  XP_LEVELS, VIP_TIERS, MINIGAMES, STORE_ITEMS,
+  XP_LEVELS, VIP_TIERS, MINIGAMES, STORE_ITEMS, GAME_ECONOMY,
   STREAK_REWARDS, DAILY_FREE_SPIN_ROTATION, getDailyFreeSpinGames,
   getLevel, getNextLevel, getXPProgress, getVIP
 } from '../lib/data/platform';
@@ -1021,9 +1021,11 @@ export default function GamificationPlatform() {
   }, [cfg.ready, session.status, refreshDailyPlays]);
 
   // Daily-reward day rollover: once a new calendar day begins since the last
-  // claim, re-open the claim. Runs on mount and whenever the stored claim date
-  // changes (e.g. after SSO hydration restores yesterday's claim).
-  useEffect(() => {
+  // claim, re-open the claim. Runs on mount, whenever the stored claim date
+  // changes (e.g. after SSO hydration restores yesterday's claim), AND on a
+  // minute interval so a session left open across midnight reopens too
+  // (mirrors the refreshDailyPlays interval).
+  const rollDailyClaim = useCallback(() => {
     const today = new Date().toDateString();
     setUser(u => {
       if (!u.lastDailyClaim || u.lastDailyClaim === today) return u;
@@ -1034,7 +1036,16 @@ export default function GamificationPlatform() {
       if (u.dailyClaimed || u.dailyDay !== 1 || u.streak !== 1) return { ...u, dailyClaimed: false, dailyDay: 1, streak: 1 };
       return u;
     });
-  }, [user.lastDailyClaim]);
+  }, []);
+  useEffect(() => { rollDailyClaim(); }, [user.lastDailyClaim, rollDailyClaim]);
+  useEffect(() => {
+    const iv = setInterval(rollDailyClaim, 60000);
+    return () => clearInterval(iv);
+  }, [rollDailyClaim]);
+  // Same-tick double-fire guard for the claim button (state guard alone can't
+  // catch two clicks landing in one batch); re-arms whenever the claim reopens.
+  const dailyBusyRef = useRef(false);
+  useEffect(() => { if (!user.dailyClaimed) dailyBusyRef.current = false; }, [user.dailyClaimed]);
 
   // Helper functions
   const showNotif = useCallback((msg, type = 'success') => {
@@ -1222,6 +1233,17 @@ export default function GamificationPlatform() {
     }
   };
 
+  // In-game replays (Roll/Deal/Play Again buttons) go through the same
+  // economy as opening a game: consume a remaining free play, else charge the
+  // extra-play cost. Returns whether the replay may proceed.
+  const requestReplay = (gameId) => {
+    if (user.gamePlays[gameId] > 0) { useGamePlay(gameId); return true; }
+    const cost = activeGames.find(g => g.id === gameId)?.cost ?? GAME_ECONOMY.EXTRA_PLAY_COST;
+    if (user.kwacha >= cost) { addCoins(-cost); showNotif(`Extra play — ${cost} Coins`); return true; }
+    showNotif('Not enough Coins for another play!', 'error');
+    return false;
+  };
+
   // playTrivia + handleDailyChallenge parked — see parked/components/GamificationPlatform.removed-wiring.jsx
   // (tabs/SUB_NAV consts went with the legacy shell — see parked/components/legacy/)
 
@@ -1320,6 +1342,7 @@ export default function GamificationPlatform() {
       {activeGame === 'dice' && (
         <DiceGame
           onClose={() => animateClose(() => setActiveGame(null))} closing={closingModal}
+          onReplay={() => requestReplay('dice')}
           onWin={(n) => {
             addCoins(n);
             showNotif(`🎉 +${n} Coins!`);
@@ -1333,6 +1356,7 @@ export default function GamificationPlatform() {
       {activeGame === 'highlow' && (
         <HighLowGame
           onClose={() => animateClose(() => setActiveGame(null))} closing={closingModal}
+          onReplay={() => requestReplay('highlow')}
           onWin={(n) => {
             addCoins(n);
             showNotif(`🎉 +${n} Coins!`);
@@ -1346,6 +1370,8 @@ export default function GamificationPlatform() {
       {activeGame === 'plinko' && (
         <PlinkoGame
           onClose={() => animateClose(() => setActiveGame(null))} closing={closingModal}
+          balance={user.kwacha}
+          onSpend={(n) => addCoins(-n)}
           onWin={(n) => {
             addCoins(n);
             showNotif(`🎉 +${n} Coins!`);
@@ -1359,6 +1385,7 @@ export default function GamificationPlatform() {
       {activeGame === 'tapfrenzy' && (
         <TapFrenzyGame
           onClose={() => animateClose(() => setActiveGame(null))} closing={closingModal}
+          onReplay={() => requestReplay('tapfrenzy')}
           onWin={(n, meta) => {
             addCoins(n);
             showNotif(`🎉 +${n} Coins!`);
@@ -1372,6 +1399,7 @@ export default function GamificationPlatform() {
       {activeGame === 'stopclock' && (
         <StopClockGame
           onClose={() => animateClose(() => setActiveGame(null))} closing={closingModal}
+          onReplay={() => requestReplay('stopclock')}
           onWin={(n, meta) => {
             addCoins(n);
             showNotif(`🎉 +${n} Coins!`);
@@ -1475,23 +1503,37 @@ export default function GamificationPlatform() {
   };
 
   const claimDailyReward = (el) => {
-    if (user.dailyClaimed) return;
+    if (user.dailyClaimed || dailyBusyRef.current) return;
     const r = cfg.dailyRewards[user.dailyDay - 1] || cfg.dailyRewards[0];
     if (!r) return;
+    dailyBusyRef.current = true;
     addCoins(r.kwacha);
     if (r.gems) addGems(r.gems);
     if (r.diamonds) addDiamonds(r.diamonds);
     addXP(20);
     const today = new Date().toDateString();
-    setUser(u => {
-      const wasYesterday = u.lastDailyClaim && Math.round((new Date(today) - new Date(u.lastDailyClaim)) / 86400000) === 1;
-      // 7-day rollover assumes the rewards table has 7 entries (admin dashboard validates at write time)
-      return { ...u, dailyClaimed: true, lastDailyClaim: today, dailyDay: u.dailyDay >= 7 ? 1 : u.dailyDay + 1, streak: wasYesterday ? u.streak + 1 : u.streak, dailyTasksDone: [...new Set([...u.dailyTasksDone, 'claim'])] };
-    });
+    const wasYesterday = user.lastDailyClaim && Math.round((new Date(today) - new Date(user.lastDailyClaim)) / 86400000) === 1;
+    const newStreak = wasYesterday ? user.streak + 1 : user.streak;
+    // 7-day rollover assumes the rewards table has 7 entries (admin dashboard validates at write time)
+    setUser(u => ({ ...u, dailyClaimed: true, lastDailyClaim: today, dailyDay: u.dailyDay >= 7 ? 1 : u.dailyDay + 1, streak: newStreak, dailyTasksDone: [...new Set([...u.dailyTasksDone, 'claim'])] }));
     trackMission('dailyClaimed');
     track('daily_claimed', { amount: r.kwacha });
     showNotif(`🎉 +${r.kwacha} Coins claimed!`);
     triggerReward('medium', el || null, { coins: r.kwacha, gems: r.gems, diamonds: r.diamonds, xp: 20 });
+    // Streak milestone bonus — credited the moment the streak reaches it.
+    // Fires once per streak run (the streak passes each value exactly once);
+    // rebuilding a broken streak earns the milestones again by design.
+    const sb = (cfg.streakRewards || []).find(s => s.days === newStreak);
+    if (sb) {
+      if (sb.kwacha) addCoins(sb.kwacha);
+      if (sb.gems) addGems(sb.gems);
+      if (sb.diamonds) addDiamonds(sb.diamonds);
+      track('streak_bonus', { amount: sb.kwacha || 0, meta: { days: sb.days } });
+      setTimeout(() => {
+        showNotif(`🔥 ${sb.days}-day streak bonus — +${sb.kwacha} Coins!`);
+        triggerReward('big', null, { coins: sb.kwacha || undefined, gems: sb.gems, diamonds: sb.diamonds });
+      }, 1400);
+    }
   };
 
   // placePrediction + streak-voucher check + prediction settlement parked —

@@ -3,7 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase/admin';
 
 export const runtime = 'nodejs';
 
-const TYPES = new Set(['session_start', 'game_played', 'mission_completed', 'daily_claimed', 'purchase', 'level_up']);
+const TYPES = new Set(['session_start', 'game_played', 'mission_completed', 'daily_claimed', 'streak_bonus', 'purchase', 'level_up']);
 const MAX_EVENTS = 25;
 
 // Fire-and-forget beacon. Always 200s (client never retries); invalid input

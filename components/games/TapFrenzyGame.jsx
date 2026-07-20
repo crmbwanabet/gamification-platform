@@ -38,7 +38,7 @@ const curve = (p) => ({
 
 const getPrize = (score) => score >= 60 ? 200 : score >= 45 ? 100 : score >= 30 ? 50 : score >= 15 ? 25 : 10;
 
-function TapFrenzyGame({ onClose, onWin, closing }) {
+function TapFrenzyGame({ onClose, onWin, closing, onReplay }) {
   const [gameState, setGameState] = useState('ready'); // ready, playing, done
   const [score, setScore] = useState(0);
   const [timeLeft, setTimeLeft] = useState(GAME_LEN);
@@ -326,7 +326,7 @@ function TapFrenzyGame({ onClose, onWin, closing }) {
             <div style={{ fontSize: 20, color: C.green, fontWeight: 800, marginBottom: 24, display: 'inline-flex', alignItems: 'center', gap: 6, animation: 'correctPop 0.4s ease 0.3s both' }}>
               +{getPrize(score)} <RewardIcon kind="coins" size={18} />
             </div>
-            <GameBtn onClick={() => { setGameState('ready'); setScore(0); setTimeLeft(GAME_LEN); }} full={false} style={{ padding: '12px 30px' }}>Play Again ⚡</GameBtn>
+            <GameBtn onClick={() => { if (onReplay && !onReplay()) return; setGameState('ready'); setScore(0); setTimeLeft(GAME_LEN); }} full={false} style={{ padding: '12px 30px' }}>Play Again ⚡</GameBtn>
           </div>
         )}
       </div>

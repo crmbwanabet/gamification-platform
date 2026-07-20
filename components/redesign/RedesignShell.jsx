@@ -197,7 +197,7 @@ export default function RedesignShell({
           .rs-topbar { flex-wrap: wrap !important; gap: 12px !important; padding: 10px 14px !important; }
           .rs-level { width: 100% !important; order: 5; margin-left: 0 !important; }
           .rs-stats { margin-left: auto !important; gap: 18px !important; }
-          .rs-main { padding: 14px 14px 84px !important; }
+          .rs-main { padding: 14px 14px calc(100px + env(safe-area-inset-bottom)) !important; }
           .rs-ov-grid { grid-template-columns: 1fr !important; gap: 18px !important; }
           .rs-ov-2 { grid-template-columns: 1fr 1fr !important; }
         }

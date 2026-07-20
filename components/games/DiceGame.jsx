@@ -91,7 +91,7 @@ function makeFaceTexture(THREE, value, tint) {
   return tex;
 }
 
-export default function DiceGame({ onClose, onWin, closing }) {
+export default function DiceGame({ onClose, onWin, closing, onReplay }) {
   const mountRef = useRef(null);
   const engineRef = useRef(null);
   const rafRef = useRef(null);
@@ -539,7 +539,7 @@ export default function DiceGame({ onClose, onWin, closing }) {
             <button
               type="button"
               className="dice-again"
-              onClick={() => { setResult(null); setGuess(null); }}
+              onClick={() => { if (onReplay && !onReplay()) return; setResult(null); setGuess(null); }}
             >
               <span className="dice-again-face">
                 🎲 ROLL AGAIN

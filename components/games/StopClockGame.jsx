@@ -49,7 +49,7 @@ const prizeFor = (diff, stageIdx) => {
 // watch.png face geometry (512x512 art): center (245,273), radius 139
 const FC = { x: 245, y: 273, r: 139 };
 
-function StopClockGame({ onClose, onWin, closing }) {
+function StopClockGame({ onClose, onWin, closing, onReplay }) {
   const [gameState, setGameState] = useState('ready'); // ready, intro, spinning, stageResult, done
   const [stage, setStage] = useState(0);
   const [currentNum, setCurrentNum] = useState(0);
@@ -325,7 +325,7 @@ function StopClockGame({ onClose, onWin, closing }) {
                 {total > 0 ? <>Total +{total} <RewardIcon kind="coins" size={20} /></> : 'No luck this time!'}
               </div>
               <div>
-                <ScBtn full={false} style={{ padding: '12px 30px' }} onClick={() => { setGameState('ready'); setResults([]); setStage(0); setTargetNum(null); setCurrentNum(0); }}>
+                <ScBtn full={false} style={{ padding: '12px 30px' }} onClick={() => { if (onReplay && !onReplay()) return; setGameState('ready'); setResults([]); setStage(0); setTargetNum(null); setCurrentNum(0); }}>
                   Play Again ⏱️
                 </ScBtn>
               </div>

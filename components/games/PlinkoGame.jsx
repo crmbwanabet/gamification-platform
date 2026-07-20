@@ -18,7 +18,7 @@ import { GAME_ECONOMY } from '@/lib/data/platform';
 
 const W = 380, H = 380, DPR = 2; // logical size / render scale
 
-function PlinkoGame({ onClose, onWin, closing }) {
+function PlinkoGame({ onClose, onWin, closing, onSpend, balance = 0 }) {
   const canvasRef = useRef(null);
   const [risk, setRisk] = useState('medium');
   const [wager, setWager] = useState(1);
@@ -590,6 +590,13 @@ function PlinkoGame({ onClose, onWin, closing }) {
   useEffect(() => { draw(); }, [risk, draw]);
 
   const dropBall = useCallback(() => {
+    // wagers are REAL: each drop deducts its wager from the coin balance
+    if (balance < wager) {
+      setAutoDropping(false);
+      setLastResult({ type: 'nofunds' });
+      return;
+    }
+    if (onSpend) onSpend(wager);
     const ball = {
       x: (dropX / 100) * 0.8 + 0.1,
       y: 0.04,
@@ -603,7 +610,7 @@ function PlinkoGame({ onClose, onWin, closing }) {
     setActiveBalls(prev => prev + 1);
     setTotalSpent(prev => prev + wager);
     ensureRunning();
-  }, [dropX, wager, ensureRunning]);
+  }, [dropX, wager, ensureRunning, balance, onSpend]);
 
   const autoDrop = (count) => {
     setAutoDropping(true);
@@ -744,6 +751,7 @@ function PlinkoGame({ onClose, onWin, closing }) {
                 🏆 JACKPOT! +{lastResult.prize}<RewardIcon kind="coins" size={18} />
               </div>
             )}
+            {lastResult.type === 'nofunds' && <div className="text-base font-black" style={{ color: C.red }}>Not enough Coins for that wager!</div>}
             {lastResult.type === 'bomb' && <div className="text-base font-black" style={{ color: C.red }}>💣 BOOM! Lost wager</div>}
             {lastResult.type === 'obstacle' && <div className="text-base font-black" style={{ color: C.red }}>💥 Hit obstacle!</div>}
             {lastResult.type === 'zero' && <div className="text-base font-black" style={{ color: C.muted }}>×0 — so close to the jackpot!</div>}

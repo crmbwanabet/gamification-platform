@@ -218,7 +218,7 @@ function StaticCard({ card, glow }) {
   );
 }
 
-export default function HighLowGame({ onClose, onWin, closing }) {
+export default function HighLowGame({ onClose, onWin, closing, onReplay }) {
   const [current, setCurrent] = useState(drawCard);
   const [nextCard, setNextCard] = useState(null);   // the face of the flipping card
   const [flipped, setFlipped] = useState(false);
@@ -478,7 +478,7 @@ export default function HighLowGame({ onClose, onWin, closing }) {
             <p style={{ fontSize: 13, color: C.sub, marginBottom: 16 }}>Nothing banked — the deck is cruel sometimes.</p>
           )}
           <div>
-            <button type="button" className="hl-again" onClick={reset}>
+            <button type="button" className="hl-again" onClick={() => { if (onReplay && !onReplay()) return; reset(); }}>
               <span className="hl-again-face">🃏 DEAL AGAIN</span>
             </button>
           </div>

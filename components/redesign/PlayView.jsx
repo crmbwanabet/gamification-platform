@@ -30,10 +30,12 @@ function SubNav({ tab, onNavigate }) {
 }
 
 function GameCard({ g, free, onPlay, i = 0 }) {
+  // Out of free plays ≠ locked: the card stays playable as a PAID extra play
+  // (playGame charges the cost or shows the not-enough-coins toast).
   const out = !g.stakeOnly && free <= 0;
   return (
-    <Card className="card-enter" style={{ overflow: 'hidden', cursor: out ? 'default' : 'pointer', opacity: out ? 0.72 : 1, animationDelay: `${i * 45}ms` }}>
-      <div onClick={() => !out && onPlay && onPlay(g.id)} style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+    <Card className="card-enter" style={{ overflow: 'hidden', cursor: 'pointer', opacity: out ? 0.88 : 1, animationDelay: `${i * 45}ms` }}>
+      <div onClick={() => onPlay && onPlay(g.id)} style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
         <div style={{ position: 'relative' }}>
           <Thumb src={IMAGES[g.image]} alt={g.name} h={82} radius={0} />
           {g.isNew && <span style={{ position: 'absolute', top: 6, left: 6, zIndex: 2 }}><Badge bg={C.red} color="#fff">New</Badge></span>}
@@ -44,7 +46,7 @@ function GameCard({ g, free, onPlay, i = 0 }) {
         <div style={{ padding: '9px 10px', display: 'flex', flexDirection: 'column', gap: 7, flex: 1 }}>
           <div style={{ fontSize: 12.5, fontWeight: 800, color: C.text, lineHeight: 1.2 }}>{g.name}</div>
           <div style={{ marginTop: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
-            <span style={{ fontSize: 11, fontWeight: 800, padding: '5px 13px', borderRadius: 7, background: out ? C.track : C.green, color: out ? C.muted : '#08210f' }}>{out ? 'No plays' : 'Play'}</span>
+            <span style={{ fontSize: 11, fontWeight: 800, padding: '5px 13px', borderRadius: 7, background: out ? C.gold : C.green, color: '#08210f' }}>{out ? 'Paid play' : 'Play'}</span>
             <span style={{ fontSize: 10.5, color: C.muted, display: 'inline-flex', alignItems: 'center', gap: 3 }}>{g.stakeOnly ? <><RewardIcon kind="coins" size={13} />5–50</> : free > 0 ? 'Free' : <><RewardIcon kind="coins" size={13} />{g.cost}</>}</span>
           </div>
         </div>
