@@ -17,6 +17,17 @@ test('purchaseMessage: gems shown only when nonzero', () => {
   assert.ok(purchaseMessage({ ...P, price_gems: 5 }).includes('5 gems'));
 });
 
+test('purchaseMessage: diamonds shown only when nonzero', () => {
+  assert.ok(!purchaseMessage(P).includes('diamonds'));
+  assert.ok(purchaseMessage({ ...P, price_kwacha: 0, price_diamonds: 15 }).includes('15 diamonds'));
+});
+
+test('purchaseMessage: money prizes carry a credit-warning line', () => {
+  const m = purchaseMessage({ ...P, is_money: true, item_name: 'K50 Bwanabet Credit' });
+  assert.ok(m.includes('💵 MONEY PRIZE'));
+  assert.ok(!purchaseMessage(P).includes('MONEY PRIZE'));
+});
+
 test('handledSuffix: credit and reject variants', () => {
   assert.equal(handledSuffix('credited', 'jane'), '\n\n✅ Credited by jane');
   assert.equal(handledSuffix('rejected', 'jane'), '\n\n❌ Rejected by jane (refunded)');
