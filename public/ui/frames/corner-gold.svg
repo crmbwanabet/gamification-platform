@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" fill="none">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="200" y2="200" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fff2cf"/>
+      <stop offset="0.34" stop-color="#ecc66a"/>
+      <stop offset="0.68" stop-color="#bd882c"/>
+      <stop offset="1" stop-color="#8a5e12"/>
+    </linearGradient>
+    <linearGradient id="gd" x1="0" y1="0" x2="120" y2="120" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffe39a"/>
+      <stop offset="1" stop-color="#9a6c18"/>
+    </linearGradient>
+  </defs>
+  <!-- main L bracket: chamfered outer corner + chamfered arm ends -->
+  <path d="M198 16 L176 38 L38 38 L38 176 L16 198 L16 26 L26 16 Z"
+        fill="url(#g)" stroke="#6e4a08" stroke-width="2" stroke-linejoin="round"/>
+  <!-- lit top/left outer edges -->
+  <path d="M26 16 L198 16 M16 26 L16 198" stroke="#fff6dd" stroke-width="2.2" stroke-linecap="round" opacity="0.85"/>
+  <!-- shadowed inner edges (engraved channel) -->
+  <path d="M38 38 L176 38 M38 38 L38 176" stroke="#5e3f06" stroke-width="2" stroke-linecap="round" opacity="0.7"/>
+  <!-- parallel inner hairline -->
+  <path d="M50 50 L150 50 M50 50 L50 150" stroke="url(#gd)" stroke-width="3" stroke-linecap="round"/>
+  <path d="M50 50 L150 50 M50 50 L50 150" stroke="#5e3f06" stroke-width="0.8" stroke-linecap="round" opacity="0.5"/>
+  <!-- art-deco diamond stud accent near the inner corner -->
+  <path d="M72 60 L84 72 L72 84 L60 72 Z" fill="url(#gd)" stroke="#5e3f06" stroke-width="1.2" stroke-linejoin="round"/>
+  <path d="M72 64 L80 72 L72 80 L64 72 Z" fill="#5e3f06" opacity="0.45"/>
+  <!-- corner rivet -->
+  <circle cx="27" cy="27" r="4.5" fill="url(#gd)" stroke="#5e3f06" stroke-width="1"/>
+  <circle cx="25.5" cy="25.5" r="1.6" fill="#fff6dd"/>
+  <!-- arm-end caps (small stepped notch) -->
+  <path d="M176 38 L186 28 L196 38 Z" fill="url(#gd)" stroke="#6e4a08" stroke-width="1"/>
+  <path d="M38 176 L28 186 L38 196 Z" fill="url(#gd)" stroke="#6e4a08" stroke-width="1"/>
+</svg>

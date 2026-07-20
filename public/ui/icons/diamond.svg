@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100">
+  <defs>
+    <linearGradient id="dGloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff" stop-opacity=".9"/><stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <!-- brilliant-cut diamond: crown table + pavilion facets -->
+  <polygon points="24,22 76,22 90,40 50,92 10,40" fill="#075563"/>
+  <g stroke="#06424d" stroke-width="1.2" stroke-linejoin="round">
+    <polygon points="24,20 76,20 68,39 32,39" fill="#e6feff"/>
+    <polygon points="24,20 9,40 32,39" fill="#92eefb"/>
+    <polygon points="76,20 91,40 68,39" fill="#b3f5fd"/>
+    <polygon points="9,40 32,39 50,90" fill="#119bb1"/>
+    <polygon points="68,39 91,40 50,90" fill="#19b3cc"/>
+    <polygon points="32,39 68,39 50,90" fill="#33ddf5"/>
+  </g>
+  <polygon points="24,20 76,20 68,39 32,39" fill="url(#dGloss)" opacity=".45"/>
+  <polygon points="32,39 50,39 46,58 40,58" fill="#fff" opacity=".28"/>
+</svg>

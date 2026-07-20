@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100">
+  <defs>
+    <radialGradient id="cRim" cx="38%" cy="30%" r="80%">
+      <stop offset="0" stop-color="#ffe89a"/><stop offset="55%" stop-color="#e7b03e"/><stop offset="100%" stop-color="#9a6a15"/>
+    </radialGradient>
+    <radialGradient id="cFace" cx="40%" cy="34%" r="75%">
+      <stop offset="0" stop-color="#fff4cf"/><stop offset="55%" stop-color="#f3c85f"/><stop offset="100%" stop-color="#c9902c"/>
+    </radialGradient>
+    <radialGradient id="cGloss" cx="50%" cy="40%" r="60%">
+      <stop offset="0" stop-color="#fff" stop-opacity=".95"/><stop offset=".55" stop-color="#fff" stop-opacity=".18"/><stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <circle cx="50" cy="53.5" r="44" fill="#6f4a10"/>
+  <circle cx="50" cy="50" r="44" fill="url(#cRim)"/>
+  <circle cx="50" cy="50" r="35" fill="url(#cFace)" stroke="#b8842a" stroke-width="1.5"/>
+  <circle cx="50" cy="50" r="40" fill="none" stroke="#c99a3a" stroke-width="1.4" stroke-dasharray="2.2 4.2" opacity=".55"/>
+  <path d="M18 44 A40 40 0 0 1 44 17" fill="none" stroke="#fff7dd" stroke-width="2.2" stroke-linecap="round" opacity=".55"/>
+  <text x="50" y="65.5" font-family="Arial Black, Arial, system-ui" font-weight="900" font-size="40" text-anchor="middle" fill="#8a5a10">$</text>
+  <text x="50" y="64.3" font-family="Arial Black, Arial, system-ui" font-weight="900" font-size="40" text-anchor="middle" fill="#fff0bf">$</text>
+  <ellipse cx="35" cy="30" rx="16" ry="9" fill="url(#cGloss)" transform="rotate(-28 35 30)"/>
+</svg>
