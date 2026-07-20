@@ -188,9 +188,20 @@ export default function RedesignShell({
   userId = null, navBadges = {},
 }) {
   const lvl = getLevel(xp), nextLvl = getNextLevel(xp), xpPct = getXPProgress(xp);
+  // Collapse the tall mobile header once the user scrolls down (hysteresis so it
+  // doesn't flicker around the threshold); CSS only applies below 860px.
+  const [collapsed, setCollapsed] = React.useState(false);
+  const onMainScroll = React.useCallback((e) => {
+    const t = e.currentTarget.scrollTop;
+    setCollapsed((prev) => (t > 64 ? true : t < 16 ? false : prev));
+  }, []);
   return (
-    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', overflowX: 'hidden', background: 'radial-gradient(130% 90% at 50% -10%, #1f2230, #171922 72%)', color: C.text, fontFamily: "var(--font-body, 'Onest', system-ui, sans-serif)", WebkitFontSmoothing: 'antialiased' }}>
+    <div className={`rs-shell${collapsed ? ' rs-collapsed' : ''}`} style={{ display: 'flex', flexDirection: 'column', overflowX: 'hidden', background: 'radial-gradient(130% 90% at 50% -10%, #1f2230, #171922 72%)', color: C.text, fontFamily: "var(--font-body, 'Onest', system-ui, sans-serif)", WebkitFontSmoothing: 'antialiased' }}>
       <style>{`
+        /* dvh tracks the *visible* viewport on iOS Safari — with 100vh the bottom
+           of the layout hides behind the browser toolbar and the last row of
+           content ends up under the fixed bottom nav. */
+        .rs-shell { height: 100vh; height: 100dvh; }
         @media (max-width: 860px) {
           .rs-sidebar { display: none !important; }
           .rs-bottomnav { display: flex !important; }
@@ -198,6 +209,10 @@ export default function RedesignShell({
           .rs-level { width: 100% !important; order: 5; margin-left: 0 !important; }
           .rs-stats { margin-left: auto !important; gap: 18px !important; }
           .rs-main { padding: 14px 14px calc(100px + env(safe-area-inset-bottom)) !important; }
+          .rs-topbar { transition: padding .28s ease, row-gap .28s ease; }
+          .rs-level { overflow: hidden; max-height: 64px; transition: max-height .28s ease, opacity .2s ease; }
+          .rs-collapsed .rs-topbar { padding: 7px 14px !important; row-gap: 0 !important; }
+          .rs-collapsed .rs-level { max-height: 0; opacity: 0; }
           .rs-ov-grid { grid-template-columns: 1fr !important; gap: 18px !important; }
           .rs-ov-2 { grid-template-columns: 1fr 1fr !important; }
         }
@@ -208,11 +223,14 @@ export default function RedesignShell({
           .rs-stats { gap: 12px !important; }
           .rs-stats .rs-statlabel { display: none; }
         }
+        @media (prefers-reduced-motion: reduce) {
+          .rs-topbar, .rs-level { transition: none !important; }
+        }
       `}</style>
       <TopBar points={points} missionsCount={missionsCount} badges={badges} lvl={lvl} nextLvl={nextLvl} xpPct={xpPct} onNavigate={onNavigate} onOpenProfile={onOpenProfile} userId={userId} />
       <div style={{ flex: 1, minHeight: 0, display: 'flex', alignItems: 'stretch' }}>
         <Sidebar active={activeTab} onNavigate={onNavigate} navBadges={navBadges} />
-        <main className="rs-main" style={{ flex: 1, minWidth: 0, overflowY: 'auto', WebkitOverflowScrolling: 'touch', padding: '20px 22px' }}>{children}</main>
+        <main className="rs-main" onScroll={onMainScroll} style={{ flex: 1, minWidth: 0, overflowY: 'auto', WebkitOverflowScrolling: 'touch', padding: '20px 22px' }}>{children}</main>
       </div>
       <BottomNav active={activeTab} onNavigate={onNavigate} navBadges={navBadges} />
     </div>
