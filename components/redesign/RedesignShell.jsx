@@ -192,8 +192,15 @@ export default function RedesignShell({
   // doesn't flicker around the threshold); CSS only applies below 860px.
   const [collapsed, setCollapsed] = React.useState(false);
   const onMainScroll = React.useCallback((e) => {
-    const t = e.currentTarget.scrollTop;
-    setCollapsed((prev) => (t > 64 ? true : t < 16 ? false : prev));
+    const el = e.currentTarget;
+    const t = el.scrollTop;
+    // Collapsing hands ~63px of height back to the scroll area, which shrinks
+    // its own scroll range — on short pages (store) that re-clamps scrollTop
+    // below the expand threshold and the header oscillates, locking the last
+    // row out of reach. Only collapse when the page scrolls well beyond what
+    // the collapse itself gives back.
+    const overflow = el.scrollHeight - el.clientHeight;
+    setCollapsed((prev) => (t > 64 && overflow > 170 ? true : t < 16 ? false : prev));
   }, []);
   return (
     <div className={`rs-shell${collapsed ? ' rs-collapsed' : ''}`} style={{ display: 'flex', flexDirection: 'column', overflowX: 'hidden', background: 'radial-gradient(130% 90% at 50% -10%, #1f2230, #171922 72%)', color: C.text, fontFamily: "var(--font-body, 'Onest', system-ui, sans-serif)", WebkitFontSmoothing: 'antialiased' }}>
