@@ -4,7 +4,7 @@ import { STAKES, FACES, payoutFor, resolveFlip } from '../lib/coinflip/engine.mj
 
 test('stakes and faces', () => {
   assert.deepEqual(STAKES, [10, 20, 30, 50]);
-  assert.deepEqual(FACES, ['EAGLE', '100x']);
+  assert.deepEqual(FACES, ['EAGLE', 'BWANA']);
 });
 
 test('payoutFor: 1.9x in integer maths', () => {
@@ -19,9 +19,9 @@ test('resolveFlip: low rng lands EAGLE', () => {
   assert.equal(r.face, 'EAGLE');
 });
 
-test('resolveFlip: high rng lands 100x', () => {
+test('resolveFlip: high rng lands BWANA', () => {
   const r = resolveFlip(10, 'EAGLE', () => 0.9);
-  assert.equal(r.face, '100x');
+  assert.equal(r.face, 'BWANA');
 });
 
 test('resolveFlip: win iff face === pick; payout only on a win', () => {
@@ -55,5 +55,5 @@ test('default rng: 10 000 flips land 47-53% per face', () => {
   for (let i = 0; i < N; i++) if (resolveFlip(10, 'EAGLE').face === 'EAGLE') eagle++;
   const share = eagle / N;
   assert.ok(share >= 0.47 && share <= 0.53, `EAGLE share ${share}`);
-  assert.ok(1 - share >= 0.47 && 1 - share <= 0.53, `100x share ${1 - share}`);
+  assert.ok(1 - share >= 0.47 && 1 - share <= 0.53, `BWANA share ${1 - share}`);
 });

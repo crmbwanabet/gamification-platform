@@ -6,9 +6,9 @@ import { COIN_FACES_READY } from './config';
 
 // The Coin Flip coin — pure CSS 3D, no canvas/WebGL.
 // Two face layers (backface-visibility: hidden) inside a preserve-3d coin:
-// EAGLE is the front (0deg), 100x the back (pre-rotated 180deg). A toss is an
+// EAGLE is the front (0deg), BWANA the back (pre-rotated 180deg). A toss is an
 // arc on the outer wrapper + a rotateY spin on the coin that ends on an even
-// number of half-turns for EAGLE and an odd number for 100x, so the landed
+// number of half-turns for EAGLE and an odd number for BWANA, so the landed
 // angle equals the resting angle and nothing jumps when the animation is removed.
 // onLanded fires exactly once per flight: animationend or a 1500ms fallback.
 // Reduced motion: no arc/spin — the result face fades in over 200ms.
@@ -16,7 +16,7 @@ import { COIN_FACES_READY } from './config';
 const TOSS_MS = 1400;
 const FALLBACK_MS = 1500;
 const FADE_MS = 200;
-const angleOf = (face) => (face === '100x' ? 180 : 0);
+const angleOf = (face) => (face === 'BWANA' ? 180 : 0);
 
 const COIN_CSS = `
   @keyframes cfArc {
@@ -35,7 +35,7 @@ const COIN_CSS = `
 function Face({ face, back }) {
   const base = { position: 'absolute', inset: 0, borderRadius: '50%', backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden', transform: back ? 'rotateY(180deg)' : 'none' };
   if (COIN_FACES_READY) {
-    return <img src={face === 'EAGLE' ? '/games/coinflip/eagle.webp' : '/games/coinflip/100x.webp'} alt={face} draggable={false} style={{ ...base, width: '100%', height: '100%', objectFit: 'contain' }} />;
+    return <img src={face === 'EAGLE' ? '/games/coinflip/eagle.webp' : '/games/coinflip/bwana.webp'} alt={face} draggable={false} style={{ ...base, width: '100%', height: '100%', objectFit: 'contain' }} />;
   }
   // Placeholder: gold disc, embossed rim, face label in the game font
   return (
@@ -79,7 +79,7 @@ export default function Coin({ state = 'idle', face = null, onLanded, reduced = 
 
   const flying = state === 'flying';
   const from = angleOf(restFace.current);
-  const to = 1440 + angleOf(face);  // 8 half-turns for EAGLE, 9 for 100x
+  const to = 1440 + angleOf(face);  // 8 half-turns for EAGLE, 9 for BWANA
   const size = 'min(54vw, 27dvh, 220px)';
 
   return (
@@ -114,7 +114,7 @@ export default function Coin({ state = 'idle', face = null, onLanded, reduced = 
               animation: flying ? `cfSpin ${TOSS_MS}ms cubic-bezier(.15,.6,.3,1) both` : 'none',
             }}>
             <Face face="EAGLE" />
-            <Face face="100x" back />
+            <Face face="BWANA" back />
           </div>
         </div>
       )}

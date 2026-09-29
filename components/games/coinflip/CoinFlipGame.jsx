@@ -11,7 +11,7 @@ import { resolveFlip, STAKES, FACES, payoutFor } from '@/lib/coinflip/engine.mjs
 
 // ============================================================================
 // COIN FLIP — stake-only (spec: docs/superpowers/specs/2026-09-29-coin-flip-design.md).
-// Pick a stake (10/20/30/50) and a side (EAGLE / 100x), tap FLIP. The result is
+// Pick a stake (10/20/30/50) and a side (EAGLE / BWANA), tap FLIP. The result is
 // decided on the device at FLIP (resolveFlip, crypto RNG) and the stake is
 // charged right then via onSpend; the win is reported when the coin LANDS via
 // onRound so the notification never spoils the reveal.
@@ -24,7 +24,7 @@ import { resolveFlip, STAKES, FACES, payoutFor } from '@/lib/coinflip/engine.mjs
 
 const LAST_KEY = 'coinflip:last';
 const CHIP_COLORS = { 10: 'violet', 20: 'blue', 30: 'red', 50: 'green' };
-const FACE_COLORS = { EAGLE: 'green', '100x': 'violet' };
+const FACE_COLORS = { EAGLE: 'green', BWANA: 'violet' };
 const MIN_STAKE = STAKES[0];
 
 function readLast() {
