@@ -123,7 +123,7 @@ export default function CoinFlipGame({ onClose, closing, balance = 0, onSpend, o
       </div>
 
       {/* result line — fixed height so nothing below shifts */}
-      <div aria-live="polite" style={{ flex: 'none', height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: CANDY.display, letterSpacing: .5 }}>
+      <div aria-live="polite" style={{ flex: 'none', height: 52, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: CANDY.display, letterSpacing: .5 }}>
         {line}
       </div>
 
