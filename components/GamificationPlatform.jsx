@@ -41,6 +41,7 @@ import {
 // Component imports
 import MissionDetailModal from './modals/MissionDetailModal';
 import NjukaGame from './games/njuka/NjukaGame';
+import CoinFlipGame from './games/coinflip/CoinFlipGame';
 // trivia games parked — see parked/components/games/
 
 // Respect the user's OS-level motion preference.
@@ -1176,7 +1177,7 @@ export default function GamificationPlatform() {
   const playGame = (gameId) => {
     // Disabled games can still be reached via mission modals — block them.
     if (!activeGames.some(g => g.id === gameId)) { showNotif('This game is unavailable right now', 'error'); return; }
-    // Stake-per-round games (njuka): entry is free — no daily play consumed,
+    // Stake-per-round games (njuka, coinflip): entry is free — no daily play consumed,
     // no extra-play charge. Every round is paid inside the game via onSpend.
     if (activeGames.find(g => g.id === gameId)?.stakeOnly) { setActiveGame(gameId); return; }
     if (user.gamePlays[gameId] > 0) {
@@ -1297,6 +1298,16 @@ export default function GamificationPlatform() {
             trackMission('gamePlayed', { gameId: 'njuka', coinsWon: meta?.net ?? n, gamesSet: gamesPlayedToday });
           }}
         />
+      )}
+      {activeGame === 'coinflip' && (
+        <CoinFlipGame onClose={() => animateClose(() => setActiveGame(null))} closing={closingModal}
+          balance={user.kwacha} onSpend={(n) => addCoins(-n)}
+          onRound={({ stake, win, payout }) => {
+            if (win) { addCoins(payout); showNotif(`🎉 +${payout} Coins!`); triggerReward('medium', null, { coins: payout }); }
+            setUser(u => ({ ...u, gamesPlayed: u.gamesPlayed + 1, dailyTasksDone: [...new Set([...u.dailyTasksDone, 'game'])] }));
+            setGamesPlayedToday(prev => new Set([...prev, 'coinflip']));
+            trackMission('gamePlayed', { gameId: 'coinflip', coinsWon: win ? payout - stake : 0, gamesSet: gamesPlayedToday });
+          }} />
       )}
       {/* trivia game modals + QuestDetailModal parked — see parked/components/GamificationPlatform.removed-wiring.jsx */}
       {selectedMission && (
