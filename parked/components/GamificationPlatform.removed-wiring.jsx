@@ -273,3 +273,148 @@
       })
       .catch(() => {});
   }, [user.predictions]); // eslint-disable-line react-hooks/exhaustive-deps
+
+// ============================================================================
+// 2026-09-29: the 7 original games parked (only Njuka kept). Removed from
+// components/GamificationPlatform.jsx: imports, handleWin (wheel prize handler),
+// tapScore/clockClose/wheelSpins mission cases, and the 7 game overlay renders.
+// ============================================================================
+
+import WheelGame from './games/WheelGame';
+import ScratchGame from './games/ScratchGame';
+import DiceGame from './games/DiceGame';
+import HighLowGame from './games/HighLowGame';
+import PlinkoGame from './games/PlinkoGame';
+import TapFrenzyGame from './games/TapFrenzyGame';
+import StopClockGame from './games/StopClockGame';
+
+// ----
+
+  const handleWin = (prize, name) => {
+    const coins = typeof prize === 'number' ? prize : (prize.kwacha || 0);
+    if (typeof prize === 'number') {
+      addCoins(prize);
+      showNotif(`🎉 +${prize} Coins!`);
+    } else {
+      if (prize.kwacha) addCoins(prize.kwacha);
+      if (prize.gems) addGems(prize.gems);
+      if (prize.diamonds) addDiamonds(prize.diamonds);
+      if (prize.xp) addXP(prize.xp);
+      showNotif(`🎉 Won: ${name}!`);
+    }
+    setUser(u => ({ ...u, gamesPlayed: u.gamesPlayed + 1, dailyTasksDone: [...new Set([...u.dailyTasksDone, 'game'])] }));
+    setGamesPlayedToday(prev => new Set([...prev, 'wheel']));
+    trackMission('gamePlayed', { gameId: 'wheel', coinsWon: coins, gamesSet: gamesPlayedToday });
+    // NOTE: No triggerReward() call — the wheel renders its own self-contained
+    // celebration overlay (count-up + confetti + screen flash). Calling
+    // triggerReward here would fire a second confetti burst on prize claim.
+
+// ----
+
+          case 'tapScore':
+            if (actionType === 'gamePlayed' && metadata.gameId === 'tapfrenzy' && metadata.tapScore >= mission.target) {
+              setTo = metadata.tapScore;
+            }
+            break;
+          case 'clockClose':
+            if (actionType === 'gamePlayed' && metadata.gameId === 'stopclock' && metadata.clockDiff !== undefined && metadata.clockDiff <= 3) {
+              setTo = 1;
+            }
+            break;
+          case 'wheelSpins':
+            if (actionType === 'gamePlayed' && metadata.gameId === 'wheel') shouldIncrement = true;
+            break;
+
+// ----
+
+      {activeGame === 'wheel' && (
+        <WheelGame
+          onClose={() => animateClose(() => setActiveGame(null))} closing={closingModal}
+          onWin={handleWin}
+          playsLeft={user.gamePlays.wheel}
+        />
+      )}
+      {activeGame === 'scratch' && (
+        <ScratchGame
+          onClose={() => animateClose(() => setActiveGame(null))} closing={closingModal}
+          onWin={(n) => {
+            addCoins(n);
+            showNotif(`🎉 +${n} Coins!`);
+            triggerReward('medium', null, { coins: n });
+            setUser(u => ({ ...u, gamesPlayed: u.gamesPlayed + 1, dailyTasksDone: [...new Set([...u.dailyTasksDone, 'game'])] }));
+            setGamesPlayedToday(prev => new Set([...prev, 'scratch']));
+            trackMission('gamePlayed', { gameId: 'scratch', coinsWon: n, gamesSet: gamesPlayedToday });
+          }}
+        />
+      )}
+      {activeGame === 'dice' && (
+        <DiceGame
+          onClose={() => animateClose(() => setActiveGame(null))} closing={closingModal}
+          onReplay={() => requestReplay('dice')}
+          onWin={(n) => {
+            addCoins(n);
+            showNotif(`🎉 +${n} Coins!`);
+            triggerReward('medium', null, { coins: n });
+            setUser(u => ({ ...u, gamesPlayed: u.gamesPlayed + 1, dailyTasksDone: [...new Set([...u.dailyTasksDone, 'game'])] }));
+            setGamesPlayedToday(prev => new Set([...prev, 'dice']));
+            trackMission('gamePlayed', { gameId: 'dice', coinsWon: n, gamesSet: gamesPlayedToday });
+          }}
+        />
+      )}
+      {activeGame === 'highlow' && (
+        <HighLowGame
+          onClose={() => animateClose(() => setActiveGame(null))} closing={closingModal}
+          onReplay={() => requestReplay('highlow')}
+          onWin={(n) => {
+            addCoins(n);
+            showNotif(`🎉 +${n} Coins!`);
+            triggerReward('medium', null, { coins: n });
+            setUser(u => ({ ...u, gamesPlayed: u.gamesPlayed + 1, dailyTasksDone: [...new Set([...u.dailyTasksDone, 'game'])] }));
+            setGamesPlayedToday(prev => new Set([...prev, 'highlow']));
+            trackMission('gamePlayed', { gameId: 'highlow', coinsWon: n, gamesSet: gamesPlayedToday });
+          }}
+        />
+      )}
+      {activeGame === 'plinko' && (
+        <PlinkoGame
+          onClose={() => animateClose(() => setActiveGame(null))} closing={closingModal}
+          balance={user.kwacha}
+          onSpend={(n) => addCoins(-n)}
+          onWin={(n) => {
+            addCoins(n);
+            showNotif(`🎉 +${n} Coins!`);
+            triggerReward('medium', null, { coins: n });
+            setUser(u => ({ ...u, gamesPlayed: u.gamesPlayed + 1, dailyTasksDone: [...new Set([...u.dailyTasksDone, 'game'])] }));
+            setGamesPlayedToday(prev => new Set([...prev, 'plinko']));
+            trackMission('gamePlayed', { gameId: 'plinko', coinsWon: n, gamesSet: gamesPlayedToday });
+          }}
+        />
+      )}
+      {activeGame === 'tapfrenzy' && (
+        <TapFrenzyGame
+          onClose={() => animateClose(() => setActiveGame(null))} closing={closingModal}
+          onReplay={() => requestReplay('tapfrenzy')}
+          onWin={(n, meta) => {
+            addCoins(n);
+            showNotif(`🎉 +${n} Coins!`);
+            triggerReward('medium', null, { coins: n });
+            setUser(u => ({ ...u, gamesPlayed: u.gamesPlayed + 1, dailyTasksDone: [...new Set([...u.dailyTasksDone, 'game'])] }));
+            setGamesPlayedToday(prev => new Set([...prev, 'tapfrenzy']));
+            trackMission('gamePlayed', { gameId: 'tapfrenzy', coinsWon: n, tapScore: meta?.score, gamesSet: gamesPlayedToday });
+          }}
+        />
+      )}
+      {activeGame === 'stopclock' && (
+        <StopClockGame
+          onClose={() => animateClose(() => setActiveGame(null))} closing={closingModal}
+          onReplay={() => requestReplay('stopclock')}
+          onWin={(n, meta) => {
+            addCoins(n);
+            showNotif(`🎉 +${n} Coins!`);
+            triggerReward('medium', null, { coins: n });
+            setUser(u => ({ ...u, gamesPlayed: u.gamesPlayed + 1, dailyTasksDone: [...new Set([...u.dailyTasksDone, 'game'])] }));
+            setGamesPlayedToday(prev => new Set([...prev, 'stopclock']));
+            trackMission('gamePlayed', { gameId: 'stopclock', coinsWon: n, clockDiff: meta?.diff, gamesSet: gamesPlayedToday });
+          }}
+        />
+      )}

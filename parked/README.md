@@ -1,11 +1,25 @@
-# Parked features — predictions, trivia, quests
+# Parked features — predictions, trivia, quests, the 7 original games
 
 Removed from the live platform on 2026-07-15 per product decision ("hide for now").
 Nothing in here is imported by the app — Next.js does not compile this folder.
 The directory structure mirrors where each file used to live; to restore a file,
 `git mv` it back and re-add the imports/props noted below.
 
-## Contents
+## 2026-09-29 — the 7 original games
+
+Product decision: remove every game except Njuka (poor internet + small phones; no tapping/complex mechanics). Replaced one at a time by simple pick-and-reveal games (Coin Flip first).
+
+| Parked file | Original location | What it is |
+|---|---|---|
+| `components/games/{Wheel,Scratch,Dice,HighLow,Plinko,TapFrenzy,StopClock}Game.jsx` | `components/games/` | The 7 games (their `../gameKit` / `../../lib` imports assume the original location) |
+| `lib/data/games.parked.js` | extracted from `lib/data/platform.js` | Their MINIGAMES entries + DEFAULT_DAILY_PLAYS (1 each, in `lib/config/defaults.js`) |
+| `lib/data/missions.games.js` | extracted from `lib/data/missions.js` | 18 missions: all game-specific ones + d_hopper / w_explorer (multi-game, unreachable with one game) |
+| `lib/data/tutorials.games.js` | extracted from `lib/data/tutorials.js` | Their TUTORIALS entries |
+| bottom section of `components/GamificationPlatform.removed-wiring.jsx` | `components/GamificationPlatform.jsx` | imports, `handleWin` (wheel), tapScore/clockClose/wheelSpins mission cases, 7 overlay renders |
+
+Still live but dormant: `WHEEL_SEGMENTS`/`DAILY_FREE_SPIN_ROTATION` in `lib/data/platform.js`, the Overview wheel card (renders only if a `wheel` game exists), and game images in `lib/data/images.js`.
+
+## Contents (2026-07-15 parking)
 
 | Parked file | Original location | What it is |
 |---|---|---|
