@@ -1,5 +1,6 @@
 import './globals.css'
 import { Bricolage_Grotesque, Onest, JetBrains_Mono } from 'next/font/google'
+import localFont from 'next/font/local'
 
 const display = Bricolage_Grotesque({
   subsets: ['latin'],
@@ -19,6 +20,21 @@ const mono = JetBrains_Mono({
   subsets: ['latin'],
   weight: ['400', '500', '700'],
   variable: '--font-mono',
+  display: 'swap',
+})
+
+// Candy game kit fonts — self-hosted (app/fonts/), so no Google fetch at build or load.
+const game = localFont({
+  src: './fonts/LilitaOne-400.woff2',
+  weight: '400',
+  variable: '--font-game',
+  display: 'swap',
+})
+
+const gameBody = localFont({
+  src: './fonts/Nunito-800.woff2',
+  weight: '800',
+  variable: '--font-game-body',
   display: 'swap',
 })
 
@@ -43,7 +59,7 @@ export const viewport = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en" className={`${display.variable} ${body.variable} ${mono.variable}`}>
+    <html lang="en" className={`${display.variable} ${body.variable} ${mono.variable} ${game.variable} ${gameBody.variable}`}>
       <head>
         <link rel="icon" href="/images/coin.png" />
       </head>
