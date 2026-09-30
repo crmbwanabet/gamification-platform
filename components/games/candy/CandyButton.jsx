@@ -28,7 +28,7 @@ export const CANDY_BTN_CSS = `
     box-shadow: inset 0 3px 0 rgba(255,255,255,.35), 0 0 0 var(--cb-dark), var(--cb-ring, 0 0 0 transparent);
   }
   .candy-btn:focus-visible { outline: 3px solid ${CANDY.gold}; outline-offset: 3px; }
-  .candy-btn[data-dim="1"] { opacity: .55; }
+  .candy-btn[data-dim="1"] { opacity: .7; }
   .candy-btn:disabled { cursor: not-allowed; color: rgba(255,255,255,.45); text-shadow: none; opacity: 1; }
 `;
 
@@ -44,7 +44,7 @@ export default function CandyButton({ color = 'green', children, onClick, disabl
       style={{
         '--cb-fill': c.fill, '--cb-light': c.light, '--cb-dark': c.dark,
         '--cb-ring': selected && !disabled ? RING : '0 0 0 transparent',
-        '--cb-lift': selected && !disabled ? '-2px' : '0px',
+        '--cb-lift': selected && !disabled ? '-4px' : '0px',
         fontSize: big ? 36 : 24, minHeight: big ? 72 : 56, borderRadius: big ? 22 : 18,
         ...style,
       }}

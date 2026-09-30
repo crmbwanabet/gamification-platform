@@ -12,6 +12,10 @@ import { COIN_FACES_READY } from './config';
 // angle equals the resting angle and nothing jumps when the animation is removed.
 // onLanded fires exactly once per flight: animationend or a 1500ms fallback.
 // Reduced motion: no arc/spin — the result face fades in over 200ms.
+// Behind the coin sits a golden swirl (two tilted comet-trail rings, pure CSS):
+// slow idle rotation; during a toss an extra ring spins exactly 3 turns with
+// ease-in-out, so it ends where it started and nothing snaps at landing.
+// Reduced motion: the swirl is static.
 
 const TOSS_MS = 1400;
 const FALLBACK_MS = 1500;
@@ -29,8 +33,41 @@ const COIN_CSS = `
   @keyframes cfSpin { from { transform: rotateY(var(--cf-from)); } to { transform: rotateY(var(--cf-to)); } }
   @keyframes cfShadow { 0%, 100% { transform: scale(1); opacity: .55; } 45% { transform: scale(.55); opacity: .22; } }
   @keyframes cfFade { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes cfSwirl { to { transform: rotate(360deg); } }
+  @keyframes cfSwirlToss { from { transform: rotate(0deg); } to { transform: rotate(1080deg); } }
+  .cf-swirl { position: absolute; pointer-events: none; transition: opacity .3s; filter: drop-shadow(0 0 5px rgba(255,190,40,.75)); }
+  .cf-swirl > i, .cf-swirl > i > i { position: absolute; inset: 0; display: block; border-radius: 50%; }
+  .cf-swirl > i > i {
+    background: conic-gradient(from 0deg,
+      rgba(255,180,30,0) 0deg, rgba(255,180,30,0) 50deg, rgba(255,196,48,.9) 150deg, #FFF3B0 174deg, rgba(255,210,31,0) 178deg,
+      rgba(255,180,30,0) 230deg, rgba(255,196,48,.9) 330deg, #FFF3B0 354deg, rgba(255,210,31,0) 358deg);
+    -webkit-mask: radial-gradient(closest-side, transparent 70%, #000 71.5% 74%, transparent 75.5% 80%, #000 81% 84.5%, transparent 86% 90%, #000 91% 93%, transparent 94.5%);
+    mask: radial-gradient(closest-side, transparent 70%, #000 71.5% 74%, transparent 75.5% 80%, #000 81% 84.5%, transparent 86% 90%, #000 91% 93%, transparent 94.5%);
+    filter: blur(.6px);
+  }
   @keyframes cfWinGlow { 0%, 100% { opacity: .75; transform: scale(1); } 50% { opacity: 1; transform: scale(1.08); } }
 `;
+
+// One tilted ring: outer span squashes it to an ellipse, the middle <i> runs the
+// toss spin, the inner <i> the idle spin (so the two never fight over transform).
+function SwirlRing({ inset, tilt, squash, idleMs, flying, reduced, opacity }) {
+  return (
+    <span aria-hidden className="cf-swirl" style={{ inset, transform: `rotate(${tilt}deg) scaleY(${squash})`, opacity: flying ? 1 : opacity }}>
+      <i style={{ animation: flying && !reduced ? `cfSwirlToss ${TOSS_MS}ms cubic-bezier(.45,0,.35,1) both` : 'none' }}>
+        <i style={{ animation: reduced ? 'none' : `cfSwirl ${idleMs}ms linear infinite` }} />
+      </i>
+    </span>
+  );
+}
+
+function Swirl({ flying, reduced }) {
+  return (
+    <>
+      <SwirlRing inset="-38%" tilt={-16} squash={0.48} idleMs={9000} flying={flying} reduced={reduced} opacity={0.9} />
+      <SwirlRing inset="-24%" tilt={-24} squash={0.6} idleMs={6500} flying={flying} reduced={reduced} opacity={0.7} />
+    </>
+  );
+}
 
 function Face({ face, back }) {
   const base = { position: 'absolute', inset: 0, borderRadius: '50%', backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden', transform: back ? 'rotateY(180deg)' : 'none' };
@@ -80,7 +117,7 @@ export default function Coin({ state = 'idle', face = null, onLanded, reduced = 
   const flying = state === 'flying';
   const from = angleOf(restFace.current);
   const to = 1440 + angleOf(face);  // 8 half-turns for HEADS, 9 for TAILS
-  const size = 'min(54vw, 27dvh, 220px)';
+  const size = 'min(50vw, 27dvh, 220px)';
 
   return (
     <div style={{ position: 'relative', width: size, height: size, fontSize: size, margin: '0 auto' }}>
@@ -99,6 +136,7 @@ export default function Coin({ state = 'idle', face = null, onLanded, reduced = 
         background: 'rgba(10,0,30,.55)', filter: 'blur(4px)', opacity: .55,
         animation: flying && !reduced ? `cfShadow ${TOSS_MS}ms linear both` : 'none',
       }} />
+      <Swirl flying={flying} reduced={reduced} />
       {reduced ? (
         <div key={flightRef.current} onAnimationEnd={(e) => { if (e.target === e.currentTarget && flying) land(); }}
           style={{ position: 'absolute', inset: 0, animation: flying ? `cfFade ${FADE_MS}ms ease-out both` : 'none' }}>

@@ -31,3 +31,14 @@ export const outlineShadow = (w = 3, color = CANDY.outline, drop = 5) => [
   `${w}px ${w}px 0 ${color}`, `-${w}px ${w}px 0 ${color}`, `${w}px -${w}px 0 ${color}`, `-${w}px -${w}px 0 ${color}`,
   `0 ${w + drop}px 0 ${color}`,
 ].join(', ');
+
+// Round text outline (16 directions, no drop) — smoother than outlineShadow's 8
+// on big display text. Combine with your own drop/depth layers.
+export const textStroke = (w = 3, color = CANDY.outline) => {
+  const out = [];
+  for (let i = 0; i < 16; i++) {
+    const a = (i / 16) * Math.PI * 2;
+    out.push(`${(Math.cos(a) * w).toFixed(2)}px ${(Math.sin(a) * w).toFixed(2)}px 0 ${color}`);
+  }
+  return out.join(', ');
+};
