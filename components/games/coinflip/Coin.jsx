@@ -2,7 +2,6 @@
 
 import React, { useEffect, useRef } from 'react';
 import { CANDY } from '../candy/tokens';
-import { COIN_FACES_READY } from './config';
 
 // The Coin Flip coin — pure CSS 3D, no canvas/WebGL.
 // Two face layers (backface-visibility: hidden) inside a preserve-3d coin:
@@ -16,6 +15,9 @@ import { COIN_FACES_READY } from './config';
 // slow idle rotation; during a toss an extra ring spins exactly 3 turns with
 // ease-in-out, so it ends where it started and nothing snaps at landing.
 // Reduced motion: the swirl is static.
+// Sizing: the parent coin area is a size container (container-type: size); the
+// coin is sized in cqh/cqw and the toss peak is computed from the area height, so
+// the arc always stays inside the area and never covers the header or balance.
 
 const TOSS_MS = 1400;
 const FALLBACK_MS = 1500;
@@ -25,7 +27,7 @@ const angleOf = (face) => (face === 'TAILS' ? 180 : 0);
 const COIN_CSS = `
   @keyframes cfArc {
     0%   { transform: translateY(0) scale(1); animation-timing-function: cubic-bezier(.2,.7,.35,1); }
-    45%  { transform: translateY(var(--cf-peak)) scale(1.18); animation-timing-function: cubic-bezier(.55,0,.8,.4); }
+    45%  { transform: translateY(var(--cf-peak)) scale(1.15); animation-timing-function: cubic-bezier(.55,0,.8,.4); }
     88%  { transform: translateY(0) scale(1); animation-timing-function: ease-out; }
     94%  { transform: translateY(-8px) scale(1.02); animation-timing-function: ease-in; }
     100% { transform: translateY(0) scale(1); }
@@ -35,7 +37,7 @@ const COIN_CSS = `
   @keyframes cfFade { from { opacity: 0; } to { opacity: 1; } }
   @keyframes cfSwirl { to { transform: rotate(360deg); } }
   @keyframes cfSwirlToss { from { transform: rotate(0deg); } to { transform: rotate(1080deg); } }
-  .cf-swirl { position: absolute; pointer-events: none; transition: opacity .3s; filter: drop-shadow(0 0 5px rgba(255,190,40,.75)); }
+  .cf-swirl { position: absolute; pointer-events: none; transition: opacity .3s; filter: drop-shadow(0 0 4px rgba(255,190,40,.6)); }
   .cf-swirl > i, .cf-swirl > i > i { position: absolute; inset: 0; display: block; border-radius: 50%; }
   .cf-swirl > i > i {
     background: conic-gradient(from 0deg,
@@ -52,7 +54,7 @@ const COIN_CSS = `
 // toss spin, the inner <i> the idle spin (so the two never fight over transform).
 function SwirlRing({ inset, tilt, squash, idleMs, flying, reduced, opacity }) {
   return (
-    <span aria-hidden className="cf-swirl" style={{ inset, transform: `rotate(${tilt}deg) scaleY(${squash})`, opacity: flying ? 1 : opacity }}>
+    <span aria-hidden className="cf-swirl" style={{ inset, transform: `rotate(${tilt}deg) scaleY(${squash})`, opacity: flying ? 0.8 : opacity }}>
       <i style={{ animation: flying && !reduced ? `cfSwirlToss ${TOSS_MS}ms cubic-bezier(.45,0,.35,1) both` : 'none' }}>
         <i style={{ animation: reduced ? 'none' : `cfSwirl ${idleMs}ms linear infinite` }} />
       </i>
@@ -63,28 +65,48 @@ function SwirlRing({ inset, tilt, squash, idleMs, flying, reduced, opacity }) {
 function Swirl({ flying, reduced }) {
   return (
     <>
-      <SwirlRing inset="-38%" tilt={-16} squash={0.48} idleMs={9000} flying={flying} reduced={reduced} opacity={0.9} />
-      <SwirlRing inset="-24%" tilt={-24} squash={0.6} idleMs={6500} flying={flying} reduced={reduced} opacity={0.7} />
+      <SwirlRing inset="-36%" tilt={-16} squash={0.46} idleMs={9000} flying={flying} reduced={reduced} opacity={0.45} />
+      <SwirlRing inset="-22%" tilt={-24} squash={0.58} idleMs={6500} flying={flying} reduced={reduced} opacity={0.3} />
     </>
   );
 }
 
+// A thick glossy gold coin drawn in CSS (all sizes in em = the coin size):
+// reeded outer rim, recessed inner face with a bevel, a fine inner ring, the
+// side name embossed in the game font, and a soft radial shine on top. The
+// solid drop under the disc gives it thickness; both faces keep it, since
+// rotateY leaves the y axis alone.
+const RIM = [
+  'repeating-conic-gradient(from 0deg, rgba(255,255,255,.16) 0 2.5deg, rgba(120,70,0,.14) 2.5deg 5deg)',
+  'linear-gradient(150deg, #FFF3B0 0%, #FFD21F 30%, #E9A800 62%, #B87800 100%)',
+].join(', ');
+const INNER = 'radial-gradient(circle at 40% 32%, #FFE680 0%, #FFD21F 38%, #F2B90C 72%, #D99A00 100%)';
+const SHINE = [
+  'radial-gradient(ellipse 45% 30% at 32% 24%, rgba(255,255,255,.7) 0%, rgba(255,255,255,0) 100%)',
+  'linear-gradient(125deg, rgba(255,255,255,0) 40%, rgba(255,255,255,.28) 50%, rgba(255,255,255,0) 60%)',
+].join(', ');
+
 function Face({ face, back }) {
-  const base = { position: 'absolute', inset: 0, borderRadius: '50%', backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden', transform: back ? 'rotateY(180deg)' : 'none' };
-  if (COIN_FACES_READY) {
-    return <img src={face === 'HEADS' ? '/games/coinflip/heads.webp' : '/games/coinflip/tails.webp'} alt={face} draggable={false} style={{ ...base, width: '100%', height: '100%', objectFit: 'contain' }} />;
-  }
-  // Placeholder: gold disc, embossed rim, face label in the game font
   return (
     <div aria-label={face} style={{
-      ...base, display: 'grid', placeItems: 'center',
-      background: 'radial-gradient(circle at 34% 28%, #FFF6B8 0%, #FFD21F 30%, #F2B90C 62%, #C98A00 100%)',
-      boxShadow: 'inset 0 0 0 7px #D99A00, inset 0 0 0 10px #FFE46E, inset 0 0 0 13px #C98A00, inset 0 -10px 22px rgba(120,70,0,.45)',
+      position: 'absolute', inset: 0, borderRadius: '50%',
+      backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden', transform: back ? 'rotateY(180deg)' : 'none',
+      background: RIM,
+      boxShadow: '0 .045em 0 #9A6200, 0 .06em .05em rgba(20,0,40,.45), inset 0 .012em 0 rgba(255,250,220,.9), inset 0 -.012em 0 rgba(120,70,0,.6)',
     }}>
-      <span style={{
-        fontFamily: CANDY.display, fontSize: face === 'HEADS' ? '0.2em' : '0.27em', color: '#8A5600', letterSpacing: 1,
-        textShadow: '0 2px 0 rgba(255,240,170,.9), 0 -1px 0 rgba(90,50,0,.5)',
-      }}>{face}</span>
+      {/* recessed inner face: dark bevel on top, light on the bottom */}
+      <div style={{
+        position: 'absolute', inset: '9%', borderRadius: '50%', background: INNER,
+        boxShadow: 'inset 0 .022em .02em rgba(130,75,0,.75), inset 0 -.016em .012em rgba(255,246,200,.9), 0 .008em 0 rgba(255,246,200,.7)',
+        display: 'grid', placeItems: 'center',
+      }}>
+        <div style={{ position: 'absolute', inset: '7%', borderRadius: '50%', border: '.012em solid rgba(160,100,0,.5)', boxShadow: '0 .006em 0 rgba(255,244,190,.7), inset 0 .006em 0 rgba(255,244,190,.7)' }} />
+        <span style={{
+          position: 'relative', fontFamily: CANDY.display, fontSize: '.225em', lineHeight: 1, letterSpacing: '.02em',
+          color: '#B37400', textShadow: '0 -.045em 0 rgba(110,60,0,.55), 0 .05em 0 rgba(255,244,190,.95)',
+        }}>{face}</span>
+      </div>
+      <div aria-hidden style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: SHINE, pointerEvents: 'none' }} />
     </div>
   );
 }
@@ -117,10 +139,14 @@ export default function Coin({ state = 'idle', face = null, onLanded, reduced = 
   const flying = state === 'flying';
   const from = angleOf(restFace.current);
   const to = 1440 + angleOf(face);  // 8 half-turns for HEADS, 9 for TAILS
-  const size = 'min(50vw, 27dvh, 220px)';
+  const size = 'min(48cqh, 58cqw, 190px)';
+  // The coin rests 5cqh below the area's centre (its centre at 55cqh). At the peak
+  // it is scaled 1.15, so rise until its top is 10px under the area top (the
+  // margin also covers the perspective growth mid-spin).
+  const peak = `calc(-1 * (55cqh - ${size} * 0.575 - 10px))`;
 
   return (
-    <div style={{ position: 'relative', width: size, height: size, fontSize: size, margin: '0 auto' }}>
+    <div style={{ position: 'relative', width: size, height: size, fontSize: size, margin: '0 auto', transform: 'translateY(5cqh)' }}>
       <style>{COIN_CSS}</style>
       {/* soft glow behind the coin; pulses gold on a win */}
       <div aria-hidden style={{
@@ -143,7 +169,7 @@ export default function Coin({ state = 'idle', face = null, onLanded, reduced = 
           <Face face={face || restFace.current} />
         </div>
       ) : (
-        <div style={{ position: 'absolute', inset: 0, perspective: '900px', '--cf-peak': 'calc(-1 * min(34dvh, 200px))', animation: flying ? `cfArc ${TOSS_MS}ms both` : 'none' }}>
+        <div style={{ position: 'absolute', inset: 0, perspective: '900px', '--cf-peak': peak, animation: flying ? `cfArc ${TOSS_MS}ms both` : 'none' }}>
           <div onAnimationEnd={(e) => { if (e.target === e.currentTarget && flying) land(); }}
             style={{
               position: 'absolute', inset: 0, transformStyle: 'preserve-3d',

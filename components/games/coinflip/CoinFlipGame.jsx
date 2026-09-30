@@ -46,23 +46,20 @@ function affordable(stake, balance) {
   return fit.length ? fit[fit.length - 1] : stake;
 }
 
-// Side buttons: HEADS white / TAILS gold, both with a dark outline, and a round
-// emblem (the mini coin face in a white + gold ring) above the label.
-const FACE_IMG = { HEADS: '/games/coinflip/heads.webp', TAILS: '/games/coinflip/tails.webp' };
+// Side buttons: a small CSS mini-coin ("H" / "T", same gold as the big coin)
+// beside the label; HEADS white / TAILS gold text, both with a dark outline.
 const FACE_TEXT = { HEADS: '#fff', TAILS: CANDY.gold };
-const STROKE = `${textStroke(2.5, CANDY.outline)}, 0 4px 0 ${CANDY.outline}`;
+const STROKE = `${textStroke(2, CANDY.outline)}, 0 3px 0 ${CANDY.outline}`;
 
-function Emblem({ face, off }) {
+function MiniCoin({ face, off }) {
   return (
     <span aria-hidden style={{
-      width: 42, height: 42, borderRadius: '50%', overflow: 'hidden', flex: 'none', display: 'block',
-      background: '#fff', border: '3px solid #fff',
-      boxShadow: `0 0 0 2px ${off ? 'rgba(255,255,255,.25)' : CANDY.gold}, 0 3px 0 2px rgba(0,0,0,.28)`,
-      filter: off ? 'grayscale(1) opacity(.45)' : 'none',
-    }}>
-      <img src={FACE_IMG[face]} alt="" draggable={false} width={42} height={42}
-        style={{ display: 'block', width: '100%', height: '100%', objectFit: 'cover', transform: 'scale(1.1)' }} />
-    </span>
+      width: 28, height: 28, borderRadius: '50%', flex: 'none', display: 'grid', placeItems: 'center',
+      background: off ? '#8A8199' : 'radial-gradient(circle at 38% 30%, #FFF3B0 0%, #FFD21F 40%, #E0A300 100%)',
+      boxShadow: off ? 'inset 0 0 0 2px #6E6680' : `inset 0 0 0 2px #E9A800, inset 0 0 0 3.5px #FFE680, 0 2px 0 ${CANDY.outline}`,
+      fontFamily: CANDY.display, fontSize: 15, lineHeight: 1, color: off ? '#5A5268' : '#A86A00',
+      textShadow: off ? 'none' : '0 1px 0 rgba(255,244,190,.9)',
+    }}>{face[0]}</span>
   );
 }
 
@@ -121,43 +118,40 @@ export default function CoinFlipGame({ onClose, closing, balance = 0, onSpend, o
 
   const won = phase === 'result' && outcome?.win;
   let line;
-  if (phase === 'flying') line = <span style={{ color: CANDY.sub, fontSize: 18 }}>Flipping…</span>;
-  else if (won) line = (
-    <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 8 }} className="anim-scale-in">
-      <span style={{ fontSize: 18, color: '#fff', textShadow: outlineShadow(2, CANDY.outline, 2) }}>YOU WIN</span>
-      <span style={{ fontSize: 27, color: CANDY.gold, textShadow: `${outlineShadow(2, CANDY.outline, 3)}, 0 0 18px rgba(255,210,31,.8)` }}>+{outcome.payout}</span>
-    </span>
-  );
-  else if (phase === 'result') line = <span style={{ fontSize: 21, color: '#fff', textShadow: outlineShadow(2, CANDY.outline, 2) }}>So close!</span>;
-  else if (broke) line = <span style={{ fontSize: 18, color: '#FF8A80' }}>Not enough coins</span>;
-  else if (!pick) line = <span style={{ fontSize: 18, color: CANDY.sub }}>Pick a side</span>;
-  else line = <span style={{ fontSize: 18, color: CANDY.sub }}>Win {payoutFor(stake)} coins</span>;
+  if (phase === 'flying') line = <span style={{ color: CANDY.sub, fontSize: 17 }}>Flipping…</span>;
+  else if (won) line = <span key="win" className="anim-scale-in" style={{ fontSize: 28, color: CANDY.gold, letterSpacing: 2, textShadow: `${outlineShadow(2, CANDY.outline, 3)}, 0 0 18px rgba(255,210,31,.8)` }}>WIN</span>;
+  else if (phase === 'result') line = <span key="lose" className="anim-scale-in" style={{ fontSize: 26, color: '#fff', letterSpacing: 2, textShadow: outlineShadow(2, CANDY.outline, 3) }}>LOSE</span>;
+  else if (broke) line = <span style={{ fontSize: 17, color: '#FF8A80' }}>Not enough coins</span>;
+  else if (!pick) line = <span style={{ fontSize: 17, color: CANDY.sub }}>Pick a side</span>;
+  else line = <span style={{ fontSize: 17, color: CANDY.sub }}>Win {payoutFor(stake)} coins</span>;
 
   return (
-    <CandyScreen title="COIN FLIP" balance={balance} closing={closing} onClose={onClose} onHelp={() => setShowTutorial(true)}>
-      {/* coin area — takes whatever height is left */}
-      <div style={{ flex: 1, minHeight: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', paddingBottom: 4 }}>
+    <CandyScreen title="COIN FLIP" balance={balance} closing={closing} onClose={onClose} onHelp={() => setShowTutorial(true)}
+      overlay={showTutorial && <TutorialModal tutorialKey="coinflip" onClose={() => setShowTutorial(false)} />}>
+      {/* coin area — takes whatever height is left; a size container so Coin can
+          size itself and its toss arc from the space it actually has */}
+      <div style={{ flex: 1, minHeight: 0, containerType: 'size', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <Coin state={phase} face={outcome?.face ?? null} onLanded={onLanded} reduced={reduced} win={won} />
       </div>
 
       {/* result line — fixed, compact height (big text may overflow it) so nothing below shifts */}
-      <div aria-live="polite" style={{ flex: 'none', height: 32, position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: CANDY.display, letterSpacing: .5, whiteSpace: 'nowrap' }}>
+      <div aria-live="polite" style={{ flex: 'none', height: 30, position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: CANDY.display, letterSpacing: .5, whiteSpace: 'nowrap' }}>
         {line}
       </div>
 
       <div style={{ flex: 'none' }}>
-        <div role="group" aria-label="Pick a side" style={{ display: 'flex', gap: 10, marginBottom: 6 }}>
+        <div role="group" aria-label="Pick a side" style={{ display: 'flex', gap: 10, marginBottom: 2 }}>
           {FACES.map(f => (
             <CandyButton key={f} color={FACE_COLORS[f]} disabled={broke}
               selected={pick === f} dim={!!pick && pick !== f} onClick={() => choosePick(f)}
-              style={{ flex: 1, minHeight: 90, gap: 5, fontSize: 30, borderRadius: 20 }}>
-              <Emblem face={f} off={broke} />
+              style={{ flex: 1, minWidth: 0, minHeight: 58, flexDirection: 'row', gap: 7, padding: '0 8px', fontSize: 25, borderRadius: 16 }}>
+              <MiniCoin face={f} off={broke} />
               <span style={broke ? undefined : { color: FACE_TEXT[f], textShadow: STROKE }}>{f}</span>
             </CandyButton>
           ))}
         </div>
 
-        <div role="group" aria-label="Stake" style={{ display: 'flex', gap: 8, marginBottom: 6 }}>
+        <div role="group" aria-label="Stake" style={{ display: 'flex', gap: 7, marginBottom: 2 }}>
           {STAKES.map(s => (
             <CandyChip key={s} color={CHIP_COLORS[s]} disabled={s > balance}
               selected={stake === s} onClick={() => chooseStake(s)}>
@@ -166,13 +160,11 @@ export default function CoinFlipGame({ onClose, closing, balance = 0, onSpend, o
           ))}
         </div>
 
-        <CandyButton color="green" big disabled={!canFlip} onClick={flip} style={{ width: '100%', minHeight: 84, gap: 2 }}>
-          <span style={{ fontSize: 46, textShadow: canFlip ? `${textStroke(3, CANDY.outline)}, 0 5px 0 ${CANDY.outline}` : 'none' }}>FLIP</span>
-          <span style={{ fontSize: 18, color: canFlip ? CANDY.gold : 'inherit', textShadow: canFlip ? `${textStroke(2, CANDY.outline)}, 0 3px 0 ${CANDY.outline}` : 'none', letterSpacing: 1 }}>✦ WIN 1.9x ✦</span>
+        <CandyButton color="green" big disabled={!canFlip} onClick={flip} style={{ width: '100%', minHeight: 66, gap: 2, marginBottom: 6, borderRadius: 18 }}>
+          <span style={{ fontSize: 34, textShadow: canFlip ? `${textStroke(2.5, CANDY.outline)}, 0 4px 0 ${CANDY.outline}` : 'none' }}>FLIP</span>
+          <span style={{ fontSize: 14, color: canFlip ? CANDY.gold : 'inherit', textShadow: canFlip ? `${textStroke(1.5, CANDY.outline)}, 0 2px 0 ${CANDY.outline}` : 'none', letterSpacing: 1 }}>✦ WIN 1.9x ✦</span>
         </CandyButton>
       </div>
-
-      {showTutorial && <TutorialModal tutorialKey="coinflip" onClose={() => setShowTutorial(false)} />}
     </CandyScreen>
   );
 }
