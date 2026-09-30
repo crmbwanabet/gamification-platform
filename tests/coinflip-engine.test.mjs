@@ -4,7 +4,7 @@ import { STAKES, FACES, payoutFor, resolveFlip } from '../lib/coinflip/engine.mj
 
 test('stakes and faces', () => {
   assert.deepEqual(STAKES, [10, 20, 30, 50]);
-  assert.deepEqual(FACES, ['EAGLE', 'BWANA']);
+  assert.deepEqual(FACES, ['HEADS', 'TAILS']);
 });
 
 test('payoutFor: 1.9x in integer maths', () => {
@@ -14,14 +14,14 @@ test('payoutFor: 1.9x in integer maths', () => {
   assert.equal(payoutFor(50), 95);
 });
 
-test('resolveFlip: low rng lands EAGLE', () => {
-  const r = resolveFlip(10, 'EAGLE', () => 0.1);
-  assert.equal(r.face, 'EAGLE');
+test('resolveFlip: low rng lands HEADS', () => {
+  const r = resolveFlip(10, 'HEADS', () => 0.1);
+  assert.equal(r.face, 'HEADS');
 });
 
-test('resolveFlip: high rng lands BWANA', () => {
-  const r = resolveFlip(10, 'EAGLE', () => 0.9);
-  assert.equal(r.face, 'BWANA');
+test('resolveFlip: high rng lands TAILS', () => {
+  const r = resolveFlip(10, 'HEADS', () => 0.9);
+  assert.equal(r.face, 'TAILS');
 });
 
 test('resolveFlip: win iff face === pick; payout only on a win', () => {
@@ -39,7 +39,7 @@ test('resolveFlip: win iff face === pick; payout only on a win', () => {
 test('invalid stake throws', () => {
   for (const bad of [0, 15, '10', NaN]) {
     assert.throws(() => payoutFor(bad));
-    assert.throws(() => resolveFlip(bad, 'EAGLE', () => 0.1));
+    assert.throws(() => resolveFlip(bad, 'HEADS', () => 0.1));
   }
 });
 
@@ -51,9 +51,9 @@ test('invalid pick throws', () => {
 
 test('default rng: 10 000 flips land 47-53% per face', () => {
   const N = 10000;
-  let eagle = 0;
-  for (let i = 0; i < N; i++) if (resolveFlip(10, 'EAGLE').face === 'EAGLE') eagle++;
-  const share = eagle / N;
-  assert.ok(share >= 0.47 && share <= 0.53, `EAGLE share ${share}`);
-  assert.ok(1 - share >= 0.47 && 1 - share <= 0.53, `BWANA share ${1 - share}`);
+  let heads = 0;
+  for (let i = 0; i < N; i++) if (resolveFlip(10, 'HEADS').face === 'HEADS') heads++;
+  const share = heads / N;
+  assert.ok(share >= 0.47 && share <= 0.53, `HEADS share ${share}`);
+  assert.ok(1 - share >= 0.47 && 1 - share <= 0.53, `TAILS share ${1 - share}`);
 });

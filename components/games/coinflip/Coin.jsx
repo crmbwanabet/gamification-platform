@@ -6,9 +6,9 @@ import { COIN_FACES_READY } from './config';
 
 // The Coin Flip coin — pure CSS 3D, no canvas/WebGL.
 // Two face layers (backface-visibility: hidden) inside a preserve-3d coin:
-// EAGLE is the front (0deg), BWANA the back (pre-rotated 180deg). A toss is an
+// HEADS is the front (0deg), TAILS the back (pre-rotated 180deg). A toss is an
 // arc on the outer wrapper + a rotateY spin on the coin that ends on an even
-// number of half-turns for EAGLE and an odd number for BWANA, so the landed
+// number of half-turns for HEADS and an odd number for TAILS, so the landed
 // angle equals the resting angle and nothing jumps when the animation is removed.
 // onLanded fires exactly once per flight: animationend or a 1500ms fallback.
 // Reduced motion: no arc/spin — the result face fades in over 200ms.
@@ -16,7 +16,7 @@ import { COIN_FACES_READY } from './config';
 const TOSS_MS = 1400;
 const FALLBACK_MS = 1500;
 const FADE_MS = 200;
-const angleOf = (face) => (face === 'BWANA' ? 180 : 0);
+const angleOf = (face) => (face === 'TAILS' ? 180 : 0);
 
 const COIN_CSS = `
   @keyframes cfArc {
@@ -35,7 +35,7 @@ const COIN_CSS = `
 function Face({ face, back }) {
   const base = { position: 'absolute', inset: 0, borderRadius: '50%', backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden', transform: back ? 'rotateY(180deg)' : 'none' };
   if (COIN_FACES_READY) {
-    return <img src={face === 'EAGLE' ? '/games/coinflip/eagle.webp' : '/games/coinflip/bwana.webp'} alt={face} draggable={false} style={{ ...base, width: '100%', height: '100%', objectFit: 'contain' }} />;
+    return <img src={face === 'HEADS' ? '/games/coinflip/heads.webp' : '/games/coinflip/tails.webp'} alt={face} draggable={false} style={{ ...base, width: '100%', height: '100%', objectFit: 'contain' }} />;
   }
   // Placeholder: gold disc, embossed rim, face label in the game font
   return (
@@ -45,7 +45,7 @@ function Face({ face, back }) {
       boxShadow: 'inset 0 0 0 7px #D99A00, inset 0 0 0 10px #FFE46E, inset 0 0 0 13px #C98A00, inset 0 -10px 22px rgba(120,70,0,.45)',
     }}>
       <span style={{
-        fontFamily: CANDY.display, fontSize: face === 'EAGLE' ? '0.2em' : '0.27em', color: '#8A5600', letterSpacing: 1,
+        fontFamily: CANDY.display, fontSize: face === 'HEADS' ? '0.2em' : '0.27em', color: '#8A5600', letterSpacing: 1,
         textShadow: '0 2px 0 rgba(255,240,170,.9), 0 -1px 0 rgba(90,50,0,.5)',
       }}>{face}</span>
     </div>
@@ -59,7 +59,7 @@ export default function Coin({ state = 'idle', face = null, onLanded, reduced = 
   const flightRef = useRef(0);    // bumps per flight — remount key for the reduced fade
   const prevState = useRef(state);
   // Resting face: frozen while flying so the spin starts from where the coin was.
-  const restFace = useRef(face || 'EAGLE');
+  const restFace = useRef(face || 'HEADS');
   if (state !== 'flying') restFace.current = face || restFace.current;
   if (state === 'flying' && prevState.current !== 'flying') { flightRef.current += 1; doneRef.current = false; }
   prevState.current = state;
@@ -79,7 +79,7 @@ export default function Coin({ state = 'idle', face = null, onLanded, reduced = 
 
   const flying = state === 'flying';
   const from = angleOf(restFace.current);
-  const to = 1440 + angleOf(face);  // 8 half-turns for EAGLE, 9 for BWANA
+  const to = 1440 + angleOf(face);  // 8 half-turns for HEADS, 9 for TAILS
   const size = 'min(54vw, 27dvh, 220px)';
 
   return (
@@ -113,8 +113,8 @@ export default function Coin({ state = 'idle', face = null, onLanded, reduced = 
               transform: `rotateY(${flying ? from : angleOf(restFace.current)}deg)`,
               animation: flying ? `cfSpin ${TOSS_MS}ms cubic-bezier(.15,.6,.3,1) both` : 'none',
             }}>
-            <Face face="EAGLE" />
-            <Face face="BWANA" back />
+            <Face face="HEADS" />
+            <Face face="TAILS" back />
           </div>
         </div>
       )}
