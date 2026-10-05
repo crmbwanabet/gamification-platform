@@ -10,7 +10,6 @@ import { star4 } from './Scene';
 //   Pow      — the comic "save" burst at the gloves (pk-pow)
 //   Confetti — 34 pieces (.pk-cfp; launch velocity/spin as CSS variables) in pk-conf
 //   Sparks   — 4-point stars around the goal (pk-sp<i>, group pk-sparks)
-//   Plus     — the floating "+payout" (pk-plus)
 
 const O = CANDY.outline;
 const f1 = n => +n.toFixed(2);
@@ -66,14 +65,6 @@ export function Sparks() {
   return (
     <g className="pk-sparks">
       {SPARKS.map((s, i) => <path key={i} className={`pk-sp${i}`} d={star4(s[2])} fill="#FFF3B0" stroke={CANDY.gold} strokeWidth=".8" />)}
-    </g>
-  );
-}
-
-export function Plus({ amount }) {
-  return (
-    <g className="pk-plus">
-      <text textAnchor="middle" style={{ fontFamily: CANDY.display }} fontSize="21" fill={CANDY.gold} stroke={O} strokeWidth="5" strokeLinejoin="round" paintOrder="stroke">+{amount}</text>
     </g>
   );
 }

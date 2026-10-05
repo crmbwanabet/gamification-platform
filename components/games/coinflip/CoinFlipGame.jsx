@@ -5,6 +5,7 @@ import TutorialModal from '../../modals/TutorialModal';
 import CandyScreen from '../candy/CandyScreen';
 import CandyButton from '../candy/CandyButton';
 import CandyChip from '../candy/CandyChip';
+import WinCelebration from '../candy/WinCelebration';
 import { CANDY, outlineShadow, textStroke } from '../candy/tokens';
 import Coin from './Coin';
 import { resolveFlip, STAKES, FACES, payoutFor } from '@/lib/coinflip/engine.mjs';
@@ -18,6 +19,10 @@ import { resolveFlip, STAKES, FACES, payoutFor } from '@/lib/coinflip/engine.mjs
 // Exactly-once: the resolved round waits in pendingRef; fireRound() nulls it
 // before calling onRound, and unmount (close mid-flight) flushes it.
 // Double-charge guard: flyingRef locks FLIP from the tap until landing.
+// Win: the WinCelebration panel (YOU WON / count-up / COLLECT) covers the game
+// once the result lands. The platform has ALREADY credited the payout via
+// onRound; while the panel is up the pill shows the pre-win balance
+// (balance - payout + coins collected so far) and COLLECT walks it up.
 // NOTE: STAKES are mirrored by stakeRange '10–50' in lib/data/platform.js and
 // the tutorial prize lines in lib/data/tutorials.js — change all three together.
 // ============================================================================
@@ -71,6 +76,8 @@ export default function CoinFlipGame({ onClose, closing, balance = 0, onSpend, o
   const [outcome, setOutcome] = useState(null); // { face, win, payout }
   const [showTutorial, setShowTutorial] = useState(false);
   const [reduced, setReduced] = useState(false);
+  const [cel, setCel] = useState(null);         // win celebration { payout, added }
+  const pillRef = useRef(null);
 
   const flyingRef = useRef(false);
   const pendingRef = useRef(null);
@@ -95,13 +102,14 @@ export default function CoinFlipGame({ onClose, closing, balance = 0, onSpend, o
   useEffect(() => () => fireRound(), []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const broke = balance < MIN_STAKE;
-  const canFlip = !!pick && stake <= balance && phase !== 'flying';
+  const canFlip = !!pick && stake <= balance && phase !== 'flying' && !cel;
+  const shownBalance = cel ? Math.max(0, balance - cel.payout + cel.added) : balance;
 
   const chooseStake = (s) => { if (flyingRef.current || s > balance) return; setStake(s); saveLast(s, pick); };
   const choosePick = (f) => { if (flyingRef.current || broke) return; setPick(f); saveLast(stake, f); };
 
   const flip = () => {
-    if (flyingRef.current || !pick || stake > balance) return;
+    if (flyingRef.current || cel || !pick || stake > balance) return;
     flyingRef.current = true;
     const out = resolveFlip(stake, pick);
     onSpend?.(stake);
@@ -113,6 +121,8 @@ export default function CoinFlipGame({ onClose, closing, balance = 0, onSpend, o
   const onLanded = () => {
     flyingRef.current = false;
     setPhase('result');
+    const r = pendingRef.current;
+    if (r?.win) setCel({ payout: r.payout, added: 0 });
     fireRound();
   };
 
@@ -126,7 +136,7 @@ export default function CoinFlipGame({ onClose, closing, balance = 0, onSpend, o
   else line = <span style={{ fontSize: 17, color: CANDY.sub }}>Win {payoutFor(stake)} coins</span>;
 
   return (
-    <CandyScreen title="COIN FLIP" balance={balance} closing={closing} onClose={onClose} onHelp={() => setShowTutorial(true)}
+    <CandyScreen title="COIN FLIP" balance={shownBalance} pillRef={pillRef} closing={closing} onClose={onClose} onHelp={() => setShowTutorial(true)}
       overlay={showTutorial && <TutorialModal tutorialKey="coinflip" onClose={() => setShowTutorial(false)} />}>
       {/* coin area — takes whatever height is left; a size container so Coin can
           size itself and its toss arc from the space it actually has */}
@@ -165,6 +175,11 @@ export default function CoinFlipGame({ onClose, closing, balance = 0, onSpend, o
           <span style={{ fontSize: 14, color: canFlip ? CANDY.gold : 'inherit', textShadow: canFlip ? `${textStroke(1.5, CANDY.outline)}, 0 2px 0 ${CANDY.outline}` : 'none', letterSpacing: 1 }}>✦ WIN 1.9x ✦</span>
         </CandyButton>
       </div>
+
+      {cel && (
+        <WinCelebration payout={cel.payout} reduced={reduced} delay={450} pillRef={pillRef}
+          onTick={(added) => setCel(c => c && { ...c, added })} onDone={() => setCel(null)} />
+      )}
     </CandyScreen>
   );
 }

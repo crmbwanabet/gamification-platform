@@ -5,13 +5,14 @@ import TutorialModal from '../../modals/TutorialModal';
 import CandyScreen from '../candy/CandyScreen';
 import CandyButton from '../candy/CandyButton';
 import CandyChip from '../candy/CandyChip';
+import WinCelebration from '../candy/WinCelebration';
 import { CANDY, outlineShadow, textStroke } from '../candy/tokens';
 import { resolvePick, payoutFor, STAKES } from '@/lib/pick6/engine.mjs';
 import { SPOTS, SPOT_IDS } from '@/lib/penalty/spots.mjs';
 import { SceneDefs, Stadium, GoalNet, GoalFrame, SCENE_CSS } from './Scene';
 import Keeper, { KEEPER_CSS } from './Keeper';
 import Ball, { BallShadow, BallGhosts } from './Ball';
-import { Pocket, Pow, Confetti, Sparks, Plus } from './Effects';
+import { Pocket, Pow, Confetti, Sparks } from './Effects';
 import Spots, { SpotDefs, SPOTS_CSS } from './Spots';
 import { END, LAND_S, SETTLE_S, frameAt, frameCss, idleCss, roundCss } from './motion';
 
@@ -24,6 +25,11 @@ import { END, LAND_S, SETTLE_S, frameAt, frameCss, idleCss, roundCss } from './m
 // Exactly-once: the resolved round waits in pendingRef; fireRound() nulls it
 // before calling onRound, and unmount (close mid-kick) flushes it.
 // Double-charge guard: flyingRef locks KICK from the tap until the ball lands.
+// Win: the WinCelebration panel (YOU WON / count-up / COLLECT) covers the game
+// once the result lands. The platform has ALREADY credited the payout via
+// onRound; while the panel is up the pill shows the pre-win balance
+// (balance - payout + coins collected so far) and COLLECT walks it up.
+// (No in-scene "+payout" float — the panel is the star.)
 // Animation: motion.js turns the frame function into CSS @keyframes per round.
 // NOTE: STAKES are mirrored by stakeRange '10–50' in lib/data/platform.js and
 // the tutorial prize lines in lib/data/tutorials.js — change all three together.
@@ -96,6 +102,8 @@ export default function PenaltyGame({ onClose, closing, balance = 0, onSpend, on
   const [settled, setSettled] = useState(false); // spots back after a round
   const [showTutorial, setShowTutorial] = useState(false);
   const [reduced, setReduced] = useState(false);
+  const [cel, setCel] = useState(null);         // win celebration { payout, added }
+  const pillRef = useRef(null);
 
   const sceneRef = useRef(null);
   const viewBox = useFitViewBox(sceneRef);
@@ -127,6 +135,8 @@ export default function PenaltyGame({ onClose, closing, balance = 0, onSpend, on
     const land = setTimeout(() => {
       flyingRef.current = false;
       setPhase('result');
+      const r = pendingRef.current;
+      if (r?.win) setCel({ payout: r.payout, added: 0 });
       fireRound();
     }, reduced ? REDUCED_LAND_MS : LAND_S * 1000);
     return () => clearTimeout(land);
@@ -140,7 +150,8 @@ export default function PenaltyGame({ onClose, closing, balance = 0, onSpend, on
 
   const broke = balance < MIN_STAKE;
   const sel = SPOTS.find(s => s.id === spot) || null;
-  const canKick = !!sel && stake <= balance && phase !== 'kicking';
+  const canKick = !!sel && stake <= balance && phase !== 'kicking' && !cel;
+  const shownBalance = cel ? Math.max(0, balance - cel.payout + cel.added) : balance;
 
   const chooseStake = (s) => { if (flyingRef.current || s > balance) return; setStake(s); saveLast(s, spot); };
   const chooseSpot = (id) => {
@@ -150,7 +161,7 @@ export default function PenaltyGame({ onClose, closing, balance = 0, onSpend, on
   };
 
   const kick = () => {
-    if (flyingRef.current || !sel || stake > balance) return;
+    if (flyingRef.current || cel || !sel || stake > balance) return;
     flyingRef.current = true;
     const out = resolvePick(stake, sel.mult);
     onSpend?.(stake);
@@ -180,7 +191,7 @@ export default function PenaltyGame({ onClose, closing, balance = 0, onSpend, on
   const spotsLocked = phase === 'kicking' || (phase === 'result' && !settled);
 
   return (
-    <CandyScreen title={TITLE} balance={balance} closing={closing} onClose={onClose} onHelp={() => setShowTutorial(true)}
+    <CandyScreen title={TITLE} balance={shownBalance} pillRef={pillRef} closing={closing} onClose={onClose} onHelp={() => setShowTutorial(true)}
       overlay={showTutorial && <TutorialModal tutorialKey="penalty" onClose={() => setShowTutorial(false)} />}>
       <style>{STATIC_CSS}</style>
       <style>{sceneCss}</style>
@@ -208,7 +219,6 @@ export default function PenaltyGame({ onClose, closing, balance = 0, onSpend, on
             <Ball />
             <Confetti />
             <Sparks />
-            <Plus amount={outcome?.payout ?? 0} />
           </g>
         </svg>
         <div aria-hidden style={{ position: 'absolute', inset: 0, borderRadius: 18, pointerEvents: 'none', boxShadow: 'inset 0 0 0 1.5px rgba(255,255,255,.12), inset 0 0 22px rgba(10,0,30,.55)' }} />
@@ -234,6 +244,11 @@ export default function PenaltyGame({ onClose, closing, balance = 0, onSpend, on
           <span style={{ fontSize: 14, color: canKick ? CANDY.gold : 'inherit', textShadow: canKick ? `${textStroke(1.5, CANDY.outline)}, 0 2px 0 ${CANDY.outline}` : 'none', letterSpacing: 1 }}>{caption}</span>
         </CandyButton>
       </div>
+
+      {cel && (
+        <WinCelebration payout={cel.payout} reduced={reduced} delay={650} pillRef={pillRef}
+          onTick={(added) => setCel(c => c && { ...c, added })} onDone={() => setCel(null)} />
+      )}
     </CandyScreen>
   );
 }

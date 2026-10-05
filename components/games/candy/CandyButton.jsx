@@ -35,10 +35,10 @@ export const CANDY_BTN_CSS = `
 // Gold glowing ring + slight lift for the chosen option
 const RING = `0 0 0 3px ${CANDY.gold}, 0 0 18px 2px rgba(255,210,31,.65)`;
 
-export default function CandyButton({ color = 'green', children, onClick, disabled, selected, dim, big, style, ...rest }) {
+const CandyButton = React.forwardRef(function CandyButton({ color = 'green', children, onClick, disabled, selected, dim, big, style, ...rest }, ref) {
   const c = disabled ? CANDY.off : (CANDY[color] || CANDY.green);
   return (
-    <button type="button" className="candy-btn" onClick={onClick} disabled={disabled}
+    <button ref={ref} type="button" className="candy-btn" onClick={onClick} disabled={disabled}
       data-dim={dim && !selected && !disabled ? '1' : undefined}
       aria-pressed={selected === undefined ? undefined : !!selected}
       style={{
@@ -52,4 +52,6 @@ export default function CandyButton({ color = 'green', children, onClick, disabl
       {children}
     </button>
   );
-}
+});
+
+export default CandyButton;

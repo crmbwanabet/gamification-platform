@@ -1304,7 +1304,7 @@ export default function GamificationPlatform() {
         <CoinFlipGame onClose={() => animateClose(() => setActiveGame(null))} closing={closingModal}
           balance={user.kwacha} onSpend={(n) => addCoins(-n)}
           onRound={({ stake, win, payout }) => {
-            if (win) { addCoins(payout); showNotif(`🎉 +${payout} Coins!`); triggerReward('medium', null, { coins: payout }); }
+            if (win) addCoins(payout); // the game's own WinCelebration shows the win — no toast / float
             setUser(u => ({ ...u, gamesPlayed: u.gamesPlayed + 1, dailyTasksDone: [...new Set([...u.dailyTasksDone, 'game'])] }));
             setGamesPlayedToday(prev => new Set([...prev, 'coinflip']));
             trackMission('gamePlayed', { gameId: 'coinflip', coinsWon: win ? payout - stake : 0, gamesSet: gamesPlayedToday });
@@ -1314,7 +1314,7 @@ export default function GamificationPlatform() {
         <PenaltyGame onClose={() => animateClose(() => setActiveGame(null))} closing={closingModal}
           balance={user.kwacha} onSpend={(n) => addCoins(-n)}
           onRound={({ stake, win, payout }) => {
-            if (win) { addCoins(payout); showNotif(`🎉 +${payout} Coins!`); triggerReward('medium', null, { coins: payout }); }
+            if (win) addCoins(payout); // the game's own WinCelebration shows the win — no toast / float
             setUser(u => ({ ...u, gamesPlayed: u.gamesPlayed + 1, dailyTasksDone: [...new Set([...u.dailyTasksDone, 'game'])] }));
             setGamesPlayedToday(prev => new Set([...prev, 'penalty']));
             trackMission('gamePlayed', { gameId: 'penalty', coinsWon: win ? payout - stake : 0, gamesSet: gamesPlayedToday });

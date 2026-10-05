@@ -16,6 +16,9 @@ import { CANDY_BTN_CSS } from './CandyButton';
 // OUTSIDE the backdrop: the card keeps a transform from its open animation,
 // which would otherwise trap position:fixed children, and a click inside the
 // overlay would bubble to the backdrop and close the game.
+// `pillRef` exposes the balance pill (WinCelebration flies coins into it and
+// bumps it); the children column is positioned so a WinCelebration child can
+// cover it.
 
 const hit = { width: 48, height: 48, border: 'none', background: 'transparent', padding: 0, display: 'grid', placeItems: 'center', cursor: 'pointer', flex: 'none', WebkitTapHighlightColor: 'transparent' };
 const iconFace = { width: 36, height: 36, borderRadius: '50%', display: 'grid', placeItems: 'center', color: '#fff' };
@@ -53,7 +56,7 @@ function MarqueeDots() {
   );
 }
 
-export default function CandyScreen({ title, balance, onClose, onHelp, closing, overlay, children }) {
+export default function CandyScreen({ title, balance, pillRef, onClose, onHelp, closing, overlay, children }) {
   return (
     <>
       <div onClick={onClose} className={closing ? 'anim-backdrop-close' : 'anim-fade-in'}
@@ -87,12 +90,12 @@ export default function CandyScreen({ title, balance, onClose, onHelp, closing, 
               </h2>
               <button type="button" onClick={onClose} title="Close" aria-label="Close" style={hit}><span style={closeFace}><X size={20} strokeWidth={3.25} /></span></button>
             </div>
-            <div aria-label={`Balance ${balance} coins`}
+            <div ref={pillRef} aria-label={`Balance ${balance} coins`}
               style={{ alignSelf: 'center', flex: 'none', display: 'flex', alignItems: 'center', gap: 5, height: 26, margin: '2px 0 0', padding: '0 12px 0 4px', borderRadius: 999, background: 'rgba(16,3,38,.62)', border: `2px solid ${CANDY.gold}`, boxShadow: 'inset 0 0 8px rgba(255,210,31,.18)' }}>
               <img src="/ui/reward/coins.png" alt="" width={18} height={18} style={{ display: 'block' }} />
               <span style={{ fontFamily: CANDY.display, fontSize: 16, color: '#fff', letterSpacing: .5, fontVariantNumeric: 'tabular-nums', textShadow: '0 1.5px 0 rgba(0,0,0,.4)' }}>{Number(balance || 0).toLocaleString()}</span>
             </div>
-            <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+            <div style={{ position: 'relative', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
               {children}
             </div>
           </div>
