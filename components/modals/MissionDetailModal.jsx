@@ -4,6 +4,7 @@ import React from 'react';
 import { X, ChevronRight, Check } from 'lucide-react';
 import { C } from '../redesign/tokens';
 import { Badge, Progress, RewardIcon, GreenBtn } from '../redesign/RedesignShell';
+import { amountText } from '@/lib/rewardText.mjs';
 import { IMAGES } from '../../lib/data/images';
 
 const DIFF = { easy: { label: 'Easy', c: C.green }, medium: { label: 'Medium', c: C.gold }, hard: { label: 'Hard', c: C.red } };
@@ -91,16 +92,16 @@ export default function MissionDetailModal({ mission, progress, done, onClose, o
             <div style={{ display: 'flex', alignItems: 'center', gap: 18, flexWrap: 'wrap' }}>
               {mission.reward.kwacha ? (
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 16, fontWeight: 800, color: C.gold }}>
-                  <RewardIcon kind="coins" size={19} />{mission.reward.kwacha}
+                  <RewardIcon kind="coins" size={19} />{amountText(mission.reward.kwacha, 'coins')}
                 </span>
               ) : null}
               {mission.reward.gems ? (
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 16, fontWeight: 800, color: C.teal }}>
-                  <RewardIcon kind="gem" size={17} />{mission.reward.gems}
+                  <RewardIcon kind="gem" size={17} />{amountText(mission.reward.gems, 'gems')}
                 </span>
               ) : null}
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 16, fontWeight: 800, color: '#b9a5e8' }}>
-                ⚡ {mission.xp} <span style={{ fontSize: 11.5, fontWeight: 700, color: C.muted }}>XP</span>
+                ⚡ {amountText(mission.xp, 'xp')}
               </span>
             </div>
           </div>

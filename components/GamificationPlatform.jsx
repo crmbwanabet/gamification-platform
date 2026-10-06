@@ -48,6 +48,7 @@ import MinibusGame from './games/minibus/MinibusGame';
 import BottleGame from './games/bottle/BottleGame';
 import ScratchGame from './games/scratch/ScratchGame';
 import NumbersGame from './games/numbers/NumbersGame';
+import { amountText, rewardParts } from '@/lib/rewardText.mjs';
 // trivia games parked — see parked/components/games/
 
 // Respect the user's OS-level motion preference.
@@ -243,6 +244,7 @@ export default function GamificationPlatform() {
   //   medium -> 2 layers: floating number(s) + brief gold screen flash
   //   big    -> 2 layers: fly-to-header trail + confetti burst (the trail IS the drama)
   // prefers-reduced-motion collapses every tier to a static floating number only.
+  // Labelled floats ("+50 coins", "+5 gems") stack vertically so they never overlap.
   const triggerReward = useCallback((tier, sourceEl, rewards = {}) => {
     const rect = sourceEl?.getBoundingClientRect?.() || { left: window.innerWidth / 2, top: window.innerHeight / 2, width: 0, height: 0 };
     const cx = rect.left + rect.width / 2;
@@ -251,42 +253,42 @@ export default function GamificationPlatform() {
     // Reduced-motion path: acknowledge the reward with a single, gentle float-up number.
     // No confetti, no shake, no flash, no shimmer, no fly-to-header trail.
     if (prefersReducedMotion) {
-      if (rewards.coins) spawnFloatingNumber(`+${rewards.coins}`, cx, cy - 20, '#EAB308');
-      if (rewards.gems) spawnFloatingNumber(`+${rewards.gems}`, cx + 40, cy - 20, '#10B981');
-      if (rewards.diamonds) spawnFloatingNumber(`+${rewards.diamonds}`, cx - 40, cy - 20, '#3B82F6');
-      if (rewards.xp) spawnFloatingNumber(`+${rewards.xp} XP`, cx, cy - 50, '#c026d3');
+      if (rewards.coins) spawnFloatingNumber(`+${amountText(rewards.coins, 'coins')}`, cx, cy - 20, '#EAB308');
+      if (rewards.gems) spawnFloatingNumber(`+${amountText(rewards.gems, 'gems')}`, cx, cy - 46, '#10B981');
+      if (rewards.diamonds) spawnFloatingNumber(`+${amountText(rewards.diamonds, 'diamonds')}`, cx, cy - 72, '#3B82F6');
+      if (rewards.xp) spawnFloatingNumber(`+${rewards.xp} XP`, cx, cy - 98, '#c026d3');
       return;
     }
 
     if (tier === 'small') {
       // 1 layer: float number(s) only. No shake, no flash, no particles.
-      if (rewards.coins) spawnFloatingNumber(`+${rewards.coins}`, cx, cy - 20, '#EAB308');
-      if (rewards.gems) spawnFloatingNumber(`+${rewards.gems}`, cx + 40, cy - 20, '#10B981');
-      if (rewards.xp) spawnFloatingNumber(`+${rewards.xp} XP`, cx - 40, cy - 20, '#c026d3');
+      if (rewards.coins) spawnFloatingNumber(`+${amountText(rewards.coins, 'coins')}`, cx, cy - 20, '#EAB308');
+      if (rewards.gems) spawnFloatingNumber(`+${amountText(rewards.gems, 'gems')}`, cx, cy - 46, '#10B981');
+      if (rewards.xp) spawnFloatingNumber(`+${rewards.xp} XP`, cx, cy - 98, '#c026d3');
     }
     else if (tier === 'medium') {
       // 2 layers: float number(s) + brief amber screen flash (~180ms via triggerFlash).
       triggerFlash('gold');
-      if (rewards.coins) spawnFloatingNumber(`+${rewards.coins}`, cx, cy - 30, '#EAB308');
-      if (rewards.gems) spawnFloatingNumber(`+${rewards.gems}`, cx + 50, cy - 30, '#10B981');
-      if (rewards.diamonds) spawnFloatingNumber(`+${rewards.diamonds}`, cx - 50, cy - 30, '#3B82F6');
-      if (rewards.xp) spawnFloatingNumber(`+${rewards.xp} XP`, cx, cy - 60, '#c026d3');
+      if (rewards.coins) spawnFloatingNumber(`+${amountText(rewards.coins, 'coins')}`, cx, cy - 30, '#EAB308');
+      if (rewards.gems) spawnFloatingNumber(`+${amountText(rewards.gems, 'gems')}`, cx, cy - 56, '#10B981');
+      if (rewards.diamonds) spawnFloatingNumber(`+${amountText(rewards.diamonds, 'diamonds')}`, cx, cy - 82, '#3B82F6');
+      if (rewards.xp) spawnFloatingNumber(`+${rewards.xp} XP`, cx, cy - 108, '#c026d3');
     }
     else if (tier === 'big') {
       // 2 layers: fly-to-header currency trail + confetti burst. No shake, no flash, no shimmer.
       if (rewards.coins) {
         spawnFlyingCoin(cx, cy, 'coin');
-        spawnFloatingNumber(`+${rewards.coins}`, cx, cy - 30, '#EAB308');
+        spawnFloatingNumber(`+${amountText(rewards.coins, 'coins')}`, cx, cy - 30, '#EAB308');
       }
       if (rewards.gems) {
         setTimeout(() => spawnFlyingCoin(cx, cy, 'gem'), 250);
-        spawnFloatingNumber(`+${rewards.gems}`, cx + 50, cy - 30, '#10B981');
+        spawnFloatingNumber(`+${amountText(rewards.gems, 'gems')}`, cx, cy - 56, '#10B981');
       }
       if (rewards.diamonds) {
         setTimeout(() => spawnFlyingCoin(cx, cy, 'diamond'), 450);
-        spawnFloatingNumber(`+${rewards.diamonds}`, cx - 50, cy - 30, '#3B82F6');
+        spawnFloatingNumber(`+${amountText(rewards.diamonds, 'diamonds')}`, cx, cy - 82, '#3B82F6');
       }
-      if (rewards.xp) spawnFloatingNumber(`+${rewards.xp} XP`, cx, cy - 70, '#c026d3');
+      if (rewards.xp) spawnFloatingNumber(`+${rewards.xp} XP`, cx, cy - 108, '#c026d3');
       // Confetti burst (second layer) — single downpour, lighter than before.
       for (let i = 0; i < 20; i++) {
         setTimeout(() => {
@@ -1156,7 +1158,8 @@ export default function GamificationPlatform() {
       if (justCompleted.length > 0) {
         setTimeout(() => {
           justCompleted.forEach(m => {
-            showNotif('✅ Mission Complete: ' + m.name + '!');
+            const won = [...rewardParts(m.reward), m.xp ? amountText(m.xp, 'xp') : null].filter(Boolean);
+            showNotif(`✅ Mission Complete: ${m.name}!${won.length ? ` +${won.join(' + ')}` : ''}`);
             triggerReward('small', null, { coins: m.reward?.kwacha || 0, gems: m.reward?.gems || 0, xp: m.xp || 0 });
             track('mission_completed', { meta: { missionId: m.id } });
             // Track weekly mission for daily missions completed

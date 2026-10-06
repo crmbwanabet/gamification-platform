@@ -6,6 +6,7 @@ import RedesignShell, { Badge, Progress, GreenBtn, SectionTitle, Card, Thumb, Re
 import DailyReward from './DailyReward';
 import GamesGrid from './GamesGrid';
 import { IMAGES } from '@/lib/data/images';
+import { amountText } from '@/lib/rewardText.mjs';
 import { getDailyMissions, PERMANENT_MISSIONS } from '@/lib/data/missions';
 import { STORE_ITEMS, MINIGAMES } from '@/lib/data/platform';
 
@@ -31,7 +32,7 @@ function MissionCard({ m, progress = 0, done = false, onOpen, i = 0 }) {
         <div style={{ marginTop: 10 }}>
           {state === 'done' && <Badge bg={C.green}>Mission is completed</Badge>}
           {state === 'progress' && <Badge bg={C.teal} color="#06231f">In progress</Badge>}
-          {state === 'new' && <div style={{ fontSize: 11, color: C.sub }}><span style={{ color: C.muted }}>Reward:</span> <b style={{ color: C.text }}>{m.reward.kwacha} Points</b></div>}
+          {state === 'new' && <div style={{ fontSize: 11, color: C.sub }}><span style={{ color: C.muted }}>Reward:</span> <b style={{ color: C.text }}>{amountText(m.reward.kwacha, 'coins')}</b></div>}
           <div style={{ marginTop: 8 }}>
             <Progress value={pct} />
             <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6, fontSize: 10.5, color: C.muted }}>

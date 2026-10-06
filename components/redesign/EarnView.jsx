@@ -4,6 +4,7 @@ import React from 'react';
 import { C } from './tokens';
 import RedesignShell, { GreenBtn, SectionTitle, Card, Thumb, Badge, Progress, RewardIcon } from './RedesignShell';
 import { IMAGES } from '@/lib/data/images';
+import { amountText } from '@/lib/rewardText.mjs';
 import { getDailyMissions, PERMANENT_MISSIONS } from '@/lib/data/missions';
 import { XP_LEVELS, LEVEL_REWARDS, STREAK_REWARDS, getLevel } from '@/lib/data/platform';
 import { Check, Lock } from 'lucide-react';
@@ -13,9 +14,9 @@ const DIFF = { easy: { label: 'Easy', c: C.green }, medium: { label: 'Medium', c
 function RewardChips({ r }) {
   return (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 12, fontSize: 13, fontWeight: 800 }}>
-      {r.kwacha ? <span style={{ color: C.gold, display: 'inline-flex', alignItems: 'center', gap: 4 }}><RewardIcon kind="coins" size={15} />{r.kwacha}</span> : null}
-      {r.gems ? <span style={{ color: C.teal, display: 'inline-flex', alignItems: 'center', gap: 4 }}><RewardIcon kind="gem" size={14} />{r.gems}</span> : null}
-      {r.diamonds ? <span style={{ color: '#7db8ff', display: 'inline-flex', alignItems: 'center', gap: 4 }}><RewardIcon kind="diamond" size={14} />{r.diamonds}</span> : null}
+      {r.kwacha ? <span style={{ color: C.gold, display: 'inline-flex', alignItems: 'center', gap: 4 }}><RewardIcon kind="coins" size={15} />{amountText(r.kwacha, 'coins')}</span> : null}
+      {r.gems ? <span style={{ color: C.teal, display: 'inline-flex', alignItems: 'center', gap: 4 }}><RewardIcon kind="gem" size={14} />{amountText(r.gems, 'gems')}</span> : null}
+      {r.diamonds ? <span style={{ color: '#7db8ff', display: 'inline-flex', alignItems: 'center', gap: 4 }}><RewardIcon kind="diamond" size={14} />{amountText(r.diamonds, 'diamonds')}</span> : null}
     </span>
   );
 }
@@ -79,8 +80,8 @@ function MissionCard({ m, progress, done, onOpen, i = 0 }) {
           <Progress value={pct} />
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10, fontSize: 12, fontWeight: 800 }}>
-              <span style={{ color: C.gold, display: 'inline-flex', alignItems: 'center', gap: 4 }}><RewardIcon kind="coins" size={15} />{m.reward.kwacha}</span>
-              {m.reward.gems && <span style={{ color: C.teal, display: 'inline-flex', alignItems: 'center', gap: 4 }}><RewardIcon kind="gem" size={14} />{m.reward.gems}</span>}
+              <span style={{ color: C.gold, display: 'inline-flex', alignItems: 'center', gap: 4 }}><RewardIcon kind="coins" size={15} />{amountText(m.reward.kwacha, 'coins')}</span>
+              {m.reward.gems ? <span style={{ color: C.teal, display: 'inline-flex', alignItems: 'center', gap: 4 }}><RewardIcon kind="gem" size={14} />{amountText(m.reward.gems, 'gems')}</span> : null}
             </span>
             <span style={{ fontSize: 11, color: C.muted }}>{done ? m.target : (progress || 0)}/{m.target}</span>
           </div>
