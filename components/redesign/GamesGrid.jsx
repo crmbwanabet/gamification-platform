@@ -2,32 +2,9 @@
 
 import React from 'react';
 import { C } from './tokens';
-import RedesignShell, { SectionTitle, Card, Thumb, Badge, RewardIcon } from './RedesignShell';
+import { SectionTitle, Card, Thumb, Badge, RewardIcon } from './RedesignShell';
 import { IMAGES } from '@/lib/data/images';
 import { MINIGAMES } from '@/lib/data/platform';
-
-const SUBS = [
-  { key: 'play.minigames', label: 'Games' },
-  // Predictions + Daily (trivia) PARKED — components live in
-  // parked/components/redesign/PlayView.parked.jsx; re-add entries here to restore
-];
-
-function SubNav({ tab, onNavigate }) {
-  if (SUBS.length < 2) return null;
-  return (
-    <div style={{ display: 'flex', gap: 8, marginBottom: 18 }}>
-      {SUBS.map((s) => {
-        const active = tab === s.key;
-        return (
-          <button key={s.key} onClick={() => onNavigate && onNavigate(s.key)} style={{
-            padding: '8px 18px', borderRadius: 9, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 800,
-            background: active ? C.green : C.panel2, color: active ? '#08210f' : C.sub,
-          }}>{s.label}</button>
-        );
-      })}
-    </div>
-  );
-}
 
 function GameCard({ g, free, onPlay, i = 0 }) {
   // Out of free plays ≠ locked: the card stays playable as a PAID extra play
@@ -55,23 +32,18 @@ function GameCard({ g, free, onPlay, i = 0 }) {
   );
 }
 
-function GamesGrid({ gamePlays, onPlay, games }) {
+/**
+ * The games grid (Njuka + the candy games). Lives on Home since the Play tab
+ * was folded into it (2026-10); `id="home-games"` is the scroll target for
+ * legacy "Go to Games" CTAs.
+ */
+export default function GamesGrid({ gamePlays, onPlay, games, title = 'Games' }) {
   return (
-    <section>
-      <SectionTitle>Minigames</SectionTitle>
+    <section id="home-games" style={{ scrollMarginTop: 12 }}>
+      <SectionTitle>{title}</SectionTitle>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 12 }}>
         {(games || MINIGAMES).map((g, i) => <GameCard key={g.id} i={i} g={g} free={gamePlays?.[g.id] ?? 0} onPlay={onPlay} />)}
       </div>
     </section>
-  );
-}
-
-export default function PlayView({ tab = 'play.minigames', points = '0', missionsCount = 0, badges = 0, xp = 0, gamePlays, onNavigate, onOpenProfile, onPlay, userId = null, navBadges = {}, games = null }) {
-  return (
-    <RedesignShell points={points} missionsCount={missionsCount} badges={badges} xp={xp} userId={userId} navBadges={navBadges} activeTab="play" onNavigate={onNavigate} onOpenProfile={onOpenProfile}>
-      <SubNav tab={tab} onNavigate={onNavigate} />
-      {/* Predictions + Daily (trivia) parked — see parked/components/redesign/PlayView.parked.jsx */}
-      <GamesGrid gamePlays={gamePlays} onPlay={onPlay} games={games} />
-    </RedesignShell>
   );
 }

@@ -7,15 +7,8 @@ import { IMAGES } from '@/lib/data/images';
 import { getDailyMissions, PERMANENT_MISSIONS } from '@/lib/data/missions';
 import { XP_LEVELS, LEVEL_REWARDS, STREAK_REWARDS, getLevel } from '@/lib/data/platform';
 import { Check, Lock } from 'lucide-react';
-import DailyReward from './DailyReward';
 
 const DIFF = { easy: { label: 'Easy', c: C.green }, medium: { label: 'Medium', c: C.gold }, hard: { label: 'Hard', c: C.red } };
-
-const SUBS = [
-  { key: 'earn.missions', label: 'Missions' },
-  // Quests PARKED — QuestCard lives in parked/components/redesign/EarnView.QuestCard.parked.jsx
-  { key: 'earn.rewards', label: 'Rewards' },
-];
 
 function RewardChips({ r }) {
   return (
@@ -43,15 +36,20 @@ function MilestoneRow({ icon, title, sub, reward, reached, current }) {
   );
 }
 
-function RewardsSection({ xp = 0, streak = 1, dailyDay, dailyClaimed, onClaimDaily, dailyRewards = null, streakRewards = null, levelRewards = null }) {
+function RewardsSection({ xp = 0, streak = 1, streakRewards = null, levelRewards = null }) {
   const curLevel = getLevel(xp).level;
   const lvlRewards = levelRewards || LEVEL_REWARDS;
   const strRewards = streakRewards || STREAK_REWARDS;
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
       <section>
-        <SectionTitle>Daily Reward</SectionTitle>
-        <DailyReward dailyDay={dailyDay} dailyClaimed={dailyClaimed} onClaim={onClaimDaily} rewards={dailyRewards} />
+        <SectionTitle>Streak Bonuses</SectionTitle>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {strRewards.map(s => (
+            <MilestoneRow key={s.days} icon="🔥" title={`${s.days}-day streak`} sub={`Log in ${s.days} days in a row · you're on ${streak}`}
+              reward={s} reached={streak >= s.days} current={false} />
+          ))}
+        </div>
       </section>
       <section>
         <SectionTitle>Level Milestones</SectionTitle>
@@ -62,28 +60,6 @@ function RewardsSection({ xp = 0, streak = 1, dailyDay, dailyClaimed, onClaimDai
           ))}
         </div>
       </section>
-      <section>
-        <SectionTitle>Streak Bonuses</SectionTitle>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {strRewards.map(s => (
-            <MilestoneRow key={s.days} icon="🔥" title={`${s.days}-day streak`} sub={`Log in ${s.days} days in a row · you're on ${streak}`}
-              reward={s} reached={streak >= s.days} current={false} />
-          ))}
-        </div>
-      </section>
-    </div>
-  );
-}
-
-function SubNav({ tab, onNavigate }) {
-  return (
-    <div style={{ display: 'flex', gap: 8, marginBottom: 18 }}>
-      {SUBS.map((s) => {
-        const active = tab === s.key;
-        return (
-          <button key={s.key} onClick={() => onNavigate && onNavigate(s.key)} style={{ padding: '8px 18px', borderRadius: 9, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 800, background: active ? C.green : C.panel2, color: active ? '#08210f' : C.sub }}>{s.label}</button>
-        );
-      })}
     </div>
   );
 }
@@ -114,25 +90,32 @@ function MissionCard({ m, progress, done, onOpen, i = 0 }) {
   );
 }
 
-export default function EarnView({ tab = 'earn.missions', points = '0', missionsCount = 0, badges = 0, xp = 0, streak = 1, onNavigate, onOpenProfile, missionProgress, missionsComplete, onOpenMission, dailyDay = 1, dailyClaimed = false, onClaimDaily, userId = null, navBadges = {}, missions = null, dailyRewards = null, streakRewards = null, levelRewards = null }) {
+/**
+ * The Missions tab (internal component name kept from the old Earn tab).
+ * Missions first; the streak bonuses and level milestones that used to sit
+ * under the Earn › Rewards sub-tab follow below. The daily reward lives on Home.
+ */
+export default function EarnView({ points = '0', missionsCount = 0, badges = 0, xp = 0, streak = 1, onNavigate, onOpenProfile, missionProgress, missionsComplete, onOpenMission, userId = null, navBadges = {}, missions = null, streakRewards = null, levelRewards = null, focusRewards = 0 }) {
   const allMissions = missions || [...getDailyMissions(), ...PERMANENT_MISSIONS];
+  React.useEffect(() => {
+    if (!focusRewards) return;
+    const el = typeof document !== 'undefined' && document.getElementById('missions-rewards');
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [focusRewards]);
   return (
-    <RedesignShell points={points} missionsCount={missionsCount} badges={badges} xp={xp} userId={userId} navBadges={navBadges} activeTab="earn" onNavigate={onNavigate} onOpenProfile={onOpenProfile}>
-      <SubNav tab={tab} onNavigate={onNavigate} />
-      {tab === 'earn.rewards' && (
-        <RewardsSection xp={xp} streak={streak} dailyDay={dailyDay} dailyClaimed={dailyClaimed} onClaimDaily={onClaimDaily} dailyRewards={dailyRewards} streakRewards={streakRewards} levelRewards={levelRewards} />
-      )}
+    <RedesignShell points={points} missionsCount={missionsCount} badges={badges} xp={xp} userId={userId} navBadges={navBadges} activeTab="missions" onNavigate={onNavigate} onOpenProfile={onOpenProfile}>
       {/* Quests parked — see parked/components/redesign/EarnView.QuestCard.parked.jsx */}
-      {tab !== 'earn.rewards' && (
-        <section>
-          <SectionTitle>Missions</SectionTitle>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(168px, 1fr))', gap: 12 }}>
-            {allMissions.map((m, i) => (
-              <MissionCard key={m.id} i={i} m={m} progress={missionProgress?.[m.id]} done={missionsComplete?.includes(m.id)} onOpen={onOpenMission} />
-            ))}
-          </div>
-        </section>
-      )}
+      <section>
+        <SectionTitle>Missions</SectionTitle>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(168px, 1fr))', gap: 12 }}>
+          {allMissions.map((m, i) => (
+            <MissionCard key={m.id} i={i} m={m} progress={missionProgress?.[m.id]} done={missionsComplete?.includes(m.id)} onOpen={onOpenMission} />
+          ))}
+        </div>
+      </section>
+      <div id="missions-rewards" style={{ marginTop: 26, scrollMarginTop: 12 }}>
+        <RewardsSection xp={xp} streak={streak} streakRewards={streakRewards} levelRewards={levelRewards} />
+      </div>
     </RedesignShell>
   );
 }

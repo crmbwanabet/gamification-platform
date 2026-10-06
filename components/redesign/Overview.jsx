@@ -4,6 +4,7 @@ import React from 'react';
 import { C } from './tokens';
 import RedesignShell, { Badge, Progress, GreenBtn, SectionTitle, Card, Thumb, RewardIcon } from './RedesignShell';
 import DailyReward from './DailyReward';
+import GamesGrid from './GamesGrid';
 import { IMAGES } from '@/lib/data/images';
 import { getDailyMissions, PERMANENT_MISSIONS } from '@/lib/data/missions';
 import { STORE_ITEMS, MINIGAMES } from '@/lib/data/platform';
@@ -44,27 +45,12 @@ function MissionCard({ m, progress = 0, done = false, onOpen, i = 0 }) {
   );
 }
 
-function StoreRow({ item, onNavigate }) {
-  return (
-    <Card style={{ padding: 12, display: 'flex', gap: 12, alignItems: 'center', position: 'relative', overflow: 'hidden' }}>
-      {item.isNew && <div style={{ position: 'absolute', top: 10, left: -28, transform: 'rotate(-45deg)', background: C.red, color: '#fff', fontSize: 9, fontWeight: 900, padding: '2px 30px', zIndex: 2 }}>NEW</div>}
-      <div style={{ width: 96, flex: 'none' }}><Thumb src={item.imageUrl || IMAGES[item.image]} alt={item.name} h={72} /></div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 13.5, fontWeight: 800, color: C.text }}>{item.name}</div>
-        {item.desc && <div style={{ fontSize: 11.5, color: C.sub, margin: '2px 0 8px' }}>{item.desc}</div>}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginTop: item.desc ? 0 : 8 }}>
-          <GreenBtn onClick={() => onNavigate && onNavigate('store')}>Buy Now</GreenBtn>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 12 }}>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 13, fontWeight: 800, color: C.gold }}><RewardIcon kind="coins" size={16} /> {item.price.kwacha}</span>
-            {item.price.gems && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 13, fontWeight: 800, color: C.teal }}><RewardIcon kind="gem" size={15} /> {item.price.gems}</span>}
-          </span>
-        </div>
-      </div>
-    </Card>
-  );
-}
-
-export default function Overview({ points = '2,344', missionsCount = 0, badges = 12, xp = 1200, activeTab = 'home', onNavigate, onOpenProfile, missionProgress, missionsComplete, onOpenMission, dailyDay = 1, dailyClaimed = false, onClaimDaily, userId = null, navBadges = {}, games = null, storeItems = null, missions = null, dailyRewards = null } = {}) {
+/**
+ * Home: daily reward first, then every game (the old Play tab), then a short
+ * missions teaser and the featured store item. `focusGames` is a nonce — when
+ * it changes the view scrolls to the games (legacy "Go to Games" CTAs).
+ */
+export default function Overview({ points = '2,344', missionsCount = 0, badges = 12, xp = 1200, activeTab = 'home', onNavigate, onOpenProfile, missionProgress, missionsComplete, onOpenMission, dailyDay = 1, dailyClaimed = false, onClaimDaily, userId = null, navBadges = {}, games = null, storeItems = null, missions = null, dailyRewards = null, gamePlays = null, onPlay, focusGames = 0 } = {}) {
   const go = (t) => onNavigate && onNavigate(t);
   const allMissions = missions || [...getDailyMissions(), ...PERMANENT_MISSIONS];
   const latest = pickLatestMissions(allMissions, missionProgress, missionsComplete);
@@ -72,88 +58,47 @@ export default function Overview({ points = '2,344', missionsCount = 0, badges =
   const items = storeItems || STORE_ITEMS;
   const gameList = games || MINIGAMES;
   const featuredItem = items.find(i => i.featured) || items[0] || null;
-  const storeMore = featuredItem ? items.filter(i => i.id !== featuredItem.id).slice(0, 2) : [];
-  const wheelGame = gameList.find(g => g.id === 'wheel');
+  React.useEffect(() => {
+    if (!focusGames) return;
+    const el = typeof document !== 'undefined' && document.getElementById('home-games');
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [focusGames]);
   return (
     <RedesignShell points={points} missionsCount={missionsCount} badges={badges} xp={xp} userId={userId} navBadges={navBadges} activeTab={activeTab} onNavigate={onNavigate} onOpenProfile={onOpenProfile}>
-      {!dailyClaimed && (
+      <div style={{ maxWidth: 1240, margin: '0 auto', width: '100%' }}>
         <div style={{ marginBottom: 22 }}>
           <DailyReward dailyDay={dailyDay} dailyClaimed={dailyClaimed} onClaim={onClaimDaily} rewards={dailyRewards} />
         </div>
-      )}
-      <div className="rs-ov-grid" style={{ display: 'grid', gridTemplateColumns: '1.35fr 1fr', gap: 26, alignContent: 'start', maxWidth: 1240, margin: '0 auto', width: '100%' }}>
 
-        <section>
-          <SectionTitle right={<button onClick={() => go('earn')} style={{ all: 'unset', cursor: 'pointer', fontSize: 12, fontWeight: 700, color: C.sub }}>View all ›</button>}>Latest Missions</SectionTitle>
-          <div className="rs-ov-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 14 }}>
-            {latest.map(({ m, progress, done }, i) => <MissionCard key={m.id} i={i} m={m} progress={progress} done={done} onOpen={onOpenMission} />)}
-          </div>
-        </section>
+        <div style={{ marginBottom: 26 }}>
+          <GamesGrid gamePlays={gamePlays} onPlay={onPlay} games={gameList} />
+        </div>
 
-        {featuredItem && (
+        <div className="rs-ov-grid" style={{ display: 'grid', gridTemplateColumns: '1.35fr 1fr', gap: 26, alignContent: 'start' }}>
           <section>
-            <SectionTitle>Featured Reward</SectionTitle>
-            <Card style={{ padding: 14, display: 'flex', gap: 14, alignItems: 'center' }}>
-              <div style={{ width: 120, flex: 'none' }}><Thumb src={featuredItem.imageUrl || IMAGES[featuredItem.image]} alt={featuredItem.name} h={96} /></div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 15, fontWeight: 800, marginBottom: 4 }}>{featuredItem.name}</div>
-                {featuredItem.desc && <div style={{ fontSize: 12, color: C.sub, marginBottom: 10 }}>{featuredItem.desc}</div>}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14, marginTop: featuredItem.desc ? 0 : 10 }}>
-                  <GreenBtn onClick={() => go('store')}>Buy Now</GreenBtn>
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 14, fontWeight: 800, color: C.gold }}><RewardIcon kind="coins" size={17} /> {featuredItem.price.kwacha}</span>
-                </div>
-              </div>
-            </Card>
+            <SectionTitle right={<button onClick={() => go('missions')} style={{ all: 'unset', cursor: 'pointer', fontSize: 12, fontWeight: 700, color: C.sub }}>View all ›</button>}>Latest Missions</SectionTitle>
+            <div className="rs-ov-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 14 }}>
+              {latest.map(({ m, progress, done }, i) => <MissionCard key={m.id} i={i} m={m} progress={progress} done={done} onOpen={onOpenMission} />)}
+            </div>
           </section>
-        )}
 
-        <section className="rs-ov-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
-          <div>
-            <SectionTitle>Featured</SectionTitle>
-            <Card style={{ overflow: 'hidden' }}>
-              <div style={{ position: 'relative' }}>
-                <Thumb src={IMAGES.jackpotBanner} alt="Jackpot" h={104} radius={0} />
-                <span style={{ position: 'absolute', top: 10, left: 12, background: '#111', color: C.gold, fontSize: 12, fontWeight: 900, padding: '3px 10px', borderRadius: 6, letterSpacing: '.06em', zIndex: 2 }}>BIG PRIZE</span>
-              </div>
-              <div style={{ padding: 12 }}>
-                <div style={{ fontSize: 11, color: C.muted, marginBottom: 4 }}>{gameList.length}+ minigames</div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: C.text, marginBottom: 10 }}>Play &amp; win the daily jackpot</div>
-                <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-                  {[['Entry', 'Free'], ['Games', String(gameList.length)], ['Prize', 'Jackpot']].map(([k, v]) => (
-                    <div key={k} style={{ flex: 1 }}>
-                      <div style={{ fontSize: 9.5, color: C.muted, marginBottom: 3 }}>{k}</div>
-                      <div style={{ fontSize: 12, fontWeight: 800, background: C.track, borderRadius: 7, padding: '6px 8px', textAlign: 'center' }}>{v}</div>
-                    </div>
-                  ))}
-                </div>
-                <GreenBtn full onClick={() => go('play')}>Play Now</GreenBtn>
-              </div>
-            </Card>
-          </div>
-
-          {wheelGame && (
-            <div>
-              <SectionTitle>Spin the wheel</SectionTitle>
-              <Card style={{ overflow: 'hidden' }}>
-                <Thumb src={IMAGES.wheel} alt="Wheel of Fortune" h={104} radius={0} />
-                <div style={{ padding: 12, textAlign: 'center' }}>
-                  <div style={{ fontSize: 14, fontWeight: 800, marginBottom: 4 }}>{wheelGame.name}</div>
-                  <div style={{ fontSize: 11.5, color: C.sub, marginBottom: 12, lineHeight: 1.5 }}>{wheelGame.desc}</div>
-                  <GreenBtn full onClick={() => go('play')}>Free to spin</GreenBtn>
+          {featuredItem && (
+            <section>
+              <SectionTitle>Featured Reward</SectionTitle>
+              <Card style={{ padding: 14, display: 'flex', gap: 14, alignItems: 'center' }}>
+                <div style={{ width: 120, flex: 'none' }}><Thumb src={featuredItem.imageUrl || IMAGES[featuredItem.image]} alt={featuredItem.name} h={96} /></div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 15, fontWeight: 800, marginBottom: 4 }}>{featuredItem.name}</div>
+                  {featuredItem.desc && <div style={{ fontSize: 12, color: C.sub, marginBottom: 10 }}>{featuredItem.desc}</div>}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14, marginTop: featuredItem.desc ? 0 : 10 }}>
+                    <GreenBtn onClick={() => go('store')}>Buy Now</GreenBtn>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 14, fontWeight: 800, color: C.gold }}><RewardIcon kind="coins" size={17} /> {featuredItem.price.kwacha}</span>
+                  </div>
                 </div>
               </Card>
-            </div>
+            </section>
           )}
-        </section>
-
-        {storeMore.length > 0 && (
-          <section>
-            <SectionTitle>More in the store</SectionTitle>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              {storeMore.map(item => <StoreRow key={item.id} item={item} onNavigate={onNavigate} />)}
-            </div>
-          </section>
-        )}
+        </div>
       </div>
     </RedesignShell>
   );
