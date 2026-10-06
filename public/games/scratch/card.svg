@@ -1,0 +1,79 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 320 164" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <radialGradient id="bg" cx=".5" cy=".45" r=".75"><stop offset="0" stop-color="#6A2FC4"/><stop offset=".55" stop-color="#2B0F5E"/><stop offset="1" stop-color="#1A0838"/></radialGradient>
+    <linearGradient id="tk" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FF6DBA"/><stop offset=".5" stop-color="#EE2F8F"/><stop offset="1" stop-color="#B8146D"/></linearGradient>
+    <linearGradient id="tray" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5A0838"/><stop offset="1" stop-color="#7E1052"/></linearGradient>
+    <radialGradient id="face" cx=".5" cy=".42" r=".7"><stop offset="0" stop-color="#fff"/><stop offset=".4" stop-color="#FFF0A0"/><stop offset="1" stop-color="#FFC52E"/></radialGradient>
+    <linearGradient id="foil" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#F7F8FF"/><stop offset=".3" stop-color="#B9BDD2"/><stop offset=".5" stop-color="#F2F3FA"/><stop offset=".72" stop-color="#A3A8C0"/><stop offset="1" stop-color="#E6E8F2"/></linearGradient>
+    <linearGradient id="holo" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FF78D2" stop-opacity=".45"/><stop offset=".33" stop-color="#78DCFF" stop-opacity=".45"/><stop offset=".66" stop-color="#FFF58C" stop-opacity=".45"/><stop offset="1" stop-color="#AA82FF" stop-opacity=".45"/></linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFF6C2"/><stop offset=".4" stop-color="#FFD21F"/><stop offset="1" stop-color="#E09400"/></linearGradient>
+    <linearGradient id="band" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFE16A"/><stop offset="1" stop-color="#C77F00"/></linearGradient>
+    <radialGradient id="glow"><stop offset="0" stop-color="#FFE27A" stop-opacity=".9"/><stop offset=".45" stop-color="#FFD21F" stop-opacity=".35"/><stop offset="1" stop-color="#FFD21F" stop-opacity="0"/></radialGradient>
+    <symbol id="cr" viewBox="0 0 100 100">
+      <g stroke="#2A0A4F" stroke-width="5" stroke-linejoin="round" stroke-linecap="round">
+        <path d="M18 70 L13 30 L33 47 L50 19 L67 47 L87 30 L82 70 Z" fill="url(#gold)"/>
+        <rect x="16" y="64" width="68" height="18" rx="5" fill="url(#band)"/>
+        <circle cx="13" cy="28" r="6" fill="url(#gold)" stroke-width="4"/>
+        <circle cx="50" cy="17" r="6.5" fill="url(#gold)" stroke-width="4"/>
+        <circle cx="87" cy="28" r="6" fill="url(#gold)" stroke-width="4"/>
+        <circle cx="50" cy="73" r="6" fill="#E3261E" stroke-width="3"/>
+        <path d="M28 67 L33 73 L28 79 L23 73 Z M72 67 L77 73 L72 79 L67 73 Z M44 52 L50 44 L56 52 L50 60 Z" fill="#2BC24A" stroke-width="3"/>
+      </g>
+      <path d="M50 26 L38 50 L22 40 L25 64" fill="none" stroke="#FFF8D6" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" opacity=".85"/>
+    </symbol>
+    <symbol id="sp" viewBox="-10 -10 20 20"><path d="M0 -10 L2.4 -2.4 L10 0 L2.4 2.4 L0 10 L-2.4 2.4 L-10 0 L-2.4 -2.4 Z" fill="#FFF6C2"/></symbol>
+    <g id="pf"><rect width="50" height="62" rx="8" fill="url(#face)" stroke="#2A0A4F" stroke-width="2.5"/></g>
+  </defs>
+
+  <rect width="320" height="164" fill="url(#bg)"/>
+  <g opacity=".22" fill="#FFD21F">
+    <path d="M160 82 L40 -20 L80 -20 Z M160 82 L280 -20 L240 -20 Z M160 82 L-20 60 L-20 100 Z M160 82 L340 60 L340 100 Z M160 82 L60 184 L100 184 Z M160 82 L260 184 L220 184 Z M160 82 L140 -20 L180 -20 Z"/>
+  </g>
+  <circle cx="160" cy="82" r="95" fill="url(#glow)"/>
+
+  <!-- coins tumbling behind -->
+  <g stroke="#2A0A4F" stroke-width="2.2">
+    <ellipse cx="46" cy="46" rx="13" ry="13" fill="url(#gold)"/><ellipse cx="46" cy="46" rx="8" ry="8" fill="none" stroke="#E09400" stroke-width="1.8"/>
+    <ellipse cx="282" cy="120" rx="14" ry="10" fill="url(#gold)" transform="rotate(-20 282 120)"/>
+    <ellipse cx="270" cy="38" rx="9" ry="11" fill="url(#gold)" transform="rotate(25 270 38)"/>
+    <ellipse cx="40" cy="128" rx="10" ry="7" fill="url(#gold)" transform="rotate(15 40 128)"/>
+  </g>
+
+  <!-- the ticket -->
+  <g transform="rotate(-5 160 84)">
+    <rect x="68" y="18" width="184" height="134" rx="16" fill="#5C0636" stroke="#2A0A4F" stroke-width="3" transform="translate(0 6)"/>
+    <rect x="68" y="18" width="184" height="134" rx="16" fill="url(#tk)" stroke="#2A0A4F" stroke-width="3"/>
+    <rect x="71.5" y="21.5" width="177" height="127" rx="13" fill="none" stroke="#FFD21F" stroke-width="3"/>
+    <path d="M84 24 H236" stroke="#fff" stroke-width="2.5" stroke-linecap="round" opacity=".45"/>
+    <!-- header: gold banner with stars -->
+    <rect x="104" y="30" width="112" height="18" rx="9" fill="#2A0A4F" stroke="#FFD21F" stroke-width="2"/>
+    <use href="#sp" x="112" y="33" width="12" height="12"/><use href="#sp" x="196" y="33" width="12" height="12"/>
+    <rect x="130" y="35" width="60" height="8" rx="4" fill="#FFD21F"/>
+    <!-- tray + panels -->
+    <rect x="80" y="54" width="160" height="72" rx="11" fill="url(#tray)" stroke="#FFD21F" stroke-width="2"/>
+    <use href="#pf" x="85" y="59"/><use href="#cr" x="88" y="62" width="44" height="44"/>
+    <use href="#pf" x="135" y="59"/><use href="#cr" x="138" y="62" width="44" height="44"/>
+    <use href="#pf" x="185" y="59"/><use href="#cr" x="188" y="62" width="44" height="44"/>
+    <g stroke="#2A0A4F" stroke-width="2"><rect x="96" y="106" width="28" height="11" rx="5.5" fill="#2A8A14"/><rect x="146" y="106" width="28" height="11" rx="5.5" fill="#2A8A14"/><rect x="196" y="106" width="28" height="11" rx="5.5" fill="#2A8A14"/></g>
+    <!-- third panel: foil bursting away -->
+    <g stroke="#2A0A4F" stroke-width="2.4" stroke-linejoin="round">
+      <path d="M185 59 H235 V78 L214 84 L200 70 L185 76 Z" fill="url(#foil)" transform="translate(10 -16) rotate(-14 210 68)"/>
+      <path d="M185 59 H235 V78 L214 84 L200 70 L185 76 Z" fill="url(#holo)" stroke="none" transform="translate(10 -16) rotate(-14 210 68)"/>
+      <path d="M235 78 V121 H222 L214 84 Z" fill="url(#foil)" transform="translate(22 4) rotate(22 228 100)"/>
+      <path d="M222 121 H185 V100 L214 84 Z" fill="url(#foil)" transform="translate(-4 18) rotate(-18 204 108)"/>
+    </g>
+    <!-- perforation + notches -->
+    <path d="M82 134 H238" stroke="#fff" stroke-width="2.5" stroke-dasharray="6 5" opacity=".6"/>
+    <circle cx="68" cy="134" r="9" fill="#2C0E5C" stroke="#FFD21F" stroke-width="3"/>
+    <circle cx="252" cy="134" r="9" fill="#2C0E5C" stroke="#FFD21F" stroke-width="3"/>
+    <g fill="#FFD21F" stroke="#2A0A4F" stroke-width="1.5"><circle cx="110" cy="142" r="3.5"/><circle cx="130" cy="142" r="3.5"/><circle cx="150" cy="142" r="3.5"/><circle cx="170" cy="142" r="3.5"/><circle cx="190" cy="142" r="3.5"/><circle cx="210" cy="142" r="3.5"/></g>
+  </g>
+
+  <!-- sparkle bits -->
+  <use href="#sp" x="236" y="14" width="22" height="22"/>
+  <use href="#sp" x="258" y="64" width="14" height="14"/>
+  <use href="#sp" x="56" y="78" width="16" height="16"/>
+  <use href="#sp" x="140" y="2" width="12" height="12"/>
+  <g fill="#7FE7FF"><circle cx="268" cy="96" r="3"/><circle cx="244" cy="44" r="2.5"/></g>
+  <g fill="#FF7AC0"><circle cx="252" cy="28" r="3"/><circle cx="62" cy="106" r="2.5"/></g>
+</svg>
