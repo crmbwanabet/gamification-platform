@@ -46,6 +46,7 @@ import PenaltyGame from './games/penalty/PenaltyGame';
 import ChickenGame from './games/chicken/ChickenGame';
 import MinibusGame from './games/minibus/MinibusGame';
 import BottleGame from './games/bottle/BottleGame';
+import ScratchGame from './games/scratch/ScratchGame';
 // trivia games parked — see parked/components/games/
 
 // Respect the user's OS-level motion preference.
@@ -1181,7 +1182,7 @@ export default function GamificationPlatform() {
   const playGame = (gameId) => {
     // Disabled games can still be reached via mission modals — block them.
     if (!activeGames.some(g => g.id === gameId)) { showNotif('This game is unavailable right now', 'error'); return; }
-    // Stake-per-round games (njuka, coinflip, penalty, chicken, minibus, bottle): entry is free — no daily play consumed,
+    // Stake-per-round games (njuka, coinflip, penalty, chicken, minibus, bottle, scratch): entry is free — no daily play consumed,
     // no extra-play charge. Every round is paid inside the game via onSpend.
     if (activeGames.find(g => g.id === gameId)?.stakeOnly) { setActiveGame(gameId); return; }
     if (user.gamePlays[gameId] > 0) {
@@ -1351,6 +1352,16 @@ export default function GamificationPlatform() {
             setUser(u => ({ ...u, gamesPlayed: u.gamesPlayed + 1, dailyTasksDone: [...new Set([...u.dailyTasksDone, 'game'])] }));
             setGamesPlayedToday(prev => new Set([...prev, 'bottle']));
             trackMission('gamePlayed', { gameId: 'bottle', coinsWon: win ? payout - stake : 0, gamesSet: gamesPlayedToday });
+          }} />
+      )}
+      {activeGame === 'scratch' && (
+        <ScratchGame onClose={() => animateClose(() => setActiveGame(null))} closing={closingModal}
+          balance={user.kwacha} onSpend={(n) => addCoins(-n)}
+          onRound={({ stake, win, payout }) => {
+            if (win) addCoins(payout); // the game's own WinCelebration shows the win — no toast / float
+            setUser(u => ({ ...u, gamesPlayed: u.gamesPlayed + 1, dailyTasksDone: [...new Set([...u.dailyTasksDone, 'game'])] }));
+            setGamesPlayedToday(prev => new Set([...prev, 'scratch']));
+            trackMission('gamePlayed', { gameId: 'scratch', coinsWon: win ? payout - stake : 0, gamesSet: gamesPlayedToday });
           }} />
       )}
       {/* trivia game modals + QuestDetailModal parked — see parked/components/GamificationPlatform.removed-wiring.jsx */}
