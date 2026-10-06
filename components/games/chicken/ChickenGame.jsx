@@ -9,11 +9,12 @@ import WinCelebration from '../candy/WinCelebration';
 import { CANDY, outlineShadow, textStroke } from '../candy/tokens';
 import { resolvePick, payoutFor, STAKES } from '@/lib/pick6/engine.mjs';
 import { BIRD_IDS } from '@/lib/chicken/birds.mjs';
-import { CK, VB_W, VB_H } from './rig';
-import { YardDefs, YardBack, YardGround, YardOverlay, YARD_CSS } from './Yard';
-import Farmer, { FARMER_CSS } from './Farmer';
-import Chickens, { Shadows, CHICKEN_CSS } from './Chickens';
-import { Puffs, Effects } from './Effects';
+import { CK, cid } from './shared/rig';
+import { useFitViewBox } from './shared/fit';
+import { YardDefs, YardBack, YardGround, YardOverlay, YARD_CSS } from './shared/Yard';
+import Farmer, { FARMER_CSS } from './shared/Farmer';
+import Chickens, { Shadows, CHICKEN_CSS } from './shared/Chickens';
+import { Puffs, Effects } from './shared/Effects';
 import { makeRig, render, setSelected, cluck, setGone, LAND_S, END_S, PANEL_S, STILL_T } from './motion';
 
 // ============================================================================
@@ -29,8 +30,11 @@ import { makeRig, render, setSelected, cluck, setGone, LAND_S, END_S, PANEL_S, S
 // farmer's victory hold. The platform has ALREADY credited the payout via
 // onRound; while the panel is up the pill shows the pre-win balance
 // (balance - payout + coins collected so far) and COLLECT walks it up.
-// Animation: motion.js renders the mock's frame function into the SVG (rAF
-// over t per round; one still frame for reduced motion).
+// Animation: motion.js renders the frame function into the SVG (rAF over t per
+// round; one still frame for reduced motion). Picking a bird primes the farmer
+// (a short rAF tween: he turns to it, locks his eyes on it, aims his hands);
+// CATCH runs the side-scrolling chase (shared/camera.js parallax) and the
+// result plays out where the chase ended; the next round is back in the yard.
 // NOTE: STAKES are mirrored by stakeRange '10–50' in lib/data/platform.js and
 // the tutorial prize lines in lib/data/tutorials.js — change all three together.
 // ============================================================================
@@ -42,6 +46,7 @@ const REGROUP_MS = 220;         // actors fade out / in around a reset
 const LOSE_RESET_MS = 2100;     // after a loss the yard resets on its own
 const REDUCED_LAND_MS = 250;
 const REDUCED_RESET_MS = 1900;
+const AIM_MS = 260;             // the farmer primes on a newly picked bird
 
 function readLast() {
   try {
@@ -60,28 +65,6 @@ function affordable(stake, balance) {
   if (stake <= balance) return stake;
   const fit = STAKES.filter(s => s <= balance);
   return fit.length ? fit[fit.length - 1] : stake;
-}
-
-// Fit the viewBox to the scene box: widen (more yard) or heighten (more sky).
-function useFitViewBox(ref) {
-  const [vb, setVb] = useState(`0 0 ${VB_W} ${VB_H}`);
-  useLayoutEffect(() => {
-    const el = ref.current;
-    if (!el) return undefined;
-    const fit = () => {
-      const w = el.clientWidth, h = el.clientHeight;
-      if (!w || !h) return;
-      const a = w / h;
-      if (a > VB_W / VB_H) { const nw = VB_H * a; setVb(`${((VB_W - nw) / 2).toFixed(2)} 0 ${nw.toFixed(2)} ${VB_H}`); }
-      else { const nh = VB_W / a; setVb(`0 ${(VB_H - nh).toFixed(2)} ${VB_W} ${nh.toFixed(2)}`); }
-    };
-    fit();
-    if (typeof ResizeObserver === 'undefined') { window.addEventListener('resize', fit); return () => window.removeEventListener('resize', fit); }
-    const ro = new ResizeObserver(fit);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [ref]);
-  return vb;
 }
 
 const TITLE = (
@@ -134,7 +117,25 @@ export default function ChickenGame({ onClose, closing, balance = 0, onSpend, on
   }, []);
 
   useLayoutEffect(() => { if (rigRef.current) setSelected(rigRef.current, pick); }, [pick]);
-  useLayoutEffect(() => { if (phase === 'idle' && rigRef.current) render(rigRef.current, 0, pick); }, [phase, pick]);
+  // Idle frame; a new pick tweens the farmer from his rest stance to primed on it.
+  const aimFrom = useRef(pick);
+  useLayoutEffect(() => {
+    const R = rigRef.current;
+    if (phase !== 'idle' || !R) return undefined;
+    const fresh = aimFrom.current !== pick;
+    aimFrom.current = pick;
+    if (!fresh || reduced || pick == null) { render(R, 0, pick); return undefined; }
+    let raf = 0;
+    const t0 = performance.now();
+    const step = (now) => {
+      const u = Math.min(1, (now - t0) / AIM_MS);
+      render(R, 0, pick, false, 1, { aim: u * u * (3 - 2 * u) });
+      if (u < 1) raf = requestAnimationFrame(step);
+    };
+    render(R, 0, pick, false, 1, { aim: 0 });
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [phase, pick, reduced]);
 
   // After a loss the selected stake may no longer be affordable — step down
   useEffect(() => {
@@ -246,15 +247,17 @@ export default function ChickenGame({ onClose, closing, balance = 0, onSpend, on
           style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block' }}>
           <defs><YardDefs /></defs>
           <YardBack />
-          <g className="ck-back" />
+          <g id={cid('worldB')}><g className="ck-back" /></g>
           <YardGround />
-          <Shadows />
-          <Puffs />
-          <g className="ck-actors">
-            <Farmer />
-            <Chickens selected={pick} onPick={chooseBird} />
+          <g id={cid('world')}>
+            <Shadows />
+            <Puffs />
+            <g className="ck-actors">
+              <Farmer />
+              <Chickens selected={pick} onPick={chooseBird} />
+            </g>
+            <Effects />
           </g>
-          <Effects />
           <YardOverlay />
         </svg>
         <div aria-hidden style={{ position: 'absolute', inset: 0, borderRadius: 18, pointerEvents: 'none', boxShadow: 'inset 0 0 0 1.5px rgba(255,255,255,.12), inset 0 0 22px rgba(10,0,30,.55)' }} />

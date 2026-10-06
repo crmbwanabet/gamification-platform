@@ -12,6 +12,7 @@ import { O, GOLD, FONT, CK, FARM0, f1, rng, cid } from './rig';
 // The black hen carries a light halo (fix: it no longer melts into the shade).
 
 export const CHICKEN_CSS = `
+  .ck-svg .ck.plain { cursor: default; }
   .ck-svg .ck { cursor: pointer; outline: none; -webkit-tap-highlight-color: transparent; }
   .ck-svg .ck .ring { opacity: 0; transition: opacity .15s; }
   .ck-svg .ck.on .ring { opacity: 1; }
@@ -211,22 +212,26 @@ function Tag({ b, i }) {
   );
 }
 
-function Chicken({ b, i, selected, onPick }) {
+export function Chicken({ b, i, selected, onPick, plain }) {
   const { rx, ry, bcy, NP, WP } = b;
   const hc = [b.HC[0] - NP[0], b.HC[1] - NP[1]];
   const neckLine = `M0 0 L${f1(hc[0] * .9)} ${f1(hc[1] * .9)}`;
   const peck = { animationDelay: `${f1(-i * .73)}s`, animationDuration: `${f1(3 + (i % 3) * .55)}s` };
   const hit = Math.max(30, rx + 12);
-  const pick = () => onPick(i);
+  const pick = () => onPick?.(i);
+  // plain: a lone bird with no tag, ring or tap target (Chicken Catch 2's hen)
+  const act = plain ? { 'aria-hidden': true } : {
+    role: 'button', tabIndex: 0, 'aria-label': `${b.name}, ${b.m}x`, 'aria-pressed': selected,
+    onClick: pick, onKeyDown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(); } },
+  };
   return (
-    <g className="ck" id={cid(`ck${i}`)} role="button" tabIndex={0} aria-label={`${b.name}, ${b.m}x`} aria-pressed={selected}
-      onClick={pick} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(); } }}>
+    <g className={plain ? 'ck plain' : 'ck'} id={cid(`ck${i}`)} {...act}>
       <g id={cid(`ckp${i}`)} transform={`translate(${b.x} ${b.y})`}>
-        <g className="ring">
+        {!plain && <g className="ring">
           <ellipse className="pulse" cx="0" cy="1" rx={f1(rx + 9)} ry="7" fill="none" stroke={GOLD} strokeWidth="2.6" />
           <ellipse cx="0" cy="1" rx={f1(rx + 9)} ry="7" fill={GOLD} fillOpacity=".22" stroke={O} strokeWidth="6" />
           <ellipse cx="0" cy="1" rx={f1(rx + 9)} ry="7" fill="none" stroke={`url(#${cid('goldRing')})`} strokeWidth="3.4" />
-        </g>
+        </g>}
         <g id={cid(`ckh${i}`)}>
           <g className="hopper">
             <g id={cid(`ckf${i}`)} transform={`scale(${b.dir} 1)`}>
@@ -266,9 +271,13 @@ function Chicken({ b, i, selected, onPick }) {
         <g className="ema" transform={`translate(${f1(-b.dir * 14)} ${f1(-b.top + 4)})`}>
           <path d="M-6 -4 l-3.5 -5 M0 -6 v-6 M6 -4 l3.5 -5" stroke="#fff" strokeWidth="2.4" strokeLinecap="round" />
         </g>
-        <Tag b={b} i={i} />
-        <rect className="focus" x={f1(-rx - 12)} y={f1(-b.top - 4)} width={f1(2 * rx + 24)} height={f1(b.top + 12)} rx="10" fill="none" stroke="#fff" strokeWidth="1.6" strokeDasharray="4 3" opacity="0" />
-        <rect x={f1(-hit)} y={f1(b.tagY - 24)} width={f1(2 * hit)} height={f1(-b.tagY + 32)} fill="transparent" />
+        {!plain && (
+          <>
+            <Tag b={b} i={i} />
+            <rect className="focus" x={f1(-rx - 12)} y={f1(-b.top - 4)} width={f1(2 * rx + 24)} height={f1(b.top + 12)} rx="10" fill="none" stroke="#fff" strokeWidth="1.6" strokeDasharray="4 3" opacity="0" />
+            <rect x={f1(-hit)} y={f1(b.tagY - 24)} width={f1(2 * hit)} height={f1(-b.tagY + 32)} fill="transparent" />
+          </>
+        )}
       </g>
     </g>
   );
@@ -278,12 +287,12 @@ export default function Chickens({ selected, onPick }) {
   return CK.map((b, i) => <Chicken key={b.id} b={b} i={i} selected={selected === i} onPick={onPick} />);
 }
 
-// Ground shadows of the farmer and the birds (positioned by motion.js).
-export function Shadows() {
+// Ground shadows of the farmer and the birds (positioned by the renderers).
+export function Shadows({ birds = CK }) {
   return (
     <g className="ck-shadows" id={cid('shadows')} aria-hidden>
       <ellipse id={cid('fmSh')} cx={FARM0[0]} cy={FARM0[1] + 2} rx="21" ry="5" fill="#5A1A0A" opacity=".38" />
-      {CK.map((b, i) => <ellipse key={i} id={cid(`cks${i}`)} cx={b.x + 2} cy={b.y + 2} rx={f1(b.rx * .95)} ry="4.4" fill="#5A1A0A" opacity=".36" />)}
+      {birds.map((b, i) => <ellipse key={i} id={cid(`cks${i}`)} cx={b.x + 2} cy={b.y + 2} rx={f1(b.rx * .95)} ry="4.4" fill="#5A1A0A" opacity=".36" />)}
     </g>
   );
 }
