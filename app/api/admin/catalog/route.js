@@ -15,7 +15,9 @@ const mission = (m, pool) => ({
 
 export async function GET() {
   return NextResponse.json({
-    games: MINIGAMES.map(g => ({ id: g.id, name: g.name })),
+    // Crash games carry an editable RTP: the dashboard saves it into the
+    // `games` platform_config row as { <id>: { rtp } } (clamped server-side).
+    games: MINIGAMES.map(g => ({ id: g.id, name: g.name, ...(DEFAULT_CONFIG.games[g.id]?.rtp != null && { rtp: { default: DEFAULT_CONFIG.games[g.id].rtp, min: 0.8, max: 0.99 } }) })),
     missions: [
       ...DAILY_MISSION_POOL.map(m => mission(m, 'daily')),
       ...WEEKLY_MISSIONS.map(m => mission(m, 'weekly')),
