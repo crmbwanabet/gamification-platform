@@ -2,7 +2,7 @@
 // markup strings: sunny sky with slow rays, Mwape Store and Blessed Salon, a
 // jacaranda and an umbrella stall, the road with the rival (white) and your
 // (blue) minibus, the curb and the petal-strewn pavement; the cast layers; the
-// effect pools (dust, skid, exhaust, honk, bubbles, confetti, sparkles, +payout)
+// effect pools (dust, skid, exhaust, honk, bubbles, confetti, sparkles)
 // and the front overlay. Street.jsx renders them; motion.js animates them.
 // Fix over the mock: the rival's "SHARP SHARP!" moves back along its body
 // (sx 116 → 122) so the call boys and tags no longer hide it.
@@ -292,7 +292,6 @@ export const FX = pfx(`<g id="fx">
   ${Object.keys(BUBS).map(k => bubbleSVG(k, 'bubI', k === 'town' ? CB.d : k === 'kamwala' ? RIV[0].d : k === 'matero' ? RIV[2].d : '0s')).join('')}
   <g id="conf" opacity="0">${confSVG}</g>
   <g id="sparks">${sparkSVG}</g>
-  <g id="plus" opacity="0"><text id="plusT" text-anchor="middle" font-family="Lilita One" font-size="22" fill="${GOLD}" stroke="${O}" stroke-width="5" stroke-linejoin="round" paint-order="stroke">+90</text></g>
 </g>
 `);
 export const OVERLAY = pfx(`<g>${falling}</g>

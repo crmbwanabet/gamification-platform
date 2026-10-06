@@ -212,7 +212,7 @@ export default function BottleGame({ onClose, closing, balance = 0, onSpend, onR
   const seg = resultIdx != null ? SEGMENTS[resultIdx] : null;
   let line;
   if (phase === 'spinning') line = <span style={{ color: CANDY.sub, fontSize: 17 }}>Spinning…</span>;
-  else if (phase === 'result' && won) line = <span key="win" className="anim-scale-in" style={{ fontSize: 28, color: CANDY.gold, letterSpacing: 2, textShadow: `${outlineShadow(2, CANDY.outline, 3)}, 0 0 18px rgba(255,210,31,.8)` }}>WIN {seg?.label}</span>;
+  else if (phase === 'result' && won) line = <span key="win" className="anim-scale-in" style={{ fontSize: 28, color: CANDY.gold, letterSpacing: 2, textShadow: `${outlineShadow(2, CANDY.outline, 3)}, 0 0 18px rgba(255,210,31,.8)` }}>WIN</span>;
   else if (phase === 'result') line = <span key="lose" className="anim-scale-in" style={{ fontSize: 26, color: '#fff', letterSpacing: 2, textShadow: outlineShadow(2, CANDY.outline, 3) }}>LOSE</span>;
   else if (broke) line = <span style={{ fontSize: 17, color: '#FF8A80' }}>Not enough coins</span>;
   else line = <span style={{ fontSize: 17, color: CANDY.sub }}>Bigger prizes come up less often</span>;

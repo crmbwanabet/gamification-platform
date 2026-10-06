@@ -15,7 +15,7 @@
 // beside it) swinging side to side with a little bounce.
 
 import {
-  clamp, lerp, lerp2, eOut, eIn, eBack, smooth, eRun, f1, D2R, rotAbout, ik, P2, bez, bezLen,
+  clamp, lerp, lerp2, eOut, eIn, smooth, eRun, f1, D2R, rotAbout, ik, P2, bez, bezLen,
   GROUND, BS, DL, BUS, doorC, STEP_Y, depth, BAGMODE, CARRY_HANDS,
 } from './kit';
 import { CB, RIV, BOYS, PASDEF, ALL } from './cast';
@@ -299,7 +299,7 @@ function showBub(R, key, at, op = 1, sc = 1) {
 const popIn = (t, t0, t1) => (t < t0 || t > t1 ? 0 : Math.min(1, (t - t0) / .08, (t1 - t) / .12));
 
 // t in seconds (0 = the idle stop), pick = passenger index or null, win (bool),
-// payout (the in-scene "+N"). opts.still: the reduced-motion end frame (no confetti).
+// payout (unused: no in-scene "+N" — WinCelebration shows the win). opts.still: the reduced-motion end frame (no confetti).
 export function render(R, t, pick, win = true, payout = 0, opts = {}) {
   const $ = R.$;
   const PL = plan(pick ?? 0, !!win), W = PL.W, p = PL.p;
@@ -522,7 +522,7 @@ export function render(R, t, pick, win = true, payout = 0, opts = {}) {
     $('st0').setAttribute('transform', 'translate(-6 0)'); $('st1').setAttribute('transform', 'translate(6 0)');
   } else steam.setAttribute('opacity', 0);
 
-  /* ---------- win sparkles + payout ---------- */
+  /* ---------- win sparkles ---------- */
   const winAt = [doorC('y'), GROUND - 74];
   const sparksOn = running && W && t > 2.7;
   SPARK.forEach((s, k) => {
@@ -538,13 +538,6 @@ export function render(R, t, pick, win = true, payout = 0, opts = {}) {
     cfG.setAttribute('opacity', f1(opts.still ? 0 : clamp(1 - (tt - 1.1) / .4)));
     CONFP.forEach((q, i) => $('cf' + i).setAttribute('transform', `translate(${f1(winAt[0] + q.vx * tt)} ${f1(winAt[1] + 20 + q.vy * tt + .5 * 300 * tt * tt)}) rotate(${f1(q.spin * tt)})`));
   } else cfG.setAttribute('opacity', 0);
-  const plus = $('plus');
-  if (sparksOn) {
-    const tt = t - 2.7;
-    $('plusT').textContent = '+' + payout;
-    plus.setAttribute('opacity', f1(clamp(tt / .15)));
-    plus.setAttribute('transform', `translate(${f1(winAt[0] - 8)} ${f1(winAt[1] - 10 * eOut(clamp(tt / .6)))}) scale(${f1(.6 + .4 * eBack(clamp(tt / .35)))})`);
-  } else plus.setAttribute('opacity', 0);
 }
 
 // ---- UI helpers --------------------------------------------------------------------
