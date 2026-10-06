@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { C } from './tokens';
+import NavIcon from './NavIcons';
 import { getLevel, getNextLevel, getXPProgress, MINIGAMES, STORE_ITEMS } from '@/lib/data/platform';
 import { getDailyMissions, PERMANENT_MISSIONS } from '@/lib/data/missions';
 
@@ -90,12 +91,12 @@ export function RewardIcon({ kind = 'coins', size = 15, style, className }) {
 /* ---------------- shell: top bar + sidebar ------------------------------- */
 
 // Badge counts come from the navBadges prop — things to attend to
-// (unplayed free games, open missions/claims), not catalog sizes.
+// (unclaimed daily reward, open missions), not catalog sizes.
+// Games live on Home (the Play tab was folded into it 2026-10).
 const NAV = [
-  { label: 'Home', img: 'home', tab: 'home' },
-  { label: 'Play', img: 'play', tab: 'play' },
-  { label: 'Earn', img: 'earn', tab: 'earn' },
-  { label: 'Store', img: 'store', tab: 'store' },
+  { label: 'Home', icon: 'home', tab: 'home' },
+  { label: 'Missions', icon: 'missions', tab: 'missions' },
+  { label: 'Store', icon: 'store', tab: 'store' },
 ];
 
 function Stat({ img, value, label, cls }) {
@@ -143,9 +144,9 @@ function Sidebar({ active = 'home', onNavigate, navBadges = {} }) {
         const isActive = it.tab === active;
         const n = navBadges[it.tab];
         return (
-          <button key={i} onClick={() => onNavigate && onNavigate(it.tab)} style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '9px 12px', borderRadius: 10, border: 'none', cursor: 'pointer', background: isActive ? C.green : 'transparent', color: isActive ? '#08210f' : C.sub, textAlign: 'left', width: '100%' }}>
+          <button key={i} aria-current={isActive ? 'page' : undefined} onClick={() => onNavigate && onNavigate(it.tab)} style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '9px 12px', borderRadius: 10, border: 'none', cursor: 'pointer', background: isActive ? C.green : 'transparent', color: isActive ? '#08210f' : C.sub, textAlign: 'left', width: '100%' }}>
             <span style={{ width: 30, height: 30, flex: 'none', display: 'grid', placeItems: 'center', borderRadius: 8, background: isActive ? 'rgba(6,24,14,.24)' : 'transparent' }}>
-              <img src={`/ui/nav/${it.img}.png`} alt="" width={24} height={24} style={{ objectFit: 'contain' }} />
+              <NavIcon name={it.icon} active={isActive} size={24} />
             </span>
             <span style={{ fontSize: 13.5, fontWeight: isActive ? 800 : 600, flex: 1 }}>{it.label}</span>
             {n != null && n > 0 && <span style={{ minWidth: 22, height: 20, padding: '0 6px', borderRadius: 999, fontSize: 11, fontWeight: 800, display: 'grid', placeItems: 'center', background: isActive ? 'rgba(8,33,15,.22)' : C.green, color: '#08210f', boxShadow: isActive ? 'none' : '0 2px 8px rgba(79,169,139,.4)' }}>{n}</span>}
@@ -167,11 +168,13 @@ function BottomNav({ active = 'home', onNavigate, navBadges = {} }) {
         const isActive = it.tab === active;
         const n = navBadges[it.tab];
         return (
-          <button key={i} onClick={() => onNavigate && onNavigate(it.tab)} style={{ all: 'unset', flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, padding: '6px 0', cursor: 'pointer', color: isActive ? C.green : C.muted }}>
+          <button key={i} aria-label={it.label} aria-current={isActive ? 'page' : undefined} onClick={() => onNavigate && onNavigate(it.tab)} style={{ all: 'unset', flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, padding: '6px 0', cursor: 'pointer', color: isActive ? C.green : C.muted }}>
             <span style={{ position: 'relative', display: 'inline-block' }}>
-              <img src={`/ui/nav/${it.img}.png`} alt="" width={24} height={24} style={{ objectFit: 'contain', opacity: isActive ? 1 : 0.75, display: 'block' }} />
+              <span style={{ display: 'grid', placeItems: 'center', width: 44, height: 30, borderRadius: 999, background: isActive ? 'rgba(79,169,139,.22)' : 'transparent', boxShadow: isActive ? 'inset 0 0 0 1px rgba(79,169,139,.45)' : 'none', transition: 'background .2s ease' }}>
+                <NavIcon name={it.icon} active={isActive} size={isActive ? 26 : 24} />
+              </span>
               {n != null && n > 0 && (
-                <span style={{ position: 'absolute', top: -5, right: -9, minWidth: 16, height: 16, padding: '0 4px', borderRadius: 999, fontSize: 9.5, fontWeight: 800, display: 'grid', placeItems: 'center', background: C.green, color: '#08210f', boxShadow: '0 2px 6px rgba(0,0,0,.4)' }}>{n}</span>
+                <span style={{ position: 'absolute', top: -4, right: -2, minWidth: 16, height: 16, padding: '0 4px', borderRadius: 999, fontSize: 9.5, fontWeight: 800, display: 'grid', placeItems: 'center', background: C.green, color: '#08210f', boxShadow: '0 2px 6px rgba(0,0,0,.4)' }}>{n}</span>
               )}
             </span>
             <span style={{ fontSize: 10.5, fontWeight: isActive ? 800 : 600 }}>{it.label}</span>

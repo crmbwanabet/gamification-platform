@@ -12,7 +12,6 @@ import {
 
 // Redesign (v2) screens
 import Overview from './redesign/Overview';
-import PlayView from './redesign/PlayView';
 import EarnView from './redesign/EarnView';
 import StoreView from './redesign/StoreView';
 import LevelUpModal from './redesign/LevelUpModal';
@@ -1216,32 +1215,50 @@ export default function GamificationPlatform() {
   // playTrivia + handleDailyChallenge parked — see parked/components/GamificationPlatform.removed-wiring.jsx
   // (tabs/SUB_NAV consts went with the legacy shell — see parked/components/legacy/)
 
-  // Map legacy flat tab ids (used by modals/missions) to new dot-notation routes.
+  // Live tabs (2026-10 nav restructure): home (daily reward + all games),
+  // missions, store. The Play tab was folded into Home and Earn became
+  // Missions; every legacy id (mission CTAs, old play.*/earn.* routes) maps
+  // onto a live tab here so nothing lands on a dead route.
+  // `focus` nonces ask the target view to scroll to a section on arrival.
+  const [focus, setFocus] = useState({ games: 0, rewards: 0 });
   const LEGACY_TAB_MAP = {
     overview: 'home',
     home: 'home',
     store: 'store',
-    minigames: 'play.minigames',
+    // games now live on Home (scrolled to the games grid)
+    minigames: 'home',
+    play: 'home',
+    'play.minigames': 'home',
     // Predictions / Daily trivia / Quests PARKED (see parked/) — legacy CTAs
-    // land on the nearest live tab instead of a dead route. Restore the
-    // originals (play.predictions / play.daily / earn.quests) to bring them back.
-    predict: 'play.minigames',
-    predictions: 'play.minigames',
-    daily: 'earn.rewards',
-    missions: 'earn.missions',
-    quests: 'earn.missions',
-    profile: 'me.profile',
-    vip: 'me.vip',
-    refer: 'me.referrals',
-    referrals: 'me.referrals',
-    leaders: 'me.leaderboard',
-    leaderboard: 'me.leaderboard',
-    play: 'play.minigames',
-    earn: 'earn.missions',
-    me: 'me.profile',
-    overview: 'home',
+    // land on the nearest live tab instead of a dead route.
+    predict: 'home',
+    predictions: 'home',
+    'play.predictions': 'home',
+    'play.daily': 'home',
+    daily: 'home', // the daily reward sits at the top of Home
+    missions: 'missions',
+    earn: 'missions',
+    'earn.missions': 'missions',
+    'earn.rewards': 'missions', // streak + level milestones, below the missions
+    quests: 'missions',
+    'earn.quests': 'missions',
+    // no profile tab: the header avatar opens the ProfileModal; me.* ids
+    // (never rendered since the legacy shell was parked) fall back to Home
+    profile: 'home',
+    vip: 'home',
+    refer: 'home',
+    referrals: 'home',
+    leaders: 'home',
+    leaderboard: 'home',
+    me: 'home',
   };
-  const navigateTab = (id) => setTab(LEGACY_TAB_MAP[id] || id);
+  const GAME_ROUTES = new Set(['minigames', 'play', 'play.minigames', 'predict', 'predictions', 'play.predictions', 'play.daily']);
+  const navigateTab = (id) => {
+    const target = LEGACY_TAB_MAP[id] || (String(id).startsWith('me.') ? 'home' : id);
+    if (GAME_ROUTES.has(id)) setFocus(f => ({ ...f, games: f.games + 1 }));
+    if (id === 'earn.rewards') setFocus(f => ({ ...f, rewards: f.rewards + 1 }));
+    setTab(target);
+  };
 
   // Level-up: award cfg.levelRewards + celebrate when the player's level increases.
   useEffect(() => {
@@ -1383,7 +1400,7 @@ export default function GamificationPlatform() {
           done={user.missionsComplete.includes(selectedMission.id)}
           onClose={() => animateClose(() => setSelectedMission(null))} closing={closingModal}
           onNavigate={(tabId) => navigateTab(tabId)}
-          onPlayGame={(gameId) => { navigateTab('minigames'); playGame(gameId); }}
+          onPlayGame={(gameId) => playGame(gameId)} /* opens over the current tab; closing returns there */
         />
       )}
       {notif && (
@@ -1438,9 +1455,11 @@ export default function GamificationPlatform() {
     // the header shows the bwanabet user id once the SSO session resolves
     userId: session?.profile?.bwanabet_user_id || session?.profile?.username || widgetUid || null,
     // nav badges = things to attend to, not catalog sizes
+    // (every live game is stakeOnly, so the old Play "free plays left" badge
+    // is gone; Home flags the unclaimed daily reward instead)
     navBadges: {
-      play: activeGames.filter(g => (user.gamePlays[g.id] || 0) > 0).length || null,
-      earn: (openMissionsCount + (user.dailyClaimed ? 0 : 1)) || null,
+      home: user.dailyClaimed ? null : 1,
+      missions: openMissionsCount || null,
       store: null, // store is empty until the admin dashboard stocks it
     },
     games: activeGames,
@@ -1488,28 +1507,11 @@ export default function GamificationPlatform() {
   // placePrediction + streak-voucher check + prediction settlement parked —
   // see parked/components/GamificationPlatform.removed-wiring.jsx
 
-  // === v2 redesigned Home ===
-  if (tab === 'home') {
+  // === Missions tab (was Earn; navigateTab maps earn/earn.* here) ===
+  if (tab === 'missions') {
     return (<>
-      <Overview {...v2Stats} activeTab="home"
-        missionProgress={user.missionProgress} missionsComplete={user.missionsComplete} onOpenMission={setSelectedMission}
-        dailyDay={user.dailyDay} dailyClaimed={user.dailyClaimed} onClaimDaily={claimDailyReward} />
-      {gameOverlays}
-    </>);
-  }
-  // === v2 redesigned Play ===
-  if (tab === 'play' || tab.startsWith('play.')) {
-    return (<>
-      <PlayView {...v2Stats} tab={tab} gamePlays={user.gamePlays} onPlay={playGame} />
-      {gameOverlays}
-    </>);
-  }
-  // === v2 redesigned Earn ===
-  if (tab === 'earn' || tab.startsWith('earn.')) {
-    return (<>
-      <EarnView {...v2Stats} tab={tab === 'earn' ? 'earn.missions' : tab} streak={user.streak}
-        missionProgress={user.missionProgress} missionsComplete={user.missionsComplete} onOpenMission={setSelectedMission}
-        dailyDay={user.dailyDay} dailyClaimed={user.dailyClaimed} onClaimDaily={claimDailyReward} />
+      <EarnView {...v2Stats} streak={user.streak} focusRewards={focus.rewards}
+        missionProgress={user.missionProgress} missionsComplete={user.missionsComplete} onOpenMission={setSelectedMission} />
       {gameOverlays}
     </>);
   }
@@ -1556,13 +1558,15 @@ export default function GamificationPlatform() {
     </>);
   }
 
-  // Any unknown tab falls back to Home. The old pre-v2 shell that used to
+  // === Home: daily reward, all games, missions teaser, featured item ===
+  // Any unknown tab also lands here. The old pre-v2 shell that used to
   // render here (trivia / quests / predictions / me.* tabs) was parked on
   // 2026-07-15 — see parked/components/legacy/GamificationPlatform.legacy-return.jsx
   return (<>
     <Overview {...v2Stats} activeTab="home"
       missionProgress={user.missionProgress} missionsComplete={user.missionsComplete} onOpenMission={setSelectedMission}
-      dailyDay={user.dailyDay} dailyClaimed={user.dailyClaimed} onClaimDaily={claimDailyReward} />
+      dailyDay={user.dailyDay} dailyClaimed={user.dailyClaimed} onClaimDaily={claimDailyReward}
+      gamePlays={user.gamePlays} onPlay={playGame} focusGames={focus.games} />
     {gameOverlays}
   </>);
 }
