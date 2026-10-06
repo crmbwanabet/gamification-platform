@@ -1,21 +1,36 @@
-// Chicken Catch motion — the approved mock's frame renderer, ported as-is: a
-// pure function of time (render(rig, t, …)) that poses the farmer (two-bone IK
-// limbs), the birds and the effects by writing SVG attributes. Static states
-// (idle, the reduced-motion end frame) are single frames; a round is a rAF loop
-// over t. Why not CSS keyframes like Penalty Crash: the farmer's limbs are IK
-// paths (`d`), the chase is a fresh simulation every round and the actors are
-// depth-sorted / moved behind the fence — none of which CSS can animate.
-// The DOM nodes are React-rendered (Yard / Farmer / Chickens / Effects); React
-// never changes their order, classes or transforms after mount, so the
+// Chicken Catch motion — a pure function of time (render(rig, t, …)) that poses
+// the farmer (two-bone IK limbs), the birds, the camera and the effects by
+// writing SVG attributes. Static states (idle, the reduced-motion end frame)
+// are single frames; a round is a rAF loop over t. Why not CSS keyframes like
+// Penalty Crash: the farmer's limbs are IK paths (`d`), the chase is a fresh
+// seeded run every round and the actors are depth-sorted / moved behind the
+// fence — none of which CSS can animate.
+//
+// The chase is a side-scroller: on CATCH the farmer bursts out of his crouch
+// and sprints right after the chosen bird; the camera pans with him (parallax:
+// sky still, hills / trees slow, fence medium, ground and tufts fast, speed
+// lines, dust left behind), the bird zig-zags ahead flapping, the rest of the
+// flock scatters and is left behind. At T_D he dives — the camera eases to a
+// stop — and the catch / the escape over the fence plays out right there. The
+// next round starts back in the yard (cam = 0). Timings are the original
+// chase's (T_D / T_LAND / LAND_S / END_S / PANEL_S unchanged).
+// The DOM nodes are React-rendered (shared/Yard, Farmer, Chickens, Effects);
+// React never changes their order, classes or transforms after mount, so the
 // renderer owns them.
 
 import {
-  CK, FARM0, K, HIP, SHOULDER, BROWS, POSES, cid,
-  clamp, lerp, lerp2, eOut, eIn, eInOut, smooth, f1, D2R, rotAbout, P2, rng, ik,
-} from './rig';
-import { N_PUFF, N_CPUFF, N_FEATH, CLOUD, SPARK, CONFP } from './Effects';
+  CK, FARM0, K, POSES, cid,
+  clamp, lerp, lerp2, eOut, eIn, eInOut, smooth, f1, D2R, rng,
+} from './shared/rig';
+import {
+  farmerHandles, birdHandles, drawFarmer, fmWorld, headWorld, bodyWorld,
+  runPose, mixPose, REACH, readyPose, drawChicken, depthSort,
+} from './shared/actors';
+import { cameraHandles, setCamera, rampDist, rampSpeed, stopDist, stopSpeed } from './shared/camera';
+import { postsBetween } from './shared/Yard';
+import { N_PUFF, N_CPUFF, N_FEATH, CLOUD, SPARK, CONFP } from './shared/Effects';
 
-// ---- timing (seconds) -------------------------------------------------------
+// ---- timing (seconds) — unchanged from the yard chase ----------------------------
 export const T_D = 1.72;      // the dive starts
 export const T_LAND = 2.0;    // belly hits the dirt
 const T_UP0 = 2.2, T_UP1 = 2.56;
@@ -24,255 +39,125 @@ export const END_S = { win: 3.6, lose: 4.1 };   // animation done
 export const PANEL_S = 3.2;                     // WinCelebration pops in
 export const STILL_T = 2.9;                     // reduced motion: the one frame shown
 
-const GAP_END = 86;
-const POSTS = [95, 159, 225];
+// ---- the run ------------------------------------------------------------------
+const V = 260;                // camera / running speed, units per second
+const CAM_T0 = .1, CAM_RAMP = .45, CAM_TAU = .16;
+const F_RUN_X = 92;           // farmer's screen x while sprinting
+const LANE_X = 214;           // the bird's screen x early in the run
+const GAP_END = 86;           // bird ahead of the farmer when he dives
+const FENCE_F = .6;           // fence parallax (camera.js PX.Fence)
+const PY = 141;               // a fence post's top
+
+export const camAt = (t) => (t <= T_D ? rampDist(t, V, CAM_T0, CAM_RAMP) : rampDist(T_D, V, CAM_T0, CAM_RAMP) + stopDist(t, V, T_D, CAM_TAU));
+const speedAt = (t) => (t <= T_D ? rampSpeed(t, V, CAM_T0, CAM_RAMP) : stopSpeed(t, V, T_D, CAM_TAU));
+const CAM_END = camAt(99);
+
 const rf = rng(77);
 const FEATH = Array.from({ length: N_FEATH }, () => ({ a: (-150 + rf() * 120) * D2R, v: 50 + rf() * 70, sw: 2 + rf() * 4, ph: rf() * 6, spin: (rf() - .5) * 500, d: rf() * .12 }));
-const SCAT = CK.map((b, i) => ({ to: [b.x < 170 ? -70 : 370, b.y + (i % 2 ? 14 : -10)], t0: .06 + (i * .37 % 1) * .14, dur: .95 + (i % 3) * .12 }));
+// the rest of the flock flutters aside and is left behind by the camera
+const SCAT = CK.map((b, i) => ({ to: [b.x + (i % 2 ? -34 : 30), b.y + (i % 2 ? 12 : -12)], t0: .06 + (i * .37 % 1) * .14, dur: .8 + (i % 3) * .12 }));
 
 // ---- the rig: element handles inside one scene <svg> --------------------------
 export function makeRig(svg) {
   const $ = (n) => svg.querySelector(`#${cid(n)}`);
-  const legs = ['legF', 'legN'].map(n => { const g = $(n); return { o: g.querySelector('.lo'), t: g.querySelector('.lt'), c: g.querySelector('.lc'), b: g.querySelector('.lb'), h: g.querySelector('.lh') }; });
-  const arms = ['armF', 'armN'].map(n => { const g = $(n); return { o: g.querySelector('.ao'), s: g.querySelector('.as'), v: g.querySelector('.av'), h: g.querySelector('.ah') }; });
   return {
     svg, $,
     actors: svg.querySelector('.ck-actors'), backLayer: svg.querySelector('.ck-back'), shadows: $('shadows'),
-    fm: {
-      root: $('fm'), T: $('fmT'), H: $('fmH'), hat: $('fmHat'), sh: $('fmSh'), armN: $('armN'), legs, arms,
-      eyes: { open: $('eyesOpen'), happy: $('eyesHappy'), dizzy: $('eyesDizzy') },
-      mouth: { smile: $('mSmile'), grit: $('mGrit'), joy: $('mJoy'), oops: $('mOops') },
-      brows: $('brows'), pL: $('fpL'), pR: $('fpR'),
-    },
-    ck: CK.map((b, i) => ({
-      g: $(`ck${i}`), p: $(`ckp${i}`), h: $(`ckh${i}`), f: $(`ckf${i}`), lA: $(`lgA${i}`), lB: $(`lgB${i}`),
-      w: $(`wg${i}`), hA: $(`hdA${i}`), hB: $(`hdB${i}`), tag: $(`tg${i}`), sh: $(`cks${i}`), pp: $(`pp${i}`),
-    })),
+    fm: farmerHandles($),
+    ck: CK.map((b, i) => birdHandles($, i)),
+    cam: cameraHandles(svg),
     sortKey: '',
-    sims: {},
   };
 }
 
-// ---- farmer -------------------------------------------------------------------
-function drawFarmer(R, P) {
-  const fm = R.fm, hipY = HIP + P.drop;
-  fm.root.setAttribute('transform', `translate(${f1(P.x)} ${f1(P.y - (P.lift || 0))}) scale(${f1(P.dir * K)} ${K}) rotate(${f1(P.rot)} 0 ${HIP})`);
-  fm.T.setAttribute('transform', `rotate(${f1(P.lean)} 0 ${f1(hipY)}) translate(0 ${f1(P.drop)})`);
-  fm.H.setAttribute('transform', `rotate(${f1(P.head)} 3 -68) translate(3 -68) scale(1.1) translate(-3 68)`);
-  const armN = fm.armN;
-  if (P.armBack && armN.nextSibling !== fm.H) fm.T.insertBefore(armN, fm.H);
-  if (!P.armBack && fm.T.lastElementChild !== armN) fm.T.appendChild(armN);
-  [[-3, P.aF], [3, P.aN]].forEach(([hx, a], k) => {
-    const hip = [hx, hipY];
-    const { j: knee, end: ank } = ik(hip, a, 18, 17.5, P.kb ?? -1);
-    const sd = [ank[0] - knee[0], ank[1] - knee[1]], sl = Math.hypot(sd[0], sd[1]) || 1;
-    const bt = [ank[0] - sd[0] / sl * 9, ank[1] - sd[1] / sl * 9];
-    const cf = [ank[0] - sd[0] / sl * 11.5, ank[1] - sd[1] / sl * 11.5];
-    const fa = (P.footRot || 0) * D2R;
-    const toe = [ank[0] + Math.cos(fa) * 7.5, ank[1] + Math.sin(fa) * 7.5];
-    const L = fm.legs[k];
-    L.o.setAttribute('d', `M${P2(hip)} L${P2(knee)} L${P2(ank)} L${P2(toe)}`);
-    L.t.setAttribute('d', `M${P2(hip)} L${P2(knee)} L${P2(bt)}`);
-    L.c.setAttribute('d', `M${P2(cf)} L${P2(bt)}`);
-    L.b.setAttribute('d', `M${P2(bt)} L${P2(ank)} L${P2(toe)}`);
-    L.h.setAttribute('d', `M${P2(lerp2(bt, ank, .2))} L${P2(lerp2(bt, ank, .8))}`);
-  });
-  [[SHOULDER[0], P.hF, P.eF], [SHOULDER[1], P.hN, P.eN]].forEach(([sh, h, e], k) => {
-    let el, hand;
-    if (e) { el = e; hand = h; } else { const al = P.arm || [14.5, 13.5]; const r = ik(sh, h, al[0], al[1], P.eb ?? 1); el = r.j; hand = r.end; }
-    P['_h' + k] = hand;
-    const A = fm.arms[k], sv = lerp2(sh, el, .62);
-    const d = `M${P2(sh)} L${P2(el)} L${P2(hand)}`;
-    A.o.setAttribute('d', d); A.s.setAttribute('d', d);
-    A.v.setAttribute('d', `M${P2(sh)} L${P2(sv)}`);
-    A.h.setAttribute('cx', f1(hand[0])); A.h.setAttribute('cy', f1(hand[1]));
-  });
-  for (const k in fm.eyes) fm.eyes[k].style.display = k === (P.eyes || 'open') ? '' : 'none';
-  for (const k in fm.mouth) fm.mouth[k].style.display = k === (P.mouth || 'smile') ? '' : 'none';
-  fm.brows.setAttribute('d', BROWS[P.brows || 'calm']);
-  fm.hat.style.display = P.hat === 0 ? 'none' : '';
-  const lk = P.look || [0, 0];
-  fm.pL.setAttribute('cx', f1(1.4 + lk[0])); fm.pL.setAttribute('cy', f1(-85.8 + lk[1]));
-  fm.pR.setAttribute('cx', f1(11.6 + lk[0])); fm.pR.setAttribute('cy', f1(-85.8 + lk[1]));
-  const air = P.lift || 0, flat = Math.abs(Math.sin(P.rot * D2R));
-  fm.sh.setAttribute('cx', f1(P.x + P.dir * flat * 24 * K + 2)); fm.sh.setAttribute('cy', f1((P.ground ?? P.y) + 3));
-  fm.sh.setAttribute('rx', f1((21 + 26 * flat) * K * (1 - clamp(air / 60) * .4)));
-  fm.sh.setAttribute('opacity', f1(.38 * (1 - clamp(air / 50) * .5)));
-}
-// torso-space point → world
-function fmWorld(P, p) {
-  const hipY = HIP + P.drop;
-  let q = rotAbout([p[0], p[1] + P.drop], [0, hipY], P.lean);
-  q = rotAbout(q, [0, HIP], P.rot);
-  return [P.x + q[0] * K * P.dir, P.y - (P.lift || 0) + q[1] * K];
-}
-// head-space point → world (head turn + 1.1 scale about the neck)
-function headWorld(P, p = [2.5, -84]) {
-  const q = rotAbout([3 + (p[0] - 3) * 1.1, -68 + (p[1] + 68) * 1.1], [3, -68], P.head || 0);
-  return fmWorld(P, q);
-}
-// body-space point → world
-function bodyWorld(P, p) {
-  const q = rotAbout(p, [0, HIP], P.rot);
-  return [P.x + q[0] * K * P.dir, P.y - (P.lift || 0) + q[1] * K];
-}
-
-function runPose(phi) {
-  const s = Math.sin(phi), c = Math.cos(phi);
-  const arm = (sh, a) => { const e = [sh[0] + Math.sin(a * D2R) * 14.5, sh[1] + Math.cos(a * D2R) * 14.5], b = (a + 85) * D2R; return [e, [e[0] + Math.sin(b) * 13, e[1] + Math.cos(b) * 13]]; };
-  const [eF, hF] = arm(SHOULDER[0], -55 * s), [eN, hN] = arm(SHOULDER[1], 55 * s);
-  return {
-    rot: 0, lean: 22, head: -16, drop: 2.5 + 1.5 * Math.abs(c), lift: 2.5 * Math.abs(s),
-    aF: [15 * s, -4.5 - 10 * Math.max(0, c)], aN: [-15 * s, -4.5 - 10 * Math.max(0, -c)],
-    eF, hF, eN, hN, footRot: 0, eyes: 'open', mouth: 'grit', brows: 'focus',
-  };
-}
-function mixPose(A, B, u) {
-  const o = {};
-  for (const k of ['rot', 'lean', 'head', 'drop', 'lift', 'footRot']) o[k] = lerp(A[k] || 0, B[k] || 0, u);
-  for (const k of ['aF', 'aN', 'hF', 'hN']) o[k] = lerp2(A[k], B[k], u);
-  if (A.eF && B.eF) { o.eF = lerp2(A.eF, B.eF, u); o.eN = lerp2(A.eN, B.eN, u); }
-  const S = u < .5 ? A : B;
-  for (const k of ['eyes', 'mouth', 'brows', 'hat', 'kb', 'eb', 'armBack']) if (S[k] !== undefined) o[k] = S[k];
-  const aA = A.arm || [14.5, 13.5], aB = B.arm || [14.5, 13.5];
-  o.arm = [lerp(aA[0], aB[0], u), lerp(aA[1], aB[1], u)];
-  return o;
-}
-const REACH = (() => { const P = { ...POSES.lie, x: 0, y: 0, dir: 1 }; return lerp2(fmWorld(P, P.hF), fmWorld(P, P.hN), .5)[0]; })();
-
-// ---- birds --------------------------------------------------------------------
-// C: x,y,dir,lift,tilt,phase(run, null=idle),flap,head,op,tagOp,squawk,behind,ground,hideShadow,panic
-function drawChicken(R, i, C) {
-  const b = CK[i], E = R.ck[i];
-  E.p.setAttribute('transform', `translate(${f1(C.x)} ${f1(C.y)})`);
-  E.h.setAttribute('transform', `translate(0 ${f1(-(C.lift || 0))})`);
-  E.f.setAttribute('transform', `scale(${C.dir} 1) rotate(${f1(C.tilt || 0)} 0 ${f1(b.bcy)})`);
-  const ph = C.phase;
-  if (ph == null) { E.lA.removeAttribute('transform'); E.lB.removeAttribute('transform'); }
-  else { E.lA.setAttribute('transform', `rotate(${f1(42 * Math.sin(ph))})`); E.lB.setAttribute('transform', `rotate(${f1(-42 * Math.sin(ph))})`); }
-  if (C.flap) E.w.setAttribute('transform', `rotate(${f1(C.flap)})`); else E.w.removeAttribute('transform');
-  if (C.head) { E.hA.setAttribute('transform', `rotate(${f1(C.head)})`); E.hB.setAttribute('transform', `rotate(${f1(C.head)})`); }
-  else { E.hA.removeAttribute('transform'); E.hB.removeAttribute('transform'); }
-  E.g.style.opacity = C.op ?? 1;
-  E.tag.style.opacity = C.tagOp ?? 1;
-  E.g.classList.toggle('squawk', !!C.squawk);
-  E.pp.setAttribute('r', C.panic ? 1.3 : 2);
-  const gy = C.ground ?? C.y, air = (C.lift || 0) + Math.max(0, gy - C.y);
-  E.sh.setAttribute('cx', f1(C.x + 2)); E.sh.setAttribute('cy', f1(gy + 2));
-  E.sh.setAttribute('rx', f1(b.rx * .95 * (1 - clamp(air / 70) * .5)));
-  E.sh.setAttribute('opacity', f1((C.op ?? 1) * (C.hideShadow ? 0 : .36 * (1 - clamp(air / 60) * .6))));
-  const want = C.behind ? R.backLayer : R.actors;
-  if (E.g.parentNode !== want) want.appendChild(E.g);
-}
-
-// ---- the chase: simulated once per round (pick × seed) ------------------------
-// The hen flees the farmer, cutting left/right every ~0.3 s, bouncing off the
-// yard edges, and is pulled to the foreground at the end; the farmer pursues,
-// closing to a dive distance by T_D.
-const SIM_DT = 1 / 240;
-const YARD = { x0: 74, x1: 272, y0: 224, y1: 280 };
-const FINISH = [196, 264];
-const norm = v => { const l = Math.hypot(v[0], v[1]) || 1; return [v[0] / l, v[1] / l]; };
-const rotV = (v, deg) => { const a = deg * D2R, c = Math.cos(a), sn = Math.sin(a); return [v[0] * c - v[1] * sn, v[0] * sn + v[1] * c]; };
-const SIMS = new Map();
-function sim(pick, seed) {
+// ---- the chase plan: one per round (pick × seed) --------------------------------
+const fsx = (t) => lerp(FARM0[0], F_RUN_X, smooth(clamp((t - .04) / .6))) + 3 * Math.sin(t * 6.5) * clamp(t / .6);
+const PLANS = new Map();
+function plan(pick, seed) {
   const key = pick + ':' + seed;
-  if (SIMS.has(key)) return SIMS.get(key);
-  if (SIMS.size > 24) SIMS.clear();
+  if (PLANS.has(key)) return PLANS.get(key);
+  if (PLANS.size > 24) PLANS.clear();
   const R = rng(seed * 131 + pick * 7 + 3), b = CK[pick];
-  const O2 = { c: [], ct: [], cs: [], f: [], ft: [], fs: [] };
-  let c = [b.x, b.y], f = FARM0.slice(), cd = norm([c[0] - f[0], c[1] - f[1]]), fd = [1, 0], cs = 0, fs = 0;
-  let zig = R() < .5 ? 1 : -1, nextZig = .2 + R() * .1, sgn = 0, finX = 0;
-  const T_FIN = T_D - .62;
-  const d0 = Math.hypot(c[0] - f[0], c[1] - f[1]);
-  for (let k = 0; k * SIM_DT <= T_D + 1e-6; k++) {
-    const t = k * SIM_DT;
-    O2.c.push(c.slice()); O2.ct.push(cd.slice()); O2.cs.push(cs); O2.f.push(f.slice()); O2.ft.push(fd.slice()); O2.fs.push(fs);
-    if (t > .05) {
-      if (t > nextZig) { zig = -zig; nextZig += .26 + R() * .12; }
-      const dcf = Math.hypot(c[0] - f[0], c[1] - f[1]);
-      const away = norm([c[0] - f[0], c[1] - f[1]]), cen = [182, 258];
-      let perp = rotV(away, 90); if (perp[0] * (cen[0] - c[0]) + perp[1] * (cen[1] - c[1]) < 0) perp = rotV(away, -90);
-      const M = 34, wall = Math.max(clamp((YARD.x0 + M - c[0]) / M), clamp((c[0] - YARD.x1 + M) / M), clamp((YARD.y0 + 12 - c[1]) / 12) * .6, clamp((c[1] - YARD.y1 + 12) / 12) * .6);
-      const close = clamp((95 - dcf) / 45);
-      let w = norm([away[0] * (1 - .85 * Math.max(wall, close * .6)) + perp[0] * (.25 + 1.4 * Math.max(wall, close * .7)), away[1] * (1 - .85 * Math.max(wall, close * .6)) + perp[1] * (.25 + 1.4 * Math.max(wall, close * .7))]);
-      w = rotV(w, zig * 52 * clamp((dcf - 55) / 45));
-      const push = [0, 0];
-      if (c[0] < YARD.x0 + 10) push[0] += 1; if (c[0] > YARD.x1 - 10) push[0] -= 1;
-      if (c[1] < YARD.y0 + 6) push[1] += 1; if (c[1] > YARD.y1 - 6) push[1] -= 1;
-      w = [w[0] + push[0] * 1.5, w[1] + push[1] * 1.5];
-      if (t > T_FIN) {
-        if (!sgn) { sgn = Math.sign(c[0] - f[0]) || 1; finX = sgn > 0 ? clamp(c[0], 104, 146) : clamp(c[0], 232, 268); }
-        const tgx = finX + sgn * 92 * clamp((t - T_FIN) / .62);
-        const a = norm([(tgx - c[0]) * 1.3, (FINISH[1] - c[1]) * 1.2]), k2 = 3 * clamp((t - T_FIN) / .3);
-        w = [w[0] * (1 - clamp((t - T_FIN) / .3)) + a[0] * k2, w[1] * (1 - clamp((t - T_FIN) / .3)) + a[1] * k2];
-      }
-      w = norm(w);
-      cd = norm([lerp(cd[0], w[0], .085), lerp(cd[1], w[1], .085)]);
-      const v = 185 * clamp((t - .05) / .12);
-      c = [clamp(c[0] + cd[0] * v * SIM_DT, YARD.x0, YARD.x1), clamp(c[1] + cd[1] * v * SIM_DT, YARD.y0, YARD.y1)];
-      cs += v * SIM_DT;
-    }
-    if (t > .12) {
-      const tg = sgn ? [c[0] - sgn * GAP_END, c[1] - 3] : c;
-      const dx = tg[0] - f[0], dy = tg[1] - f[1], d = Math.hypot(dx, dy) || 1, dc = Math.hypot(c[0] - f[0], c[1] - f[1]);
-      const gap = lerp(Math.min(d0, 130), 108, smooth(clamp((t - .12) / .9)));
-      const v = sgn ? clamp(d * 7, 0, 330) * (dc < 60 ? .4 : 1) : clamp((dc - gap) * 7, 0, 340);
-      fd = norm([lerp(fd[0], dx / d, .07), lerp(fd[1], dy / d, .07)]);
-      f = [f[0] + fd[0] * v * SIM_DT, f[1] + fd[1] * v * SIM_DT]; fs += v * SIM_DT;
-    }
-  }
-  O2.E = c.slice();
-  SIMS.set(key, O2);
-  return O2;
+  // zig-zag: alternate far / near lane targets every ~0.3 s
+  const zt = [0], zy = [b.y];
+  let up = R() < .5, tt = .12;
+  while (tt < T_D + .5) { zt.push(tt); zy.push(up ? 242 + R() * 8 : 276 + R() * 8); up = !up; tt += .26 + R() * .1; }
+  const ph = R() * 6;
+  const x0 = clamp(b.x + 40, 196, 236);
+  const P = { b, zt, zy, ph, x0 };
+  P.E = henAt(P, T_D);
+  PLANS.set(key, P);
+  return P;
 }
-function sample(S, arrP, arrT, arrS, t) {
-  const x = clamp(t, 0, T_D) / SIM_DT, i = Math.min(Math.floor(x), S[arrP].length - 2), u = x - i;
-  return { p: lerp2(S[arrP][i], S[arrP][i + 1], u), t: S[arrT][i + 1], s: lerp(S[arrS][i], S[arrS][i + 1], u) };
+function laneY(P, t) {
+  const { zt, zy } = P;
+  let j = 0; while (j < zt.length - 2 && zt[j + 1] <= t) j++;
+  const u = clamp((t - zt[j]) / (zt[j + 1] - zt[j]));
+  return lerp(zy[j], zy[j + 1], (1 - Math.cos(Math.PI * u)) / 2);
+}
+// the bird, world coords, while running (t ≤ T_D)
+function henAt(P, t) {
+  const tc = Math.min(t, T_D);
+  const lane = lerp(P.x0, fsx(T_D) + GAP_END, smooth(clamp((tc - .7) / (T_D - .7)))) + 9 * Math.sin(tc * 9 + P.ph) * clamp(tc / .4);
+  const u = smooth(clamp((tc - .03) / .42));
+  const sx = lerp(P.b.x, lane, u);
+  return [sx + camAt(tc), laneY(P, tc)];
+}
+// the farmer's feet, world coords, while running (follows the bird's trail)
+function farmerAt(P, t) {
+  const tc = Math.min(t, T_D);
+  const y = lerp(FARM0[1], laneY(P, Math.max(0, tc - .3)) + 2, smooth(clamp(tc / .5)));
+  return [fsx(tc) + camAt(tc), y];
+}
+
+// ---- idle: the ready stance, primed (aim 0 → 1) on the selected bird -------------
+function idleFarmer(pick, aim) {
+  const b = pick != null ? CK[pick] : null;
+  const target = b ? [b.x - b.dir * b.rx * .7, b.y + b.bcy - b.ry * .4] : null;
+  return readyPose(FARM0[0], FARM0[1], target, b ? aim : 0);
 }
 
 // ---- the frame ------------------------------------------------------------------
-// t ≤ 0: idle (pick = the selected bird or null). Otherwise a round: pick (index),
-// win (bool), seed (chase layout). opts.still: the reduced-motion end frame.
+// t ≤ 0: idle (pick = the selected bird or null; opts.aim = how primed he is,
+// default 1 when a bird is selected). Otherwise a round: pick (index), win
+// (bool), seed (chase layout). opts.still: the reduced-motion end frame.
 export function render(R, t, pick, win, seed = 1, opts = {}) {
   const { $ } = R;
   R.svg.classList.toggle('run', t > 0);
   const order = [];
-  const S = t > 0 ? sim(pick, seed) : null;
-  const E = S ? S.E : null;
-  const chickenPos = (tt) => sample(S, 'c', 'ct', 'cs', tt);
-  const farmerRun = (tt) => sample(S, 'f', 'ft', 'fs', tt);
+  const P = t > 0 ? plan(pick, seed) : null;
+  const E = P ? P.E : null;
+  const cam = t > 0 ? camAt(t) : 0;
+  setCamera(R.cam, cam, t > 0 && !opts.still ? speedAt(t) : 0, t);
+  const L = { actors: R.actors, backLayer: R.backLayer };
 
   /* ---------- farmer ---------- */
   let FP;
   if (t <= 0) {
-    let look = [1.3, .3];
-    if (pick != null) { const b = CK[pick]; const dx = b.x - FARM0[0], dy = (b.y - 20) - (FARM0[1] - 70); const l = Math.hypot(dx, dy) || 1; look = [1.3 * dx / l, 1.2 * dy / l]; }
-    FP = { ...POSES.ready, x: FARM0[0], y: FARM0[1], dir: 1, look };
+    FP = idleFarmer(pick, opts.aim ?? 1);
   } else if (t < T_D) {
-    const r = farmerRun(t);
-    const run = runPose(r.s / 34 * Math.PI * 2);
-    const k = smooth(clamp(t / .18));
-    const base = mixPose(POSES.ready, run, k);
-    if (t < .14) base.lift = 6 * Math.sin(t / .14 * Math.PI); // startled hop
-    const dir = Math.abs(r.t[0]) > .2 ? Math.sign(r.t[0]) : (Math.sign(chickenPos(t).p[0] - r.p[0]) || 1);
-    FP = { ...base, x: r.p[0], y: r.p[1], dir: k < .5 ? 1 : dir, look: [1.4, .4] };
+    const f = farmerAt(P, t);
+    const run = runPose(f[0] / 30 * Math.PI * 2);
+    const k = smooth(clamp(t / .2));
+    const base = k >= 1 ? run : mixPose(idleFarmer(pick, 1), run, k);
+    if (t < .14) base.lift = 6 * Math.sin(t / .14 * Math.PI); // bursts out of the crouch
+    FP = { ...base, x: f[0], y: f[1], dir: 1 };
   } else {
-    const r0 = farmerRun(T_D);
-    const dir = Math.sign(E[0] - r0.p[0]) || 1;
-    const landHip = win ? [E[0] - dir * REACH, E[1] - 10] : [E[0] - dir * (REACH + 16), E[1] - 10];
-    const startHip = [r0.p[0], r0.p[1] - 36 * K];
+    const f0 = farmerAt(P, T_D);
+    const dir = 1;
+    const landHip = win ? [E[0] - REACH, E[1] - 10] : [E[0] - (REACH + 16), E[1] - 10];
+    const startHip = [f0[0], f0[1] - 36 * K];
     if (t < T_LAND) {
       const u = (t - T_D) / (T_LAND - T_D), e = eOut(u);
-      const pose = mixPose(runPose(r0.s / 34 * Math.PI * 2), POSES.dive, smooth(clamp(u * 1.6)));
+      const pose = mixPose(runPose(f0[0] / 30 * Math.PI * 2), POSES.dive, smooth(clamp(u * 1.6)));
       const hip = lerp2(startHip, landHip, e);
       hip[1] -= 16 * Math.sin(Math.PI * u);
-      FP = { ...pose, x: hip[0], y: hip[1] + 36 * K, dir, lift: 0, ground: lerp(r0.p[1], E[1], e), look: [1.5, 0] };
+      FP = { ...pose, x: hip[0], y: hip[1] + 36 * K, dir, lift: 0, ground: lerp(f0[1], E[1], e), look: [1.6, .3] };
     } else if (win) {
-      const standFeet = [E[0] - dir * 6, E[1] + 3];
+      const standFeet = [E[0] - 6, E[1] + 3];
       if (t < T_UP0) {
         const bump = Math.max(0, Math.sin((t - T_LAND) / .12 * Math.PI)) * 2 * (t - T_LAND < .12 ? 1 : 0);
-        FP = { ...mixPose(POSES.dive, POSES.lie, smooth(clamp((t - T_LAND) / .1))), x: landHip[0], y: landHip[1] + 36 * K - bump, dir, ground: E[1], look: [1.5, 0] };
+        FP = { ...mixPose(POSES.dive, POSES.lie, smooth(clamp((t - T_LAND) / .1))), x: landHip[0], y: landHip[1] + 36 * K - bump, dir, ground: E[1], look: [1.6, .3] };
       } else {
         const u = smooth(clamp((t - T_UP0) / (T_UP1 - T_UP0)));
         const hip = lerp2(landHip, [standFeet[0], standFeet[1] - 36 * K], u);
@@ -285,11 +170,11 @@ export function render(R, t, pick, win, seed = 1, opts = {}) {
       const tt = t - T_LAND;
       const sq = tt < .2 ? Math.sin(tt / .2 * Math.PI) * 2.5 : 0;
       const pose = mixPose(POSES.dive, POSES.plant, smooth(clamp(tt / .16)));
-      FP = { ...pose, x: landHip[0] + dir * 4 * eOut(clamp(tt / .3)), y: landHip[1] + 36 * K + 2 + sq, dir, ground: E[1] };
+      FP = { ...pose, x: landHip[0] + 4 * eOut(clamp(tt / .3)), y: landHip[1] + 36 * K + 2 + sq, dir, ground: E[1] };
     }
     FP.landHip = landHip;
   }
-  drawFarmer(R, FP);
+  drawFarmer(R.fm, FP);
   order.push([R.fm.root, FP.ground ?? FP.y]);
 
   /* ---------- birds ---------- */
@@ -300,25 +185,26 @@ export function render(R, t, pick, win, seed = 1, opts = {}) {
     if (t <= 0) {
       C = { x: b.x, y: b.y, dir: b.dir, phase: null, op: 1, tagOp: 1 };
     } else if (i !== pick) {
-      const s = SCAT[i], u = clamp((t - s.t0) / s.dur), e = eIn(u) * .75 + u * .25;
+      const s = SCAT[i], u = clamp((t - s.t0) / s.dur), e = eIn(u) * .6 + u * .4;
       const pos = lerp2([b.x, b.y], s.to, e);
       const dir = s.to[0] < b.x ? 1 : -1;
-      C = { x: pos[0], y: pos[1], dir, phase: u > 0 ? (t - s.t0) * 34 : null, lift: u > 0 ? 6 * Math.abs(Math.sin(u * Math.PI * 4)) : 0,
-            tilt: u > 0 ? -14 : 0, flap: u > 0 ? -30 - 25 * Math.sin(t * 40 + i) : 0, head: u > 0 ? 12 : 0, squawk: u > 0 && u < .6, panic: u > 0,
+      const on = u > 0 && u < 1;
+      C = { x: pos[0], y: pos[1], dir, phase: on ? (t - s.t0) * 34 : null, lift: on ? 6 * Math.abs(Math.sin(u * Math.PI * 4)) : 0,
+            tilt: on ? -14 : 0, flap: on ? -30 - 25 * Math.sin(t * 40 + i) : 0, head: u > 0 ? 12 : 0, squawk: on && u < .6, panic: u > 0,
             op: 1, tagOp: 1 - clamp(t / .15) };
       g.classList.toggle('cluck', u > 0 && u < .4);
       g.classList.toggle('hold', u > 0 && u < .4);
     } else {
       g.classList.remove('cluck', 'hold');
       if (t < T_D) {
-        const c = chickenPos(t);
-        const dir = Math.abs(c.t[0]) > .02 ? (c.t[0] < 0 ? 1 : -1) : b.dir;
-        C = { x: c.p[0], y: c.p[1], dir, phase: c.s / 13 * Math.PI * 2, lift: 2.2 * Math.abs(Math.sin(c.s / 13 * Math.PI * 2)), tilt: -16, flap: -20 - 28 * Math.sin(t * 34),
-              head: 14, squawk: Math.sin(t * 9) > 0, panic: true, tagOp: 1 };
+        const c = henAt(P, t);
+        const tt = Math.min(t, .12);
+        C = { x: c[0], y: c[1], dir: t < .05 ? b.dir : -1, phase: t * 30, lift: 2.6 * Math.abs(Math.sin(t * 15)) + (tt < .12 ? 4 * Math.sin(tt / .12 * Math.PI) : 0),
+              tilt: -16, flap: -24 - 30 * Math.sin(t * 34), head: 14, squawk: Math.sin(t * 9) > 0, panic: true, tagOp: 1 - clamp(t / .2) };
       } else if (win) {
         if (t < T_LAND - .02) {
           const tt = t - T_D;
-          C = { x: E[0], y: E[1], dir: Math.sign(E[0] - FP.x) > 0 ? -1 : 1, phase: tt * 40, lift: 5 * Math.abs(Math.sin(tt * 18)), flap: -40 - 30 * Math.sin(t * 50), head: -10, squawk: true, panic: true, tagOp: 1 - clamp(tt / .2) };
+          C = { x: E[0], y: E[1], dir: 1, phase: tt * 40, lift: 5 * Math.abs(Math.sin(tt * 18)), flap: -40 - 30 * Math.sin(t * 50), head: -10, squawk: true, panic: true, tagOp: 0 };
         } else {
           const hw = lerp2(fmWorld(FP, FP._h0), fmWorld(FP, FP._h1), .5);
           const held = t > T_UP0;
@@ -328,48 +214,46 @@ export function render(R, t, pick, win, seed = 1, opts = {}) {
           heldAt = [C.x, cy];
         }
       } else {
-        // flap up onto a fence post, taunt the farmer, then hop down behind the fence
+        // flap up onto a fence post ahead, taunt the farmer, hop down behind the fence
         const tt = t - T_D;
-        const esc = FP.dir, post = POSTS.reduce((a, p) => (Math.abs(p - (E[0] + esc * 24)) < Math.abs(a - (E[0] + esc * 24)) ? p : a));
-        const PY = 141;
+        const sF = CAM_END * FENCE_F, want = E[0] - CAM_END + 44 + sF;
+        const posts = postsBetween(sF + 140, sF + 282);
+        const pl = posts.length ? posts.reduce((a, p) => (Math.abs(p - want) < Math.abs(a - want) ? p : a)) : want;
+        const post = pl + 3 + cam * (1 - FENCE_F); // fence-layer x → world x (the camera is still easing)
         if (tt < .62) {
           const u = tt / .62, e = eInOut(u);
           C = { x: lerp(E[0], post, e), y: lerp(E[1], PY, e) - 30 * Math.sin(Math.PI * u), dir: post < E[0] ? 1 : -1, phase: tt * 36, flap: -70 * Math.abs(Math.sin(tt * 32)) - 10,
-                head: 6, tilt: -12, squawk: true, panic: true, ground: E[1], tagOp: clamp(1 - tt / .2), hideShadow: u > .3 };
+                head: 6, tilt: -12, squawk: true, panic: true, ground: E[1], tagOp: 0, hideShadow: u > .3 };
         } else if (tt < 1.65) {
           const k = tt - .62, flapOn = k < .25 || (k > .7 && k < .9);
           C = { x: post, y: PY, dir: FP.x < post ? 1 : -1, phase: null, lift: flapOn ? 2.5 * Math.abs(Math.sin(k * 30)) : 0, flap: flapOn ? -55 * Math.abs(Math.sin(k * 26)) : 0,
                 head: Math.sin(k * 7) > .2 ? -8 : 4, tilt: 6, squawk: Math.sin(k * 7) > .2, tagOp: 0, ground: 150, hideShadow: true };
         } else {
           const u = clamp((tt - 1.65) / .35);
-          C = { x: post + 12 * u * (post < 150 ? -1 : 1), y: PY - 14 * Math.sin(Math.PI * Math.min(u, .5)) + 46 * u * u, dir: post < 150 ? 1 : -1, phase: null, flap: -40,
+          C = { x: post + 12 * u, y: PY - 14 * Math.sin(Math.PI * Math.min(u, .5)) + 46 * u * u, dir: -1, phase: null, flap: -40,
                 tagOp: 0, ground: 150, hideShadow: true, behind: u > .25, op: 1 - clamp((u - .7) / .3) };
         }
       }
     }
-    drawChicken(R, i, C);
+    drawChicken(R.ck[i], b, C, L);
     order.push([g, heldAt && i === pick ? 1e4 : (C.ground ?? C.y)]);
   });
+  depthSort(R, order);
 
-  // depth-sort the actors (only when the order changes)
-  order.sort((a, b) => a[1] - b[1]);
-  const key = order.map(o => o[0].id).join();
-  if (key !== R.sortKey) { R.sortKey = key; order.forEach(([n]) => { if (n.parentNode === R.actors) R.actors.appendChild(n); }); }
-
-  /* ---------- dust puffs behind the running farmer / the hen ---------- */
+  /* ---------- dust kicked up behind the farmer / the bird (left behind by the camera) ---------- */
   for (let k = 0; k < N_PUFF; k++) {
-    const el = $('pf' + k), ts = .18 + k * .105, age = t - ts;
-    if (t <= 0 || ts > T_D || age < 0 || age > .5) { el.setAttribute('opacity', 0); continue; }
-    const r = farmerRun(ts), d = Math.sign(r.t[0]) || 1;
-    const s = .5 + age * 1.9;
-    el.setAttribute('transform', `translate(${f1(r.p[0] - d * (6 + age * 14))} ${f1(r.p[1] - 2 - age * 8)}) scale(${f1(s)})`);
-    el.setAttribute('opacity', f1(.85 * (1 - age / .5)));
+    const el = $('pf' + k), ts = .14 + k * .1, age = t - ts;
+    if (t <= 0 || ts > T_D || age < 0 || age > .55) { el.setAttribute('opacity', 0); continue; }
+    const r = farmerAt(P, ts);
+    const s = .55 + age * 2;
+    el.setAttribute('transform', `translate(${f1(r[0] - 8 - age * 10)} ${f1(r[1] - 2 - age * 9)}) scale(${f1(s)})`);
+    el.setAttribute('opacity', f1(.85 * (1 - age / .55)));
   }
   for (let k = 0; k < N_CPUFF; k++) {
     const el = $('cp' + k), ts = .12 + k * .22, age = t - ts;
     if (t <= 0 || ts > T_D || age < 0 || age > .4) { el.setAttribute('opacity', 0); continue; }
-    const c = chickenPos(ts), d = c.t[0] < 0 ? -1 : 1;
-    el.setAttribute('transform', `translate(${f1(c.p[0] - d * 5)} ${f1(c.p[1] - 1 - age * 6)}) scale(${f1(.6 + age * 1.6)})`);
+    const c = henAt(P, ts);
+    el.setAttribute('transform', `translate(${f1(c[0] - 5)} ${f1(c[1] - 1 - age * 6)}) scale(${f1(.6 + age * 1.6)})`);
     el.setAttribute('opacity', f1(.8 * (1 - age / .4)));
   }
 
@@ -390,18 +274,18 @@ export function render(R, t, pick, win, seed = 1, opts = {}) {
     const LP = { ...POSES.dive, x: FP.landHip[0], y: FP.landHip[1] + 36 * K, dir: FP.dir };
     const h0 = bodyWorld(LP, [3, -100]);
     const u = clamp(tt / .45);
-    const gy = E[1] + 4;
+    const gy = E[1] + 4, lo = cam + 22, hi = cam + 278;
     let x = h0[0] + FP.dir * 24 * u;
     let y = lerp(h0[1] - 6, gy - 14 * K, u) - 30 * Math.sin(Math.PI * u) * (1 - u * .3);
     let rot = FP.dir * u * 250;
     if (!win && tt > .45) {               // rolls on its brim, slows, wobbles flat
       const r = clamp((tt - .45) / 1.0), s2 = 22 * eOut(r);
-      x = clamp(x + FP.dir * s2, 22, 278); y = gy - 14 * K;
+      x = clamp(x + FP.dir * s2, lo, hi); y = gy - 14 * K;
       rot = FP.dir * (250 + s2 / (14 * K) * 57.3 + (r >= 1 ? Math.sin((tt - 1.45) * 10) * 5 * clamp(1 - (tt - 1.45) / .5) : 0));
     } else if (win && tt > .45) {
       rot = FP.dir * (250 + Math.sin((tt - .45) * 9) * 6 * clamp(1 - (tt - .45) / .6));
     }
-    if (opts.still && !win) { x = clamp(h0[0] + FP.dir * 46, 22, 278); y = gy - 14 * K; rot = FP.dir * (250 + 22 / (14 * K) * 57.3); }
+    if (opts.still && !win) { x = clamp(h0[0] + FP.dir * 46, lo, hi); y = gy - 14 * K; rot = FP.dir * (250 + 22 / (14 * K) * 57.3); }
     hatW.setAttribute('transform', `translate(${f1(x)} ${f1(y)}) rotate(${f1(rot)}) scale(${f1(FP.dir * K)} ${K}) translate(-3 96)`);
     hatW.setAttribute('opacity', 1);
   } else hatW.setAttribute('opacity', 0);
@@ -484,4 +368,3 @@ export function setGone(R, gone) {
   R.actors.classList.toggle('gone', gone);
   R.shadows.style.opacity = gone ? 0 : 1;
 }
-

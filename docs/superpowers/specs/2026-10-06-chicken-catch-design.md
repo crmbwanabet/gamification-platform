@@ -98,3 +98,25 @@ The scene is a React port of the approved mock (`chicken-mock/index.html`). It i
 ## Out of scope
 
 Lucky Minibus (it will reuse `lib/pick6`), new missions for Chicken Catch, server-authoritative results.
+
+## Update 2026-10-07: farmer and side-scrolling chase
+
+The user asked for a farmer who looks like a farmer, stands back from the flock ready to catch, and a chase whose background shows him running, at the same duration.
+
+- **Farmer:**
+  - a weathered, friendly older farmer: squinting, sun-crinkled eyes with crow's feet;
+  - bushy grey-flecked brows, a broad bulb nose and cheek lines;
+  - a short salt-and-pepper beard and moustache, and a grass stalk in his mouth;
+  - a battered straw hat with a sweat-stained leather band, and a red neckerchief.
+- **Idle stance:** he stands at the left edge (feet (36, 266), scale 1.12), clear of the flock. The birds sit 2–22 units further right. He crouches in a ready stance, both arms forward with open hands.
+- **Priming on a pick:** picking a bird plays a 260 ms tween. He leans in, turns his head to the bird, aims his hands at it, locks his eyes on it (lowered lids, pupils on the bird), sets his brows and mouth.
+- **Chase:** a side-scroller (`shared/camera.js`). CATCH charges the stake as before, and then:
+  - he bursts out of the crouch;
+  - the camera pans with him at 260 units/s with parallax: sky still, clouds 0.05, hills 0.15, trees / far huts / maize 0.35, fence and big hut 0.6, ground and tufts 1.0, foreground tufts 1.35;
+  - speed lines streak in, and dust is left behind;
+  - the arms pump with fists;
+  - the bird zig-zags ahead flapping, and the rest of the flock flutters aside and is left behind;
+  - at the dive the camera eases to a stop, and the catch or the escape plays out in the scrolled location. On an escape, the bird uses the nearest fence post ahead.
+  - The next round is back in the yard.
+- **Timing unchanged:** dive 1.72 s, landing 2.0 s, result + `onRound` 2.3 s (win) / 2.15 s (loss), panel 3.2 s, animation end 3.6 s / 4.1 s.
+- **Code layout:** the scene pieces moved to `components/games/chicken/shared/` (shared with Chicken Catch 2). `motion.js` keeps the chase.

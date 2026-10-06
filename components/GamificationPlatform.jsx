@@ -43,6 +43,7 @@ import NjukaGame from './games/njuka/NjukaGame';
 import CoinFlipGame from './games/coinflip/CoinFlipGame';
 import PenaltyGame from './games/penalty/PenaltyGame';
 import ChickenGame from './games/chicken/ChickenGame';
+import Chicken2Game from './games/chicken2/Chicken2Game';
 import MinibusGame from './games/minibus/MinibusGame';
 import BottleGame from './games/bottle/BottleGame';
 import ScratchGame from './games/scratch/ScratchGame';
@@ -1182,7 +1183,7 @@ export default function GamificationPlatform() {
   const playGame = (gameId) => {
     // Disabled games can still be reached via mission modals — block them.
     if (!activeGames.some(g => g.id === gameId)) { showNotif('This game is unavailable right now', 'error'); return; }
-    // Stake-per-round games (njuka, coinflip, penalty, chicken, minibus, bottle, scratch, numbers): entry is free — no daily play consumed,
+    // Stake-per-round games (njuka, coinflip, penalty, chicken, chicken2, minibus, bottle, scratch, numbers): entry is free — no daily play consumed,
     // no extra-play charge. Every round is paid inside the game via onSpend.
     if (activeGames.find(g => g.id === gameId)?.stakeOnly) { setActiveGame(gameId); return; }
     if (user.gamePlays[gameId] > 0) {
@@ -1350,6 +1351,16 @@ export default function GamificationPlatform() {
             setUser(u => ({ ...u, gamesPlayed: u.gamesPlayed + 1, dailyTasksDone: [...new Set([...u.dailyTasksDone, 'game'])] }));
             setGamesPlayedToday(prev => new Set([...prev, 'chicken']));
             trackMission('gamePlayed', { gameId: 'chicken', coinsWon: win ? payout - stake : 0, gamesSet: gamesPlayedToday });
+          }} />
+      )}
+      {activeGame === 'chicken2' && (
+        <Chicken2Game onClose={() => animateClose(() => setActiveGame(null))} closing={closingModal}
+          balance={user.kwacha} rtp={cfg.games.chicken2?.rtp} onSpend={(n) => addCoins(-n)}
+          onRound={({ stake, win, payout }) => {
+            if (win) addCoins(payout); // the game's own WinCelebration shows the win — no toast / float
+            setUser(u => ({ ...u, gamesPlayed: u.gamesPlayed + 1, dailyTasksDone: [...new Set([...u.dailyTasksDone, 'game'])] }));
+            setGamesPlayedToday(prev => new Set([...prev, 'chicken2']));
+            trackMission('gamePlayed', { gameId: 'chicken2', coinsWon: win ? payout - stake : 0, gamesSet: gamesPlayedToday });
           }} />
       )}
       {activeGame === 'minibus' && (
