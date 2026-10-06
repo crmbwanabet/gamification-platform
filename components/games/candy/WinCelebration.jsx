@@ -98,11 +98,19 @@ export default function WinCelebration({ payout, reduced = false, delay = 0, pil
   const burst = useMemo(() => (reduced ? [] : makeBurst()), [reduced]);
 
   const later = (fn, ms) => { const t = setTimeout(() => { if (alive.current) fn(); }, ms); timers.current.push(t); };
-  useEffect(() => () => { alive.current = false; timers.current.forEach(clearTimeout); }, []);
-
+  // Idempotent under mount → unmount → mount (React StrictMode in dev): the
+  // body re-arms `alive` every mount instead of relying on its initial value.
   useEffect(() => {
-    if (stage === 'wait') later(() => setStage('shown'), delay);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    alive.current = true;
+    return () => { alive.current = false; timers.current.forEach(clearTimeout); timers.current = []; };
+  }, []);
+
+  // The delay owns its own timer, so a remount simply starts it again.
+  useEffect(() => {
+    if (stage !== 'wait') return undefined;
+    const t = setTimeout(() => setStage('shown'), delay);
+    return () => clearTimeout(t);
+  }, [stage, delay]);
 
   // Count-up 0 → payout (ease-out), and focus COLLECT for keyboard users
   useEffect(() => {
