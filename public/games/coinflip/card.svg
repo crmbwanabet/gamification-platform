@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 164" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <radialGradient id="bg" cx=".5" cy=".46" r=".8"><stop offset="0" stop-color="#8A47EA"/><stop offset=".48" stop-color="#4A169A"/><stop offset="1" stop-color="#1A0838"/></radialGradient>
+    <radialGradient id="flood"><stop offset="0" stop-color="#FFF1A8" stop-opacity=".7"/><stop offset=".45" stop-color="#FFC63A" stop-opacity=".22"/><stop offset="1" stop-color="#7A3BFF" stop-opacity="0"/></radialGradient>
+    <linearGradient id="rim" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFF3B0"/><stop offset=".3" stop-color="#FFD21F"/><stop offset=".62" stop-color="#E9A800"/><stop offset="1" stop-color="#B87800"/></linearGradient>
+    <linearGradient id="edge" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#9A6200"/><stop offset=".5" stop-color="#E0A300"/><stop offset="1" stop-color="#7A4A00"/></linearGradient>
+    <radialGradient id="face" cx=".4" cy=".32" r=".75"><stop offset="0" stop-color="#FFE680"/><stop offset=".38" stop-color="#FFD21F"/><stop offset=".72" stop-color="#F2B90C"/><stop offset="1" stop-color="#D99A00"/></radialGradient>
+    <radialGradient id="shine" cx=".32" cy=".24" r=".42"><stop offset="0" stop-color="#fff" stop-opacity=".75"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
+    <linearGradient id="glint" x1="0" y1="0" x2="1" y2="1"><stop offset=".4" stop-color="#fff" stop-opacity="0"/><stop offset=".5" stop-color="#fff" stop-opacity=".32"/><stop offset=".6" stop-color="#fff" stop-opacity="0"/></linearGradient>
+    <linearGradient id="trail" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#FFC430" stop-opacity="0"/><stop offset=".85" stop-color="#FFD84A" stop-opacity=".95"/><stop offset="1" stop-color="#FFF6C8"/></linearGradient>
+    <path id="spk" d="M0 -7L1.8 -1.8L7 0L1.8 1.8L0 7L-1.8 1.8L-7 0L-1.8 -1.8Z"/>
+  </defs>
+  <rect width="320" height="164" fill="url(#bg)"/>
+  <!-- rays -->
+  <g fill="#fff" opacity=".07">
+    <path d="M160 78L60 -10H104Z"/><path d="M160 78L150 -10H196Z"/><path d="M160 78L250 -10H310Z"/><path d="M160 78L330 70V120Z"/><path d="M160 78L-10 40V92Z"/><path d="M160 78L40 174H96Z"/><path d="M160 78L236 174H292Z"/>
+  </g>
+  <circle cx="160" cy="78" r="96" fill="url(#flood)"/>
+  <!-- star dust -->
+  <g fill="#FFF3B0"><circle cx="22" cy="22" r="1.6"/><circle cx="64" cy="132" r="1.3"/><circle cx="98" cy="18" r="1.2"/><circle cx="238" cy="20" r="1.5"/><circle cx="296" cy="40" r="1.7"/><circle cx="282" cy="140" r="1.3"/><circle cx="30" cy="96" r="1.2"/><circle cx="210" cy="150" r="1.4"/><circle cx="122" cy="150" r="1.1"/><circle cx="318" cy="96" r="1.2"/></g>
+  <!-- golden swirl behind the coin (two tilted comet rings) -->
+  <g transform="rotate(-16 160 80)" fill="none" stroke-linecap="round">
+    <ellipse cx="160" cy="80" rx="98" ry="42" stroke="#FFC430" stroke-width="1.4" opacity=".28"/>
+    <path d="M62 80A98 42 0 0 1 222 47" stroke="url(#trail)" stroke-width="4"/>
+    <path d="M258 80A98 42 0 0 1 112 118" stroke="#FFD84A" stroke-width="3" opacity=".8"/>
+  </g>
+  <g transform="rotate(-26 160 80)" fill="none" stroke-linecap="round" opacity=".7">
+    <ellipse cx="160" cy="80" rx="80" ry="46" stroke="#FFC430" stroke-width="1.1" opacity=".3"/>
+    <path d="M240 80A80 46 0 0 1 108 115" stroke="#FFE27A" stroke-width="2.4"/>
+  </g>
+  <!-- ground shadow -->
+  <ellipse cx="164" cy="152" rx="40" ry="6" fill="#0A001E" opacity=".45"/>
+  <!-- motion arcs -->
+  <g fill="none" stroke="#FFF1B8" stroke-linecap="round" opacity=".75">
+    <path d="M94 46Q86 80 98 114" stroke-width="3"/><path d="M82 58Q77 80 84 102" stroke-width="2" opacity=".6"/>
+    <path d="M234 46Q242 80 230 114" stroke-width="3"/><path d="M246 58Q251 80 244 102" stroke-width="2" opacity=".6"/>
+  </g>
+  <!-- the coin, mid-flip: tilted and foreshortened, its edge showing -->
+  <g transform="translate(160 78) rotate(-14)">
+    <ellipse cx="7" cy="2" rx="45" ry="58" fill="url(#edge)" stroke="#2A0A4F" stroke-width="2.4"/>
+    <g stroke="#7A4A00" stroke-width="1.2" opacity=".55"><path d="M36 -38v8M41 -26v8M44 -12v8M45 2v8M43 16v8M39 30v8M33 42v6"/></g>
+    <g transform="scale(.78 1)">
+      <circle r="58" fill="url(#rim)" stroke="#2A0A4F" stroke-width="2.6" vector-effect="non-scaling-stroke"/>
+      <circle r="54.5" fill="none" stroke="#FFF6D0" stroke-width="3.5" stroke-dasharray="2.4 2.4" opacity=".55"/>
+      <circle r="47" fill="url(#face)"/>
+      <path d="M-47 0A47 47 0 0 1 47 0" fill="none" stroke="#A86A00" stroke-width="2.6" opacity=".55" transform="translate(0 -1)"/>
+      <path d="M47 0A47 47 0 0 1 -47 0" fill="none" stroke="#FFF6C8" stroke-width="2.4" opacity=".9" transform="translate(0 1)"/>
+      <circle r="41" fill="none" stroke="#A06400" stroke-width="1.3" opacity=".5"/>
+      <circle r="39.6" fill="none" stroke="#FFF4BE" stroke-width=".9" opacity=".6"/>
+      <g fill="#B37400" opacity=".75"><use href="#spk" transform="translate(0 -27) scale(.75)"/><use href="#spk" transform="translate(0 28) scale(.75)"/></g>
+      <g font-family="Lilita One, Arial Black, sans-serif" font-weight="900" font-size="18.5" text-anchor="middle" letter-spacing=".4">
+        <text y="9" fill="#FFF4BE">HEADS</text>
+        <text y="6.4" fill="#7A4A00" opacity=".55">HEADS</text>
+        <text y="7.6" fill="#B37400">HEADS</text>
+      </g>
+      <circle r="58" fill="url(#shine)"/>
+      <circle r="58" fill="url(#glint)"/>
+    </g>
+  </g>
+  <!-- sparkles -->
+  <g fill="#FFF6C8" stroke="#E0A300" stroke-width=".8">
+    <use href="#spk" transform="translate(212 30) scale(1.5)"/>
+    <use href="#spk" transform="translate(108 124) scale(1.1)"/>
+    <use href="#spk" transform="translate(48 46) scale(1.25)"/>
+    <use href="#spk" transform="translate(272 108) scale(1.35)"/>
+    <use href="#spk" transform="translate(134 26) scale(.8)"/>
+    <use href="#spk" transform="translate(252 66) scale(.7)"/>
+    <use href="#spk" transform="translate(70 100) scale(.65)"/>
+  </g>
+  <g fill="#fff"><use href="#spk" transform="translate(132 46) scale(.9)"/><circle cx="132" cy="46" r="2.4" opacity=".9"/></g>
+</svg>
