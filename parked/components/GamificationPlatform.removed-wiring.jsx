@@ -418,3 +418,215 @@ import StopClockGame from './games/StopClockGame';
           }}
         />
       )}
+
+
+// ============================================================================
+// 2026-10-07 — pre-casino missions + streak bonuses parked
+// ============================================================================
+// Missions became the 4 CRM-fed daily casino missions (lib/missions/casino.mjs)
+// and the daily-login streak BONUSES stopped paying (the streak counter itself
+// is live). Data: parked/lib/data/missions.legacy.js and
+// parked/lib/data/streakRewards.legacy.js. Restore notes: parked/README.md.
+
+// ============ GamificationPlatform.jsx: the full trackMission progress engine ============
+// (activeMissions was applyMissionOverrides([...getDailyMissions(), ...PERMANENT_MISSIONS], cfg.missionOverrides);
+//  navBadges.missions / missionsCount = missions not in user.missionsComplete;
+//  MissionDetailModal got progress={user.missionProgress[id]} done={user.missionsComplete.includes(id)})
+  // Mission tracking
+  const [gamesPlayedToday, setGamesPlayedToday] = useState(new Set());
+  
+  const trackMission = useCallback((actionType, metadata = {}) => {
+    if (actionType === 'gamePlayed') track('game_played', { gameId: metadata.gameId, amount: metadata.coinsWon || 0 });
+    const allActive = applyMissionOverrides([...getDailyMissions(), ...WEEKLY_MISSIONS, ...PERMANENT_MISSIONS], cfgRef.current.missionOverrides);
+    
+    setUser(prev => {
+      const newProgress = { ...prev.missionProgress };
+      const newComplete = [...prev.missionsComplete];
+      let bonusCoins = 0, bonusGems = 0, bonusXP = 0;
+      let justCompleted = [];
+      
+      allActive.forEach(mission => {
+        if (newComplete.includes(mission.id)) return; // already done
+        
+        let shouldIncrement = false;
+        let incrementBy = 1;
+        let setTo = null; // for score-type missions
+        
+        switch (mission.type) {
+          case 'gamePlay':
+            if (actionType === 'gamePlayed' && metadata.gameId === mission.gameId) shouldIncrement = true;
+            break;
+          // bets/wins/winStreak + trivia cases parked with their missions —
+          // see parked/components/GamificationPlatform.removed-wiring.jsx
+          case 'dailyClaim':
+            if (actionType === 'dailyClaimed') shouldIncrement = true;
+            break;
+          case 'uniqueGames':
+          case 'uniqueGamesWeekly':
+            if (actionType === 'gamePlayed') {
+              const updatedSet = new Set([...(metadata.gamesSet || []), metadata.gameId]);
+              setTo = updatedSet.size;
+            }
+            break;
+          case 'coinsWon':
+            if (actionType === 'gamePlayed' && metadata.coinsWon > 0) {
+              incrementBy = metadata.coinsWon;
+              shouldIncrement = true;
+            }
+            break;
+          case 'storePurchase':
+          case 'coinsSpent':
+            if (actionType === 'storePurchase') {
+              incrementBy = metadata.amount || 1;
+              shouldIncrement = true;
+            }
+            break;
+          case 'deposits':
+            if (actionType === 'deposit') shouldIncrement = true;
+            break;
+          case 'dailyMissionsDone':
+            if (actionType === 'missionCompleted' && metadata.missionId?.startsWith('d_')) shouldIncrement = true;
+            break;
+          case 'weeklyXP':
+            if (actionType === 'xpEarned') {
+              incrementBy = metadata.amount || 0;
+              shouldIncrement = true;
+            }
+            break;
+        }
+        
+        if (shouldIncrement) {
+          newProgress[mission.id] = (newProgress[mission.id] || 0) + incrementBy;
+        } else if (setTo !== null) {
+          newProgress[mission.id] = setTo;
+        }
+        
+        // Check completion
+        if (!newComplete.includes(mission.id) && (newProgress[mission.id] || 0) >= mission.target) {
+          newComplete.push(mission.id);
+          bonusCoins += mission.reward.kwacha || 0;
+          bonusGems += mission.reward.gems || 0;
+          bonusXP += mission.xp || 0;
+          justCompleted.push(mission);
+        }
+      });
+      
+      // Show completion notifications (delayed so state updates first)
+      if (justCompleted.length > 0) {
+        setTimeout(() => {
+          justCompleted.forEach(m => {
+            const won = [...rewardParts(m.reward), m.xp ? amountText(m.xp, 'xp') : null].filter(Boolean);
+            showNotif(`✅ Mission Complete: ${m.name}!${won.length ? ` +${won.join(' + ')}` : ''}`);
+            triggerReward('small', null, { coins: m.reward?.kwacha || 0, gems: m.reward?.gems || 0, xp: m.xp || 0 });
+            track('mission_completed', { meta: { missionId: m.id } });
+            // Track weekly mission for daily missions completed
+            if (m.id.startsWith('d_')) {
+              trackMission('missionCompleted', { missionId: m.id });
+            }
+          });
+        }, 300);
+      }
+      
+      return {
+        ...prev,
+        kwacha: prev.kwacha + bonusCoins,
+        gems: prev.gems + bonusGems,
+        xp: prev.xp + bonusXP,
+        missionProgress: newProgress,
+        missionsComplete: newComplete,
+      };
+    });
+  }, [showNotif]);
+
+
+// ============ GamificationPlatform.jsx claimDailyReward: streak milestone payout (after showNotif/triggerReward) ============
+    // Streak milestone bonus — credited the moment the streak reaches it.
+    // Fires once per streak run (the streak passes each value exactly once);
+    // rebuilding a broken streak earns the milestones again by design.
+    const sb = (cfg.streakRewards || []).find(s => s.days === newStreak);
+    if (sb) {
+      if (sb.kwacha) addCoins(sb.kwacha);
+      if (sb.gems) addGems(sb.gems);
+      if (sb.diamonds) addDiamonds(sb.diamonds);
+      track('streak_bonus', { amount: sb.kwacha || 0, meta: { days: sb.days } });
+      setTimeout(() => {
+        showNotif(`🔥 ${sb.days}-day streak bonus — +${sb.kwacha} Coins!`);
+        triggerReward('big', null, { coins: sb.kwacha || undefined, gems: sb.gems, diamonds: sb.diamonds });
+      }, 1400);
+    }
+
+// ============ components/redesign/EarnView.jsx: Streak Bonuses + Level Milestones section ============
+// (rendered below the missions as <RewardsSection xp streak streakRewards levelRewards />;
+//  Level Milestones is still live in EarnView — only the Streak Bonuses block was removed)
+function MilestoneRow({ icon, title, sub, reward, reached, current }) {
+  return (
+    <Card style={{ padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 12, border: current ? `1.5px solid ${C.green}` : '1px solid rgba(255,255,255,0.07)' }}>
+      <div style={{ width: 38, height: 38, flex: 'none', borderRadius: 10, background: C.track, display: 'grid', placeItems: 'center', fontSize: 20 }}>{icon}</div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 13.5, fontWeight: 800, color: C.text }}>{title}</div>
+        {sub && <div style={{ fontSize: 11, color: C.muted }}>{sub}</div>}
+      </div>
+      <RewardChips r={reward} />
+      <div style={{ width: 26, flex: 'none', display: 'grid', placeItems: 'center' }}>
+        {reached ? <Check size={18} color={C.green} /> : <Lock size={15} color={C.muted} />}
+      </div>
+    </Card>
+  );
+}
+
+function RewardsSection({ xp = 0, streak = 1, streakRewards = null, levelRewards = null }) {
+  const curLevel = getLevel(xp).level;
+  const lvlRewards = levelRewards || LEVEL_REWARDS;
+  const strRewards = streakRewards || STREAK_REWARDS;
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
+      <section>
+        <SectionTitle>Streak Bonuses</SectionTitle>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {strRewards.map(s => (
+            <MilestoneRow key={s.days} icon="🔥" title={`${s.days}-day streak`} sub={`Log in ${s.days} days in a row · you're on ${streak}`}
+              reward={s} reached={streak >= s.days} current={false} />
+          ))}
+        </div>
+      </section>
+      <section>
+        <SectionTitle>Level Milestones</SectionTitle>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {XP_LEVELS.filter(l => lvlRewards[l.level]).map(l => (
+            <MilestoneRow key={l.level} icon={l.icon} title={l.name} sub={`Reach level ${l.level} · ${l.xp.toLocaleString()} XP`}
+              reward={lvlRewards[l.level]} reached={curLevel >= l.level} current={curLevel + 1 === l.level} />
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+
+// ============ components/redesign/EarnView.jsx: old grid MissionCard (thumbnail + difficulty badge) ============
+function MissionCard({ m, progress, done, onOpen, i = 0 }) {
+  const pct = done ? 100 : Math.min(100, Math.round(((progress || 0) / m.target) * 100));
+  const d = DIFF[m.difficulty] || DIFF.easy;
+  return (
+    <Card className="card-enter" style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column', cursor: 'pointer', animationDelay: `${i * 40}ms` }}>
+      <button onClick={() => onOpen && onOpen(m)} style={{ all: 'unset', display: 'flex', flexDirection: 'column', cursor: 'pointer' }}>
+        <div style={{ position: 'relative' }}>
+          <Thumb src={IMAGES[m.image]} alt={m.name} h={78} radius={0} />
+          <span style={{ position: 'absolute', top: 6, right: 6, zIndex: 2 }}><Badge bg={done ? C.green : d.c} color={done ? '#08210f' : '#08210f'}>{done ? 'Done' : d.label}</Badge></span>
+        </div>
+        <div style={{ padding: '10px 11px' }}>
+          <div style={{ fontSize: 12.5, fontWeight: 800, color: C.text, marginBottom: 6, lineHeight: 1.2 }}>{m.name}</div>
+          <Progress value={pct} />
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10, fontSize: 12, fontWeight: 800 }}>
+              <span style={{ color: C.gold, display: 'inline-flex', alignItems: 'center', gap: 4 }}><RewardIcon kind="coins" size={15} />{amountText(m.reward.kwacha, 'coins')}</span>
+              {m.reward.gems ? <span style={{ color: C.teal, display: 'inline-flex', alignItems: 'center', gap: 4 }}><RewardIcon kind="gem" size={14} />{amountText(m.reward.gems, 'gems')}</span> : null}
+            </span>
+            <span style={{ fontSize: 11, color: C.muted }}>{done ? m.target : (progress || 0)}/{m.target}</span>
+          </div>
+        </div>
+      </button>
+    </Card>
+  );
+}
+

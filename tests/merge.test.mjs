@@ -6,7 +6,7 @@ const DEFAULTS = {
   economy: { maxWin: 200, extraPlayCost: 50 },
   games: { wheel: { enabled: true, dailyPlays: 3 }, dice: { enabled: true, dailyPlays: 5 }, chicken2: { enabled: true, dailyPlays: 0, rtp: 0.98 } },
   dailyRewards: [{ kwacha: 10 }],
-  streakRewards: [{ days: 3, kwacha: 100 }],
+  streakRewards: [], // streak bonuses removed 2026-10-07
   levelRewards: { 2: { kwacha: 50 } },
   missionOverrides: {},
 };
@@ -34,14 +34,24 @@ test('array keys replace wholesale', () => {
 });
 
 test('empty arrays are rejected, defaults kept', () => {
-  const out = mergeConfig(DEFAULTS, [{ key: 'daily_rewards', value: [] }, { key: 'streak_rewards', value: [] }]);
+  const out = mergeConfig(DEFAULTS, [{ key: 'daily_rewards', value: [] }]);
   assert.deepEqual(out.dailyRewards, DEFAULTS.dailyRewards);
-  assert.deepEqual(out.streakRewards, DEFAULTS.streakRewards);
+});
+
+test('streak_rewards rows are ignored: streak bonuses no longer pay (2026-10-07)', () => {
+  const out = mergeConfig(DEFAULTS, [{ key: 'streak_rewards', value: [{ days: 3, kwacha: 100 }, { days: 7, kwacha: 300 }] }]);
+  assert.deepEqual(out.streakRewards, []);
 });
 
 test('mission_overrides passes through', () => {
   const out = mergeConfig(DEFAULTS, [{ key: 'mission_overrides', value: { d_spin: { enabled: false } } }]);
   assert.deepEqual(out.missionOverrides, { d_spin: { enabled: false } });
+});
+
+test('mission_overrides for the casino missions pass through', () => {
+  const value = { casino_starter: { target: 25, reward: { kwacha: 60 } }, casino_legend: { enabled: false } };
+  const out = mergeConfig(DEFAULTS, [{ key: 'mission_overrides', value }]);
+  assert.deepEqual(out.missionOverrides, value);
 });
 
 test('malformed row values are ignored, not fatal', () => {

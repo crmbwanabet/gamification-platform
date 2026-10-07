@@ -7,9 +7,15 @@ import { Badge, Progress, RewardIcon, GreenBtn } from '../redesign/RedesignShell
 import { amountText } from '@/lib/rewardText.mjs';
 import { IMAGES } from '../../lib/data/images';
 
-const DIFF = { easy: { label: 'Easy', c: C.green }, medium: { label: 'Medium', c: C.gold }, hard: { label: 'Hard', c: C.red } };
+import { MISSION_DIFF as DIFF, trackingNote } from '../redesign/EarnView';
 
-export default function MissionDetailModal({ mission, progress, done, onClose, onNavigate, onPlayGame, closing }) {
+// Daily casino missions: progress = today's casino rounds (CRM feed), capped
+// at the target; `claimable` shows the Claim button (credit + animation run in
+// GamificationPlatform.claimCasinoMission). Legacy gameId/cta missions still
+// get their Play/Go button if one is ever restored.
+export default function MissionDetailModal({ mission, progress, done, claimable = false, trackingStatus = null, onClaim, onClose, onNavigate, onPlayGame, closing }) {
+  const unit = mission.unit ? ` ${mission.unit}` : '';
+  const note = trackingNote(trackingStatus);
   const d = DIFF[mission.difficulty] || DIFF.easy;
   const pct = done ? 100 : Math.min(100, Math.round(((progress || 0) / mission.target) * 100));
 
@@ -44,7 +50,7 @@ export default function MissionDetailModal({ mission, progress, done, onClose, o
           <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(180deg, rgba(0,0,0,.1), transparent 40%, ${C.panelHi})` }} />
 
           <span style={{ position: 'absolute', top: 12, left: 12, display: 'inline-flex', gap: 6 }}>
-            <Badge bg={done ? C.green : d.c}>{done ? 'Done' : d.label}</Badge>
+            <Badge bg={done ? C.green : d.c}>{done ? 'Claimed' : d.label}</Badge>
             {mission.hot && !done && <Badge bg={C.red} color="#fff">🔥 Hot</Badge>}
           </span>
 
@@ -80,7 +86,7 @@ export default function MissionDetailModal({ mission, progress, done, onClose, o
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 7 }}>
               <span style={{ fontSize: 12, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '.05em' }}>Progress</span>
               <span style={{ fontSize: 13, fontWeight: 800, color: done ? C.green : C.teal, fontVariantNumeric: 'tabular-nums' }}>
-                {done ? 'Complete!' : `${Math.min(progress || 0, mission.target)} / ${mission.target}`}
+                {done ? 'Claimed today' : `${Math.min(progress || 0, mission.target)} / ${mission.target}${unit}`}
               </span>
             </div>
             <Progress value={pct} color={done ? C.green : C.teal} />
@@ -100,9 +106,11 @@ export default function MissionDetailModal({ mission, progress, done, onClose, o
                   <RewardIcon kind="gem" size={17} />{amountText(mission.reward.gems, 'gems')}
                 </span>
               ) : null}
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 16, fontWeight: 800, color: '#b9a5e8' }}>
-                ⚡ {amountText(mission.xp, 'xp')}
-              </span>
+              {mission.xp ? (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 16, fontWeight: 800, color: '#b9a5e8' }}>
+                  ⚡ {amountText(mission.xp, 'xp')}
+                </span>
+              ) : null}
             </div>
           </div>
 
@@ -121,6 +129,21 @@ export default function MissionDetailModal({ mission, progress, done, onClose, o
             </div>
           )}
 
+          {/* Tracking note (log in / feed not reported yet) */}
+          {!done && note && (
+            <div style={{ fontSize: 12.5, color: C.sub, textAlign: 'center', margin: '2px 0 12px' }}>{note.text}</div>
+          )}
+
+          {/* Claim (daily casino missions) */}
+          {!done && claimable && onClaim && (
+            <GreenBtn full onClick={(e) => onClaim(e.currentTarget)}>Claim {amountText(mission.reward.kwacha, 'coins')}</GreenBtn>
+          )}
+          {!done && !claimable && mission.type === 'casinoRounds' && !note && (
+            <div style={{ fontSize: 12.5, color: C.muted, textAlign: 'center', margin: '2px 0 4px' }}>
+              Play {Math.max(0, mission.target - (progress || 0))} more casino rounds on bwanabet.com today to claim
+            </div>
+          )}
+
           {/* CTA */}
           {!done && (mission.gameId || mission.cta) && (
             <GreenBtn full onClick={handleCta}>
@@ -129,7 +152,7 @@ export default function MissionDetailModal({ mission, progress, done, onClose, o
           )}
           {done && (
             <div style={{ textAlign: 'center', padding: '8px 0 2px', color: C.green, fontWeight: 800, fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-              <Check size={16} /> Mission Complete
+              <Check size={16} /> Claimed — back tomorrow
             </div>
           )}
         </div>

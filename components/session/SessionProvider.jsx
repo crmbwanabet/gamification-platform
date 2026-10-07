@@ -10,7 +10,7 @@ import React, { createContext, useContext, useEffect, useState, useCallback, use
 // a `#token=...` URL hash (signed-URL embeds). All trust is enforced server-side
 // in /api/session — this component just relays the token.
 
-const SessionContext = createContext({ status: 'idle', profile: null, verified: false, error: null, saveState: async () => null, buyItem: async () => null, listPurchases: async () => null });
+const SessionContext = createContext({ status: 'idle', profile: null, verified: false, error: null, saveState: async () => null, buyItem: async () => null, listPurchases: async () => null, getCasinoProgress: async () => ({ status: 401 }) });
 export const useSession = () => useContext(SessionContext);
 
 // The live operator site is bwanabet.co.zm (Zambia); .com kept for any legacy
@@ -113,11 +113,24 @@ export default function SessionProvider({ children }) {
     } catch (e) { return null; }
   }, []);
 
+  // Today's casino rounds (CRM feed) for the authenticated player — identity
+  // from the token server-side. Returns { status, data } so the caller can
+  // tell "not logged in" (401) from "feed unavailable" (503).
+  const getCasinoProgress = useCallback(async () => {
+    if (!tokenRef.current) return { status: 401, data: null };
+    try {
+      const res = await fetch('/api/missions/progress', { headers: { Authorization: `Bearer ${tokenRef.current}` }, cache: 'no-store' });
+      let data = null;
+      try { data = await res.json(); } catch { /* non-JSON */ }
+      return { status: res.status, data };
+    } catch (e) { return { status: 0, data: null }; }
+  }, []);
+
   // claimVoucher (streak-voucher via /api/predictions/voucher) parked with the
   // predictions feature on 2026-07-15 — see parked/ + git history to restore.
 
   return (
-    <SessionContext.Provider value={{ ...state, saveState, buyItem, listPurchases }}>
+    <SessionContext.Provider value={{ ...state, saveState, buyItem, listPurchases, getCasinoProgress }}>
       {children}
     </SessionContext.Provider>
   );

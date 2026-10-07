@@ -11,3 +11,7 @@ test('daily login reward: days 1-6 pay 10 coins, day 7 (7 in a row) pays 100', (
 test('daily login reward is coins only (no gems, no diamonds)', () => {
   for (const r of DAILY_REWARDS) assert.deepEqual(Object.keys(r).sort(), ['day', 'kwacha']);
 });
+
+test('a full week pays exactly 160 coins (streak bonuses removed 2026-10-07)', () => {
+  assert.equal(DAILY_REWARDS.reduce((sum, r) => sum + r.kwacha, 0), 160);
+});

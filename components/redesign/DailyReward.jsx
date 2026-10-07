@@ -23,7 +23,7 @@ const rewardText = (r) => rewardParts(r).join(' + ');
  * Amounts come from the remote-config table (cfg.dailyRewards), the same row
  * claimDailyReward credits: rewards[dailyDay - 1], falling back to rewards[0].
  */
-export default function DailyReward({ dailyDay = 1, dailyClaimed = false, onClaim, rewards = null }) {
+export default function DailyReward({ dailyDay = 1, dailyClaimed = false, onClaim, rewards = null, loggedIn = true }) {
   const list = rewards || DAILY_REWARDS;
   const total = list.length; // 7
   const curDay = Math.min(dailyDay, total);
@@ -190,7 +190,9 @@ export default function DailyReward({ dailyDay = 1, dailyClaimed = false, onClai
         </div>
       </div>
 
-      {/* claim button — overlaps the panel's bottom edge */}
+      {/* claim button — overlaps the panel's bottom edge. Logged in = reward
+          ready; anonymous visitors (no bwanabet SSO session) get a log-in hint. */}
+      {loggedIn ? (
       <button
         onClick={(e) => onClaim && onClaim(e && e.currentTarget)}
         className="rs-claim-pulse rs-dr-claim"
@@ -207,6 +209,20 @@ export default function DailyReward({ dailyDay = 1, dailyClaimed = false, onClai
         <RewardIcon kind="coins" size={20} />
         Claim {rewardText(today)}
       </button>
+      ) : (
+        <div
+          className="rs-dr-claim"
+          style={{
+            position: 'absolute', left: '50%', bottom: 0, transform: 'translateX(-50%)',
+            display: 'inline-flex', alignItems: 'center', gap: 7,
+            padding: '10px 20px', borderRadius: 12, fontSize: 13.5, fontWeight: 800,
+            color: C.text, background: C.panel2, border: '1px solid rgba(255,255,255,.14)',
+            boxShadow: '0 6px 18px rgba(0,0,0,.35)', whiteSpace: 'nowrap', maxWidth: '96%',
+          }}>
+          <img src={`${IC}/lock.png`} alt="" width={16} height={16} style={{ objectFit: 'contain' }} />
+          Log in on bwanabet.com to claim
+        </div>
+      )}
     </div>
   );
 }

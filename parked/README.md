@@ -5,6 +5,21 @@ Nothing in here is imported by the app — Next.js does not compile this folder.
 The directory structure mirrors where each file used to live; to restore a file,
 `git mv` it back and re-add the imports/props noted below.
 
+## 2026-10-07 — pre-casino missions + streak bonuses
+
+Product decisions: missions became exactly four DAILY casino-round missions fed by the CRM (`lib/missions/casino.mjs`, `casinoRounds` type), and the daily-login streak BONUSES stopped paying (a week of daily rewards = 6 × 10 + 100 = 160 coins). The streak counter (`user.streak`) is still live and drives day 1→7 of the daily reward.
+
+| Parked file | Original location | What it is |
+|---|---|---|
+| `lib/data/missions.legacy.js` | `lib/data/missions.js` | `DAILY_MISSION_POOL` (d_daily, d_coins200, d_marathon), `WEEKLY_MISSIONS` (w_warrior, w_spender, w_xp500), `PERMANENT_MISSIONS` (retail), `getDailyMissions()`, old `DIFFICULTY_CONFIG` |
+| `lib/data/streakRewards.legacy.js` | `lib/data/platform.js` | `STREAK_REWARDS` (3/7/14/30-day milestones) |
+| 2026-10-07 section of `components/GamificationPlatform.removed-wiring.jsx` | `GamificationPlatform.jsx` + `redesign/EarnView.jsx` | the full `trackMission` progress engine, the streak-bonus payout in `claimDailyReward`, the "Streak Bonuses" Missions-tab section, the old grid `MissionCard` |
+
+Saved player state is untouched: `missionProgress` / `missionsComplete` (old mission progress) stay in `profiles.state` and in the initial `user` object, nothing reads them except the header "badges" count, and the new missions use a separate key (`casinoMissionClaims`). Old ids in a `mission_overrides` config row are ignored.
+
+To restore the old missions: `git mv` the data back as `lib/data/missions.js` exports (keep `CASINO_MISSIONS` alongside), put the parked `trackMission` body back, and build `activeMissions` from both lists. Their progress/claim model differs: old missions auto-complete from in-app actions, while casino missions are claimed by hand from the feed counter. Add the old pools back to `/api/admin/catalog` too.
+To restore streak bonuses: move `STREAK_REWARDS` back into `platform.js`, set `streakRewards: STREAK_REWARDS` in `lib/config/defaults.js`, re-add the `streak_rewards` key in `lib/config/merge.mjs` (and its test), and put the payout block + `RewardsSection` streak list back.
+
 ## 2026-09-29 — the 7 original games
 
 Product decision: remove every game except Njuka (poor internet + small phones; no tapping/complex mechanics). Replaced one at a time by simple pick-and-reveal games (Coin Flip first).

@@ -7,36 +7,36 @@ import DailyReward from './DailyReward';
 import GamesGrid from './GamesGrid';
 import { IMAGES } from '@/lib/data/images';
 import { amountText } from '@/lib/rewardText.mjs';
-import { getDailyMissions, PERMANENT_MISSIONS } from '@/lib/data/missions';
+import { CASINO_MISSIONS } from '@/lib/data/missions';
+import { casinoMissionStates } from '@/lib/missions/casino.mjs';
 import { STORE_ITEMS, MINIGAMES } from '@/lib/data/platform';
 
-// Pick 3 missions that best reflect the player's current progress:
-// in-progress first, then not-started, then completed.
-function pickLatestMissions(allMissions, missionProgress, missionsComplete) {
-  const rank = (x) => (x.done ? 2 : x.progress > 0 ? 0 : 1);
-  return allMissions
-    .map((m) => ({ m, progress: (missionProgress && missionProgress[m.id]) || 0, done: !!(missionsComplete && missionsComplete.includes(m.id)) }))
-    .sort((a, b) => rank(a) - rank(b))
-    .slice(0, 3);
+// Pick 3 daily casino missions for the teaser: ready-to-claim first, then
+// in progress, then not started, then claimed.
+function pickLatestMissions(states) {
+  const rank = (x) => (x.claimable ? 0 : x.claimed ? 3 : x.progress > 0 ? 1 : 2);
+  return [...states].sort((a, b) => rank(a) - rank(b)).slice(0, 3);
 }
 
-function MissionCard({ m, progress = 0, done = false, onOpen, i = 0 }) {
-  const pct = done ? 100 : Math.min(100, Math.round((progress / m.target) * 100));
-  const state = done ? 'done' : progress > 0 ? 'progress' : 'new';
+function MissionCard({ s, onOpen, i = 0 }) {
+  const m = s.mission;
+  const done = s.claimed;
+  const pct = done ? 100 : Math.min(100, Math.round((s.progress / m.target) * 100));
+  const state = done ? 'done' : s.claimable ? 'ready' : s.progress > 0 ? 'progress' : 'new';
   return (
-    <Card className="card-enter" style={{ position: 'relative', overflow: 'hidden', border: state === 'progress' ? `1.5px solid ${C.teal}` : '1px solid rgba(255,255,255,0.07)', animationDelay: `${i * 60}ms` }}>
+    <Card className="card-enter" style={{ position: 'relative', overflow: 'hidden', border: state === 'ready' ? `1.5px solid ${C.green}` : state === 'progress' ? `1.5px solid ${C.teal}` : '1px solid rgba(255,255,255,0.07)', animationDelay: `${i * 60}ms` }}>
       <button onClick={() => onOpen && onOpen(m)} style={{ all: 'unset', display: 'block', width: '100%', boxSizing: 'border-box', padding: 12, cursor: onOpen ? 'pointer' : 'default' }}>
-        {state === 'new' && <div style={{ position: 'absolute', top: 12, left: -30, transform: 'rotate(-45deg)', background: C.green, color: '#08210f', fontSize: 10, fontWeight: 900, padding: '3px 34px', letterSpacing: '.05em', zIndex: 2 }}>NEW!</div>}
         <div style={{ fontSize: 13.5, fontWeight: 800, color: C.text, marginBottom: 10, minHeight: 34 }}>{m.name}</div>
         <Thumb src={IMAGES[m.image]} alt={m.name} h={78} />
         <div style={{ marginTop: 10 }}>
-          {state === 'done' && <Badge bg={C.green}>Mission is completed</Badge>}
+          {state === 'done' && <Badge bg={C.green}>Claimed today</Badge>}
+          {state === 'ready' && <Badge bg={C.green}>Ready to claim</Badge>}
           {state === 'progress' && <Badge bg={C.teal} color="#06231f">In progress</Badge>}
           {state === 'new' && <div style={{ fontSize: 11, color: C.sub }}><span style={{ color: C.muted }}>Reward:</span> <b style={{ color: C.text }}>{amountText(m.reward.kwacha, 'coins')}</b></div>}
           <div style={{ marginTop: 8 }}>
             <Progress value={pct} />
             <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6, fontSize: 10.5, color: C.muted }}>
-              <span>{done ? m.target : progress}/{m.target}</span>
+              <span>{done ? m.target : s.progress} / {m.target} rounds</span>
               <span>{pct}%</span>
             </div>
           </div>
@@ -51,10 +51,10 @@ function MissionCard({ m, progress = 0, done = false, onOpen, i = 0 }) {
  * missions teaser and the featured store item. `focusGames` is a nonce — when
  * it changes the view scrolls to the games (legacy "Go to Games" CTAs).
  */
-export default function Overview({ points = '2,344', missionsCount = 0, badges = 12, xp = 1200, activeTab = 'home', onNavigate, onOpenProfile, missionProgress, missionsComplete, onOpenMission, dailyDay = 1, dailyClaimed = false, onClaimDaily, userId = null, navBadges = {}, games = null, storeItems = null, missions = null, dailyRewards = null, gamePlays = null, onPlay, focusGames = 0 } = {}) {
+export default function Overview({ points = '2,344', missionsCount = 0, badges = 12, xp = 1200, activeTab = 'home', onNavigate, onOpenProfile, onOpenMission, missionStates = null, loggedIn = false, dailyDay = 1, dailyClaimed = false, onClaimDaily, userId = null, navBadges = {}, games = null, storeItems = null, missions = null, dailyRewards = null, gamePlays = null, onPlay, focusGames = 0 } = {}) {
   const go = (t) => onNavigate && onNavigate(t);
-  const allMissions = missions || [...getDailyMissions(), ...PERMANENT_MISSIONS];
-  const latest = pickLatestMissions(allMissions, missionProgress, missionsComplete);
+  const states = missionStates || casinoMissionStates(missions || CASINO_MISSIONS, { rounds: 0, today: null });
+  const latest = pickLatestMissions(states);
   // Store may be empty until the admin dashboard populates it
   const items = storeItems || STORE_ITEMS;
   const gameList = games || MINIGAMES;
@@ -68,7 +68,7 @@ export default function Overview({ points = '2,344', missionsCount = 0, badges =
     <RedesignShell points={points} missionsCount={missionsCount} badges={badges} xp={xp} userId={userId} navBadges={navBadges} activeTab={activeTab} onNavigate={onNavigate} onOpenProfile={onOpenProfile}>
       <div style={{ maxWidth: 1240, margin: '0 auto', width: '100%' }}>
         <div style={{ marginBottom: 22 }}>
-          <DailyReward dailyDay={dailyDay} dailyClaimed={dailyClaimed} onClaim={onClaimDaily} rewards={dailyRewards} />
+          <DailyReward dailyDay={dailyDay} dailyClaimed={dailyClaimed} onClaim={onClaimDaily} rewards={dailyRewards} loggedIn={loggedIn} />
         </div>
 
         <div style={{ marginBottom: 26 }}>
@@ -79,7 +79,7 @@ export default function Overview({ points = '2,344', missionsCount = 0, badges =
           <section>
             <SectionTitle right={<button onClick={() => go('missions')} style={{ all: 'unset', cursor: 'pointer', fontSize: 12, fontWeight: 700, color: C.sub }}>View all ›</button>}>Latest Missions</SectionTitle>
             <div className="rs-ov-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 14 }}>
-              {latest.map(({ m, progress, done }, i) => <MissionCard key={m.id} i={i} m={m} progress={progress} done={done} onOpen={onOpenMission} />)}
+              {latest.map((s, i) => <MissionCard key={s.mission.id} i={i} s={s} onOpen={onOpenMission} />)}
             </div>
           </section>
 

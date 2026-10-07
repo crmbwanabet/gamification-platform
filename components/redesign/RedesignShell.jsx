@@ -4,7 +4,6 @@ import React from 'react';
 import { C } from './tokens';
 import NavIcon from './NavIcons';
 import { getLevel, getNextLevel, getXPProgress, MINIGAMES, STORE_ITEMS } from '@/lib/data/platform';
-import { getDailyMissions, PERMANENT_MISSIONS } from '@/lib/data/missions';
 
 /* ---------------- shared UI primitives (used by all redesign views) ------- */
 

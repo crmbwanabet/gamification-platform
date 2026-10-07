@@ -29,13 +29,14 @@ import { IMG_BASE, CURRENCY_ICONS, IMAGES, WHEEL_IMAGES } from '../lib/data/imag
 // trivia + predictions libs parked — see parked/lib/
 import {
   XP_LEVELS, VIP_TIERS, MINIGAMES, STORE_ITEMS, GAME_ECONOMY,
-  STREAK_REWARDS, DAILY_FREE_SPIN_ROTATION, getDailyFreeSpinGames,
+  DAILY_FREE_SPIN_ROTATION, getDailyFreeSpinGames,
   getLevel, getNextLevel, getXPProgress, getVIP
 } from '../lib/data/platform';
-import {
-  DAILY_MISSION_POOL, WEEKLY_MISSIONS, PERMANENT_MISSIONS,
-  getDailyMissions, DIFFICULTY_CONFIG, MISSIONS
-} from '../lib/data/missions';
+// Missions = the 4 daily casino-round missions (CRM feed); the old pools are
+// parked in parked/lib/data/missions.legacy.js
+import { CASINO_MISSIONS } from '../lib/data/missions';
+import { casinoMissionStates, countClaimable, recordClaim } from '@/lib/missions/casino.mjs';
+import { lusakaDay } from '@/lib/casino/feed.mjs';
 
 // Component imports
 import MissionDetailModal from './modals/MissionDetailModal';
@@ -84,7 +85,7 @@ export default function GamificationPlatform() {
   // Games list the UI shows: enabled games only, extra-play cost from config.
   const activeGames = useMemo(() => MINIGAMES.filter(g => cfg.games[g.id]?.enabled !== false).map(g => ({ ...g, cost: cfg.economy.extraPlayCost })), [cfg]);
   const activeMissions = useMemo(
-    () => applyMissionOverrides([...getDailyMissions(), ...PERMANENT_MISSIONS], cfg.missionOverrides),
+    () => applyMissionOverrides(CASINO_MISSIONS, cfg.missionOverrides),
     [cfg]
   );
   const cfgRef = useRef(cfg);
@@ -891,6 +892,10 @@ export default function GamificationPlatform() {
     questProgress: {},
     questsComplete: [],
     refundedPurchaseIds: [],
+    // Daily casino missions claimed on `day` (Lusaka). missionProgress /
+    // missionsComplete above belong to the parked pre-2026-10-07 missions and
+    // are kept untouched so saved history survives.
+    casinoMissionClaims: { day: null, ids: [] },
   });
 
   const level = getLevel(user.xp);
@@ -1078,108 +1083,63 @@ export default function GamificationPlatform() {
   // Mission tracking
   const [gamesPlayedToday, setGamesPlayedToday] = useState(new Set());
   
+  // === Daily casino missions (CRM feed) ===
+  // "Logged in" = a resolved bwanabet SSO session (same identity the store
+  // and state saves use). Anonymous visitors see the missions but can't
+  // track or claim them, and can't claim the daily reward either.
+  const loggedIn = session.status === 'ready' && !!session.profile;
+  // status: idle (not fetched) | ok | unavailable (feed/table down) | anon
+  const [casino, setCasino] = useState({ status: 'idle', day: null, rounds: 0, updatedAt: null });
+  const casinoBusyRef = useRef(false);
+  const casinoClaimedRef = useRef(new Set()); // `${day}:${id}` — same-tick double-claim guard
+  const getCasinoProgress = session.getCasinoProgress;
+  const fetchCasino = useCallback(async () => {
+    if (!loggedIn) return null;
+    const { status, data } = await getCasinoProgress();
+    if (status === 200 && data && data.day) {
+      const next = { status: 'ok', day: data.day, rounds: Math.max(0, Number(data.rounds) || 0), updatedAt: data.updatedAt || null };
+      setCasino(next);
+      return next;
+    }
+    if (status === 401) { setCasino(c => ({ ...c, status: 'anon' })); return null; }
+    if (status === 429) return null; // keep what we have
+    setCasino(c => (c.status === 'ok' ? c : { ...c, status: 'unavailable', day: data?.day || c.day }));
+    return null;
+  }, [loggedIn, getCasinoProgress]);
+  // Fetch once the widget opens with a session, again on every visit to the
+  // Missions tab, and every 60s while that tab is on screen and visible.
+  useEffect(() => { if (loggedIn) fetchCasino(); }, [loggedIn, fetchCasino]);
+  useEffect(() => {
+    if (!loggedIn || tab !== 'missions') return;
+    fetchCasino();
+    const iv = setInterval(() => {
+      if (typeof document === 'undefined' || document.visibilityState === 'visible') fetchCasino();
+    }, 60000);
+    return () => clearInterval(iv);
+  }, [loggedIn, tab, fetchCasino]);
+  const casinoToday = casino.day || lusakaDay();
+  const missionStates = useMemo(
+    () => casinoMissionStates(activeMissions, { rounds: casino.rounds, progressDay: casino.day, today: casinoToday, claims: user.casinoMissionClaims }),
+    [activeMissions, casino.rounds, casino.day, casinoToday, user.casinoMissionClaims]
+  );
+  const claimableCount = loggedIn ? countClaimable(missionStates) : 0;
+  // What the Missions UI says about tracking: 'anon' (log in), 'loading',
+  // 'nodata' (feed hasn't reported today yet), 'unavailable', or 'ok'.
+  const casinoStatus = !loggedIn
+    ? (session.status === 'loading' ? 'loading' : 'anon')
+    : casino.status === 'idle' ? 'loading'
+    : casino.status === 'anon' ? 'anon'
+    : casino.status === 'unavailable' ? 'unavailable'
+    : (!casino.updatedAt && casino.rounds === 0) ? 'nodata' : 'ok';
+
+  // The old progress engine (daily pool / weekly / permanent missions counted
+  // from in-app actions) is parked with those missions — see
+  // parked/components/GamificationPlatform.removed-wiring.jsx (2026-10-07).
+  // Casino missions progress from the CRM feed instead (below), so this is
+  // now just the activity beacon; call sites are unchanged.
   const trackMission = useCallback((actionType, metadata = {}) => {
     if (actionType === 'gamePlayed') track('game_played', { gameId: metadata.gameId, amount: metadata.coinsWon || 0 });
-    const allActive = applyMissionOverrides([...getDailyMissions(), ...WEEKLY_MISSIONS, ...PERMANENT_MISSIONS], cfgRef.current.missionOverrides);
-    
-    setUser(prev => {
-      const newProgress = { ...prev.missionProgress };
-      const newComplete = [...prev.missionsComplete];
-      let bonusCoins = 0, bonusGems = 0, bonusXP = 0;
-      let justCompleted = [];
-      
-      allActive.forEach(mission => {
-        if (newComplete.includes(mission.id)) return; // already done
-        
-        let shouldIncrement = false;
-        let incrementBy = 1;
-        let setTo = null; // for score-type missions
-        
-        switch (mission.type) {
-          case 'gamePlay':
-            if (actionType === 'gamePlayed' && metadata.gameId === mission.gameId) shouldIncrement = true;
-            break;
-          // bets/wins/winStreak + trivia cases parked with their missions —
-          // see parked/components/GamificationPlatform.removed-wiring.jsx
-          case 'dailyClaim':
-            if (actionType === 'dailyClaimed') shouldIncrement = true;
-            break;
-          case 'uniqueGames':
-          case 'uniqueGamesWeekly':
-            if (actionType === 'gamePlayed') {
-              const updatedSet = new Set([...(metadata.gamesSet || []), metadata.gameId]);
-              setTo = updatedSet.size;
-            }
-            break;
-          case 'coinsWon':
-            if (actionType === 'gamePlayed' && metadata.coinsWon > 0) {
-              incrementBy = metadata.coinsWon;
-              shouldIncrement = true;
-            }
-            break;
-          case 'storePurchase':
-          case 'coinsSpent':
-            if (actionType === 'storePurchase') {
-              incrementBy = metadata.amount || 1;
-              shouldIncrement = true;
-            }
-            break;
-          case 'deposits':
-            if (actionType === 'deposit') shouldIncrement = true;
-            break;
-          case 'dailyMissionsDone':
-            if (actionType === 'missionCompleted' && metadata.missionId?.startsWith('d_')) shouldIncrement = true;
-            break;
-          case 'weeklyXP':
-            if (actionType === 'xpEarned') {
-              incrementBy = metadata.amount || 0;
-              shouldIncrement = true;
-            }
-            break;
-        }
-        
-        if (shouldIncrement) {
-          newProgress[mission.id] = (newProgress[mission.id] || 0) + incrementBy;
-        } else if (setTo !== null) {
-          newProgress[mission.id] = setTo;
-        }
-        
-        // Check completion
-        if (!newComplete.includes(mission.id) && (newProgress[mission.id] || 0) >= mission.target) {
-          newComplete.push(mission.id);
-          bonusCoins += mission.reward.kwacha || 0;
-          bonusGems += mission.reward.gems || 0;
-          bonusXP += mission.xp || 0;
-          justCompleted.push(mission);
-        }
-      });
-      
-      // Show completion notifications (delayed so state updates first)
-      if (justCompleted.length > 0) {
-        setTimeout(() => {
-          justCompleted.forEach(m => {
-            const won = [...rewardParts(m.reward), m.xp ? amountText(m.xp, 'xp') : null].filter(Boolean);
-            showNotif(`✅ Mission Complete: ${m.name}!${won.length ? ` +${won.join(' + ')}` : ''}`);
-            triggerReward('small', null, { coins: m.reward?.kwacha || 0, gems: m.reward?.gems || 0, xp: m.xp || 0 });
-            track('mission_completed', { meta: { missionId: m.id } });
-            // Track weekly mission for daily missions completed
-            if (m.id.startsWith('d_')) {
-              trackMission('missionCompleted', { missionId: m.id });
-            }
-          });
-        }, 300);
-      }
-      
-      return {
-        ...prev,
-        kwacha: prev.kwacha + bonusCoins,
-        gems: prev.gems + bonusGems,
-        xp: prev.xp + bonusXP,
-        missionProgress: newProgress,
-        missionsComplete: newComplete,
-      };
-    });
-  }, [showNotif]);
+  }, []);
 
   // trackQuest + claimQuest parked — see parked/components/GamificationPlatform.removed-wiring.jsx
 
@@ -1407,16 +1367,23 @@ export default function GamificationPlatform() {
           }} />
       )}
       {/* trivia game modals + QuestDetailModal parked — see parked/components/GamificationPlatform.removed-wiring.jsx */}
-      {selectedMission && (
-        <MissionDetailModal
-          mission={selectedMission}
-          progress={user.missionProgress[selectedMission.id] || 0}
-          done={user.missionsComplete.includes(selectedMission.id)}
-          onClose={() => animateClose(() => setSelectedMission(null))} closing={closingModal}
-          onNavigate={(tabId) => navigateTab(tabId)}
-          onPlayGame={(gameId) => playGame(gameId)} /* opens over the current tab; closing returns there */
-        />
-      )}
+      {selectedMission && (() => {
+        const ms = missionStates.find(x => x.mission.id === selectedMission.id);
+        return (
+          <MissionDetailModal
+            mission={ms?.mission || selectedMission}
+            progress={ms?.progress || 0}
+            rounds={ms?.rounds || 0}
+            done={!!ms?.claimed}
+            claimable={loggedIn && !!ms?.claimable}
+            trackingStatus={casinoStatus}
+            onClaim={(el) => claimCasinoMission(ms?.mission || selectedMission, el)}
+            onClose={() => animateClose(() => setSelectedMission(null))} closing={closingModal}
+            onNavigate={(tabId) => navigateTab(tabId)}
+            onPlayGame={(gameId) => playGame(gameId)} /* opens over the current tab; closing returns there */
+          />
+        );
+      })()}
       {notif && (
         <div className={`fixed top-4 z-[100] px-6 py-3 rounded-xl shadow-2xl ${notifLeaving ? 'anim-slide-out' : 'anim-slide-down'} ${notif.type === 'success' ? 'bg-gradient-to-r from-green-500 to-emerald-600 shadow-green-500/30' : 'bg-gradient-to-r from-red-500 to-rose-600 shadow-red-500/30'}`} style={{ right: isWidget ? 66 : 16 }}>
           <div className="flex items-center gap-2">
@@ -1458,7 +1425,9 @@ export default function GamificationPlatform() {
     </>
   );
 
-  const openMissionsCount = activeMissions.filter(m => !user.missionsComplete.includes(m.id)).length;
+  // Missions not yet claimed today (header stat); the nav badge counts the
+  // ones ready to claim right now.
+  const openMissionsCount = missionStates.filter(s => !s.claimed).length;
   const v2Stats = {
     points: user.kwacha,
     missionsCount: openMissionsCount,
@@ -1472,19 +1441,67 @@ export default function GamificationPlatform() {
     // (every live game is stakeOnly, so the old Play "free plays left" badge
     // is gone; Home flags the unclaimed daily reward instead)
     navBadges: {
-      home: user.dailyClaimed ? null : 1,
-      missions: openMissionsCount || null,
+      home: loggedIn && !user.dailyClaimed ? 1 : null,
+      missions: claimableCount || null,
       store: null, // store is empty until the admin dashboard stocks it
     },
     games: activeGames,
     storeItems: cfg.storeItems,
     missions: activeMissions,
     dailyRewards: cfg.dailyRewards,
-    streakRewards: cfg.streakRewards,
     levelRewards: cfg.levelRewards,
+    missionStates,
+    casinoStatus,
+    loggedIn,
+  };
+
+  // Claim a daily casino mission. Re-reads today's rounds from the server
+  // first (the CRM feed is the only source of progress), then credits the
+  // reward client-side like every other reward and records the claim for
+  // today's Lusaka day so it can't be claimed twice.
+  const claimCasinoMission = async (mission, el) => {
+    if (!loggedIn) { showNotif('Log in on bwanabet.com to claim', 'error'); return; }
+    if (casinoBusyRef.current) return;
+    casinoBusyRef.current = true;
+    try {
+      const src = (await fetchCasino()) || (casino.status === 'ok' ? casino : null);
+      if (!src || !src.day) { showNotif('Mission progress is unavailable — try again soon', 'error'); return; }
+      const st = casinoMissionStates(activeMissions, { rounds: src.rounds, progressDay: src.day, today: src.day, claims: user.casinoMissionClaims });
+      const s = st.find(x => x.mission.id === mission.id);
+      const guardKey = `${src.day}:${mission.id}`;
+      const next = recordClaim(user.casinoMissionClaims, mission.id, src.day, st);
+      if (!s || !next || casinoClaimedRef.current.has(guardKey)) {
+        showNotif(s && !s.reached ? `Play ${s.mission.target - s.rounds} more casino rounds to claim` : 'Already claimed today', 'error');
+        return;
+      }
+      casinoClaimedRef.current.add(guardKey);
+      const m = s.mission;
+      const r = m.reward || {};
+      setUser(u => {
+        const ids = u.casinoMissionClaims?.day === src.day && Array.isArray(u.casinoMissionClaims.ids) ? u.casinoMissionClaims.ids : [];
+        if (ids.includes(m.id)) return u;
+        return {
+          ...u,
+          kwacha: u.kwacha + (r.kwacha || 0),
+          gems: u.gems + (r.gems || 0),
+          diamonds: u.diamonds + (r.diamonds || 0),
+          xp: u.xp + (m.xp || 0),
+          casinoMissionClaims: { day: src.day, ids: [...ids, m.id] },
+        };
+      });
+      track('mission_completed', { amount: r.kwacha || 0, meta: { missionId: m.id, day: src.day } });
+      const won = [...rewardParts(r), m.xp ? amountText(m.xp, 'xp') : null].filter(Boolean);
+      showNotif(`✅ ${m.name} claimed!${won.length ? ` +${won.join(' + ')}` : ''}`);
+      triggerReward('medium', el || null, { coins: r.kwacha || 0, gems: r.gems, diamonds: r.diamonds, xp: m.xp || undefined });
+    } finally {
+      casinoBusyRef.current = false;
+    }
   };
 
   const claimDailyReward = (el) => {
+    // Logged in = daily reward ready; anonymous visitors can't claim (their
+    // state isn't saved, and SSO hydration would overwrite the claim anyway).
+    if (!loggedIn) { showNotif('Log in on bwanabet.com to claim', 'error'); return; }
     if (user.dailyClaimed || dailyBusyRef.current) return;
     const r = cfg.dailyRewards[user.dailyDay - 1] || cfg.dailyRewards[0];
     if (!r) return;
@@ -1502,20 +1519,9 @@ export default function GamificationPlatform() {
     track('daily_claimed', { amount: r.kwacha });
     showNotif(`🎉 +${r.kwacha} Coins claimed!`);
     triggerReward('medium', el || null, { coins: r.kwacha, gems: r.gems, diamonds: r.diamonds, xp: 20 });
-    // Streak milestone bonus — credited the moment the streak reaches it.
-    // Fires once per streak run (the streak passes each value exactly once);
-    // rebuilding a broken streak earns the milestones again by design.
-    const sb = (cfg.streakRewards || []).find(s => s.days === newStreak);
-    if (sb) {
-      if (sb.kwacha) addCoins(sb.kwacha);
-      if (sb.gems) addGems(sb.gems);
-      if (sb.diamonds) addDiamonds(sb.diamonds);
-      track('streak_bonus', { amount: sb.kwacha || 0, meta: { days: sb.days } });
-      setTimeout(() => {
-        showNotif(`🔥 ${sb.days}-day streak bonus — +${sb.kwacha} Coins!`);
-        triggerReward('big', null, { coins: sb.kwacha || undefined, gems: sb.gems, diamonds: sb.diamonds });
-      }, 1400);
-    }
+    // Streak milestone BONUSES removed 2026-10-07 (a week pays exactly
+    // 6 x 10 + 100 = 160 coins); the streak counter above still drives day
+    // 1->7. Old payout parked in parked/components/GamificationPlatform.removed-wiring.jsx
   };
 
   // placePrediction + streak-voucher check + prediction settlement parked —
@@ -1524,8 +1530,8 @@ export default function GamificationPlatform() {
   // === Missions tab (was Earn; navigateTab maps earn/earn.* here) ===
   if (tab === 'missions') {
     return (<>
-      <EarnView {...v2Stats} streak={user.streak} focusRewards={focus.rewards}
-        missionProgress={user.missionProgress} missionsComplete={user.missionsComplete} onOpenMission={setSelectedMission} />
+      <EarnView {...v2Stats} focusRewards={focus.rewards}
+        onOpenMission={setSelectedMission} onClaimMission={claimCasinoMission} />
       {gameOverlays}
     </>);
   }
@@ -1578,7 +1584,7 @@ export default function GamificationPlatform() {
   // 2026-07-15 — see parked/components/legacy/GamificationPlatform.legacy-return.jsx
   return (<>
     <Overview {...v2Stats} activeTab="home"
-      missionProgress={user.missionProgress} missionsComplete={user.missionsComplete} onOpenMission={setSelectedMission}
+      onOpenMission={setSelectedMission}
       dailyDay={user.dailyDay} dailyClaimed={user.dailyClaimed} onClaimDaily={claimDailyReward}
       gamePlays={user.gamePlays} onPlay={playGame} focusGames={focus.games} />
     {gameOverlays}
