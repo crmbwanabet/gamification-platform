@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { MINIGAMES, GAME_ECONOMY } from '@/lib/data/platform';
 import { DAILY_MISSION_POOL, WEEKLY_MISSIONS, PERMANENT_MISSIONS } from '@/lib/data/missions';
 import { DEFAULT_CONFIG } from '@/lib/config/defaults';
+import { RTP_MIN, RTP_MAX } from '@/lib/rtp.mjs';
 
 export const runtime = 'nodejs';
 
@@ -15,9 +16,9 @@ const mission = (m, pool) => ({
 
 export async function GET() {
   return NextResponse.json({
-    // Crash games carry an editable RTP: the dashboard saves it into the
-    // `games` platform_config row as { <id>: { rtp } } (clamped server-side).
-    games: MINIGAMES.map(g => ({ id: g.id, name: g.name, ...(DEFAULT_CONFIG.games[g.id]?.rtp != null && { rtp: { default: DEFAULT_CONFIG.games[g.id].rtp, min: 0.8, max: 0.99 } }) })),
+    // Every candy game carries an editable RTP: the dashboard saves it into the
+    // `games` platform_config row as { <id>: { rtp } } (clamped to 97–99%).
+    games: MINIGAMES.map(g => ({ id: g.id, name: g.name, ...(DEFAULT_CONFIG.games[g.id]?.rtp != null && { rtp: { default: DEFAULT_CONFIG.games[g.id].rtp, min: RTP_MIN, max: RTP_MAX } }) })),
     missions: [
       ...DAILY_MISSION_POOL.map(m => mission(m, 'daily')),
       ...WEEKLY_MISSIONS.map(m => mission(m, 'weekly')),

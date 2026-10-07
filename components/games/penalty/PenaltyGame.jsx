@@ -7,7 +7,7 @@ import CandyButton from '../candy/CandyButton';
 import CandyChip from '../candy/CandyChip';
 import WinCelebration from '../candy/WinCelebration';
 import { CANDY, outlineShadow, textStroke } from '../candy/tokens';
-import { resolvePick, payoutFor, STAKES } from '@/lib/pick6/engine.mjs';
+import { resolvePick, payoutFor, STAKES, DEFAULT_STAKE } from '@/lib/pick6/engine.mjs';
 import { SPOTS, SPOT_IDS } from '@/lib/penalty/spots.mjs';
 import { SceneDefs, Stadium, GoalNet, GoalFrame, SCENE_CSS } from './Scene';
 import Keeper, { KEEPER_CSS } from './Keeper';
@@ -18,8 +18,8 @@ import { END, LAND_S, SETTLE_S, frameAt, frameCss, idleCss, roundCss } from './m
 
 // ============================================================================
 // PENALTY CRASH — stake-only (spec: docs/superpowers/specs/2026-10-01-penalty-crash-design.md).
-// Pick a stake (10/20/30/50) and one of 6 spots on the goal (1.2x … 4x), tap
-// KICK. Win chance per spot = 0.95 / mult (lib/pick6, crypto RNG), decided on
+// Pick a stake (1/10/25/50) and one of 6 spots on the goal (1.2x … 4x), tap
+// KICK. Win chance per spot = rtp × stake / payout (lib/pick6, crypto RNG), decided on
 // the device at KICK; the stake is charged right then via onSpend, and the win
 // is reported when the ball lands via onRound so nothing spoils the reveal.
 // Exactly-once: the resolved round waits in pendingRef; fireRound() nulls it
@@ -31,12 +31,12 @@ import { END, LAND_S, SETTLE_S, frameAt, frameCss, idleCss, roundCss } from './m
 // (balance - payout + coins collected so far) and COLLECT walks it up.
 // (No in-scene "+payout" float — the panel is the star.)
 // Animation: motion.js turns the frame function into CSS @keyframes per round.
-// NOTE: STAKES are mirrored by stakeRange '10–50' in lib/data/platform.js and
+// NOTE: STAKES are mirrored by stakeRange '1–50' in lib/data/platform.js and
 // the tutorial prize lines in lib/data/tutorials.js — change all three together.
 // ============================================================================
 
 const LAST_KEY = 'penalty:last';
-const CHIP_COLORS = { 10: 'violet', 20: 'blue', 30: 'red', 50: 'green' };
+const CHIP_COLORS = { 1: 'violet', 10: 'blue', 25: 'red', 50: 'green' };
 const MIN_STAKE = STAKES[0];
 const REDUCED_LAND_MS = 250;
 const REDUCED_SETTLE_MS = 900;
@@ -46,10 +46,10 @@ function readLast() {
   try {
     const v = JSON.parse(window.localStorage.getItem(LAST_KEY) || 'null');
     return {
-      stake: STAKES.includes(v?.stake) ? v.stake : MIN_STAKE,
+      stake: STAKES.includes(v?.stake) ? v.stake : DEFAULT_STAKE,
       spot: SPOT_IDS.includes(v?.spot) ? v.spot : null,
     };
-  } catch (e) { return { stake: MIN_STAKE, spot: null }; }
+  } catch (e) { return { stake: DEFAULT_STAKE, spot: null }; }
 }
 function saveLast(stake, spot) {
   try { window.localStorage.setItem(LAST_KEY, JSON.stringify({ stake, spot })); } catch (e) { /* private mode */ }
@@ -92,7 +92,7 @@ const TITLE = (
 );
 const STATIC_CSS = SCENE_CSS + KEEPER_CSS + SPOTS_CSS;
 
-export default function PenaltyGame({ onClose, closing, balance = 0, onSpend, onRound }) {
+export default function PenaltyGame({ onClose, closing, balance = 0, rtp, onSpend, onRound }) {
   const [init] = useState(readLast);
   const [stake, setStake] = useState(() => affordable(init.stake, balance));
   const [spot, setSpot] = useState(init.spot);
@@ -163,7 +163,7 @@ export default function PenaltyGame({ onClose, closing, balance = 0, onSpend, on
   const kick = () => {
     if (flyingRef.current || cel || !sel || stake > balance) return;
     flyingRef.current = true;
-    const out = resolvePick(stake, sel.mult);
+    const out = resolvePick(stake, sel.mult, undefined, rtp);
     onSpend?.(stake);
     pendingRef.current = { stake, win: out.win, payout: out.payout };
     setOutcome({ spot: SPOTS.indexOf(sel), win: out.win, payout: out.payout });

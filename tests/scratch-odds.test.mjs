@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { STAKES, SYMBOLS, SYMBOL_IDS, MAX_WIN, expectedMultiplier, payoutFor, resolveCard } from '../lib/scratch/odds.mjs';
+import { STAKES, DEFAULT_STAKE, SYMBOLS, SYMBOL_IDS, MAX_WIN, TOP_MULT, payoutFor, winProbs, rtpFor, resolveCard } from '../lib/scratch/odds.mjs';
 
 // Scripted rng: returns the given values in order, then repeats the last one.
 const seq = (...vals) => { let i = 0; return () => vals[Math.min(i++, vals.length - 1)]; };
@@ -17,8 +17,10 @@ function mulberry(seed) {
 }
 
 test('stakes, symbols and the approved multiplier ladder', () => {
-  assert.deepEqual(STAKES, [10, 20, 30, 50]);
+  assert.deepEqual(STAKES, [1, 10, 25, 50]);
+  assert.equal(DEFAULT_STAKE, 10);
   assert.equal(MAX_WIN, 200);
+  assert.equal(TOP_MULT, 4);
   assert.equal(SYMBOLS.length, 6);
   assert.deepEqual(SYMBOLS.map(s => s.mult), [1.2, 1.5, 2, 2.5, 3, 4]);
   assert.equal(new Set(SYMBOL_IDS).size, 6);
@@ -29,38 +31,49 @@ test('stakes, symbols and the approved multiplier ladder', () => {
   assert.ok(SYMBOLS.reduce((a, s) => a + s.p, 0) < 1, 'some cards must lose');
 });
 
-test('EV computed exactly: sum p × payout / stake = 0.95 ± 0.002 at every stake', () => {
-  assert.ok(Math.abs(expectedMultiplier() - 0.95) <= 0.002, `ev ${expectedMultiplier()}`);
-  for (const stake of STAKES) {
-    const ev = SYMBOLS.reduce((a, s) => a + s.p * payoutFor(stake, s.mult), 0) / stake;
-    assert.ok(Math.abs(ev - 0.95) <= 0.002, `stake ${stake}: ev ${ev}`);
+test('base ladder: sum p × mult = 0.95; rescaled per stake so the EV is exactly the RTP', () => {
+  assert.ok(Math.abs(SYMBOLS.reduce((a, s) => a + s.p * s.mult, 0) - 0.95) < 1e-12);
+  for (const rtp of [0.97, 0.98, 0.99]) {
+    for (const stake of STAKES) {
+      const p = winProbs(stake, rtp);
+      const ev = SYMBOLS.reduce((a, s, i) => a + p[i] * payoutFor(stake, s.mult), 0) / stake;
+      assert.ok(Math.abs(ev - rtp) < 1e-12, `stake ${stake}: ev ${ev}`);
+      assert.ok(Math.abs(rtpFor(stake, rtp) - rtp) < 1e-12);
+      // the ladder keeps its shape: rarer the bigger the prize
+      for (let i = 1; i < p.length; i++) assert.ok(p[i] < p[i - 1]);
+    }
   }
+  // stake 10: every payout is whole, so the base ladder scales by 0.98 / 0.95
+  winProbs(10).forEach((x, i) => assert.ok(Math.abs(x - SYMBOLS[i].p * 0.98 / 0.95) < 1e-12));
 });
 
-test('payouts are whole numbers and never exceed the 200 cap; top prize is 50 × 4 = 200', () => {
+test('payouts are half-up whole numbers and never exceed the 200 cap; top prize is 50 × 4 = 200', () => {
+  assert.deepEqual(STAKES.map(st => SYMBOLS.map(s => payoutFor(st, s.mult))), [
+    [1, 2, 2, 3, 3, 4], [12, 15, 20, 25, 30, 40], [30, 38, 50, 63, 75, 100], [60, 75, 100, 125, 150, 200],
+  ]);
   for (const stake of STAKES) {
     for (const s of SYMBOLS) {
       const p = payoutFor(stake, s.mult);
       assert.ok(Number.isInteger(p), `${stake} × ${s.mult}`);
       assert.ok(p <= MAX_WIN, `${stake} × ${s.mult} = ${p}`);
-      assert.equal(p, Math.round(stake * s.mult));
     }
   }
   assert.equal(payoutFor(50, 4), 200);
 });
 
 test('a winning card always shows 3 of the winning symbol and pays its multiplier', () => {
+  const p = winProbs(25);
   let cum = 0;
-  for (const s of SYMBOLS) {
-    const card = resolveCard(30, seq(cum + s.p / 2, 0.5, 0.5, 0.5));
-    cum += s.p;
+  SYMBOLS.forEach((s, i) => {
+    const card = resolveCard(25, seq(cum + p[i] / 2, 0.5, 0.5, 0.5));
+    cum += p[i];
     assert.equal(card.win, true, s.id);
     assert.equal(card.symbol, s.id);
     assert.deepEqual(card.panels, [s.id, s.id, s.id]);
     assert.equal(card.mult, s.mult);
-    assert.equal(card.payout, payoutFor(30, s.mult));
+    assert.equal(card.payout, payoutFor(25, s.mult));
     assert.equal(card.nearMiss, false);
-  }
+  });
 });
 
 test('a losing card never has 3 matching, pays 0, and its panels are valid symbols', () => {
@@ -90,7 +103,7 @@ test('a losing card never has 3 matching, pays 0, and its panels are valid symbo
 });
 
 test('forced near-miss loss: exactly two matching panels', () => {
-  const lossU = SYMBOLS.reduce((a, s) => a + s.p, 0) + 0.01;
+  const lossU = winProbs(10).reduce((a, x) => a + x, 0) + 0.01;
   const card = resolveCard(10, seq(lossU, 0, 0.99, 0.5, 0.5));
   assert.equal(card.win, false);
   assert.equal(card.nearMiss, true);
@@ -100,21 +113,21 @@ test('forced near-miss loss: exactly two matching panels', () => {
 test('an injected rng is deterministic', () => {
   const a = [], b = [];
   const r1 = mulberry(7), r2 = mulberry(7);
-  for (let i = 0; i < 500; i++) { a.push(resolveCard(20, r1)); b.push(resolveCard(20, r2)); }
+  for (let i = 0; i < 500; i++) { a.push(resolveCard(25, r1)); b.push(resolveCard(25, r2)); }
   assert.deepEqual(a, b);
 });
 
 test('invalid stake throws', () => {
-  for (const bad of [0, 15, '10', NaN, undefined, -10, 100]) {
+  for (const bad of [0, 15, 20, 30, '10', NaN, undefined, -10, 100]) {
     assert.throws(() => resolveCard(bad, () => 0), `stake ${String(bad)}`);
     assert.throws(() => payoutFor(bad, 2), `stake ${String(bad)}`);
   }
 });
 
-test('default rng: 20 000 cards give a mean multiplier of 0.95 ± 0.03', () => {
+test('default rng: 20 000 cards at stake 10 return 0.98 ± 0.03', () => {
   const N = 20000;
   let sum = 0;
   for (let i = 0; i < N; i++) sum += resolveCard(10).payout / 10;
   const mean = sum / N;
-  assert.ok(Math.abs(mean - 0.95) <= 0.03, `mean ${mean}`);
+  assert.ok(Math.abs(mean - 0.98) <= 0.03, `mean ${mean}`);
 });

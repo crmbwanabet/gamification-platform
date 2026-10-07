@@ -7,7 +7,7 @@ import CandyButton from '../candy/CandyButton';
 import CandyChip from '../candy/CandyChip';
 import WinCelebration from '../candy/WinCelebration';
 import { CANDY, outlineShadow, textStroke } from '../candy/tokens';
-import { resolveSpin, STAKES, SEGMENTS, MAX_MULT } from '@/lib/bottle/wheel.mjs';
+import { resolveSpin, payoutFor, STAKES, SEGMENTS, MAX_MULT, DEFAULT_STAKE } from '@/lib/bottle/wheel.mjs';
 import { VB_W, VB_H, SEG_DEG, planSpin, angleAt, TOTAL_S } from './geom';
 import { SceneDefs, SceneBack, Table, SceneFront, SCENE_CSS } from './Scene';
 import Bottle, { BottleDefs, BottleShadow, Ghosts } from './Bottle';
@@ -15,10 +15,10 @@ import { makeRig, render, setResult, setStuds } from './motion';
 
 // ============================================================================
 // BOTTLE SPIN — stake-only (spec: docs/superpowers/specs/2026-10-07-bottle-spin-design.md).
-// Pick a stake (10/20/30/50) and tap SPIN: a green soda bottle spins on a
+// Pick a stake (1/10/25/50) and tap SPIN: a green soda bottle spins on a
 // painted table (8 segments, 1.2x … 4x and three TRY AGAIN) and stops pointing
 // at the result. The result is decided on the device at SPIN (resolveSpin,
-// crypto RNG, weighted pay table with EV 0.95) and the stake is charged right
+// crypto RNG, weighted pay table with EV = the configured RTP) and the stake is charged right
 // then via onSpend; the round is reported when the bottle STOPS (onRound) so
 // nothing spoils the spin. Exactly-once: the resolved round waits in
 // pendingRef; fireRound() nulls it before calling onRound, and unmount (close
@@ -30,12 +30,12 @@ import { makeRig, render, setResult, setStuds } from './motion';
 // (balance - payout + coins collected so far) and COLLECT walks it up.
 // Animation: motion.js writes the bottle's pose into the SVG every frame (rAF);
 // reduced motion swaps the bottle to its final angle with a fade.
-// NOTE: STAKES are mirrored by stakeRange '10–50' in lib/data/platform.js and
+// NOTE: STAKES are mirrored by stakeRange '1–50' in lib/data/platform.js and
 // the tutorial prize lines in lib/data/tutorials.js — change all three together.
 // ============================================================================
 
 const LAST_KEY = 'bottle:last';
-const CHIP_COLORS = { 10: 'violet', 20: 'blue', 30: 'red', 50: 'green' };
+const CHIP_COLORS = { 1: 'violet', 10: 'blue', 25: 'red', 50: 'green' };
 const MIN_STAKE = STAKES[0];
 const IDLE_PHI = 3 * SEG_DEG + 4;   // resting on 1.2x, near-right
 const PANEL_DELAY_MS = 900;         // a beat on the glowing segment before the panel
@@ -45,8 +45,8 @@ const REDUCED_FADE_MS = 220;
 function readLast() {
   try {
     const v = JSON.parse(window.localStorage.getItem(LAST_KEY) || 'null');
-    return STAKES.includes(v?.stake) ? v.stake : MIN_STAKE;
-  } catch (e) { return MIN_STAKE; }
+    return STAKES.includes(v?.stake) ? v.stake : DEFAULT_STAKE;
+  } catch (e) { return DEFAULT_STAKE; }
 }
 function saveLast(stake) {
   try { window.localStorage.setItem(LAST_KEY, JSON.stringify({ stake })); } catch (e) { /* private mode */ }
@@ -87,7 +87,7 @@ const TITLE = (
   </span>
 );
 
-export default function BottleGame({ onClose, closing, balance = 0, onSpend, onRound }) {
+export default function BottleGame({ onClose, closing, balance = 0, rtp, onSpend, onRound }) {
   const [stake, setStake] = useState(() => affordable(readLast(), balance));
   const [phase, setPhase] = useState('idle');   // 'idle' | 'spinning' | 'result'
   const [won, setWon] = useState(false);
@@ -169,7 +169,7 @@ export default function BottleGame({ onClose, closing, balance = 0, onSpend, onR
   const spin = () => {
     if (flyingRef.current || cel || stake > balance) return;
     flyingRef.current = true;
-    const out = resolveSpin(stake);
+    const out = resolveSpin(stake, undefined, rtp);
     onSpend?.(stake);
     pendingRef.current = { stake, win: out.win, payout: out.payout };
     saveLast(stake);
@@ -258,7 +258,7 @@ export default function BottleGame({ onClose, closing, balance = 0, onSpend, onR
 
         <CandyButton color="green" big disabled={!canSpin} onClick={spin} style={{ width: '100%', minHeight: 66, gap: 2, marginBottom: 6, borderRadius: 18 }}>
           <span style={{ fontSize: 34, textShadow: canSpin ? `${textStroke(2.5, CANDY.outline)}, 0 4px 0 ${CANDY.outline}` : 'none' }}>SPIN</span>
-          <span style={{ fontSize: 14, color: canSpin ? CANDY.gold : 'inherit', textShadow: canSpin ? `${textStroke(1.5, CANDY.outline)}, 0 2px 0 ${CANDY.outline}` : 'none', letterSpacing: 1 }}>✦ WIN UP TO {stake * MAX_MULT} ✦</span>
+          <span style={{ fontSize: 14, color: canSpin ? CANDY.gold : 'inherit', textShadow: canSpin ? `${textStroke(1.5, CANDY.outline)}, 0 2px 0 ${CANDY.outline}` : 'none', letterSpacing: 1 }}>✦ WIN UP TO {payoutFor(stake, MAX_MULT)} ✦</span>
         </CandyButton>
       </div>
 

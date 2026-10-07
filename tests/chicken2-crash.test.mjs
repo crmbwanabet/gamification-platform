@@ -1,8 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  RTP_DEFAULT, RTP_MIN, RTP_MAX, MAX_MULT, STAKES,
-  clampRtp, drawCrash, payoutFor, multAt, timeFor, cashOutWins, shownAt, endTime, settleOnClose,
+  RTP_DEFAULT, RTP_MIN, RTP_MAX, MAX_MULT, STAKES, DEFAULT_STAKE,
+  clampRtp, drawCrash, survival, payoutFor, multAt, timeFor, cashOutWins, shownAt, endTime, settleOnClose,
 } from '../lib/chicken2/crash.mjs';
 
 // Seeded uniform [0,1) so the statistics are reproducible.
@@ -15,62 +15,74 @@ function seeded(seed) {
   };
 }
 const N = 200_000;
-function sample(rtp, seed = 7) {
+function sample(stake, rtp, seed = 7) {
   const r = seeded(seed), out = new Float64Array(N);
-  for (let i = 0; i < N; i++) out[i] = drawCrash(rtp, r);
+  for (let i = 0; i < N; i++) out[i] = drawCrash(stake, rtp, r);
   return out;
 }
 
-test('defaults: RTP 98%, range [0.80, 0.99], 10x ceiling, stakes 5/10/20', () => {
+test('defaults: RTP 98%, range [0.97, 0.99], 10x ceiling, stakes 1/5/10/20', () => {
   assert.equal(RTP_DEFAULT, 0.98);
-  assert.equal(RTP_MIN, 0.80);
+  assert.equal(RTP_MIN, 0.97);
   assert.equal(RTP_MAX, 0.99);
   assert.equal(MAX_MULT, 10);
-  assert.deepEqual(STAKES, [5, 10, 20]);
+  assert.deepEqual(STAKES, [1, 5, 10, 20]);
+  assert.equal(DEFAULT_STAKE, 5);
 });
 
-test('P(C >= x) ~= RTP / x for x in {1.5, 2, 3, 5, 10}', () => {
-  for (const rtp of [0.98, 0.9]) {
-    const C = sample(rtp, rtp === 0.98 ? 11 : 12);
+test('survival follows the rounded payout: P(C >= x) = RTP × stake / payout(stake, x)', () => {
+  assert.ok(Math.abs(survival(1, 1.49) - 0.98) < 1e-12);   // pays 1
+  assert.ok(Math.abs(survival(1, 1.5) - 0.49) < 1e-12);    // pays 2
+  assert.ok(Math.abs(survival(20, 2) - 0.49) < 1e-12);     // pays 40, same as RTP / x
+  assert.ok(Math.abs(survival(5, 1.1) - 0.98 * 5 / 6) < 1e-12);
+  assert.ok(Math.abs(survival(10, 10) - 0.098) < 1e-12);
+  assert.equal(survival(10, 1), 1);
+});
+
+test('sampled P(C >= x) ~= survival for x in {1.5, 2, 3, 5, 10}', () => {
+  for (const [stake, rtp, seed] of [[20, 0.98, 11], [1, 0.97, 12], [5, 0.99, 13]]) {
+    const C = sample(stake, rtp, seed);
     for (const x of [1.5, 2, 3, 5, 10]) {
       let n = 0; for (const c of C) if (c >= x) n++;
-      const p = n / N, want = rtp / x;
+      const p = n / N, want = survival(stake, x, rtp);
       const tol = 4 * Math.sqrt(want * (1 - want) / N) + 1e-4;
-      assert.ok(Math.abs(p - want) < tol, `rtp ${rtp} x ${x}: got ${p.toFixed(5)} want ${want.toFixed(5)} (tol ${tol.toFixed(5)})`);
+      assert.ok(Math.abs(p - want) < tol, `stake ${stake} rtp ${rtp} x ${x}: got ${p.toFixed(5)} want ${want.toFixed(5)}`);
     }
   }
 });
 
-test('crash points: 2-decimal, within [1.00, 10]', () => {
-  const C = sample(0.98, 3);
-  for (let i = 0; i < 5000; i++) {
-    const c = C[i];
-    assert.ok(c >= 1 && c <= MAX_MULT, `out of range ${c}`);
-    assert.equal(Math.round(c * 100), +(c * 100).toFixed(6), `not 2-decimal ${c}`);
+test('crash points: 2-decimal, within [1.00, 10], on the last multiplier before a payout step', () => {
+  for (const stake of STAKES) {
+    const C = sample(stake, 0.98, 3 + stake);
+    for (let i = 0; i < 5000; i++) {
+      const c = C[i];
+      assert.ok(c >= 1 && c <= MAX_MULT, `out of range ${c}`);
+      assert.equal(Math.round(c * 100), +(c * 100).toFixed(6), `not 2-decimal ${c}`);
+      if (c > 1 && c < MAX_MULT) assert.ok(payoutFor(stake, c + 0.01) > payoutFor(stake, c), `stake ${stake}: ${c} is mid-step`);
+    }
   }
 });
 
-// An instant crash = C is 1.00: he falls before the counter reaches 1.01, the
-// first cash-out. That is 1 - RTP (the raw draw under 1.00) plus the sliver of
-// raw draws in [1.00, 1.01), which floor to 1.00 too: 1 - RTP / 1.01 in all
-// (2.97% at RTP 98%). Nobody can cash those out, so EV stays exactly RTP.
-test('instant-crash rate (C = 1.00) ~= 1 - RTP (+ the sub-1.01 sliver)', () => {
-  for (const rtp of [0.98, 0.85]) {
-    const C = sample(rtp, rtp === 0.98 ? 5 : 6);
+test('instant-crash rate (C = 1.00) is exactly 1 - RTP', () => {
+  for (const rtp of [0.98, 0.97]) {
+    const C = sample(10, rtp, rtp === 0.98 ? 5 : 6);
     let n = 0; for (const c of C) if (c === 1) n++;
-    const p = n / N, want = 1 - rtp / 1.01, tol = 4 * Math.sqrt(want * (1 - want) / N);
+    const p = n / N, want = 1 - rtp, tol = 4 * Math.sqrt(want * (1 - want) / N);
     assert.ok(Math.abs(p - want) < tol, `rtp ${rtp}: instant ${p} want ${want}`);
-    assert.ok(p >= 1 - rtp && p - (1 - rtp) < 0.011, `rtp ${rtp}: instant ${p} vs 1 - RTP ${1 - rtp}`);
   }
+  assert.equal(drawCrash(10, 0.98, () => 0.9801), 1);
+  assert.ok(drawCrash(10, 0.98, () => 0.98 - 1e-9) > 1);
 });
 
-test('EV of a fixed cash-out at 2x ~= RTP (and at 1.5x / 5x / 10x)', () => {
-  const C = sample(0.98, 9);
-  for (const x of [2, 1.5, 5, 10]) {
+test('EV of a fixed cash-out ~= RTP in coins (stake 1 at 1.5x, stake 20 at 2x / 5x / 10x)', () => {
+  for (const [stake, x, seed] of [[1, 1.5, 9], [20, 2, 10], [20, 5, 14], [20, 10, 15], [5, 1.1, 16]]) {
+    const C = sample(stake, 0.98, seed);
+    const pay = payoutFor(stake, x);
     let ret = 0;
-    for (const c of C) if (cashOutWins(x, c)) ret += x;
-    const ev = ret / N, tol = 4 * x * Math.sqrt((0.98 / x) * (1 - 0.98 / x) / N);
-    assert.ok(Math.abs(ev - 0.98) < tol, `EV at ${x}: ${ev}`);
+    for (const c of C) if (cashOutWins(x, c)) ret += pay;
+    const ev = ret / N / stake, q = survival(stake, x);
+    const tol = 4 * (pay / stake) * Math.sqrt(q * (1 - q) / N);
+    assert.ok(Math.abs(ev - 0.98) < tol, `EV stake ${stake} at ${x}: ${ev}`);
   }
 });
 
@@ -82,29 +94,27 @@ test('a cash-out wins only when the crash point is at or above it, never at 1.00
   assert.equal(cashOutWins(1.01, 1), false); // instant crash beats everything
 });
 
-test('RTP is validated and clamped to [0.80, 0.99]', () => {
+test('RTP is validated and clamped to [0.97, 0.99]', () => {
   assert.equal(clampRtp(0.98), 0.98);
-  assert.equal(clampRtp(0.5), 0.80);
+  assert.equal(clampRtp(0.5), 0.97);
+  assert.equal(clampRtp(0.85), 0.97);
   assert.equal(clampRtp(1.2), 0.99);
   assert.equal(clampRtp(0.99), 0.99);
-  for (const bad of [undefined, null, NaN, Infinity, '0.95', {}, -1]) {
-    const v = clampRtp(bad);
-    assert.ok(v === RTP_DEFAULT || v === RTP_MIN, `bad ${String(bad)} -> ${v}`);
-  }
-  assert.equal(clampRtp('0.95'), RTP_DEFAULT);
-  assert.equal(clampRtp(NaN), RTP_DEFAULT);
+  for (const bad of [undefined, null, NaN, Infinity, '0.95', {}]) assert.equal(clampRtp(bad), RTP_DEFAULT, String(bad));
+  assert.equal(clampRtp(-1), RTP_MIN);
   // drawCrash clamps too: an RTP of 2 behaves like 0.99
   const r = seeded(1); let n = 0;
-  for (let i = 0; i < 50_000; i++) if (drawCrash(2, r) === 1) n++;
-  assert.ok(Math.abs(n / 50_000 - (1 - 0.99 / 1.01)) < 0.003, `rtp 2 -> instant ${n / 50_000}`);
+  for (let i = 0; i < 50_000; i++) if (drawCrash(10, 2, r) === 1) n++;
+  assert.ok(Math.abs(n / 50_000 - 0.01) < 0.002, `rtp 2 -> instant ${n / 50_000}`);
 });
 
-test('drawCrash uses crypto when no rng is given', () => {
-  const c = drawCrash(0.98);
+test('drawCrash uses crypto when no rng is given; rejects unknown stakes', () => {
+  const c = drawCrash(5, 0.98);
   assert.ok(c >= 1 && c <= 10);
+  assert.throws(() => drawCrash(7, 0.98));
 });
 
-test('payouts are whole numbers and never above 200', () => {
+test('payouts are half-up whole numbers and never above 200', () => {
   for (const s of STAKES) {
     for (let m = 100; m <= 1000; m++) {
       const p = payoutFor(s, m / 100);
@@ -115,7 +125,10 @@ test('payouts are whole numbers and never above 200', () => {
   }
   assert.equal(payoutFor(20, 10), 200);
   assert.equal(payoutFor(20, 1.15), 23); // no float drift (20 * 1.15 = 22.999…)
-  assert.equal(payoutFor(5, 2.37), 11);
+  assert.equal(payoutFor(5, 2.37), 12);  // 11.85 → 12 (was floored to 11)
+  assert.equal(payoutFor(5, 1.1), 6);    // 5.5 → 6
+  assert.equal(payoutFor(1, 1.49), 1);
+  assert.equal(payoutFor(1, 1.5), 2);
   assert.equal(payoutFor(10, 99), 100); // the multiplier is capped at 10x
   assert.throws(() => payoutFor(7, 2));
 });

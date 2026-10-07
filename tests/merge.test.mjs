@@ -63,15 +63,28 @@ test('prototype-chain game ids are not injected', () => {
   assert.equal(Object.hasOwn(out.games, 'constructor'), false);
 });
 
-test('games.<id>.rtp is kept, clamped to [0.80, 0.99], and junk keeps the default', () => {
-  const ok = mergeConfig(DEFAULTS, [{ key: 'games', value: { chicken2: { rtp: 0.95 } } }]);
-  assert.equal(ok.games.chicken2.rtp, 0.95);
+test('games.<id>.rtp is kept, clamped to [0.97, 0.99], and junk keeps the default', () => {
+  const ok = mergeConfig(DEFAULTS, [{ key: 'games', value: { chicken2: { rtp: 0.975 } } }]);
+  assert.equal(ok.games.chicken2.rtp, 0.975);
   assert.equal(ok.games.chicken2.enabled, true); // other fields survive
   const toggled = mergeConfig(DEFAULTS, [{ key: 'games', value: { chicken2: { enabled: false } } }]);
   assert.equal(toggled.games.chicken2.rtp, 0.98); // a save without rtp keeps it
   assert.equal(mergeConfig(DEFAULTS, [{ key: 'games', value: { chicken2: { rtp: 1.5 } } }]).games.chicken2.rtp, 0.99);
-  assert.equal(mergeConfig(DEFAULTS, [{ key: 'games', value: { chicken2: { rtp: 0.2 } } }]).games.chicken2.rtp, 0.80);
+  assert.equal(mergeConfig(DEFAULTS, [{ key: 'games', value: { chicken2: { rtp: 0.2 } } }]).games.chicken2.rtp, 0.97);
+  assert.equal(mergeConfig(DEFAULTS, [{ key: 'games', value: { chicken2: { rtp: 0.95 } } }]).games.chicken2.rtp, 0.97);
+  assert.equal(mergeConfig(DEFAULTS, [{ key: 'games', value: { chicken2: { rtp: 0.80 } } }]).games.chicken2.rtp, 0.97);
   for (const bad of ['0.9', null, {}, [0.9]]) {
     assert.equal(mergeConfig(DEFAULTS, [{ key: 'games', value: { chicken2: { rtp: bad } } }]).games.chicken2.rtp, 0.98);
   }
+});
+
+test('every candy game takes an rtp (same clamp); a game without one in a row keeps its default', () => {
+  const D = structuredClone(DEFAULTS);
+  for (const id of ['coinflip', 'penalty', 'chicken', 'minibus', 'bottle', 'scratch', 'numbers']) D.games[id] = { enabled: true, dailyPlays: 0, rtp: 0.98 };
+  const out = mergeConfig(D, [{ key: 'games', value: { coinflip: { rtp: 0.99 }, bottle: { rtp: 1 }, numbers: { rtp: 0.9 }, scratch: { rtp: 'x' } } }]);
+  assert.equal(out.games.coinflip.rtp, 0.99);
+  assert.equal(out.games.bottle.rtp, 0.99);
+  assert.equal(out.games.numbers.rtp, 0.97);
+  assert.equal(out.games.scratch.rtp, 0.98);
+  assert.equal(out.games.penalty.rtp, 0.98);
 });

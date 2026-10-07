@@ -8,14 +8,14 @@ import CandyButton from '../candy/CandyButton';
 import CandyChip from '../candy/CandyChip';
 import WinCelebration from '../candy/WinCelebration';
 import { CANDY, outlineShadow, textStroke } from '../candy/tokens';
-import { resolveDraw, tierIndex, STAKES, TIERS, PICKS, POOL } from '@/lib/numbers/paytable.mjs';
+import { resolveDraw, tierIndex, tierPays, STAKES, TIERS, PICKS, POOL, DEFAULT_STAKE } from '@/lib/numbers/paytable.mjs';
 import Machine, { MACHINE_CSS, MACH_H, CHUTE_PATH, RAIL_Y } from './Machine';
 import Grid, { GRID_CSS } from './Grid';
 import LottoBall from './Ball';
 
 // ============================================================================
 // LUCKY NUMBERS — stake-only (spec: docs/superpowers/specs/2026-10-07-lucky-numbers-design.md).
-// Pick exactly 6 of 1–20 (or QUICK PICK), a stake (5/10/20), tap DRAW. All 6
+// Pick exactly 6 of 1–20 (or QUICK PICK), a stake (1/5/10/20), tap DRAW. All 6
 // drawn numbers are decided right then (lib/numbers, crypto RNG) and the stake
 // is charged via onSpend; the machine then pops the balls out one by one
 // (~4.7 s), each match lighting its tile. The round is reported after the last
@@ -26,12 +26,12 @@ import LottoBall from './Ball';
 // Win: the WinCelebration panel pops in; the platform has ALREADY credited the
 // payout via onRound, so the pill shows balance - payout + collected.
 // Reduced motion: no flight — the 6 balls appear in place, the result follows.
-// NOTE: STAKES are mirrored by stakeRange '5–20' in lib/data/platform.js and
+// NOTE: STAKES are mirrored by stakeRange '1–20' in lib/data/platform.js and
 // the tutorial prize lines in lib/data/tutorials.js — change all three together.
 // ============================================================================
 
 const LAST_KEY = 'numbers:last';
-const CHIP_COLORS = { 5: 'violet', 10: 'blue', 20: 'red' };
+const CHIP_COLORS = { 1: 'violet', 5: 'blue', 10: 'red', 20: 'green' };
 const MIN_STAKE = STAKES[0];
 const FIRST_MS = 350;     // first ball leaves the machine
 const STEP_MS = 700;      // between balls
@@ -51,10 +51,10 @@ function readLast() {
     const v = JSON.parse(window.localStorage.getItem(LAST_KEY) || 'null');
     const picks = Array.isArray(v?.picks) ? v.picks.filter(n => Number.isInteger(n) && n >= 1 && n <= POOL) : [];
     return {
-      stake: STAKES.includes(v?.stake) ? v.stake : MIN_STAKE,
+      stake: STAKES.includes(v?.stake) ? v.stake : DEFAULT_STAKE,
       picks: new Set(picks).size === picks.length && picks.length <= PICKS ? picks : [],
     };
-  } catch (e) { return { stake: MIN_STAKE, picks: [] }; }
+  } catch (e) { return { stake: DEFAULT_STAKE, picks: [] }; }
 }
 function saveLast(stake, picks) {
   try { window.localStorage.setItem(LAST_KEY, JSON.stringify({ stake, picks })); } catch (e) { /* private mode */ }
@@ -138,7 +138,9 @@ function TrayBall({ n, cx, lit, fly }) {
   );
 }
 
-function Paytable({ active, settled, left }) {
+// Coins per tier at the selected stake (lib/numbers paytableFor — whole coins,
+// a small table per stake so the RTP stays inside 97–99%).
+function Paytable({ active, settled, left, pays }) {
   return (
     <div aria-label="Paytable" style={{ position: 'absolute', left, right: 6, top: 4 }}>
       <div style={{ textAlign: 'center', fontFamily: CANDY.display, fontSize: 10.5, letterSpacing: 1.5, color: 'rgba(255,255,255,.7)', lineHeight: 1, marginBottom: 3 }}>
@@ -160,7 +162,7 @@ function Paytable({ active, settled, left }) {
                 minWidth: 18, height: 18, padding: '0 3px', boxSizing: 'border-box', borderRadius: 9, display: 'grid', placeItems: 'center',
                 background: '#fff', boxShadow: `0 0 0 1.5px ${CANDY.outline}`, fontFamily: CANDY.display, fontSize: 12, color: CANDY.outline, lineHeight: 1,
               }}>{t.label}</span>
-              <span style={{ fontFamily: CANDY.display, fontSize: 15, lineHeight: 1, color: on ? CANDY.outline : CANDY.gold, textShadow: on ? 'none' : `0 1.5px 0 ${CANDY.outline}` }}>{t.mult}x</span>
+              <span style={{ fontFamily: CANDY.display, fontSize: 15, lineHeight: 1, color: on ? CANDY.outline : CANDY.gold, textShadow: on ? 'none' : `0 1.5px 0 ${CANDY.outline}`, display: 'inline-flex', alignItems: 'center', gap: 3 }}>{pays[i]}<img src="/ui/reward/coins.png" alt="coins" width={13} height={13} style={{ objectFit: 'contain' }} /></span>
             </div>
           );
         })}
@@ -172,7 +174,7 @@ function Paytable({ active, settled, left }) {
 // Twinkles around the machine only (px), clear of the paytable text
 const TWINKLES = [[7, 9, 0], [80, 7, .7], [6, 60, 1.3], [84, 33, .4], [8, 92, 1.8]];
 
-export default function NumbersGame({ onClose, closing, balance = 0, onSpend, onRound }) {
+export default function NumbersGame({ onClose, closing, balance = 0, rtp, onSpend, onRound }) {
   const [init] = useState(readLast);
   const [stake, setStake] = useState(() => affordable(init.stake, balance));
   const [picks, setPicks] = useState(init.picks);
@@ -264,7 +266,7 @@ export default function NumbersGame({ onClose, closing, balance = 0, onSpend, on
   const draw = () => {
     if (busyRef.current || cel || picks.length !== PICKS || stake > balance) return;
     busyRef.current = true;
-    const out = resolveDraw(stake, picks);
+    const out = resolveDraw(stake, picks, undefined, rtp);
     onSpend?.(stake);
     pendingRef.current = { stake, win: out.win, payout: out.payout, matches: out.matches };
     clearTimers();
@@ -300,6 +302,7 @@ export default function NumbersGame({ onClose, closing, balance = 0, onSpend, on
   const landedNums = drawn.slice(0, landed);
   const pickSet = new Set(picks);
   const soFar = landedNums.filter(n => pickSet.has(n)).length;
+  const pays = tierPays(stake, rtp); // coins for 2 / 3 / 4 / 5+ matches at this stake
   const activeTier = phase === 'idle' ? -1 : tierIndex(phase === 'result' && result ? result.matches : soFar);
   const shownBalance = cel ? Math.max(0, balance - cel.payout + cel.added) : balance;
 
@@ -309,7 +312,7 @@ export default function NumbersGame({ onClose, closing, balance = 0, onSpend, on
     line = soFar === 0
       ? <span style={{ color: CANDY.sub, fontSize: 18 }}>Drawing…</span>
       : <span key={`d${soFar}`} className="anim-scale-in" style={{ fontSize: 22, color: '#fff', letterSpacing: 1, textShadow: outlineShadow(2, CANDY.outline, 2) }}>
-          {soFar} {matchWord(soFar)}{activeTier >= 0 && <span style={{ color: CANDY.gold }}> · {TIERS[activeTier].mult}x</span>}
+          {soFar} {matchWord(soFar)}{activeTier >= 0 && <span style={{ color: CANDY.gold }}> · {pays[activeTier]} coins</span>}
         </span>;
   } else if (phase === 'result' && result?.win) {
     line = <span key="win" className="anim-scale-in" style={{ fontSize: 26, color: CANDY.gold, letterSpacing: 1.5, textShadow: `${outlineShadow(2, CANDY.outline, 3)}, 0 0 18px rgba(255,210,31,.8)` }}>{result.matches} {matchWord(result.matches)}</span>;
@@ -322,7 +325,7 @@ export default function NumbersGame({ onClose, closing, balance = 0, onSpend, on
   else if (!ready) line = <span style={{ fontSize: 17, color: CANDY.sub }}>Pick {PICKS - picks.length} more</span>;
   else line = <span style={{ fontSize: 17, color: CANDY.sub }}>Your lucky 6 are in!</span>;
 
-  const caption = `✦ WIN UP TO ${stake * 10} ✦`;
+  const caption = `✦ WIN UP TO ${pays[pays.length - 1]} ✦`;
   const sideBtn = { width: 64, flex: 'none', minHeight: 62, padding: 0, gap: 3, borderRadius: 16, fontSize: 13, letterSpacing: .3 };
   const sideTxt = (on) => ({ textShadow: on ? `${textStroke(1.5, CANDY.outline)}, 0 2px 0 ${CANDY.outline}` : 'none', lineHeight: .95, textAlign: 'center' });
 
@@ -350,7 +353,7 @@ export default function NumbersGame({ onClose, closing, balance = 0, onSpend, on
         {drawn.slice(0, launched).map((n, i) => (
           <TrayBall key={`${round}-${i}`} n={n} cx={slotX(i)} fly={!reduced} lit={i < landed && pickSet.has(n)} />
         ))}
-        <Paytable active={activeTier} settled={phase === 'result'} left={RAIL_L + 8} />
+        <Paytable active={activeTier} settled={phase === 'result'} left={RAIL_L + 8} pays={pays} />
       </div>
 
       {/* result line — fixed height so nothing below shifts */}

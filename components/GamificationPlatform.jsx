@@ -1328,7 +1328,7 @@ export default function GamificationPlatform() {
       )}
       {activeGame === 'coinflip' && (
         <CoinFlipGame onClose={() => animateClose(() => setActiveGame(null))} closing={closingModal}
-          balance={user.kwacha} onSpend={(n) => addCoins(-n)}
+          balance={user.kwacha} rtp={cfg.games.coinflip?.rtp} onSpend={(n) => addCoins(-n)}
           onRound={({ stake, win, payout }) => {
             if (win) addCoins(payout); // the game's own WinCelebration shows the win — no toast / float
             setUser(u => ({ ...u, gamesPlayed: u.gamesPlayed + 1, dailyTasksDone: [...new Set([...u.dailyTasksDone, 'game'])] }));
@@ -1338,7 +1338,7 @@ export default function GamificationPlatform() {
       )}
       {activeGame === 'penalty' && (
         <PenaltyGame onClose={() => animateClose(() => setActiveGame(null))} closing={closingModal}
-          balance={user.kwacha} onSpend={(n) => addCoins(-n)}
+          balance={user.kwacha} rtp={cfg.games.penalty?.rtp} onSpend={(n) => addCoins(-n)}
           onRound={({ stake, win, payout }) => {
             if (win) addCoins(payout); // the game's own WinCelebration shows the win — no toast / float
             setUser(u => ({ ...u, gamesPlayed: u.gamesPlayed + 1, dailyTasksDone: [...new Set([...u.dailyTasksDone, 'game'])] }));
@@ -1348,7 +1348,7 @@ export default function GamificationPlatform() {
       )}
       {activeGame === 'chicken' && (
         <ChickenGame onClose={() => animateClose(() => setActiveGame(null))} closing={closingModal}
-          balance={user.kwacha} onSpend={(n) => addCoins(-n)}
+          balance={user.kwacha} rtp={cfg.games.chicken?.rtp} onSpend={(n) => addCoins(-n)}
           onRound={({ stake, win, payout }) => {
             if (win) addCoins(payout); // the game's own WinCelebration shows the win — no toast / float
             setUser(u => ({ ...u, gamesPlayed: u.gamesPlayed + 1, dailyTasksDone: [...new Set([...u.dailyTasksDone, 'game'])] }));
@@ -1368,7 +1368,7 @@ export default function GamificationPlatform() {
       )}
       {activeGame === 'minibus' && (
         <MinibusGame onClose={() => animateClose(() => setActiveGame(null))} closing={closingModal}
-          balance={user.kwacha} onSpend={(n) => addCoins(-n)}
+          balance={user.kwacha} rtp={cfg.games.minibus?.rtp} onSpend={(n) => addCoins(-n)}
           onRound={({ stake, win, payout }) => {
             if (win) addCoins(payout); // the game's own WinCelebration shows the win — no toast / float
             setUser(u => ({ ...u, gamesPlayed: u.gamesPlayed + 1, dailyTasksDone: [...new Set([...u.dailyTasksDone, 'game'])] }));
@@ -1378,7 +1378,7 @@ export default function GamificationPlatform() {
       )}
       {activeGame === 'bottle' && (
         <BottleGame onClose={() => animateClose(() => setActiveGame(null))} closing={closingModal}
-          balance={user.kwacha} onSpend={(n) => addCoins(-n)}
+          balance={user.kwacha} rtp={cfg.games.bottle?.rtp} onSpend={(n) => addCoins(-n)}
           onRound={({ stake, win, payout }) => {
             if (win) addCoins(payout); // the game's own WinCelebration shows the win — no toast / float
             setUser(u => ({ ...u, gamesPlayed: u.gamesPlayed + 1, dailyTasksDone: [...new Set([...u.dailyTasksDone, 'game'])] }));
@@ -1388,7 +1388,7 @@ export default function GamificationPlatform() {
       )}
       {activeGame === 'scratch' && (
         <ScratchGame onClose={() => animateClose(() => setActiveGame(null))} closing={closingModal}
-          balance={user.kwacha} onSpend={(n) => addCoins(-n)}
+          balance={user.kwacha} rtp={cfg.games.scratch?.rtp} onSpend={(n) => addCoins(-n)}
           onRound={({ stake, win, payout }) => {
             if (win) addCoins(payout); // the game's own WinCelebration shows the win — no toast / float
             setUser(u => ({ ...u, gamesPlayed: u.gamesPlayed + 1, dailyTasksDone: [...new Set([...u.dailyTasksDone, 'game'])] }));
@@ -1398,7 +1398,7 @@ export default function GamificationPlatform() {
       )}
       {activeGame === 'numbers' && (
         <NumbersGame onClose={() => animateClose(() => setActiveGame(null))} closing={closingModal}
-          balance={user.kwacha} onSpend={(n) => addCoins(-n)}
+          balance={user.kwacha} rtp={cfg.games.numbers?.rtp} onSpend={(n) => addCoins(-n)}
           onRound={({ stake, win, payout }) => {
             if (win) addCoins(payout); // the game's own WinCelebration shows the win — no toast / float
             setUser(u => ({ ...u, gamesPlayed: u.gamesPlayed + 1, dailyTasksDone: [...new Set([...u.dailyTasksDone, 'game'])] }));

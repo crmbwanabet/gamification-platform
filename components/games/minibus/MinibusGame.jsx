@@ -7,7 +7,7 @@ import CandyButton from '../candy/CandyButton';
 import CandyChip from '../candy/CandyChip';
 import WinCelebration from '../candy/WinCelebration';
 import { CANDY, outlineShadow, textStroke } from '../candy/tokens';
-import { resolvePick, payoutFor, STAKES } from '@/lib/pick6/engine.mjs';
+import { resolvePick, payoutFor, STAKES, DEFAULT_STAKE } from '@/lib/pick6/engine.mjs';
 import { PASSENGERS, PASSENGER_IDS } from '@/lib/minibus/passengers.mjs';
 import { VB_W, VB_H } from './kit';
 import { StreetDefs, StreetBack, StreetFront, Cast, Effects, StreetOverlay, STREET_CSS } from './Street';
@@ -15,11 +15,11 @@ import { makeRig, render, setSelected, setMoving, setGone, wave, stopWave, LAND_
 
 // ============================================================================
 // LUCKY MINIBUS — stake-only (spec: docs/superpowers/specs/2026-10-07-lucky-minibus-design.md).
-// Pick a stake (10/20/30/50) and one of 6 passengers at the bus stop (1.2x … 4x),
+// Pick a stake (1/10/25/50) and one of 6 passengers at the bus stop (1.2x … 4x),
 // tap BOARD. Your call boy races the rival call boys to the passenger: win and
 // he grabs the luggage and the passenger hops into your blue minibus; lose and
 // the rival takes them off in the white one.
-// Win chance per passenger = 0.95 / mult (lib/pick6, crypto RNG), decided on the
+// Win chance per passenger = rtp × stake / payout (lib/pick6, crypto RNG), decided on the
 // device at BOARD; the stake is charged right then via onSpend, and the result
 // is reported when the race lands (onRound) so nothing spoils the scramble.
 // Exactly-once: the resolved round waits in pendingRef; fireRound() nulls it
@@ -31,12 +31,12 @@ import { makeRig, render, setSelected, setMoving, setGone, wave, stopWave, LAND_
 // collected so far) and COLLECT walks it up.
 // Animation: motion.js renders the mock's frame function into the SVG (rAF over
 // t per round; one still frame for reduced motion).
-// NOTE: STAKES are mirrored by stakeRange '10–50' in lib/data/platform.js and
+// NOTE: STAKES are mirrored by stakeRange '1–50' in lib/data/platform.js and
 // the tutorial prize lines in lib/data/tutorials.js — change all three together.
 // ============================================================================
 
 const LAST_KEY = 'minibus:last';
-const CHIP_COLORS = { 10: 'violet', 20: 'blue', 30: 'red', 50: 'green' };
+const CHIP_COLORS = { 1: 'violet', 10: 'blue', 25: 'red', 50: 'green' };
 const MIN_STAKE = STAKES[0];
 const REGROUP_MS = 240;         // actors fade out / in around a reset
 const LOSE_RESET_MS = 2000;     // after a loss the stop resets on its own
@@ -47,10 +47,10 @@ function readLast() {
   try {
     const v = JSON.parse(window.localStorage.getItem(LAST_KEY) || 'null');
     return {
-      stake: STAKES.includes(v?.stake) ? v.stake : MIN_STAKE,
+      stake: STAKES.includes(v?.stake) ? v.stake : DEFAULT_STAKE,
       pick: PASSENGER_IDS.includes(v?.passenger) ? PASSENGER_IDS.indexOf(v.passenger) : null,
     };
-  } catch (e) { return { stake: MIN_STAKE, pick: null }; }
+  } catch (e) { return { stake: DEFAULT_STAKE, pick: null }; }
 }
 function saveLast(stake, pick) {
   try { window.localStorage.setItem(LAST_KEY, JSON.stringify({ stake, passenger: pick == null ? null : PASSENGER_IDS[pick] })); } catch (e) { /* private mode */ }
@@ -91,7 +91,7 @@ const TITLE = (
   </span>
 );
 
-export default function MinibusGame({ onClose, closing, balance = 0, onSpend, onRound }) {
+export default function MinibusGame({ onClose, closing, balance = 0, rtp, onSpend, onRound }) {
   const [init] = useState(readLast);
   const [stake, setStake] = useState(() => affordable(init.stake, balance));
   const [pick, setPick] = useState(init.pick);  // passenger index or null
@@ -219,7 +219,7 @@ export default function MinibusGame({ onClose, closing, balance = 0, onSpend, on
   const board = () => {
     if (busyRef.current || cel || !passenger || stake > balance) return;
     busyRef.current = true;
-    const out = resolvePick(stake, passenger.mult);
+    const out = resolvePick(stake, passenger.mult, undefined, rtp);
     onSpend?.(stake);
     pendingRef.current = { stake, win: out.win, payout: out.payout };
     const fromResult = phase === 'result';

@@ -25,8 +25,10 @@ import { flyChip, prefersReducedMotion, DEAL_STAGGER } from './anim';
 // discards (seatSees / everyoneElseSees are the entire fairness boundary).
 // Pure-stake economy: no free plays; every round deducts the stake via
 // onSpend and a win pays stake + min(stake×opponents, MAX_WIN) via onWin.
-// NOTE: STAKES is mirrored by the '5–50' footer in PlayView.jsx and the
-// tutorial prize lines in lib/data/tutorials.js — change all three together.
+// NOTE: STAKES is mirrored by stakeRange '1–50' in lib/data/platform.js (the
+// GamesGrid footer) and the tutorial prize lines in lib/data/tutorials.js —
+// change all three together. Payout maths is whole coins at every stake
+// (stake × opponents, capped at MAX_WIN), so stake 1 pays +1 / +2 / +3.
 //
 // Presentation: ONE continuous scene — the photoreal table (njuka-table.jpg)
 // is always the backdrop. The menu (stake + table size) floats over it
@@ -35,7 +37,7 @@ import { flyChip, prefersReducedMotion, DEAL_STAGGER } from './anim';
 // onto the discard pile. No flashing anywhere — steady glows only.
 // ============================================================================
 
-const STAKES = [5, 10, 25, 50];
+const STAKES = [1, 10, 25, 50];
 const SEAT_CHOICES = [2, 3, 4];  // total players at the table (you + 1–3 bots)
 const TURN_MS = 15000;  // player's whole turn (draw + discard)
 const CLAIM_MS = 5000;  // claim window after an eligible discard

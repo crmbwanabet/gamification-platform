@@ -20,7 +20,7 @@ test('minibus passengers: 6 passengers, unique ids, the approved multiplier ladd
 
 test('minibus passengers: every payout is a whole number and none exceeds 200', () => {
   for (const p of PASSENGERS) {
-    assert.ok(winChance(p.mult) > 0 && winChance(p.mult) < 1);
+    for (const s of STAKES) assert.ok(winChance(s, p.mult) > 0 && winChance(s, p.mult) < 1);
     for (const s of STAKES) {
       const pay = payoutFor(s, p.mult);
       assert.ok(Number.isInteger(pay), `${s} × ${p.mult}`);

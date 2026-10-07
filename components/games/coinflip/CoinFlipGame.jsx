@@ -8,11 +8,11 @@ import CandyChip from '../candy/CandyChip';
 import WinCelebration from '../candy/WinCelebration';
 import { CANDY, outlineShadow, textStroke } from '../candy/tokens';
 import Coin from './Coin';
-import { resolveFlip, STAKES, FACES, payoutFor } from '@/lib/coinflip/engine.mjs';
+import { resolveFlip, STAKES, FACES, payoutFor, DEFAULT_STAKE } from '@/lib/coinflip/engine.mjs';
 
 // ============================================================================
 // COIN FLIP — stake-only (spec: docs/superpowers/specs/2026-09-29-coin-flip-design.md).
-// Pick a stake (10/20/30/50) and a side (HEADS / TAILS), tap FLIP. The result is
+// Pick a stake (1/10/25/50) and a side (HEADS / TAILS), tap FLIP. The result is
 // decided on the device at FLIP (resolveFlip, crypto RNG) and the stake is
 // charged right then via onSpend; the win is reported when the coin LANDS via
 // onRound so the notification never spoils the reveal.
@@ -23,12 +23,12 @@ import { resolveFlip, STAKES, FACES, payoutFor } from '@/lib/coinflip/engine.mjs
 // once the result lands. The platform has ALREADY credited the payout via
 // onRound; while the panel is up the pill shows the pre-win balance
 // (balance - payout + coins collected so far) and COLLECT walks it up.
-// NOTE: STAKES are mirrored by stakeRange '10–50' in lib/data/platform.js and
+// NOTE: STAKES are mirrored by stakeRange '1–50' in lib/data/platform.js and
 // the tutorial prize lines in lib/data/tutorials.js — change all three together.
 // ============================================================================
 
 const LAST_KEY = 'coinflip:last';
-const CHIP_COLORS = { 10: 'violet', 20: 'blue', 30: 'red', 50: 'green' };
+const CHIP_COLORS = { 1: 'violet', 10: 'blue', 25: 'red', 50: 'green' };
 const FACE_COLORS = { HEADS: 'green', TAILS: 'violet' };
 const MIN_STAKE = STAKES[0];
 
@@ -36,10 +36,10 @@ function readLast() {
   try {
     const v = JSON.parse(window.localStorage.getItem(LAST_KEY) || 'null');
     return {
-      stake: STAKES.includes(v?.stake) ? v.stake : MIN_STAKE,
+      stake: STAKES.includes(v?.stake) ? v.stake : DEFAULT_STAKE,
       pick: FACES.includes(v?.pick) ? v.pick : null,
     };
-  } catch (e) { return { stake: MIN_STAKE, pick: null }; }
+  } catch (e) { return { stake: DEFAULT_STAKE, pick: null }; }
 }
 function saveLast(stake, pick) {
   try { window.localStorage.setItem(LAST_KEY, JSON.stringify({ stake, pick })); } catch (e) { /* private mode */ }
@@ -68,7 +68,7 @@ function MiniCoin({ face, off }) {
   );
 }
 
-export default function CoinFlipGame({ onClose, closing, balance = 0, onSpend, onRound }) {
+export default function CoinFlipGame({ onClose, closing, balance = 0, rtp, onSpend, onRound }) {
   const [init] = useState(readLast);
   const [stake, setStake] = useState(() => affordable(init.stake, balance));
   const [pick, setPick] = useState(init.pick);
@@ -111,7 +111,7 @@ export default function CoinFlipGame({ onClose, closing, balance = 0, onSpend, o
   const flip = () => {
     if (flyingRef.current || cel || !pick || stake > balance) return;
     flyingRef.current = true;
-    const out = resolveFlip(stake, pick);
+    const out = resolveFlip(stake, pick, undefined, rtp);
     onSpend?.(stake);
     pendingRef.current = { stake, win: out.win, payout: out.payout };
     setOutcome(out);

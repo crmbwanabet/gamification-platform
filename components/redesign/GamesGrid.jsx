@@ -24,7 +24,7 @@ function GameCard({ g, free, onPlay, i = 0 }) {
           <div style={{ fontSize: 12.5, fontWeight: 800, color: C.text, lineHeight: 1.2 }}>{g.name}</div>
           <div style={{ marginTop: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
             <span style={{ fontSize: 11, fontWeight: 800, padding: '5px 13px', borderRadius: 7, background: out ? C.gold : C.green, color: '#08210f' }}>{out ? 'Paid play' : 'Play'}</span>
-            <span style={{ fontSize: 10.5, color: C.muted, display: 'inline-flex', alignItems: 'center', gap: 3 }}>{g.stakeOnly ? <><RewardIcon kind="coins" size={13} />{g.stakeRange ?? '5–50'}</> : free > 0 ? 'Free' : <><RewardIcon kind="coins" size={13} />{g.cost}</>}</span>
+            <span style={{ fontSize: 10.5, color: C.muted, display: 'inline-flex', alignItems: 'center', gap: 3 }}>{g.stakeOnly ? <><RewardIcon kind="coins" size={13} />{g.stakeRange ?? '1–50'}</> : free > 0 ? 'Free' : <><RewardIcon kind="coins" size={13} />{g.cost}</>}</span>
           </div>
         </div>
       </div>

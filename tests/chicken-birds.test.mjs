@@ -19,7 +19,7 @@ test('chicken birds: 6 birds, unique ids, the approved multiplier ladder', () =>
 
 test('chicken birds: every payout is a whole number and none exceeds 200', () => {
   for (const b of BIRDS) {
-    assert.ok(winChance(b.mult) > 0 && winChance(b.mult) < 1);
+    for (const s of STAKES) assert.ok(winChance(s, b.mult) > 0 && winChance(s, b.mult) < 1);
     for (const s of STAKES) {
       const p = payoutFor(s, b.mult);
       assert.ok(Number.isInteger(p), `${s} × ${b.mult}`);

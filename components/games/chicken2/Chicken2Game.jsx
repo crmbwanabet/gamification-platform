@@ -8,8 +8,7 @@ import CandyChip from '../candy/CandyChip';
 import WinCelebration from '../candy/WinCelebration';
 import { CANDY, outlineShadow, textStroke } from '../candy/tokens';
 import {
-  STAKES, MAX_MULT, MIN_CASHOUT, clampRtp, drawCrash, payoutFor, shownAt, endTime, timeFor, settleOnClose,
-} from '@/lib/chicken2/crash.mjs';
+  STAKES, MAX_MULT, MIN_CASHOUT, clampRtp, drawCrash, payoutFor, shownAt, endTime, timeFor, settleOnClose, DEFAULT_STAKE} from '@/lib/chicken2/crash.mjs';
 import { cid } from '../chicken/shared/rig';
 import { useFitViewBox } from '../chicken/shared/fit';
 import { YardDefs, YardBack, YardGround, YardOverlay, YARD_CSS } from '../chicken/shared/Yard';
@@ -22,12 +21,13 @@ import { makeRig2, render2, eggsCollected, setGone2, HEN, AFTER_CASH_S, AFTER_FA
 // ============================================================================
 // CHICKEN CATCH 2 — a crash game, stake-only
 // (spec: docs/superpowers/specs/2026-10-07-chicken-catch-2-design.md).
-// Pick a stake (5/10/20) and optionally an AUTO cash-out, tap RUN. The stake is
+// Pick a stake (1/5/10/20) and optionally an AUTO cash-out, tap RUN. The stake is
 // charged right then (onSpend) and the crash point C is drawn from
 // crypto.getRandomValues (lib/chicken2/crash.mjs; RTP from remote config
-// games.chicken2.rtp, clamped, default 98%). The farmer chases the golden hen;
+// games.chicken2.rtp, clamped 97–99%, default 98%; drawn for the chosen stake so
+// every cash-out returns exactly the RTP after rounding). The farmer chases the golden hen;
 // the multiplier climbs e^(K·t) from 1.00× (each golden egg he runs through
-// pulses it). CASH OUT banks floor(stake × shown multiplier) — he dives and
+// pulses it). CASH OUT banks stake × shown multiplier, rounded half up — he dives and
 // catches her, WinCelebration plays, and a faded ghost counter runs on to where
 // he would have fallen. If the counter would pass C he trips and the hen flies
 // off: LOSE, "CRASHED @ C×". At 10× he catches her automatically (MAX WIN!).
@@ -38,14 +38,14 @@ import { makeRig2, render2, eggsCollected, setGone2, HEN, AFTER_CASH_S, AFTER_FA
 // tap is checked against the clock (never after the fall time), and closing
 // mid-run settles via settleOnClose (a cash-out at that moment; 1.00× = stake
 // back unless C = 1.00; already fallen = loss). RUN is locked while running.
-// NOTE: STAKES are mirrored by stakeRange '5–20' in lib/data/platform.js and
+// NOTE: STAKES are mirrored by stakeRange '1–20' in lib/data/platform.js and
 // the tutorial lines in lib/data/tutorials.js — change all three together.
 // ============================================================================
 
 const LAST_KEY = 'chicken2:last';
 const HIST_KEY = 'chicken2:history';
 const HIST_N = 8;
-const CHIP_COLORS = { 5: 'violet', 10: 'blue', 20: 'red' };
+const CHIP_COLORS = { 1: 'violet', 5: 'blue', 10: 'red', 20: 'green' };
 const AUTOS = [null, 1.5, 2, 3, 5];
 const MIN_STAKE = STAKES[0];
 const REGROUP_MS = 220;
@@ -56,8 +56,8 @@ const GOLD_BTN = { '--cb-fill': '#FFB21F', '--cb-light': '#FFD978', '--cb-dark':
 function readLast() {
   try {
     const v = JSON.parse(window.localStorage.getItem(LAST_KEY) || 'null');
-    return { stake: STAKES.includes(v?.stake) ? v.stake : MIN_STAKE, auto: AUTOS.includes(v?.auto) ? v.auto : null };
-  } catch (e) { return { stake: MIN_STAKE, auto: null }; }
+    return { stake: STAKES.includes(v?.stake) ? v.stake : DEFAULT_STAKE, auto: AUTOS.includes(v?.auto) ? v.auto : null };
+  } catch (e) { return { stake: DEFAULT_STAKE, auto: null }; }
 }
 function saveLast(stake, auto) {
   try { window.localStorage.setItem(LAST_KEY, JSON.stringify({ stake, auto })); } catch (e) { /* private mode */ }
@@ -270,7 +270,7 @@ export default function Chicken2Game({ onClose, closing, balance = 0, rtp, onSpe
   const run = () => {
     if (runningRef.current || cel || stake > balance) return;
     runningRef.current = true;
-    const crash = drawCrash(clampRtp(rtp));
+    const crash = drawCrash(stake, clampRtp(rtp));
     onSpend?.(stake);
     const fromResult = phase !== 'idle';
     const delay = fromResult && !reduced ? REGROUP_MS : 0;

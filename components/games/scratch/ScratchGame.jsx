@@ -9,11 +9,11 @@ import WinCelebration from '../candy/WinCelebration';
 import { CANDY, outlineShadow, textStroke } from '../candy/tokens';
 import { SymbolDefs } from './Symbols';
 import Ticket, { TICKET_CSS, BURST_MS, SLIDE_MS } from './Ticket';
-import { resolveCard, STAKES } from '@/lib/scratch/odds.mjs';
+import { resolveCard, payoutFor, STAKES, TOP_MULT, DEFAULT_STAKE } from '@/lib/scratch/odds.mjs';
 
 // ============================================================================
 // SCRATCH CARD — stake-only (spec: docs/superpowers/specs/2026-10-07-scratch-card-design.md).
-// Pick a stake (10/20/30/50), tap BUY CARD: the stake is charged via onSpend and
+// Pick a stake (1/10/25/50), tap BUY CARD: the stake is charged via onSpend and
 // the whole card is decided right then (resolveCard, crypto RNG). A LUCKY
 // SCRATCH ticket slides in with 3 foil panels; tap each (or REVEAL ALL) — no
 // rubbing, no skill. Three matching symbols pay that symbol's multiplier.
@@ -26,14 +26,13 @@ import { resolveCard, STAKES } from '@/lib/scratch/odds.mjs';
 // Win: the 3 panels glow, then the WinCelebration panel covers the game. The
 // platform has ALREADY credited the payout via onRound; while the panel is up
 // the pill shows the pre-win balance (balance - payout + coins collected).
-// NOTE: STAKES are mirrored by stakeRange '10–50' in lib/data/platform.js and
+// NOTE: STAKES are mirrored by stakeRange '1–50' in lib/data/platform.js and
 // the tutorial prize lines in lib/data/tutorials.js — change all three together.
 // ============================================================================
 
 const LAST_KEY = 'scratch:last';
-const CHIP_COLORS = { 10: 'violet', 20: 'blue', 30: 'red', 50: 'green' };
+const CHIP_COLORS = { 1: 'violet', 10: 'blue', 25: 'red', 50: 'green' };
 const MIN_STAKE = STAKES[0];
-const TOP_MULT = 4;
 const STAGGER_MS = 260;      // REVEAL ALL: gap between panels
 const REDUCED_REVEAL_MS = 160;
 const CEL_DELAY_MS = 1100;   // let the glowing match land before the panel
@@ -42,8 +41,8 @@ const COVERED = ['covered', 'covered', 'covered'];
 function readLast() {
   try {
     const v = JSON.parse(window.localStorage.getItem(LAST_KEY) || 'null');
-    return STAKES.includes(v?.stake) ? v.stake : MIN_STAKE;
-  } catch (e) { return MIN_STAKE; }
+    return STAKES.includes(v?.stake) ? v.stake : DEFAULT_STAKE;
+  } catch (e) { return DEFAULT_STAKE; }
 }
 function saveLast(stake) {
   try { window.localStorage.setItem(LAST_KEY, JSON.stringify({ stake })); } catch (e) { /* private mode */ }
@@ -62,7 +61,7 @@ const TITLE = (
   </span>
 );
 
-export default function ScratchGame({ onClose, closing, balance = 0, onSpend, onRound }) {
+export default function ScratchGame({ onClose, closing, balance = 0, rtp, onSpend, onRound }) {
   const [init] = useState(readLast);
   const [stake, setStake] = useState(() => affordable(init, balance));
   const [phase, setPhase] = useState('idle');     // 'idle' | 'card' | 'done'
@@ -156,7 +155,7 @@ export default function ScratchGame({ onClose, closing, balance = 0, onSpend, on
   const buy = () => {
     if (lockRef.current || cel || phase === 'card' || stake > balance) return;
     lockRef.current = true;
-    const out = resolveCard(stake);
+    const out = resolveCard(stake, undefined, rtp);
     onSpend?.(stake);
     pendingRef.current = { stake, win: out.win, payout: out.payout };
     cardRef.current = out;
@@ -229,7 +228,7 @@ export default function ScratchGame({ onClose, closing, balance = 0, onSpend, on
               <>
                 <span style={big(btnOn)}>BUY CARD</span>
                 <span style={{ fontSize: 14, color: btnOn ? CANDY.gold : 'inherit', textShadow: btnOn ? `${textStroke(1.5, CANDY.outline)}, 0 2px 0 ${CANDY.outline}` : 'none', letterSpacing: 1 }}>
-                  ✦ WIN UP TO {stake * TOP_MULT} ✦
+                  ✦ WIN UP TO {payoutFor(stake, TOP_MULT)} ✦
                 </span>
               </>
             )}
