@@ -3,8 +3,8 @@
 import React from 'react';
 import { X, ChevronRight, Check } from 'lucide-react';
 import { C } from '../redesign/tokens';
-import { Badge, Progress, RewardIcon, GreenBtn } from '../redesign/RedesignShell';
-import { amountText } from '@/lib/rewardText.mjs';
+import { Badge, Progress, GreenBtn, CurrencyAmounts } from '../redesign/RedesignShell';
+import { amountText, rewardParts } from '@/lib/rewardText.mjs';
 import { IMAGES } from '../../lib/data/images';
 
 import { MISSION_DIFF as DIFF, trackingNote } from '../redesign/EarnView';
@@ -96,16 +96,7 @@ export default function MissionDetailModal({ mission, progress, done, claimable 
           <div style={{ background: C.track, borderRadius: 12, padding: '11px 14px', marginBottom: 12, border: '1px solid rgba(255,255,255,.05)' }}>
             <div style={{ fontSize: 11, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 8 }}>Rewards</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 18, flexWrap: 'wrap' }}>
-              {mission.reward.kwacha ? (
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 16, fontWeight: 800, color: C.gold }}>
-                  <RewardIcon kind="coins" size={19} />{amountText(mission.reward.kwacha, 'coins')}
-                </span>
-              ) : null}
-              {mission.reward.gems ? (
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 16, fontWeight: 800, color: C.teal }}>
-                  <RewardIcon kind="gem" size={17} />{amountText(mission.reward.gems, 'gems')}
-                </span>
-              ) : null}
+              <CurrencyAmounts r={mission.reward} size={18} fontSize={16} gap={18} />
               {mission.xp ? (
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 16, fontWeight: 800, color: '#b9a5e8' }}>
                   ⚡ {amountText(mission.xp, 'xp')}
@@ -136,7 +127,7 @@ export default function MissionDetailModal({ mission, progress, done, claimable 
 
           {/* Claim (daily casino missions) */}
           {!done && claimable && onClaim && (
-            <GreenBtn full onClick={(e) => onClaim(e.currentTarget)}>Claim {amountText(mission.reward.kwacha, 'coins')}</GreenBtn>
+            <GreenBtn full onClick={(e) => onClaim(e.currentTarget)}>Claim {rewardParts(mission.reward).join(' + ')}</GreenBtn>
           )}
           {!done && !claimable && mission.type === 'casinoRounds' && !note && (
             <div style={{ fontSize: 12.5, color: C.muted, textAlign: 'center', margin: '2px 0 4px' }}>

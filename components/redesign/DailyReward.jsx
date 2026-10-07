@@ -6,7 +6,7 @@ import { DAILY_REWARDS } from '@/lib/data/platform';
 import { RewardIcon } from './RedesignShell';
 import { rewardParts, amountText } from '@/lib/rewardText.mjs';
 
-const DIAMOND = '#7db8ff';
+const GEM_TEXT = { emeralds: '#2fbf83', rubies: '#ff6b81', diamonds: '#7db8ff' };
 const IC = '/ui/reward'; // generated 3D reward icons
 
 const rewardText = (r) => rewardParts(r).join(' + ');
@@ -181,8 +181,7 @@ export default function DailyReward({ dailyDay = 1, dailyClaimed = false, onClai
                 <div aria-label={`Day ${day}: ${rewardText(r)}`} style={{ textAlign: 'center', lineHeight: 1.05 }}>
                   <div className="rs-dr-amt" style={{ fontSize: grand ? 19 : 15, fontWeight: 900, color: textCol }}>{r.kwacha}</div>
                   <div className="rs-dr-unit" style={{ fontSize: 9.5, fontWeight: 700, color: textCol, opacity: 0.8 }}>{r.kwacha === 1 ? 'coin' : 'coins'}</div>
-                  {r.gems ? <div className="rs-dr-extra" style={{ fontSize: 9, fontWeight: 800, marginTop: 3, color: grand ? '#3a2a08' : isToday ? '#1d7a6f' : C.teal, whiteSpace: 'nowrap' }}>+{amountText(r.gems, 'gems')}</div> : null}
-                  {r.diamonds ? <div className="rs-dr-extra" style={{ fontSize: 9, fontWeight: 800, marginTop: 1, color: grand ? '#1c3a5c' : DIAMOND, whiteSpace: 'nowrap' }}>+{amountText(r.diamonds, 'diamonds')}</div> : null}
+                  {['emeralds', 'rubies', 'diamonds'].map((g, gi) => r[g] ? <div key={g} className="rs-dr-extra" style={{ fontSize: 9, fontWeight: 800, marginTop: gi ? 1 : 3, color: grand ? '#3a2a08' : GEM_TEXT[g], whiteSpace: 'nowrap' }}>+{amountText(r[g], g)}</div> : null)}
                 </div>
               </div>
             );

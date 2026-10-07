@@ -19,6 +19,9 @@ import ProfileModal from './redesign/ProfileModal';
 // SSO session (bwanabet token -> Supabase profile)
 import { useSession } from './session/SessionProvider';
 import { useRemoteConfig } from '@/lib/config/useRemoteConfig';
+import { GEMS, CURRENCY_VERSION, migrateCurrencyState, cleanReward, canAfford, formatKwacha } from '@/lib/economy/currency.mjs';
+import { paidFromPurchase, refundTotals } from '@/lib/store/catalog.mjs';
+
 import { DEFAULT_DAILY_PLAYS } from '@/lib/config/defaults';
 import { playsFromConfig } from '@/lib/config/plays.mjs';
 import { applyMissionOverrides } from '@/lib/config/missions.mjs';
@@ -79,6 +82,10 @@ const playsRefreshKey = () => {
   return d.toDateString();
 };
 
+// Prize-gem reward animation: fly-to-header icon type + float colour per gem.
+const GEM_FLY = { emeralds: 'emerald', rubies: 'ruby', diamonds: 'diamond' };
+const GEM_FLOAT_COLOR = { emeralds: '#3ee6a0', rubies: '#ff6b81', diamonds: '#a9e2ff' };
+
 export default function GamificationPlatform() {
   const prefersReducedMotion = useReducedMotion();
   const cfg = useRemoteConfig();
@@ -103,9 +110,9 @@ export default function GamificationPlatform() {
     }, 230);
   }, []);
   const [notif, setNotif] = useState(null);
+  const [storeBusy, setStoreBusy] = useState(null); // store item id while its purchase is in flight
   const [notifLeaving, setNotifLeaving] = useState(false);
   const [showAvatarSelector, setShowAvatarSelector] = useState(false);
-  const [showBuyModal, setShowBuyModal] = useState(null); // 'coins' | 'gems' | 'diamonds' | null
   const [showConfetti, setShowConfetti] = useState(false);
   const [coinBounce, setCoinBounce] = useState(false);
 
@@ -217,8 +224,11 @@ export default function GamificationPlatform() {
 
   // Currency fly-to-header animation
   const spawnFlyingCoin = useCallback((fromX, fromY, type = 'coin') => {
-    const emojis = { coin: '🪙', gem: '💚', diamond: '💎' };
-    const targets = { coin: '.currency-coin-target', gem: '.currency-gem-target', diamond: '.currency-diamond-target' };
+    // Coins fly as the coin emoji; prize gems fly as their SVG icon into their
+    // own header slot (.currency-emerald-target etc. in the wallet pill).
+    const emojis = { coin: '🪙' };
+    const icons = { emerald: '/ui/gems/emerald.svg', ruby: '/ui/gems/ruby.svg', diamond: '/ui/gems/diamond.svg' };
+    const targets = { coin: '.currency-coin-target', emerald: '.currency-emerald-target', ruby: '.currency-ruby-target', diamond: '.currency-diamond-target' };
     const targetEl = document.querySelector(targets[type]);
     const toX = targetEl ? targetEl.getBoundingClientRect().left + 12 : window.innerWidth / 2;
     const toY = targetEl ? targetEl.getBoundingClientRect().top + 12 : 30;
@@ -229,7 +239,7 @@ export default function GamificationPlatform() {
       const startX = fromX + (Math.random() - 0.5) * 40;
       const startY = fromY + (Math.random() - 0.5) * 40;
       setTimeout(() => {
-        setFlyingCoins(prev => [...prev, { id, emoji: emojis[type], fromX: startX, fromY: startY, toX, toY }]);
+        setFlyingCoins(prev => [...prev, { id, emoji: emojis[type], icon: icons[type], fromX: startX, fromY: startY, toX, toY }]);
         setTimeout(() => {
           setFlyingCoins(prev => prev.filter(c => c.id !== id));
           setCoinBounce(true);
@@ -239,13 +249,25 @@ export default function GamificationPlatform() {
     }
   }, []);
 
+  // Prize-gem floats ("+1 emerald", "+2 rubies", "+1 diamond"), stacked upward
+  // from `y`, one row per gem the reward carries.
+  const spawnGemFloats = useCallback((rewards, x, y) => {
+    let row = 0;
+    for (const g of GEMS) {
+      if (!rewards[g]) continue;
+      spawnFloatingNumber(`+${amountText(rewards[g], g)}`, x, y - row * 26, GEM_FLOAT_COLOR[g]);
+      row += 1;
+    }
+  }, [spawnFloatingNumber]);
+
   // Master reward trigger — composes effects based on tier under a 2-layer motion budget.
   // Budget excludes the persistent WebGL background shader and hover transitions.
   //   small  -> 1 layer:  floating number(s)
   //   medium -> 2 layers: floating number(s) + brief gold screen flash
   //   big    -> 2 layers: fly-to-header trail + confetti burst (the trail IS the drama)
   // prefers-reduced-motion collapses every tier to a static floating number only.
-  // Labelled floats ("+50 coins", "+5 gems") stack vertically so they never overlap.
+  // Labelled floats ("+50 coins", "+1 emerald") stack vertically so they never overlap.
+  // rewards = { coins, emeralds, rubies, diamonds, xp }.
   const triggerReward = useCallback((tier, sourceEl, rewards = {}) => {
     const rect = sourceEl?.getBoundingClientRect?.() || { left: window.innerWidth / 2, top: window.innerHeight / 2, width: 0, height: 0 };
     const cx = rect.left + rect.width / 2;
@@ -255,25 +277,23 @@ export default function GamificationPlatform() {
     // No confetti, no shake, no flash, no shimmer, no fly-to-header trail.
     if (prefersReducedMotion) {
       if (rewards.coins) spawnFloatingNumber(`+${amountText(rewards.coins, 'coins')}`, cx, cy - 20, '#EAB308');
-      if (rewards.gems) spawnFloatingNumber(`+${amountText(rewards.gems, 'gems')}`, cx, cy - 46, '#10B981');
-      if (rewards.diamonds) spawnFloatingNumber(`+${amountText(rewards.diamonds, 'diamonds')}`, cx, cy - 72, '#3B82F6');
-      if (rewards.xp) spawnFloatingNumber(`+${rewards.xp} XP`, cx, cy - 98, '#c026d3');
+      spawnGemFloats(rewards, cx, cy - 46);
+      if (rewards.xp) spawnFloatingNumber(`+${rewards.xp} XP`, cx, cy - 124, '#c026d3');
       return;
     }
 
     if (tier === 'small') {
       // 1 layer: float number(s) only. No shake, no flash, no particles.
       if (rewards.coins) spawnFloatingNumber(`+${amountText(rewards.coins, 'coins')}`, cx, cy - 20, '#EAB308');
-      if (rewards.gems) spawnFloatingNumber(`+${amountText(rewards.gems, 'gems')}`, cx, cy - 46, '#10B981');
-      if (rewards.xp) spawnFloatingNumber(`+${rewards.xp} XP`, cx, cy - 98, '#c026d3');
+      spawnGemFloats(rewards, cx, cy - 46);
+      if (rewards.xp) spawnFloatingNumber(`+${rewards.xp} XP`, cx, cy - 124, '#c026d3');
     }
     else if (tier === 'medium') {
       // 2 layers: float number(s) + brief amber screen flash (~180ms via triggerFlash).
       triggerFlash('gold');
       if (rewards.coins) spawnFloatingNumber(`+${amountText(rewards.coins, 'coins')}`, cx, cy - 30, '#EAB308');
-      if (rewards.gems) spawnFloatingNumber(`+${amountText(rewards.gems, 'gems')}`, cx, cy - 56, '#10B981');
-      if (rewards.diamonds) spawnFloatingNumber(`+${amountText(rewards.diamonds, 'diamonds')}`, cx, cy - 82, '#3B82F6');
-      if (rewards.xp) spawnFloatingNumber(`+${rewards.xp} XP`, cx, cy - 108, '#c026d3');
+      spawnGemFloats(rewards, cx, cy - 56);
+      if (rewards.xp) spawnFloatingNumber(`+${rewards.xp} XP`, cx, cy - 134, '#c026d3');
     }
     else if (tier === 'big') {
       // 2 layers: fly-to-header currency trail + confetti burst. No shake, no flash, no shimmer.
@@ -281,15 +301,11 @@ export default function GamificationPlatform() {
         spawnFlyingCoin(cx, cy, 'coin');
         spawnFloatingNumber(`+${amountText(rewards.coins, 'coins')}`, cx, cy - 30, '#EAB308');
       }
-      if (rewards.gems) {
-        setTimeout(() => spawnFlyingCoin(cx, cy, 'gem'), 250);
-        spawnFloatingNumber(`+${amountText(rewards.gems, 'gems')}`, cx, cy - 56, '#10B981');
-      }
-      if (rewards.diamonds) {
-        setTimeout(() => spawnFlyingCoin(cx, cy, 'diamond'), 450);
-        spawnFloatingNumber(`+${amountText(rewards.diamonds, 'diamonds')}`, cx, cy - 82, '#3B82F6');
-      }
-      if (rewards.xp) spawnFloatingNumber(`+${rewards.xp} XP`, cx, cy - 108, '#c026d3');
+      GEMS.forEach((g, gi) => {
+        if (rewards[g]) setTimeout(() => spawnFlyingCoin(cx, cy, GEM_FLY[g]), 250 + gi * 200);
+      });
+      spawnGemFloats(rewards, cx, cy - 56);
+      if (rewards.xp) spawnFloatingNumber(`+${rewards.xp} XP`, cx, cy - 134, '#c026d3');
       // Confetti burst (second layer) — single downpour, lighter than before.
       for (let i = 0; i < 20; i++) {
         setTimeout(() => {
@@ -300,7 +316,7 @@ export default function GamificationPlatform() {
         }, i * 45);
       }
     }
-  }, [prefersReducedMotion, spawnParticles, spawnFlyingCoin, spawnFloatingNumber, triggerFlash]);
+  }, [prefersReducedMotion, spawnParticles, spawnFlyingCoin, spawnFloatingNumber, spawnGemFloats, triggerFlash]);
 
   // Avatar options
   const AVATARS = [
@@ -865,9 +881,15 @@ export default function GamificationPlatform() {
 
   const [user, setUser] = useState({
     avatar: '😎',
-    kwacha: 0,
+    kwacha: 0, // coins (legacy key name)
+    // Prize gems (2026-10-07). `gems` is the retired currency, held at 0; the
+    // `diamonds` key is reused and only trusted under currencyVersion 2 — see
+    // migrateCurrencyState in lib/economy/currency.mjs.
     gems: 0,
+    emeralds: 0,
+    rubies: 0,
     diamonds: 0,
+    currencyVersion: CURRENCY_VERSION,
     xp: 0,
     deposits: 0,
     bets: 0,
@@ -933,7 +955,8 @@ export default function GamificationPlatform() {
     if (session.status === 'ready' && session.profile) {
       const saved = session.profile.state;
       if (saved && typeof saved === 'object' && Object.keys(saved).length) {
-        setUser(u => ({ ...u, ...saved }));
+        // Saved blobs from before the gem economy reset gems/diamonds to 0.
+        setUser(u => ({ ...u, ...migrateCurrencyState(saved) }));
         lastLevelRef.current = getLevel(saved.xp || 0).level; // don't award levels already earned
       }
       hydratedRef.current = true;
@@ -944,7 +967,7 @@ export default function GamificationPlatform() {
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
       session.saveState({
-        kwacha: user.kwacha, gems: user.gems, diamonds: user.diamonds,
+        kwacha: user.kwacha, emeralds: user.emeralds, rubies: user.rubies, diamonds: user.diamonds,
         xp: user.xp, deposits: user.deposits, streak: user.streak,
         state: user,
       });
@@ -969,23 +992,20 @@ export default function GamificationPlatform() {
         // invokes updaters in dev; the toast must fire once).
         let applied = null;
         setUser(u => {
-          const done = new Set(u.refundedPurchaseIds || []);
-          const toRefund = d.purchases.filter(p => p.status === 'rejected' && !done.has(p.id));
-          if (!toRefund.length) return u;
-          const coins = toRefund.reduce((s, p) => s + (p.price_kwacha || 0), 0);
-          const gems = toRefund.reduce((s, p) => s + (p.price_gems || 0), 0);
-          const diamonds = toRefund.reduce((s, p) => s + (p.price_diamonds || 0), 0);
-          applied = { count: toRefund.length, coins };
+          const { ids, total } = refundTotals(d.purchases, u.refundedPurchaseIds);
+          if (!ids.length) return u;
+          applied = { count: ids.length, total };
           return {
             ...u,
-            kwacha: u.kwacha + coins,
-            gems: u.gems + gems,
-            diamonds: u.diamonds + diamonds,
-            refundedPurchaseIds: [...(u.refundedPurchaseIds || []), ...toRefund.map(p => p.id)],
+            kwacha: u.kwacha + total.kwacha,
+            emeralds: (u.emeralds || 0) + total.emeralds,
+            rubies: (u.rubies || 0) + total.rubies,
+            diamonds: (u.diamonds || 0) + total.diamonds,
+            refundedPurchaseIds: [...(u.refundedPurchaseIds || []), ...ids],
           };
         });
         setTimeout(() => {
-          if (applied) showNotif(`↩️ ${applied.count > 1 ? applied.count + ' purchases' : 'A purchase'} was refunded: +${applied.coins} coins`);
+          if (applied) showNotif(`↩️ ${applied.count > 1 ? applied.count + ' purchases were' : 'A purchase was'} refunded: +${rewardParts(applied.total).join(' + ')}`);
         }, 0);
       })
       .catch(() => {});
@@ -1071,8 +1091,16 @@ export default function GamificationPlatform() {
   }, []);
   
   const addCoins = (n) => setUser(u => ({ ...u, kwacha: u.kwacha + n }));
-  const addGems = (n) => setUser(u => ({ ...u, gems: u.gems + n }));
-  const addDiamonds = (n) => setUser(u => ({ ...u, diamonds: u.diamonds + n }));
+  // Add (sign 1) or deduct (sign -1) a { kwacha, emeralds, rubies, diamonds } row.
+  const addCurrencies = (r, sign = 1) => {
+    const c = cleanReward(r);
+    if (!Object.keys(c).length) return;
+    setUser(u => {
+      const next = { ...u };
+      for (const k of Object.keys(c)) next[k] = (u[k] || 0) + sign * c[k];
+      return next;
+    });
+  };
   const addXP = (n) => setUser(u => ({ ...u, xp: u.xp + n }));
   const useGamePlay = (game) => setUser(u => ({ 
     ...u, 
@@ -1235,20 +1263,18 @@ export default function GamificationPlatform() {
     const curLevel = getLevel(user.xp).level;
     if (lastLevelRef.current === null) { lastLevelRef.current = curLevel; return; }
     if (curLevel > lastLevelRef.current) {
-      const total = { kwacha: 0, gems: 0, diamonds: 0 };
+      const total = { kwacha: 0, emeralds: 0, rubies: 0, diamonds: 0 };
       for (let L = lastLevelRef.current + 1; L <= curLevel; L++) {
-        const r = cfg.levelRewards[L];
-        if (r) { total.kwacha += r.kwacha || 0; total.gems += r.gems || 0; total.diamonds += r.diamonds || 0; }
+        const r = cleanReward(cfg.levelRewards[L]);
+        for (const k of Object.keys(r)) total[k] += r[k];
       }
       lastLevelRef.current = curLevel;
-      if (total.kwacha) addCoins(total.kwacha);
-      if (total.gems) addGems(total.gems);
-      if (total.diamonds) addDiamonds(total.diamonds);
+      addCurrencies(total);
       const lvl = getLevel(user.xp);
       setLevelUp({ level: lvl.level, name: lvl.name, icon: lvl.icon, reward: total });
       showNotif(`🎉 Level up — ${lvl.name}!`);
       track('level_up', { meta: { level: lvl.level } });
-      triggerReward('big', null, { coins: total.kwacha || undefined, gems: total.gems || undefined, diamonds: total.diamonds || undefined });
+      triggerReward('big', null, { coins: total.kwacha || undefined, emeralds: total.emeralds || undefined, rubies: total.rubies || undefined, diamonds: total.diamonds || undefined });
     }
   }, [user.xp]);
 
@@ -1420,7 +1446,7 @@ export default function GamificationPlatform() {
         <div key={n.id} className="reward-float-number" style={{ left: n.x, top: n.y, color: n.color }}>{n.text}</div>
       ))}
       {flyingCoins.map(c => (
-        <div key={c.id} className="reward-flying-coin" style={{ left: c.fromX, top: c.fromY, '--fly-dx': `${c.toX - c.fromX}px`, '--fly-dy': `${c.toY - c.fromY}px`, '--fly-dx-half': `${(c.toX - c.fromX) * 0.3}px`, '--fly-dy-half': `${(c.toY - c.fromY) * 0.5 - 60}px` }}>{c.emoji}</div>
+        <div key={c.id} className="reward-flying-coin" style={{ left: c.fromX, top: c.fromY, '--fly-dx': `${c.toX - c.fromX}px`, '--fly-dy': `${c.toY - c.fromY}px`, '--fly-dx-half': `${(c.toX - c.fromX) * 0.3}px`, '--fly-dy-half': `${(c.toY - c.fromY) * 0.5 - 60}px` }}>{c.icon ? <img src={c.icon} alt="" width={22} height={22} style={{ display: 'block' }} /> : c.emoji}</div>
       ))}
       <LevelUpModal levelUp={levelUp} onClose={() => setLevelUp(null)} />
       <ProfileModal
@@ -1436,6 +1462,8 @@ export default function GamificationPlatform() {
   const openMissionsCount = missionStates.filter(s => !s.claimed).length;
   const v2Stats = {
     points: user.kwacha,
+    // header wallet pill + wallet sheet + Store affordability
+    wallet: { kwacha: user.kwacha, emeralds: user.emeralds || 0, rubies: user.rubies || 0, diamonds: user.diamonds || 0, economy: cfg.economy },
     missionsCount: openMissionsCount,
     badges: user.missionsComplete.length,
     xp: user.xp,
@@ -1483,15 +1511,16 @@ export default function GamificationPlatform() {
       }
       casinoClaimedRef.current.add(guardKey);
       const m = s.mission;
-      const r = m.reward || {};
+      const r = cleanReward(m.reward);
       setUser(u => {
         const ids = u.casinoMissionClaims?.day === src.day && Array.isArray(u.casinoMissionClaims.ids) ? u.casinoMissionClaims.ids : [];
         if (ids.includes(m.id)) return u;
         return {
           ...u,
           kwacha: u.kwacha + (r.kwacha || 0),
-          gems: u.gems + (r.gems || 0),
-          diamonds: u.diamonds + (r.diamonds || 0),
+          emeralds: (u.emeralds || 0) + (r.emeralds || 0),
+          rubies: (u.rubies || 0) + (r.rubies || 0),
+          diamonds: (u.diamonds || 0) + (r.diamonds || 0),
           xp: u.xp + (m.xp || 0),
           casinoMissionClaims: { day: src.day, ids: [...ids, m.id] },
         };
@@ -1499,7 +1528,7 @@ export default function GamificationPlatform() {
       track('mission_completed', { amount: r.kwacha || 0, meta: { missionId: m.id, day: src.day } });
       const won = [...rewardParts(r), m.xp ? amountText(m.xp, 'xp') : null].filter(Boolean);
       showNotif(`✅ ${m.name} claimed!${won.length ? ` +${won.join(' + ')}` : ''}`);
-      triggerReward('medium', el || null, { coins: r.kwacha || 0, gems: r.gems, diamonds: r.diamonds, xp: m.xp || undefined });
+      triggerReward('medium', el || null, { coins: r.kwacha || 0, emeralds: r.emeralds, rubies: r.rubies, diamonds: r.diamonds, xp: m.xp || undefined });
     } finally {
       casinoBusyRef.current = false;
     }
@@ -1510,12 +1539,10 @@ export default function GamificationPlatform() {
     // state isn't saved, and SSO hydration would overwrite the claim anyway).
     if (!canClaimDaily) { showNotif('Log in on bwanabet.com to claim', 'error'); return; }
     if (user.dailyClaimed || dailyBusyRef.current) return;
-    const r = cfg.dailyRewards[user.dailyDay - 1] || cfg.dailyRewards[0];
-    if (!r) return;
+    const r = cleanReward(cfg.dailyRewards[user.dailyDay - 1] || cfg.dailyRewards[0]);
+    if (!Object.keys(r).length) return;
     dailyBusyRef.current = true;
-    addCoins(r.kwacha);
-    if (r.gems) addGems(r.gems);
-    if (r.diamonds) addDiamonds(r.diamonds);
+    addCurrencies(r);
     addXP(20);
     const today = new Date().toDateString();
     const wasYesterday = user.lastDailyClaim && Math.round((new Date(today) - new Date(user.lastDailyClaim)) / 86400000) === 1;
@@ -1523,9 +1550,9 @@ export default function GamificationPlatform() {
     // 7-day rollover assumes the rewards table has 7 entries (admin dashboard validates at write time)
     setUser(u => ({ ...u, dailyClaimed: true, lastDailyClaim: today, dailyDay: u.dailyDay >= 7 ? 1 : u.dailyDay + 1, streak: newStreak, dailyTasksDone: [...new Set([...u.dailyTasksDone, 'claim'])] }));
     trackMission('dailyClaimed');
-    track('daily_claimed', { amount: r.kwacha });
-    showNotif(`🎉 +${r.kwacha} Coins claimed!`);
-    triggerReward('medium', el || null, { coins: r.kwacha, gems: r.gems, diamonds: r.diamonds, xp: 20 });
+    track('daily_claimed', { amount: r.kwacha || 0 });
+    showNotif(`🎉 +${rewardParts(r).join(' + ')} claimed!`);
+    triggerReward('medium', el || null, { coins: r.kwacha, emeralds: r.emeralds, rubies: r.rubies, diamonds: r.diamonds, xp: 20 });
     // Streak milestone BONUSES removed 2026-10-07 (a week pays exactly
     // 6 x 10 + 100 = 160 coins); the streak counter above still drives day
     // 1->7. Old payout parked in parked/components/GamificationPlatform.removed-wiring.jsx
@@ -1546,13 +1573,15 @@ export default function GamificationPlatform() {
   if (tab === 'store') {
     const buyStoreItem = async (item, el) => {
       if (session.status !== 'ready') { showNotif('Connect via bwanabet to buy store items', 'error'); return; }
-      const canBuy = user.kwacha >= item.price.kwacha && (!item.price.gems || user.gems >= item.price.gems) && (!item.price.diamonds || user.diamonds >= item.price.diamonds);
-      if (!canBuy) { showNotif('Not enough balance!', 'error'); return; }
+      if (!canAfford(item.price, user)) { showNotif('Not enough balance!', 'error'); return; }
+      if (storeBusy) return;
+      setStoreBusy(item.id);
       try {
         const d = await session.buyItem(item.id);
         if (!d || !d.ok) {
-          const msg = d && d.error === 'weekly_limit' ? 'Money prizes are limited to one per week — come back soon!'
+          const msg = d && d.error === 'weekly_limit' ? 'Kwacha redemptions are limited to one per week — come back soon!'
             : d && d.error === 'out_of_stock' ? 'Sold out — someone beat you to it!'
+            : d && d.error === 'item_unavailable' ? 'That item is no longer available.'
             : d && d.error === 'slow_down' ? 'Too many attempts — wait a minute.'
             : d && d.error === 'invalid_token' ? 'Session expired — reload the page.'
             // Server-held balance was short: recent winnings may not have
@@ -1563,24 +1592,24 @@ export default function GamificationPlatform() {
           return;
         }
         // Server accepted: deduct the SERVER-CONFIRMED price (the client's
-        // config snapshot may be stale after an admin repriced the item) —
-        // keeps the deduction equal to any later refund.
-        const paidCoins = d.purchase?.price_kwacha ?? item.price.kwacha;
-        const paidGems = d.purchase?.price_gems ?? (item.price.gems || 0);
-        const paidDiamonds = d.purchase?.price_diamonds ?? (item.price.diamonds || 0);
-        addCoins(-paidCoins);
-        if (paidGems) addGems(-paidGems);
-        if (paidDiamonds) addDiamonds(-paidDiamonds);
-        trackMission('storePurchase', { amount: paidCoins });
-        track('purchase', { amount: paidCoins, meta: { itemId: item.id } });
-        showNotif(`🛒 ${item.name} purchased — our team will credit it shortly!`);
+        // config snapshot may be stale after an admin repriced the item or
+        // changed coinsPerKwacha) — keeps the deduction equal to any refund.
+        const paid = paidFromPurchase(d.purchase, item.price);
+        addCurrencies(paid, -1);
+        track('purchase', { amount: paid.kwacha, meta: { itemId: item.id, ...(item.redeem ? { redeem: item.redeem.currency } : {}) } });
+        const payout = Number(d.purchase?.payout_kwacha ?? item.payoutKwacha);
+        showNotif(item.redeem && payout > 0
+          ? `💵 ${formatKwacha(payout)} on its way — our team will credit your bwanabet account shortly!`
+          : `🛒 ${item.name} purchased — our team will credit it shortly!`);
         triggerReward('medium', el || null, { coins: 0 });
       } catch (e) {
         showNotif('Purchase failed — try again.', 'error');
+      } finally {
+        setStoreBusy(null);
       }
     };
     return (<>
-      <StoreView {...v2Stats} onBuy={buyStoreItem} kwacha={user.kwacha} gems={user.gems} diamonds={user.diamonds} />
+      <StoreView {...v2Stats} onBuy={buyStoreItem} busyId={storeBusy} />
       {gameOverlays}
     </>);
   }

@@ -2,11 +2,11 @@
 
 import React from 'react';
 import { C } from './tokens';
-import RedesignShell, { Badge, Progress, GreenBtn, SectionTitle, Card, Thumb, RewardIcon } from './RedesignShell';
+import RedesignShell, { Badge, Progress, GreenBtn, SectionTitle, Card, Thumb, RewardIcon, CurrencyAmounts } from './RedesignShell';
 import DailyReward from './DailyReward';
 import GamesGrid from './GamesGrid';
 import { IMAGES } from '@/lib/data/images';
-import { amountText } from '@/lib/rewardText.mjs';
+import { amountText, rewardParts } from '@/lib/rewardText.mjs';
 import { CASINO_MISSIONS } from '@/lib/data/missions';
 import { casinoMissionStates } from '@/lib/missions/casino.mjs';
 import { STORE_ITEMS, MINIGAMES } from '@/lib/data/platform';
@@ -32,7 +32,7 @@ function MissionCard({ s, onOpen, i = 0 }) {
           {state === 'done' && <Badge bg={C.green}>Claimed today</Badge>}
           {state === 'ready' && <Badge bg={C.green}>Ready to claim</Badge>}
           {state === 'progress' && <Badge bg={C.teal} color="#06231f">In progress</Badge>}
-          {state === 'new' && <div style={{ fontSize: 11, color: C.sub }}><span style={{ color: C.muted }}>Reward:</span> <b style={{ color: C.text }}>{amountText(m.reward.kwacha, 'coins')}</b></div>}
+          {state === 'new' && <div style={{ fontSize: 11, color: C.sub }}><span style={{ color: C.muted }}>Reward:</span> <b style={{ color: C.text }}>{rewardParts(m.reward).join(' + ')}</b></div>}
           <div style={{ marginTop: 8 }}>
             <Progress value={pct} />
             <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6, fontSize: 10.5, color: C.muted }}>
@@ -51,21 +51,21 @@ function MissionCard({ s, onOpen, i = 0 }) {
  * missions teaser and the featured store item. `focusGames` is a nonce — when
  * it changes the view scrolls to the games (legacy "Go to Games" CTAs).
  */
-export default function Overview({ points = '2,344', missionsCount = 0, badges = 12, xp = 1200, activeTab = 'home', onNavigate, onOpenProfile, onOpenMission, missionStates = null, loggedIn = false, canClaimDaily = loggedIn, dailyDay = 1, dailyClaimed = false, onClaimDaily, userId = null, navBadges = {}, games = null, storeItems = null, missions = null, dailyRewards = null, gamePlays = null, onPlay, focusGames = 0 } = {}) {
+export default function Overview({ wallet = null, points = '2,344', missionsCount = 0, badges = 12, xp = 1200, activeTab = 'home', onNavigate, onOpenProfile, onOpenMission, missionStates = null, loggedIn = false, canClaimDaily = loggedIn, dailyDay = 1, dailyClaimed = false, onClaimDaily, userId = null, navBadges = {}, games = null, storeItems = null, missions = null, dailyRewards = null, gamePlays = null, onPlay, focusGames = 0 } = {}) {
   const go = (t) => onNavigate && onNavigate(t);
   const states = missionStates || casinoMissionStates(missions || CASINO_MISSIONS, { rounds: 0, today: null });
   const latest = pickLatestMissions(states);
   // Store may be empty until the admin dashboard populates it
   const items = storeItems || STORE_ITEMS;
   const gameList = games || MINIGAMES;
-  const featuredItem = items.find(i => i.featured) || items[0] || null;
+  const featuredItem = items.find(i => i.featured) || items.find(i => !i.redeem) || items[0] || null;
   React.useEffect(() => {
     if (!focusGames) return;
     const el = typeof document !== 'undefined' && document.getElementById('home-games');
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, [focusGames]);
   return (
-    <RedesignShell points={points} missionsCount={missionsCount} badges={badges} xp={xp} userId={userId} navBadges={navBadges} activeTab={activeTab} onNavigate={onNavigate} onOpenProfile={onOpenProfile}>
+    <RedesignShell wallet={wallet} points={points} missionsCount={missionsCount} badges={badges} xp={xp} userId={userId} navBadges={navBadges} activeTab={activeTab} onNavigate={onNavigate} onOpenProfile={onOpenProfile}>
       <div style={{ maxWidth: 1240, margin: '0 auto', width: '100%' }}>
         <div style={{ marginBottom: 22 }}>
           <DailyReward dailyDay={dailyDay} dailyClaimed={dailyClaimed} onClaim={onClaimDaily} rewards={dailyRewards} loggedIn={canClaimDaily} />
@@ -92,8 +92,8 @@ export default function Overview({ points = '2,344', missionsCount = 0, badges =
                   <div style={{ fontSize: 15, fontWeight: 800, marginBottom: 4 }}>{featuredItem.name}</div>
                   {featuredItem.desc && <div style={{ fontSize: 12, color: C.sub, marginBottom: 10 }}>{featuredItem.desc}</div>}
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14, marginTop: featuredItem.desc ? 0 : 10 }}>
-                    <GreenBtn onClick={() => go('store')}>Buy Now</GreenBtn>
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 14, fontWeight: 800, color: C.gold }}><RewardIcon kind="coins" size={17} /> {featuredItem.price.kwacha}</span>
+                    <GreenBtn onClick={() => go('store')}>{featuredItem.redeem ? 'Redeem' : 'Buy Now'}</GreenBtn>
+                    <CurrencyAmounts r={featuredItem.price} size={17} fontSize={14} gap={8} />
                   </div>
                 </div>
               </Card>

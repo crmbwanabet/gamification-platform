@@ -3,7 +3,8 @@
 import React from 'react';
 import { Gamepad2, Target, Trophy, Flame, Users, X } from 'lucide-react';
 import { C } from './tokens';
-import { Progress, RewardIcon } from './RedesignShell';
+import { Progress, RewardIcon, CURRENCY_COLOR } from './RedesignShell';
+import { formatNumber } from '@/lib/economy/currency.mjs';
 
 /**
  * Player stats popup in the v2 design. Rendered as a fixed overlay (in the
@@ -14,9 +15,10 @@ export default function ProfileModal({ open, onClose, name = 'Player', level, ne
   if (!open) return null;
   const u = user || {};
   const money = [
-    { icon: <RewardIcon kind="coins" size={26} />, label: 'Kwacha', value: (u.kwacha || 0).toLocaleString(), color: C.gold },
-    { icon: <RewardIcon kind="gem" size={24} />, label: 'Gems', value: (u.gems || 0).toLocaleString(), color: C.teal },
-    { icon: <RewardIcon kind="diamond" size={24} />, label: 'Diamonds', value: (u.diamonds || 0).toLocaleString(), color: '#7db8ff' },
+    { icon: <RewardIcon kind="coins" size={26} />, label: 'Coins', value: formatNumber(u.kwacha || 0), color: C.gold },
+    { icon: <RewardIcon kind="emeralds" size={24} />, label: 'Emeralds', value: formatNumber(u.emeralds || 0), color: CURRENCY_COLOR.emeralds },
+    { icon: <RewardIcon kind="rubies" size={24} />, label: 'Rubies', value: formatNumber(u.rubies || 0), color: CURRENCY_COLOR.rubies },
+    { icon: <RewardIcon kind="diamonds" size={24} />, label: 'Diamonds', value: formatNumber(u.diamonds || 0), color: CURRENCY_COLOR.diamonds },
   ];
   const stats = [
     { icon: <Gamepad2 size={16} />, label: 'Games played', value: u.gamesPlayed || 0 },
@@ -53,7 +55,7 @@ export default function ProfileModal({ open, onClose, name = 'Player', level, ne
           <Progress value={xpPct} color="linear-gradient(90deg,#4fa98b,#8b5cf6)" height={9} />
         </div>
 
-        <div style={{ padding: '0 22px 16px', display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10 }}>
+        <div style={{ padding: '0 22px 16px', display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 8 }}>
           {money.map((m) => (
             <div key={m.label} style={{ background: C.panel2, borderRadius: 12, padding: '12px 8px', textAlign: 'center' }}>
               <div style={{ color: m.color, display: 'flex', justifyContent: 'center', marginBottom: 5 }}>{m.icon}</div>

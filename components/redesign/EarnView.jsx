@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { C } from './tokens';
-import RedesignShell, { GreenBtn, SectionTitle, Card, Thumb, Badge, Progress, RewardIcon } from './RedesignShell';
+import RedesignShell, { GreenBtn, SectionTitle, Card, Thumb, Badge, Progress, RewardIcon, CurrencyAmounts } from './RedesignShell';
 import { IMAGES } from '@/lib/data/images';
 import { amountText } from '@/lib/rewardText.mjs';
 import { CASINO_MISSIONS } from '@/lib/data/missions';
@@ -26,13 +26,7 @@ export function trackingNote(status) {
 }
 
 function RewardChips({ r }) {
-  return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 12, fontSize: 13, fontWeight: 800 }}>
-      {r.kwacha ? <span style={{ color: C.gold, display: 'inline-flex', alignItems: 'center', gap: 4 }}><RewardIcon kind="coins" size={15} />{amountText(r.kwacha, 'coins')}</span> : null}
-      {r.gems ? <span style={{ color: C.teal, display: 'inline-flex', alignItems: 'center', gap: 4 }}><RewardIcon kind="gem" size={14} />{amountText(r.gems, 'gems')}</span> : null}
-      {r.diamonds ? <span style={{ color: '#7db8ff', display: 'inline-flex', alignItems: 'center', gap: 4 }}><RewardIcon kind="diamond" size={14} />{amountText(r.diamonds, 'diamonds')}</span> : null}
-    </span>
-  );
+  return <CurrencyAmounts r={r} />;
 }
 
 function MilestoneRow({ icon, title, sub, reward, reached, current }) {
@@ -117,9 +111,7 @@ function MissionRow({ s, i = 0, loggedIn, onOpen, onClaim }) {
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 13.5, fontWeight: 800, color: C.text, marginBottom: 3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.name}</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, fontWeight: 800, color: C.gold }}>
-                <RewardIcon kind="coins" size={14} />{amountText(m.reward.kwacha, 'coins')}
-              </span>
+              <CurrencyAmounts r={m.reward} size={14} fontSize={12} gap={8} />
               <Badge bg={d.c} color="#130f1f">{d.label}</Badge>
             </div>
             <Progress value={pct} color={s.claimed ? C.green : s.reached ? C.green : C.teal} height={6} />
@@ -148,7 +140,7 @@ function MissionRow({ s, i = 0, loggedIn, onOpen, onClaim }) {
  * bwanabet.com today (CRM feed, Lusaka day) — then the level milestones.
  * The daily reward lives on Home.
  */
-export default function EarnView({ points = '0', missionsCount = 0, badges = 0, xp = 0, onNavigate, onOpenProfile, onOpenMission, onClaimMission, userId = null, navBadges = {}, missions = null, missionStates = null, casinoStatus = 'anon', loggedIn = false, levelRewards = null, focusRewards = 0 }) {
+export default function EarnView({ wallet = null, points = '0', missionsCount = 0, badges = 0, xp = 0, onNavigate, onOpenProfile, onOpenMission, onClaimMission, userId = null, navBadges = {}, missions = null, missionStates = null, casinoStatus = 'anon', loggedIn = false, levelRewards = null, focusRewards = 0 }) {
   const states = missionStates || casinoMissionStates(missions || CASINO_MISSIONS, { rounds: 0, today: null });
   const rounds = states[0]?.rounds || 0;
   React.useEffect(() => {
@@ -157,7 +149,7 @@ export default function EarnView({ points = '0', missionsCount = 0, badges = 0, 
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, [focusRewards]);
   return (
-    <RedesignShell points={points} missionsCount={missionsCount} badges={badges} xp={xp} userId={userId} navBadges={navBadges} activeTab="missions" onNavigate={onNavigate} onOpenProfile={onOpenProfile}>
+    <RedesignShell wallet={wallet} points={points} missionsCount={missionsCount} badges={badges} xp={xp} userId={userId} navBadges={navBadges} activeTab="missions" onNavigate={onNavigate} onOpenProfile={onOpenProfile}>
       {/* Quests parked — see parked/components/redesign/EarnView.QuestCard.parked.jsx */}
       <section style={{ maxWidth: 720 }}>
         <SectionTitle right={<span style={{ fontSize: 11.5, fontWeight: 700, color: C.muted }}>Resets at midnight</span>}>Daily Missions</SectionTitle>

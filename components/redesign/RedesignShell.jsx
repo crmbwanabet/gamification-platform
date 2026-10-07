@@ -4,6 +4,8 @@ import React from 'react';
 import { C } from './tokens';
 import NavIcon from './NavIcons';
 import { getLevel, getNextLevel, getXPProgress, MINIGAMES, STORE_ITEMS } from '@/lib/data/platform';
+import { GEMS, GEM_LABEL, gemCoins, gemKwacha, coinsToKwacha, economyRates, formatKwacha, formatNumber } from '@/lib/economy/currency.mjs';
+import { amountText } from '@/lib/rewardText.mjs';
 
 /* ---------------- shared UI primitives (used by all redesign views) ------- */
 
@@ -82,9 +84,115 @@ export function Thumb({ src, alt, from = '#3a4450', to = '#232a32', h = 92, radi
   );
 }
 
-/** Small 3D currency icon (kind = coins | gem | diamond) from public/ui/reward. */
+// Prize gems (2026-10-07): crisp SVGs in public/ui/gems. `emeralds` and
+// `emerald` both resolve, so reward keys and singular names work alike.
+const GEM_ICON = {
+  emeralds: '/ui/gems/emerald.svg', emerald: '/ui/gems/emerald.svg',
+  rubies: '/ui/gems/ruby.svg', ruby: '/ui/gems/ruby.svg',
+  diamonds: '/ui/gems/diamond.svg', diamond: '/ui/gems/diamond.svg',
+};
+/** Text colour per currency (coins gold, emerald green, ruby red, diamond ice-blue). */
+export const CURRENCY_COLOR = { kwacha: C.gold, coins: C.gold, emeralds: '#3ee6a0', rubies: '#ff6b81', diamonds: '#a9e2ff' };
+const GEM_PLURAL = { emeralds: 'Emeralds', rubies: 'Rubies', diamonds: 'Diamonds' };
+
+/** Currency icon: coins = 3D png from public/ui/reward; emeralds/rubies/diamonds = SVG gems. */
 export function RewardIcon({ kind = 'coins', size = 15, style, className }) {
-  return <img src={`/ui/reward/${kind}.png`} alt="" width={size} height={size} className={`icon-pop${className ? ' ' + className : ''}`} style={{ objectFit: 'contain', verticalAlign: 'middle', flex: 'none', ...style }} />;
+  const src = GEM_ICON[kind] || `/ui/reward/${kind}.png`;
+  return <img src={src} alt="" width={size} height={size} className={`icon-pop${className ? ' ' + className : ''}`} style={{ objectFit: 'contain', verticalAlign: 'middle', flex: 'none', ...style }} />;
+}
+
+/**
+ * A reward row ({ kwacha, emeralds, rubies, diamonds }) as icon + "{N} coins" /
+ * "{N} emeralds" chips. Every reward surface (missions, level-ups, the
+ * mission modal) renders through this, so each currency shows up everywhere.
+ */
+export function CurrencyAmounts({ r, size = 15, fontSize = 13, gap = 12, style }) {
+  if (!r) return null;
+  const rows = [['kwacha', 'coins'], ...GEMS.map(g => [g, g])].filter(([k]) => r[k]);
+  if (!rows.length) return null;
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', flexWrap: 'wrap', gap, fontSize, fontWeight: 800, ...style }}>
+      {rows.map(([k, unit]) => (
+        <span key={k} style={{ color: CURRENCY_COLOR[k], display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+          <RewardIcon kind={unit} size={size} />{amountText(r[k], unit)}
+        </span>
+      ))}
+    </span>
+  );
+}
+
+// Fly-to-header targets for the reward trail (triggerReward 'big').
+const GEM_TARGET = { emeralds: 'currency-emerald-target', rubies: 'currency-ruby-target', diamonds: 'currency-diamond-target' };
+
+/** Header balance: coins + the three gems. Tapping opens the wallet sheet. */
+function WalletButton({ wallet, onOpen }) {
+  const w = wallet || {};
+  const label = `Wallet: ${amountText(w.kwacha || 0, 'coins')}, ${GEMS.map(g => amountText(w[g] || 0, g)).join(', ')}`;
+  return (
+    <button type="button" onClick={onOpen} className="rs-wallet" aria-label={label} title="Your wallet" style={{ all: 'unset', boxSizing: 'border-box', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12, padding: '6px 12px', minHeight: 40, borderRadius: 12, background: 'rgba(0,0,0,.22)', border: '1px solid rgba(255,255,255,.08)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,.05)', flex: 'none' }}>
+      <span className="currency-coin-target" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+        <img src="/ui/nav/points.png" alt="" width={24} height={24} style={{ objectFit: 'contain', flex: 'none' }} />
+        <span style={{ fontSize: 16, fontWeight: 800, color: C.text }}><CountUp value={w.kwacha || 0} format={formatNumber} /></span>
+      </span>
+      <span aria-hidden="true" style={{ width: 1, alignSelf: 'stretch', background: 'rgba(255,255,255,.1)' }} />
+      {GEMS.map(g => (
+        <span key={g} className={GEM_TARGET[g]} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+          <RewardIcon kind={g} size={19} />
+          <span style={{ fontSize: 14, fontWeight: 800, color: C.text }}>{formatNumber(w[g] || 0)}</span>
+        </span>
+      ))}
+    </button>
+  );
+}
+
+/** Wallet sheet: each balance and what it is worth in kwacha ("1 Emerald · worth K5"). */
+export function WalletSheet({ open, onClose, wallet, onNavigate }) {
+  if (!open) return null;
+  const w = wallet || {};
+  const eco = w.economy;
+  const coins = w.kwacha || 0;
+  const { coinsPerKwacha } = economyRates(eco);
+  const rows = [
+    { key: 'coins', icon: <img src="/ui/nav/points.png" alt="" width={34} height={34} style={{ objectFit: 'contain' }} />, title: amountText(coins, 'coins'), sub: `${amountText(coinsPerKwacha, 'coins')} = ${formatKwacha(1)}`, worth: coinsToKwacha(coins, eco), color: C.gold },
+    ...GEMS.map(g => {
+      const n = w[g] || 0;
+      return { key: g, icon: <RewardIcon kind={g} size={34} />, title: `${formatNumber(n)} ${n === 1 ? GEM_LABEL[g] : GEM_PLURAL[g]}`, sub: `1 ${GEM_LABEL[g]} = ${amountText(gemCoins(g, eco), 'coins')} · won as prizes`, worth: gemKwacha(g, eco, n), color: CURRENCY_COLOR[g] };
+    }),
+  ];
+  const total = rows.reduce((s, r) => s + r.worth, 0);
+  return (
+    <div onClick={onClose} role="dialog" aria-modal="true" aria-label="Your wallet" className="rs-wallet-sheet" style={{ position: 'fixed', inset: 0, zIndex: 130, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', background: 'rgba(8,10,16,.66)', backdropFilter: 'blur(5px)', WebkitBackdropFilter: 'blur(5px)', fontFamily: "var(--font-body, 'Onest', system-ui, sans-serif)", animation: 'rs-ws-fade .16s ease-out' }}>
+      <style>{`
+        @keyframes rs-ws-fade { from { opacity: 0 } to { opacity: 1 } }
+        @keyframes rs-ws-up { from { transform: translateY(24px); opacity: 0 } to { transform: none; opacity: 1 } }
+        @media (min-width: 640px) { .rs-wallet-sheet { align-items: center !important; } .rs-wallet-panel { border-radius: 18px !important; } }
+        @media (prefers-reduced-motion: reduce) { .rs-wallet-sheet, .rs-wallet-panel { animation: none !important; } }
+      `}</style>
+      <div onClick={(e) => e.stopPropagation()} className="rs-wallet-panel" style={{ width: '100%', maxWidth: 440, maxHeight: '88vh', overflowY: 'auto', boxSizing: 'border-box', borderRadius: '18px 18px 0 0', background: `linear-gradient(180deg, ${C.bgTop}, ${C.bg})`, border: '1px solid rgba(255,255,255,.09)', boxShadow: '0 -10px 40px rgba(0,0,0,.5)', padding: '10px 16px calc(18px + env(safe-area-inset-bottom))', animation: 'rs-ws-up .22s cubic-bezier(.2,.8,.3,1)' }}>
+        <div aria-hidden="true" style={{ width: 40, height: 4, borderRadius: 4, background: 'rgba(255,255,255,.18)', margin: '0 auto 12px' }} />
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+          <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: C.text, fontFamily: "var(--font-display, 'Bricolage Grotesque', sans-serif)" }}>Your wallet</h2>
+          <button type="button" onClick={onClose} aria-label="Close wallet" style={{ all: 'unset', cursor: 'pointer', fontSize: 13, fontWeight: 700, color: C.sub, padding: '8px 4px' }}>Close</button>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {rows.map(r => (
+            <div key={r.key} data-wallet-row={r.key} style={{ display: 'flex', alignItems: 'center', gap: 12, background: C.panel2, borderRadius: 12, padding: '10px 12px' }}>
+              <span style={{ width: 38, height: 38, flex: 'none', display: 'grid', placeItems: 'center' }}>{r.icon}</span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 15, fontWeight: 800, color: r.color }}>{r.title} <span style={{ color: C.sub, fontWeight: 700 }}>· worth {formatKwacha(r.worth)}</span></div>
+                <div style={{ fontSize: 11, color: C.muted, fontWeight: 600, marginTop: 2 }}>{r.sub}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '12px 2px 4px', fontSize: 13, color: C.sub, fontWeight: 700 }}>
+          <span>Total value</span><span style={{ fontSize: 16, color: C.text, fontWeight: 900 }}>{formatKwacha(total)}</span>
+        </div>
+        <p style={{ margin: '6px 2px 12px', fontSize: 11.5, lineHeight: 1.45, color: C.muted }}>Gems are won as prizes only. Redeem coins and gems for kwacha in the Store, and our team credits it to your bwanabet account.</p>
+        {onNavigate && <GreenBtn full onClick={() => { if (onClose) onClose(); onNavigate('store'); }}>Redeem in the Store</GreenBtn>}
+      </div>
+    </div>
+  );
 }
 
 /* ---------------- shell: top bar + sidebar ------------------------------- */
@@ -110,7 +218,7 @@ function Stat({ img, value, label, cls }) {
   );
 }
 
-function TopBar({ points, missionsCount, badges, lvl, nextLvl, xpPct, onNavigate, onOpenProfile, userId }) {
+function TopBar({ points, missionsCount, badges, lvl, nextLvl, xpPct, onNavigate, onOpenProfile, userId, wallet, onOpenWallet }) {
   return (
     <div className="rs-topbar" style={{ display: 'flex', alignItems: 'center', gap: 26, padding: '14px 22px', background: C.bgTop, borderBottom: `1px solid ${C.line}`, boxShadow: '0 2px 10px rgba(0,0,0,.2)', flexShrink: 0 }}>
       <button onClick={() => (onOpenProfile ? onOpenProfile() : onNavigate && onNavigate('me.profile'))} title="Your profile" className="rs-profile" style={{ all: 'unset', display: 'flex', alignItems: 'center', gap: 12, width: 168, flex: 'none', cursor: 'pointer', borderRadius: 12, padding: 2 }}>
@@ -120,8 +228,8 @@ function TopBar({ points, missionsCount, badges, lvl, nextLvl, xpPct, onNavigate
           <span style={{ fontSize: 10, fontWeight: 700, color: C.text, background: C.panel2, padding: '2px 8px', borderRadius: 999 }}>{lvl.name}</span>
         </div>
       </button>
+      <WalletButton wallet={wallet || { kwacha: typeof points === 'number' ? points : 0 }} onOpen={onOpenWallet} />
       <div className="rs-stats" style={{ display: 'flex', alignItems: 'center', gap: 26 }}>
-        <Stat img="points" value={points} label="Points" cls="currency-coin-target currency-gem-target currency-diamond-target" />
         <Stat img="missions" value={missionsCount} label="Missions" />
         <Stat img="badges" value={badges} label="Badges" />
       </div>
@@ -187,8 +295,9 @@ function BottomNav({ active = 'home', onNavigate, navBadges = {} }) {
 export default function RedesignShell({
   points = '0', missionsCount = 0, badges = 0, xp = 0,
   activeTab = 'home', onNavigate, onOpenProfile, children,
-  userId = null, navBadges = {},
+  userId = null, navBadges = {}, wallet = null,
 }) {
+  const [walletOpen, setWalletOpen] = React.useState(false);
   const lvl = getLevel(xp), nextLvl = getNextLevel(xp), xpPct = getXPProgress(xp);
   // Collapse the tall mobile header once the user scrolls down (hysteresis so it
   // doesn't flicker around the threshold); CSS only applies below 860px.
@@ -231,17 +340,19 @@ export default function RedesignShell({
           .rs-ov-2 { grid-template-columns: 1fr !important; }
           .rs-stats { gap: 12px !important; }
           .rs-stats .rs-statlabel { display: none; }
+          .rs-wallet { order: 4 !important; flex: 1 1 100% !important; justify-content: space-between !important; }
         }
         @media (prefers-reduced-motion: reduce) {
           .rs-topbar, .rs-level { transition: none !important; }
         }
       `}</style>
-      <TopBar points={points} missionsCount={missionsCount} badges={badges} lvl={lvl} nextLvl={nextLvl} xpPct={xpPct} onNavigate={onNavigate} onOpenProfile={onOpenProfile} userId={userId} />
+      <TopBar points={points} missionsCount={missionsCount} badges={badges} lvl={lvl} nextLvl={nextLvl} xpPct={xpPct} onNavigate={onNavigate} onOpenProfile={onOpenProfile} userId={userId} wallet={wallet} onOpenWallet={() => setWalletOpen(true)} />
       <div style={{ flex: 1, minHeight: 0, display: 'flex', alignItems: 'stretch' }}>
         <Sidebar active={activeTab} onNavigate={onNavigate} navBadges={navBadges} />
         <main className="rs-main" onScroll={onMainScroll} style={{ flex: 1, minWidth: 0, overflowY: 'auto', WebkitOverflowScrolling: 'touch', padding: '20px 22px' }}>{children}</main>
       </div>
       <BottomNav active={activeTab} onNavigate={onNavigate} navBadges={navBadges} />
+      <WalletSheet open={walletOpen} onClose={() => setWalletOpen(false)} wallet={wallet} onNavigate={activeTab === 'store' ? null : onNavigate} />
     </div>
   );
 }

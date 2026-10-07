@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Ruby: hexagonal brilliant, red. Prize gem worth 10,000 coins (K10). -->
+  <defs>
+    <linearGradient id="r-t" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff8a9b"/><stop offset="1" stop-color="#f02848"/></linearGradient>
+  </defs>
+  <g stroke="#4a0614" stroke-width="2.2" stroke-linejoin="round">
+    <polygon points="32,4 56,18 56,46 32,60 8,46 8,18" fill="#b3122e"/>
+    <polygon points="32,4 56,18 44,25 32,18" fill="#ff5d76"/>
+    <polygon points="56,18 56,46 44,39 44,25" fill="#d81f3e"/>
+    <polygon points="56,46 32,60 32,46 44,39" fill="#9c0d26"/>
+    <polygon points="32,60 8,46 20,39 32,46" fill="#7f0a1f"/>
+    <polygon points="8,46 8,18 20,25 20,39" fill="#e3304d"/>
+    <polygon points="8,18 32,4 32,18 20,25" fill="#ff7a8e"/>
+    <polygon points="32,18 44,25 44,39 32,46 20,39 20,25" fill="url(#r-t)"/>
+  </g>
+  <polygon points="23,26 31,21 25,34" fill="#ffffff" opacity=".6"/>
+  <path d="M49 6 L50.6 9.4 L54 11 L50.6 12.6 L49 16 L47.4 12.6 L44 11 L47.4 9.4 Z" fill="#ffffff"/>
+</svg>

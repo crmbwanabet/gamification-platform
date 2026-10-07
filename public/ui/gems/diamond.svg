@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Diamond: brilliant cut, blue-white. Prize gem worth 20,000 coins (K20). -->
+  <g stroke="#123a63" stroke-width="2.2" stroke-linejoin="round">
+    <polygon points="14,9 50,9 61,24 32,59 3,24" fill="#7cc7f5"/>
+    <polygon points="3,24 14,9 18,24" fill="#d6f2ff"/>
+    <polygon points="14,9 26,9 18,24" fill="#ffffff"/>
+    <polygon points="26,9 32,24 18,24" fill="#bfe8ff"/>
+    <polygon points="26,9 38,9 32,24" fill="#f2fbff"/>
+    <polygon points="38,9 46,24 32,24" fill="#a6dcfb"/>
+    <polygon points="38,9 50,9 46,24" fill="#e2f6ff"/>
+    <polygon points="50,9 61,24 46,24" fill="#8fd0f7"/>
+    <polygon points="3,24 18,24 32,59" fill="#b5e3fd"/>
+    <polygon points="18,24 32,24 32,59" fill="#e8f7ff"/>
+    <polygon points="32,24 46,24 32,59" fill="#79c1ef"/>
+    <polygon points="46,24 61,24 32,59" fill="#4f9fdc"/>
+  </g>
+  <path d="M51 30 L52.6 33.4 L56 35 L52.6 36.6 L51 40 L49.4 36.6 L46 35 L49.4 33.4 Z" fill="#ffffff"/>
+</svg>
