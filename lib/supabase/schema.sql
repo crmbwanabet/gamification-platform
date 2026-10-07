@@ -328,3 +328,24 @@ CREATE INDEX idx_game_history_played_at ON public.game_history(played_at DESC);
 CREATE INDEX idx_predictions_user_id ON public.predictions(user_id);
 CREATE INDEX idx_transactions_user_id ON public.transactions(user_id);
 CREATE INDEX idx_transactions_created_at ON public.transactions(created_at DESC);
+
+-- ============================================================================
+-- CASINO ACTIVITY (LIVE, 2026-10-07) — CRM-fed casino rounds per player/day
+-- ============================================================================
+-- Unlike the blueprint tables above, this one is real: applied from
+-- lib/supabase/migrations/2026-10-07-casino-activity.sql. Service-role only
+-- (RLS on, no policies). Written by POST /api/activity/casino-rounds through
+-- upsert_casino_rounds(jsonb) (max-wins, idempotent); read by
+-- GET /api/missions/progress. `day` = Africa/Lusaka date (UTC+2).
+CREATE TABLE IF NOT EXISTS public.casino_activity (
+  user_id TEXT NOT NULL,                       -- bwanabet user id
+  day DATE NOT NULL,                           -- Lusaka calendar date
+  rounds INTEGER NOT NULL DEFAULT 0 CHECK (rounds >= 0), -- absolute daily total
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (user_id, day)
+);
+CREATE INDEX IF NOT EXISTS casino_activity_day_idx ON public.casino_activity (day);
+ALTER TABLE public.casino_activity ENABLE ROW LEVEL SECURITY;
+-- upsert_casino_rounds(p_rows jsonb) returns int: insert ... on conflict
+-- (user_id, day) do update set rounds = greatest(stored, incoming); execute
+-- granted to service_role only. Full definition in the migration file.
