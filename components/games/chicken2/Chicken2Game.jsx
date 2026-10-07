@@ -30,7 +30,10 @@ import { makeRig2, render2, eggsCollected, setGone2, HEN, AFTER_CASH_S, AFTER_FA
 // pulses it). CASH OUT banks floor(stake × shown multiplier) — he dives and
 // catches her, WinCelebration plays, and a faded ghost counter runs on to where
 // he would have fallen. If the counter would pass C he trips and the hen flies
-// off: LOSE, "Fell at C×". At 10× he catches her automatically (MAX WIN!).
+// off: LOSE, "CRASHED @ C×". At 10× he catches her automatically (MAX WIN!).
+// The chase (near-catch waves) is chase(t, seed) — never a function of C, so
+// nothing foreshadows the crash (lib/chicken2/motion.mjs, tested). A strip of
+// the last 8 crash points (localStorage chicken2:history) sits over the scene.
 // Settlement is exactly once: roundRef.done flips before onRound; a cash-out
 // tap is checked against the clock (never after the fall time), and closing
 // mid-run settles via settleOnClose (a cash-out at that moment; 1.00× = stake
@@ -40,6 +43,8 @@ import { makeRig2, render2, eggsCollected, setGone2, HEN, AFTER_CASH_S, AFTER_FA
 // ============================================================================
 
 const LAST_KEY = 'chicken2:last';
+const HIST_KEY = 'chicken2:history';
+const HIST_N = 8;
 const CHIP_COLORS = { 5: 'violet', 10: 'blue', 20: 'red' };
 const AUTOS = [null, 1.5, 2, 3, 5];
 const MIN_STAKE = STAKES[0];
@@ -57,6 +62,17 @@ function readLast() {
 function saveLast(stake, auto) {
   try { window.localStorage.setItem(LAST_KEY, JSON.stringify({ stake, auto })); } catch (e) { /* private mode */ }
 }
+function readHist() {
+  try {
+    const v = JSON.parse(window.localStorage.getItem(HIST_KEY) || '[]');
+    return Array.isArray(v) ? v.filter(x => typeof x === 'number' && x >= 1 && x <= MAX_MULT).slice(0, HIST_N) : [];
+  } catch (e) { return []; }
+}
+function saveHist(h) {
+  try { window.localStorage.setItem(HIST_KEY, JSON.stringify(h)); } catch (e) { /* private mode */ }
+}
+// red < 2×, gold 2–5×, green ≥ 5×
+const histPill = (c) => (c < 2 ? { background: '#E3261E', color: '#fff' } : c < 5 ? { background: CANDY.gold, color: CANDY.outline } : { background: '#5ED62B', color: CANDY.outline });
 function affordable(stake, balance) {
   if (stake <= balance) return stake;
   const fit = STAKES.filter(s => s <= balance);
@@ -75,7 +91,9 @@ const STATIC_CSS = YARD_CSS + FARMER_CSS + CHICKEN_CSS + `
   .c2-num.pulse { animation: c2Pulse .32s ease-out; }
   @keyframes c2Shake { 0%,100% { transform: translateX(0) } 25% { transform: translateX(-4px) } 75% { transform: translateX(4px) } }
   .c2-num.fell { animation: c2Shake .3s ease-in-out 2; }
-  @media (prefers-reduced-motion: reduce) { .c2-num.pulse, .c2-num.fell { animation: none; } }
+  @keyframes c2PillIn { 0% { transform: scale(.4); opacity: 0 } 70% { transform: scale(1.12) } 100% { transform: scale(1); opacity: 1 } }
+  .c2-pill.new { animation: c2PillIn .35s ease-out; }
+  @media (prefers-reduced-motion: reduce) { .c2-num.pulse, .c2-num.fell, .c2-pill.new { animation: none; } }
 `;
 const NUM_SHADOW = `${textStroke(3, CANDY.outline)}, 0 4px 0 ${CANDY.outline}`;
 
@@ -89,6 +107,9 @@ export default function Chicken2Game({ onClose, closing, balance = 0, rtp, onSpe
   const [showTutorial, setShowTutorial] = useState(false);
   const [reduced, setReduced] = useState(false);
   const [cel, setCel] = useState(null);         // win celebration { payout, added }
+  const [hist, setHist] = useState(readHist);   // the last crash points, newest first
+  const histRef = useRef(hist);
+  const [histNew, setHistNew] = useState(0);    // bumps to pop the newest pill in
   const pillRef = useRef(null);
 
   const sceneRef = useRef(null);
@@ -132,15 +153,27 @@ export default function Chicken2Game({ onClose, closing, balance = 0, rtp, onSpe
     onRoundRef.current?.({ stake: r.stake, win, payout });
     return payout;
   }
+  // The round's crash point joins the history once the player has seen it
+  // (the fall, or the ghost run reaching it after a cash-out) — once per round.
+  function logRound(r) {
+    if (!r || r.logged) return;
+    r.logged = true;
+    const h = [r.crash, ...histRef.current].slice(0, HIST_N);
+    histRef.current = h;
+    saveHist(h);
+    setHist(h);
+    setHistNew(n => n + 1);
+  }
   // Close mid-run: settle as a cash-out at this moment (see settleOnClose).
   useEffect(() => () => {
     stopAnim(); clearTimers();
     const r = roundRef.current;
     if (r && !r.done) { const s = settleOnClose((performance.now() - r.t0) / 1000, r.crash); settle(s.win, s.mult); }
+    if (r && r.done) logRound(r);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   function setCounter(label, num, ghost, cls) {
-    if (labelRef.current) labelRef.current.textContent = label;
+    if (labelRef.current) { labelRef.current.textContent = label; if (cls !== undefined) labelRef.current.dataset.state = cls; }
     if (numRef.current) { numRef.current.textContent = num; if (cls !== undefined) numRef.current.dataset.state = cls; }
     if (ghostRef.current) ghostRef.current.textContent = ghost || '';
   }
@@ -156,6 +189,7 @@ export default function Chicken2Game({ onClose, closing, balance = 0, rtp, onSpe
     clearTimers();
     stopAnim();
     const R = rigRef.current;
+    if (roundRef.current?.done) logRound(roundRef.current);
     const reset = () => { setPhase('idle'); setResult(null); setCounter('MULTIPLIER', fmt(1), '', 'idle'); };
     if (reducedRef.current || !R) { if (R) render2(R, 0, null); reset(); return; }
     setGone2(R, true);
@@ -181,10 +215,13 @@ export default function Chicken2Game({ onClose, closing, balance = 0, rtp, onSpe
           if (n > r.eggs) { r.eggs = n; pulse('pulse'); }
         } else if (r.cashT != null && !r.max) {
           const g = reducedRef.current ? r.crash : shownAt(r.cashT + (t - r.cashT) * GHOST_RATE, r.crash);
-          if (ghostRef.current) ghostRef.current.textContent = g >= r.crash ? `would fall at ${fmt(r.crash)}` : `run on… ${fmt(g)}`;
+          if (ghostRef.current) ghostRef.current.textContent = g >= r.crash ? `would crash @ ${fmt(r.crash)}` : `run on… ${fmt(g)}`;
+          if (g >= r.crash) logRound(r);
         }
       }
-      const end = r.done ? (r.cashT != null ? r.cashT + AFTER_CASH_S : r.tc + AFTER_FALL_S) : Infinity;
+      // after a cash-out, keep going until the ghost run has reached the crash point
+      const ghostEnd = r.cashT != null && !r.max ? r.cashT + (timeFor(r.crash) - r.cashT) / GHOST_RATE + .1 : 0;
+      const end = r.done ? (r.cashT != null ? Math.max(r.cashT + AFTER_CASH_S, ghostEnd) : r.tc + AFTER_FALL_S) : Infinity;
       rafRef.current = t < end ? requestAnimationFrame(step) : 0;
     };
     rafRef.current = requestAnimationFrame(step);
@@ -204,8 +241,9 @@ export default function Chicken2Game({ onClose, closing, balance = 0, rtp, onSpe
     pulse('pulse');
     if (reducedRef.current) {
       render2(rigRef.current, tAt + AFTER_CASH_S, r, { still: true });
-      if (ghostRef.current && !r.max) ghostRef.current.textContent = `would fall at ${fmt(r.crash)}`;
+      if (ghostRef.current && !r.max) ghostRef.current.textContent = `would crash @ ${fmt(r.crash)}`;
     }
+    if (reducedRef.current || r.max) logRound(r);
     setCel({ payout, added: 0 });
   }
   function fall() {
@@ -217,8 +255,9 @@ export default function Chicken2Game({ onClose, closing, balance = 0, rtp, onSpe
     setCanCash(false);
     setPhase('fell');
     setResult({ crash: r.crash });
-    setCounter('FELL AT', fmt(r.crash), '', 'fell');
+    setCounter('CRASHED @', fmt(r.crash), '', 'fell');
     pulse('fell');
+    logRound(r);
     if (reducedRef.current) render2(rigRef.current, r.tc + AFTER_FALL_S, r, { still: true });
     later(() => regroup(), (AFTER_FALL_S + .5) * 1000);
   }
@@ -237,6 +276,7 @@ export default function Chicken2Game({ onClose, closing, balance = 0, rtp, onSpe
     const delay = fromResult && !reduced ? REGROUP_MS : 0;
     clearTimers();
     stopAnim();
+    if (roundRef.current?.done) logRound(roundRef.current);
     const R = rigRef.current;
     if (fromResult) { if (delay) { setGone2(R, true); later(() => { setGone2(R, false); }, delay); } }
     const max = crash >= MAX_MULT;
@@ -255,7 +295,7 @@ export default function Chicken2Game({ onClose, closing, balance = 0, rtp, onSpe
     if (crash >= MIN_CASHOUT) later(() => { if (!r.done) setCanCash(true); }, delay + timeFor(MIN_CASHOUT) * 1000);
     if (r.cashAt != null) later(() => cashOut(r.cashAtMult, r.cashAt), delay + r.cashAt * 1000);
     if (!max) later(() => fall(), delay + r.tc * 1000);
-    if (reduced) render2(R, 1.2, { ...r, tc: Infinity }, { still: true });
+    if (reduced) render2(R, 1.8, { ...r, tc: Infinity }, { still: true });   // a still of the first lunge
     loop();
   };
 
@@ -319,9 +359,22 @@ export default function Chicken2Game({ onClose, closing, balance = 0, rtp, onSpe
         </svg>
         <div aria-hidden style={{ position: 'absolute', inset: 0, borderRadius: 18, pointerEvents: 'none', boxShadow: 'inset 0 0 0 1.5px rgba(255,255,255,.12), inset 0 0 22px rgba(10,0,30,.55)' }} />
 
+        {/* the last crash points, newest first */}
+        <div aria-label={`Last crashes: ${hist.length ? hist.map(fmt).join(', ') : 'none yet'}`} role="img"
+          style={{ position: 'absolute', left: 8, right: 8, top: 7, height: 20, display: 'flex', alignItems: 'center', gap: 4, overflow: 'hidden', pointerEvents: 'none',
+            WebkitMaskImage: 'linear-gradient(90deg, #000 82%, transparent)', maskImage: 'linear-gradient(90deg, #000 82%, transparent)' }}>
+          <span aria-hidden style={{ flex: 'none', fontFamily: CANDY.display, fontSize: 10, letterSpacing: .8, color: '#fff', opacity: .8, textShadow: outlineShadow(1, CANDY.outline, 1) }}>LAST</span>
+          {hist.length === 0 && <span aria-hidden style={{ fontFamily: CANDY.display, fontSize: 11, color: '#fff', opacity: .55, textShadow: outlineShadow(1, CANDY.outline, 1) }}>—</span>}
+          {hist.map((c, i) => (
+            <span key={i === 0 ? `n${histNew}` : `o${hist.length - i}-${c}`} aria-hidden className={`c2-pill${i === 0 && histNew ? ' new' : ''}`}
+              style={{ flex: 'none', height: 18, lineHeight: '15px', padding: '0 6px', borderRadius: 9, border: `1.5px solid ${CANDY.outline}`, fontFamily: CANDY.display, fontSize: 11.5, letterSpacing: .3,
+                fontVariantNumeric: 'tabular-nums', boxShadow: '0 2px 0 rgba(42,10,79,.8)', ...histPill(c) }}>{fmt(c)}</span>
+          ))}
+        </div>
+
         {/* the multiplier counter */}
-        <div role="status" aria-live="off" style={{ position: 'absolute', left: 0, right: 0, top: 8, display: 'flex', flexDirection: 'column', alignItems: 'center', pointerEvents: 'none', fontFamily: CANDY.display }}>
-          <span ref={labelRef} style={{ fontSize: 12, letterSpacing: 1.2, color: '#fff', textShadow: outlineShadow(1.5, CANDY.outline, 1.5), opacity: .92 }}>MULTIPLIER</span>
+        <div role="status" aria-live="off" style={{ position: 'absolute', left: 0, right: 0, top: 31, display: 'flex', flexDirection: 'column', alignItems: 'center', pointerEvents: 'none', fontFamily: CANDY.display }}>
+          <span ref={labelRef} className="c2-lbl" data-state="idle" style={{ fontSize: 12, letterSpacing: 1.2, color: '#fff', textShadow: outlineShadow(1.5, CANDY.outline, 1.5), opacity: .92 }}>MULTIPLIER</span>
           <span ref={numRef} className="c2-num" data-state="idle" style={{ display: 'block', fontSize: 44, lineHeight: 1.02, letterSpacing: 1, textShadow: NUM_SHADOW, fontVariantNumeric: 'tabular-nums' }}>1.00×</span>
           <span ref={ghostRef} style={{ fontSize: 14, color: '#fff', opacity: .55, textShadow: outlineShadow(1.5, CANDY.outline, 1.5), minHeight: 16 }} />
         </div>
@@ -330,13 +383,14 @@ export default function Chicken2Game({ onClose, closing, balance = 0, rtp, onSpe
           .c2-num[data-state="run"] { color: ${CANDY.gold} }
           .c2-num[data-state="cashed"] { color: ${CANDY.gold} }
           .c2-num[data-state="fell"] { color: #FF5A4E }
+          .c2-lbl[data-state="fell"] { color: #FF8A80; font-size: 15px !important; letter-spacing: 1.5px !important; opacity: 1 !important }
         `}</style>
       </div>
 
       <div aria-live="polite" style={{ flex: 'none', height: 30, position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: CANDY.display, letterSpacing: .5, whiteSpace: 'nowrap' }}>
         {line}
         <span className="sr-only" style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>
-          {phase === 'cashed' && result ? `Cashed out at ${fmt(result.mult)}` : phase === 'fell' && result ? `Fell at ${fmt(result.crash)}` : ''}
+          {phase === 'cashed' && result ? `Cashed out at ${fmt(result.mult)}` : phase === 'fell' && result ? `Crashed at ${fmt(result.crash)}` : ''}
         </span>
       </div>
 
