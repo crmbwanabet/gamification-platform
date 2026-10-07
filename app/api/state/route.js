@@ -1,12 +1,17 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { verifyBwanabetToken } from '@/lib/auth/bwanabetToken';
+import { migrateCurrencyState } from '@/lib/economy/currency.mjs';
 
 export const runtime = 'nodejs';
 
-const NUMERIC = ['kwacha', 'gems', 'diamonds', 'xp', 'deposits', 'streak'];
+// Mirror columns. `gems` is retired (2026-10-07) and no longer written; the
+// prize gems are emeralds / rubies / diamonds (`diamonds` reused, see
+// lib/economy/currency.mjs for why that is safe).
+const NUMERIC = ['kwacha', 'emeralds', 'rubies', 'diamonds', 'xp', 'deposits', 'streak'];
+const GEM_COLUMNS = ['emeralds', 'rubies'];
 
-// POST { token, kwacha?, gems?, ..., state? } -> persist this player's progress.
+// POST { token, kwacha?, emeralds?, rubies?, diamonds?, ..., state? } -> persist this player's progress.
 // The token identifies the player (server-side); the client can't spoof another id.
 export async function POST(req) {
   if (!supabaseAdmin) return NextResponse.json({ error: 'supabase_not_configured' }, { status: 500 });
@@ -27,7 +32,11 @@ export async function POST(req) {
   // Cap the state blob so a client can't stuff arbitrarily large JSON into the row.
   if (body?.state && typeof body.state === 'object' && !Array.isArray(body.state)) {
     if (JSON.stringify(body.state).length > 20000) return NextResponse.json({ error: 'state_too_large' }, { status: 413 });
-    patch.state = body.state;
+    // A blob without the currencyVersion marker predates the gem economy (an
+    // old bundle still open in a tab): its gem balances are reset to 0, never
+    // carried into the new emeralds/rubies/diamonds.
+    patch.state = migrateCurrencyState(body.state);
+    for (const g of ['emeralds', 'rubies', 'diamonds']) if (g in patch) patch[g] = patch.state[g];
     // Server-owned keys (voucher bookkeeping) live inside the same blob but are
     // written only by /api/predictions/voucher — carry them over so a client
     // save can never wipe them (which would re-grant already-sent vouchers).
@@ -40,8 +49,15 @@ export async function POST(req) {
   }
   if (Object.keys(patch).length === 0) return NextResponse.json({ error: 'nothing_to_update' }, { status: 400 });
 
-  const { data, error } = await supabaseAdmin
+  let { data, error } = await supabaseAdmin
     .from('profiles').update(patch).eq('bwanabet_user_id', uid).select('*').single();
+  // Tolerate the minutes before the gem-currencies migration adds the
+  // emeralds/rubies mirror columns: retry without them (state jsonb is the truth).
+  if (error && GEM_COLUMNS.some(c => (error.message || '').includes(c))) {
+    for (const c of GEM_COLUMNS) delete patch[c];
+    ({ data, error } = await supabaseAdmin
+      .from('profiles').update(patch).eq('bwanabet_user_id', uid).select('*').single());
+  }
   if (error) return NextResponse.json({ error: 'db_error', detail: error.message }, { status: 500 });
 
   return NextResponse.json({ ok: true, profile: data });

@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { verifyBwanabetToken } from '@/lib/auth/bwanabetToken';
-import { purchaseMessage, UUID_RE } from '@/lib/telegram/format.mjs';
+import { purchaseMessage } from '@/lib/telegram/format.mjs';
+import { parsePurchaseBody } from '@/lib/store/catalog.mjs';
 import { sendPurchase } from '@/lib/telegram/client';
 import { rateLimit } from '@/lib/rateLimit';
 
@@ -21,7 +22,9 @@ function authedUid(token) {
 // the profile exists, verifies the SERVER-HELD balance covers the price,
 // deducts it (state jsonb + mirror columns), decrements stock, and inserts
 // the pending purchase. The client mirrors the deduction locally so its next
-// absolute state save agrees with the DB.
+// absolute state save agrees with the DB. Prices may be coins and/or the prize
+// gems (emeralds, rubies, diamonds); kwacha redemptions carry payout_kwacha,
+// which the RPC derives from economy.coinsPerKwacha (2026-10-07 migration).
 export async function POST(req) {
   if (!supabaseAdmin) return NextResponse.json({ error: 'not_configured' }, { status: 500 });
   const ip = (req.headers.get('x-forwarded-for') || 'unknown').split(',')[0].trim();
@@ -31,8 +34,9 @@ export async function POST(req) {
   try { body = await req.json(); } catch { return NextResponse.json({ error: 'bad_request' }, { status: 400 }); }
   const uid = authedUid(body?.token);
   if (!uid || uid === 'NaN') return NextResponse.json({ error: 'invalid_token' }, { status: 401 });
-  const itemId = String(body?.itemId || '').trim();
-  if (!UUID_RE.test(itemId)) return NextResponse.json({ error: 'bad_request' }, { status: 400 });
+  const parsed = parsePurchaseBody(body);
+  if (parsed.error) return NextResponse.json({ error: parsed.error }, { status: 400 });
+  const { itemId } = parsed;
 
   const { data, error } = await supabaseAdmin.rpc('purchase_item', { p_uid: uid, p_item_id: itemId });
   if (error) {
@@ -52,7 +56,11 @@ export async function POST(req) {
 
   return NextResponse.json({
     ok: true,
-    purchase: { id: p.id, item_name: p.item_name, price_kwacha: p.price_kwacha, price_gems: p.price_gems, price_diamonds: p.price_diamonds, status: p.status },
+    purchase: {
+      id: p.id, item_name: p.item_name, status: p.status,
+      price_kwacha: p.price_kwacha, price_emeralds: p.price_emeralds, price_rubies: p.price_rubies, price_diamonds: p.price_diamonds,
+      payout_kwacha: p.payout_kwacha ?? null,
+    },
     balance: data.balance || null, // server-held balance after deduction
   });
 }
@@ -65,7 +73,7 @@ export async function GET(req) {
   const uid = authedUid(token);
   if (!uid || uid === 'NaN') return NextResponse.json({ error: 'invalid_token' }, { status: 401 });
   const { data } = await supabaseAdmin.from('purchases')
-    .select('id,item_name,price_kwacha,price_gems,price_diamonds,status,created_at')
+    .select('id,item_name,price_kwacha,price_emeralds,price_rubies,price_diamonds,payout_kwacha,status,created_at')
     .eq('uid', uid).order('created_at', { ascending: false }).limit(50);
   return NextResponse.json({ purchases: data || [] });
 }

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { DEFAULT_CONFIG } from '@/lib/config/defaults';
 import { mergeConfig } from '@/lib/config/merge.mjs';
+import { buildStoreCatalog } from '@/lib/store/catalog.mjs';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -15,7 +16,7 @@ export async function GET() {
     try {
       const [cfgRes, itemRes] = await Promise.all([
         supabaseAdmin.from('platform_config').select('key,value'),
-        supabaseAdmin.from('store_items').select('id,name,descr,price_kwacha,price_gems,price_diamonds,is_money,image_url,stock,featured,is_new,sort')
+        supabaseAdmin.from('store_items').select('id,name,descr,price_kwacha,price_gems,price_emeralds,price_rubies,price_diamonds,is_money,redeem_currency,redeem_amount,image_url,stock,featured,is_new,sort')
           .eq('active', true).order('sort', { ascending: true }),
       ]);
       rows = cfgRes.data || [];
@@ -24,14 +25,11 @@ export async function GET() {
     } catch (e) { console.error('[api/config] degraded to defaults:', e); }
   }
   const config = mergeConfig(DEFAULT_CONFIG, rows);
-  config.storeItems = items
-    .filter(i => i.stock === null || i.stock > 0)
-    .map(i => ({
-      id: i.id, name: i.name, desc: i.descr,
-      price: { kwacha: i.price_kwacha, ...(i.price_gems ? { gems: i.price_gems } : {}), ...(i.price_diamonds ? { diamonds: i.price_diamonds } : {}) },
-      isMoney: !!i.is_money,
-      imageUrl: i.image_url || null, featured: i.featured, isNew: i.is_new,
-    }));
+  // Redemption rows are priced from the merged economy (coinsPerKwacha +
+  // gemValues), exactly as purchase_item charges them. Needs the 2026-10-07
+  // gem-currencies migration; before it the select errors and the store
+  // degrades to empty (players are never blocked).
+  config.storeItems = buildStoreCatalog(items, config.economy);
   return NextResponse.json(config, {
     headers: { 'Cache-Control': 's-maxage=60, stale-while-revalidate=300' },
   });

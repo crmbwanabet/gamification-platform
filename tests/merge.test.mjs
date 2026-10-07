@@ -98,3 +98,27 @@ test('every candy game takes an rtp (same clamp); a game without one in a row ke
   assert.equal(out.games.scratch.rtp, 0.98);
   assert.equal(out.games.penalty.rtp, 0.98);
 });
+
+test('economy.coinsPerKwacha: a positive integer applies; junk keeps the default', () => {
+  const D = structuredClone(DEFAULTS);
+  D.economy.coinsPerKwacha = 1000;
+  D.economy.gemValues = { emerald: 5000, ruby: 10000, diamond: 20000 };
+  assert.equal(mergeConfig(D, [{ key: 'economy', value: { coinsPerKwacha: 2000 } }]).economy.coinsPerKwacha, 2000);
+  for (const bad of [0, -1000, 1000.5, '1000', null, 1e7, NaN]) {
+    const out = mergeConfig(D, [{ key: 'economy', value: { coinsPerKwacha: bad, extraPlayCost: 60 } }]);
+    assert.equal(out.economy.coinsPerKwacha, 1000, `bad=${bad}`);
+    assert.equal(out.economy.extraPlayCost, 60); // the rest of the row still applies
+  }
+});
+
+test('economy.gemValues merge per gem; invalid values keep their default', () => {
+  const D = structuredClone(DEFAULTS);
+  D.economy.coinsPerKwacha = 1000;
+  D.economy.gemValues = { emerald: 5000, ruby: 10000, diamond: 20000 };
+  const out = mergeConfig(D, [{ key: 'economy', value: { gemValues: { ruby: 12000, diamond: -1, emerald: 'x' } } }]);
+  assert.deepEqual(out.economy.gemValues, { emerald: 5000, ruby: 12000, diamond: 20000 });
+  const none = mergeConfig(D, [{ key: 'economy', value: { gemValues: { diamond: 0 } } }]);
+  assert.deepEqual(none.economy.gemValues, D.economy.gemValues);
+  const notObj = mergeConfig(D, [{ key: 'economy', value: { gemValues: [1, 2, 3] } }]);
+  assert.deepEqual(notObj.economy.gemValues, D.economy.gemValues);
+});
