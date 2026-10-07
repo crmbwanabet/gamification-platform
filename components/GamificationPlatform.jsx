@@ -1088,6 +1088,12 @@ export default function GamificationPlatform() {
   // and state saves use). Anonymous visitors see the missions but can't
   // track or claim them, and can't claim the daily reward either.
   const loggedIn = session.status === 'ready' && !!session.profile;
+  // TESTING: daily-reward claims are open to anonymous visitors while the
+  // platform is being tested. Set REQUIRE_LOGIN_TO_CLAIM back to true to
+  // re-lock them behind a bwanabet login. (Casino missions stay login-bound:
+  // their progress is looked up by the bwanabet user id.)
+  const REQUIRE_LOGIN_TO_CLAIM = false;
+  const canClaimDaily = loggedIn || !REQUIRE_LOGIN_TO_CLAIM;
   // status: idle (not fetched) | ok | unavailable (feed/table down) | anon
   const [casino, setCasino] = useState({ status: 'idle', day: null, rounds: 0, updatedAt: null });
   const casinoBusyRef = useRef(false);
@@ -1441,7 +1447,7 @@ export default function GamificationPlatform() {
     // (every live game is stakeOnly, so the old Play "free plays left" badge
     // is gone; Home flags the unclaimed daily reward instead)
     navBadges: {
-      home: loggedIn && !user.dailyClaimed ? 1 : null,
+      home: canClaimDaily && !user.dailyClaimed ? 1 : null,
       missions: claimableCount || null,
       store: null, // store is empty until the admin dashboard stocks it
     },
@@ -1453,6 +1459,7 @@ export default function GamificationPlatform() {
     missionStates,
     casinoStatus,
     loggedIn,
+    canClaimDaily,
   };
 
   // Claim a daily casino mission. Re-reads today's rounds from the server
@@ -1501,7 +1508,7 @@ export default function GamificationPlatform() {
   const claimDailyReward = (el) => {
     // Logged in = daily reward ready; anonymous visitors can't claim (their
     // state isn't saved, and SSO hydration would overwrite the claim anyway).
-    if (!loggedIn) { showNotif('Log in on bwanabet.com to claim', 'error'); return; }
+    if (!canClaimDaily) { showNotif('Log in on bwanabet.com to claim', 'error'); return; }
     if (user.dailyClaimed || dailyBusyRef.current) return;
     const r = cfg.dailyRewards[user.dailyDay - 1] || cfg.dailyRewards[0];
     if (!r) return;

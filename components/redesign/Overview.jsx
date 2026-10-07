@@ -51,7 +51,7 @@ function MissionCard({ s, onOpen, i = 0 }) {
  * missions teaser and the featured store item. `focusGames` is a nonce — when
  * it changes the view scrolls to the games (legacy "Go to Games" CTAs).
  */
-export default function Overview({ points = '2,344', missionsCount = 0, badges = 12, xp = 1200, activeTab = 'home', onNavigate, onOpenProfile, onOpenMission, missionStates = null, loggedIn = false, dailyDay = 1, dailyClaimed = false, onClaimDaily, userId = null, navBadges = {}, games = null, storeItems = null, missions = null, dailyRewards = null, gamePlays = null, onPlay, focusGames = 0 } = {}) {
+export default function Overview({ points = '2,344', missionsCount = 0, badges = 12, xp = 1200, activeTab = 'home', onNavigate, onOpenProfile, onOpenMission, missionStates = null, loggedIn = false, canClaimDaily = loggedIn, dailyDay = 1, dailyClaimed = false, onClaimDaily, userId = null, navBadges = {}, games = null, storeItems = null, missions = null, dailyRewards = null, gamePlays = null, onPlay, focusGames = 0 } = {}) {
   const go = (t) => onNavigate && onNavigate(t);
   const states = missionStates || casinoMissionStates(missions || CASINO_MISSIONS, { rounds: 0, today: null });
   const latest = pickLatestMissions(states);
@@ -68,7 +68,7 @@ export default function Overview({ points = '2,344', missionsCount = 0, badges =
     <RedesignShell points={points} missionsCount={missionsCount} badges={badges} xp={xp} userId={userId} navBadges={navBadges} activeTab={activeTab} onNavigate={onNavigate} onOpenProfile={onOpenProfile}>
       <div style={{ maxWidth: 1240, margin: '0 auto', width: '100%' }}>
         <div style={{ marginBottom: 22 }}>
-          <DailyReward dailyDay={dailyDay} dailyClaimed={dailyClaimed} onClaim={onClaimDaily} rewards={dailyRewards} loggedIn={loggedIn} />
+          <DailyReward dailyDay={dailyDay} dailyClaimed={dailyClaimed} onClaim={onClaimDaily} rewards={dailyRewards} loggedIn={canClaimDaily} />
         </div>
 
         <div style={{ marginBottom: 26 }}>
