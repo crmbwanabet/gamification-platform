@@ -1,5 +1,22 @@
 # Lucky Numbers — design
 
+## Economy update — 2026-10-07 (supersedes the stakes, odds and rounding below)
+
+- **Stakes:** 1 / 5 / 10 / 20 coins (default chip 5; a remembered 15 etc. falls back to 5). Chips: 1 violet, 5 blue, 10 red, 20 green. Card footer `stakeRange: '1–20'`.
+- **Paytable per stake** (`paytableFor(stake, rtp)` in `lib/numbers/paytable.mjs`): the hypergeometric odds are fixed, so the RTP is steered by whole-coin prizes. 2 matches = `stake × 1.2` (half up), 3 = `stake × 1.6` (half up), 5+ = `stake × 10` where the band allows, and 4 matches = the whole-coin prize whose RTP is closest to the configured one inside [97%, 99%]. The top prize drops below 10x only when no 4-match prize fits (stake 1). The paytable strip on the machine and the DRAW caption show coins at the selected stake.
+
+| Stake | 2 / 3 / 4 / 5+ pays (RTP 97% · 98% · 99% config) | Achieved RTP |
+|---|---|---|
+| 1 | 1 / 2 / 6 / 7 (all three) | 98.97% (fixed) |
+| 5 | 6 / 8 / 26·27·28 / 50 | 97.04% · 97.75% · 98.45% |
+| 10 | 12 / 16 / 52·55·57 / 100 | 97.04% · 98.10% · 98.80% |
+| 20 | 24 / 32 / 104·109·115 / 200 | 97.04% · 97.92% · 98.98% |
+
+- So the config RTP picks the nearest table in the band rather than hitting it exactly. At stake 1, 2 matches pays 1 coin (the stake back).
+- **Rounding:** every payout is `stake × multiplier` rounded **half up** (.5 up, .4 down), worked in integer hundredths in `lib/rtp.mjs` (`roundHalfUp`) so float noise never flips a half (25 × 1.14 = 28.5 → 29, although `25 * 1.14` is 28.4999… in floats).
+- **RTP:** remote-config key `games.numbers.rtp`, default **0.98**, clamped to **[0.97, 0.99]** (`clampRtp` in `lib/rtp.mjs`, mirrored by `lib/config/merge.mjs`; listed with min/max in `/api/admin/catalog`). `GamificationPlatform` passes `rtp={cfg.games.numbers?.rtp}` into the game, which passes it to the engine on every round.
+- **Max win** is still 200 (the top stake × the top multiplier).
+
 **Date:** 2026-10-07 · **Status:** built on the candy-game pattern (Coin Flip / Penalty Crash / Chicken Catch)
 
 ## Context
@@ -11,10 +28,10 @@ The fourth "candy" game. The user's brief was "Lucky Numbers (picking 6 and wait
 ## Game rules
 
 - **Stake-only** (`stakeOnly: true`): no free daily plays and no extra-play charge.
-- **Stakes:** 5 / 10 / 20 coins. Tiers above the balance are disabled. The stakes are lower than the other candy games (10–50) so that the 10x top prize stays within the 200 max-win cap (20 × 10 = 200).
+- **Stakes:** ~~5 / 10 / 20~~ 1 / 5 / 10 / 20 coins (see the economy update). Tiers above the balance are disabled. The stakes are lower than the other candy games (10–50) so that the 10x top prize stays within the 200 max-win cap (20 × 10 = 200).
 - **Pick:** exactly 6 of the numbers 1–20. The pool is 20 because a 5×4 grid fits 52×48 px tiles across a 360 px phone; 24 numbers would need 6 columns at about 44 px. 20 also makes matches common: on average a player matches 1.8 of the 6 drawn balls.
 - **Draw:** 6 unique numbers drawn with `crypto.getRandomValues` (a partial Fisher–Yates shuffle in `lib/numbers/paytable.mjs`). This is the same client-authoritative trust boundary as the rest of the platform.
-- **Pay:** `Math.round(stake × mult)` from the table below. Fewer than 2 matches pays 0.
+- **Pay:** ~~`Math.round(stake × mult)` from the table below~~ the whole-coin paytable for the stake (see the economy update; the table below is the original 0.9493 one). Fewer than 2 matches pays 0.
 
 ### Paytable and exact probabilities
 

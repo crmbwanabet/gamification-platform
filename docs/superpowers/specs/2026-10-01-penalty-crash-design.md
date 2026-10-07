@@ -1,5 +1,24 @@
 # Penalty Crash — design
 
+## Economy update — 2026-10-07 (supersedes the stakes, odds and rounding below)
+
+- **Stakes:** 1 / 10 / 25 / 50 coins (`STAKES` in `lib/pick6/engine.mjs`; default chip 10). A remembered stake that is no longer offered falls back to 10. Card footer `stakeRange: '1–50'`.
+- **Win chance** is derived from the ACTUAL rounded payout so every spot returns exactly the configured RTP at every stake: `winChance(stake, mult, rtp) = rtp × stake / payoutFor(stake, mult)`. (A fixed `0.95 / mult` would return 131% on 1.5x at stake 1, which pays 2.)
+
+| Mult | Stake 1 | Stake 10 | Stake 25 | Stake 50 |
+|---|---|---|---|---|
+| 1.2x | 1 @ 98.00% | 12 @ 81.67% | 30 @ 81.67% | 60 @ 81.67% |
+| 1.5x | 2 @ 49.00% | 15 @ 65.33% | 38 @ 64.47% | 75 @ 65.33% |
+| 2x | 2 @ 49.00% | 20 @ 49.00% | 50 @ 49.00% | 100 @ 49.00% |
+| 2.5x | 3 @ 32.67% | 25 @ 39.20% | 63 @ 38.89% | 125 @ 39.20% |
+| 3x | 3 @ 32.67% | 30 @ 32.67% | 75 @ 32.67% | 150 @ 32.67% |
+| 4x | 4 @ 24.50% | 40 @ 24.50% | 100 @ 24.50% | **200** @ 24.50% |
+
+(payout @ win chance at the 98% default.) At stake 1 the 1.2x tile pays 1 coin (the stake back) 98% of the time, and 1.5x/2x and 2.5x/3x pay the same — the tiles stay because the RTP is still exact on each.
+- **Rounding:** every payout is `stake × multiplier` rounded **half up** (.5 up, .4 down), worked in integer hundredths in `lib/rtp.mjs` (`roundHalfUp`) so float noise never flips a half (25 × 1.14 = 28.5 → 29, although `25 * 1.14` is 28.4999… in floats).
+- **RTP:** remote-config key `games.penalty.rtp`, default **0.98**, clamped to **[0.97, 0.99]** (`clampRtp` in `lib/rtp.mjs`, mirrored by `lib/config/merge.mjs`; listed with min/max in `/api/admin/catalog`). `GamificationPlatform` passes `rtp={cfg.games.penalty?.rtp}` into the game, which passes it to the engine on every round.
+- **Max win** is still 200 (the top stake × the top multiplier).
+
 **Date:** 2026-10-01 · **Status:** visual mock approved by the user (2026-09-30); built on the Coin Flip pattern
 
 ## Context
@@ -9,9 +28,9 @@ Second of the new "candy" games after Coin Flip (spec `2026-09-29-coin-flip-desi
 ## Game rules
 
 - **Stake-only** (`stakeOnly: true`): no free daily plays, no extra-play charge.
-- **Stakes:** 10 / 20 / 30 / 50 coins. Tiers above the player's balance are disabled.
+- **Stakes:** ~~10 / 20 / 30 / 50~~ 1 / 10 / 25 / 50 coins (see the economy update). Tiers above the player's balance are disabled.
 - **Pick:** one of 6 spots on the goal (2 rows × 3 columns).
-- **Win chance** = `0.95 / mult` on every spot (a 5% edge everywhere). **Win** pays `Math.round(stake × mult)`; a **save** forfeits the stake.
+- **Win chance** = ~~`0.95 / mult`~~ `rtp × stake / payout` (see the economy update; the table below is the old 10/20/30/50 one). **Win** pays `stake × mult` rounded half up; a **save** forfeits the stake.
 - **Result** is decided on the device at KICK with `crypto.getRandomValues`, with no network round trip (the same client-authoritative trust boundary as the rest of the platform).
 
 | Spot | Position | Mult | Win % | Pays at 10 / 20 / 30 / 50 |

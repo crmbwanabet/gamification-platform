@@ -1,5 +1,14 @@
 # Coin Flip — design
 
+## Economy update — 2026-10-07 (supersedes the stakes, odds and rounding below)
+
+- **Stakes:** 1 / 10 / 25 / 50 coins (default chip 10; a remembered 20/30 falls back to 10). Chips: 1 violet, 10 blue, 25 red, 50 green. Card footer `stakeRange: '1–50'`.
+- **Payout:** `stake × 1.9` rounded half up → **2 / 19 / 48 / 95**. The button still reads "WIN 1.9x".
+- **Win chance** from the actual payout: `P(win) = rtp × stake / payout` → 49.00% / 51.58% / 51.04% / 51.58% at the 98% default, so the RTP is exact at every stake. `resolveFlip(stake, pick, rng, rtp)` draws the result first and the coin shows the picked face on a win, the other face on a loss (it is no longer a 50/50 face draw).
+- **Rounding:** every payout is `stake × multiplier` rounded **half up** (.5 up, .4 down), worked in integer hundredths in `lib/rtp.mjs` (`roundHalfUp`) so float noise never flips a half (25 × 1.14 = 28.5 → 29, although `25 * 1.14` is 28.4999… in floats).
+- **RTP:** remote-config key `games.coinflip.rtp`, default **0.98**, clamped to **[0.97, 0.99]** (`clampRtp` in `lib/rtp.mjs`, mirrored by `lib/config/merge.mjs`; listed with min/max in `/api/admin/catalog`). `GamificationPlatform` passes `rtp={cfg.games.coinflip?.rtp}` into the game, which passes it to the engine on every round.
+- **Max win** is still 200 (the top stake × the top multiplier).
+
 **Date:** 2026-09-29 · **Status:** agreed in brainstorming, awaiting spec review
 
 **Changelog:** 2026-09-30: sides renamed to HEADS / TAILS (HEADS = eagle art, TAILS = BWANA art; webps renamed `heads.webp` / `tails.webp`).
@@ -17,9 +26,9 @@ platform-wide reskin afterwards.
 ## Game rules
 
 - **Stake-only** (`stakeOnly: true`, like Njuka): no free daily plays, no extra-play charge.
-- **Stakes:** 10 / 20 / 30 / 50 coins. Tiers above the player's balance are disabled.
+- **Stakes:** ~~10 / 20 / 30 / 50~~ 1 / 10 / 25 / 50 coins (see the economy update). Tiers above the player's balance are disabled.
 - **Pick:** `HEADS` or `TAILS`.
-- **Payout:** win returns `stake × 1.9` → 19 / 38 / 57 / 95 (5% house edge; top win 95 < the 200 cap). Loss forfeits the stake.
+- **Payout:** win returns `stake × 1.9` → ~~19 / 38 / 57 / 95 (5% house edge)~~ 2 / 19 / 48 / 95, rounded half up, win chance set for the configured RTP ( top win 95 < the 200 cap). Loss forfeits the stake.
 - **Result** is decided on the device at the moment of FLIP with `crypto.getRandomValues` — no network round-trip. (Same client-authoritative trust boundary as the rest of the platform.)
 
 ## Player flow (3 taps, one screen)

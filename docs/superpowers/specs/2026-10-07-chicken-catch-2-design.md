@@ -1,5 +1,17 @@
 # Chicken Catch 2 — design
 
+## Economy update — 2026-10-07 (supersedes the stakes, odds and rounding below)
+
+- **Stakes:** 1 / 5 / 10 / 20 coins (default chip 5; a remembered 25 etc. falls back to 5). Chips: 1 violet, 5 blue, 10 red, 20 green. Card footer `stakeRange: '1–20'`.
+- **Payout:** `payoutFor(stake, mult)` = `stake × mult` rounded **half up** (was floored), multiplier capped at 10. The live CASH OUT caption shows it.
+- **Crash point, drawn for the chosen stake:** with half-up payouts the old `P(C ≥ x) = RTP / x` would overpay (stake 1 at 1.50x pays 2 at 65% → 131%; stake 5 at 1.10x → 107%). The survival now follows the actual rounded payout: **`P(C ≥ x) = RTP × stake / payoutFor(stake, x)`** for every 2-decimal x in [1.01, 10] (`survival` in `lib/chicken2/crash.mjs`). Every cash-out — manual, AUTO, or the 10x auto-collect — returns **exactly the RTP, at every stake and every target** (tested for all 900 targets × 4 stakes).
+- `drawCrash(stake, rtp, rng)`: `reach = ceil(RTP·stake / U) − 1` (the biggest payout the round can still reach; `P(reach ≥ Q) = RTP·stake/Q`), then `C` = the last 2-decimal multiplier that pays at most `reach` = `floor((100·reach + 49) / stake) / 100`, capped at 10. `reach < stake` ⇒ C = 1.00, an instant crash with probability exactly **1 − RTP** (the old sub-1.01 sliver is gone).
+- Consequence: C always lands on the last multiplier before the payout steps up — X.49 at stake 1, …09/…29 at stake 5, …04/…14 at stake 10, …02/…07 at stake 20 — and the "recent crash points" strip shows that pattern. Nothing is exploitable: every cash-out has the same EV.
+- **RTP clamp** changed from [0.80, 0.99] to **[0.97, 0.99]** (shared `clampRtp`).
+- **Rounding:** every payout is `stake × multiplier` rounded **half up** (.5 up, .4 down), worked in integer hundredths in `lib/rtp.mjs` (`roundHalfUp`) so float noise never flips a half (25 × 1.14 = 28.5 → 29, although `25 * 1.14` is 28.4999… in floats).
+- **RTP:** remote-config key `games.chicken2.rtp`, default **0.98**, clamped to **[0.97, 0.99]** (`clampRtp` in `lib/rtp.mjs`, mirrored by `lib/config/merge.mjs`; listed with min/max in `/api/admin/catalog`). `GamificationPlatform` passes `rtp={cfg.games.chicken2?.rtp}` into the game, which passes it to the engine on every round.
+- **Max win** is still 200 (the top stake × the top multiplier).
+
 **Date:** 2026-10-07 · **Status:** built on `feat/chicken` (the user's brief: "more like a crash game … make RTP 98%, adjustable later in the gamification dashboard")
 
 ## Context
@@ -9,21 +21,21 @@ A crash game in the Chicken Catch world. The farmer chases a hen that lays golde
 ## Game rules
 
 - **Id `chicken2`**, stake-only (`stakeOnly: true`, `DEFAULT_DAILY_PLAYS.chicken2 = 0`).
-- **Stakes:** 5 / 10 / 20 coins. Tiers above the balance are disabled.
+- **Stakes:** ~~5 / 10 / 20~~ 1 / 5 / 10 / 20 coins (see the economy update). Tiers above the balance are disabled.
 - **Multiplier ceiling 10×.** The round auto-collects at 10× ("MAX WIN!"), so the top payout is 20 × 10 = 200, the platform max-win cap.
 - **RUN** charges the stake (`onSpend`) and draws the crash point C with `crypto.getRandomValues`. RUN is locked until the round has settled.
-- **CASH OUT** (live caption: `floor(stake × multiplier)` coins) banks the shown multiplier. It opens at 1.01× (1.00× is not a cash-out).
+- **CASH OUT** (live caption: `stake × multiplier` rounded half up, in coins) banks the shown multiplier. It opens at 1.01× (1.00× is not a cash-out).
 - **AUTO** (Off / 1.5× / 2× / 3× / 5×) cycles on a chip next to the stakes and is fixed at RUN. The round cashes out exactly at that multiplier if C reaches it. This helps players on slow connections.
 - **Fall:** if the counter would pass C, the farmer trips, the hen flies off over the fence (dropping her eggs), and the line reads **LOSE**. The counter freezes red as "CRASHED @ 2.37×".
 - **Recent results:** a strip over the scene shows the player's last 8 crash points, newest first, as pills: red < 2×, gold 2–5×, green ≥ 5×. It is stored in `localStorage` `chicken2:history` (try/catch). A round's C joins it once the player has seen it: at the fall, when the ghost run reaches C after a cash-out (or at once with reduced motion or the 10× max), or when the round is closed or replaced.
 
 ## Maths (`lib/chicken2/crash.mjs`, pure, tested)
 
-- **Crash point:** `C = min(10, max(1.00, floor(100·RTP / (1 − U)) / 100))` with U uniform in [0, 1) from the CSPRNG.
+- **Crash point (ORIGINAL — superseded by the stake-aware draw in the economy update):** `C = min(10, max(1.00, floor(100·RTP / (1 − U)) / 100))` with U uniform in [0, 1) from the CSPRNG.
   - For every 2-decimal x in [1.01, 10]: **P(C ≥ x) = RTP / x exactly**. A cash-out at x wins iff C ≥ x, so its EV is x · RTP / x = **RTP**, for every target, manual or AUTO, and for the 10× max.
   - **Instant crash** (C = 1.00, he falls before the first cash-out step) has probability 1 − RTP/1.01. That is 1 − RTP (raw draws under 1.00) plus the sliver of raw draws in [1.00, 1.01), which no one could cash out anyway: 2.97% at 98% RTP. This is the "(round as needed)" of the brief, and it never raises EV above RTP.
-- **RTP:** `RTP_DEFAULT = 0.98`. `clampRtp` accepts a finite number and clamps it to [0.80, 0.99]; anything else falls back to 0.98.
-- **Payout:** `payoutFor(stake, mult) = floor(stake × mult)`, worked in hundredths (20 × 1.15 = 23, not 22), with the multiplier capped at 10. It is always a whole number and never above 200.
+- **RTP:** `RTP_DEFAULT = 0.98`. `clampRtp` accepts a finite number and clamps it to ~~[0.80, 0.99]~~ [0.97, 0.99]; anything else falls back to 0.98.
+- **Payout:** `payoutFor(stake, mult)` = ~~`floor(stake × mult)`~~ `stake × mult` rounded half up, worked in hundredths (20 × 1.15 = 23, not 22), with the multiplier capped at 10. It is always a whole number and never above 200.
 - **Growth curve:** `m(t) = e^(K·t)` with K = ln2 / 5.8. That gives 2× at 5.8 s and 10× at 19.3 s. The counter shows `floor(m·100)/100`, frozen at C.
   - He falls at `endTime(C) = t(C + 0.01)`, the moment the counter would pass C, so C itself is on screen.
   - At C = 10 the auto-collect fires at t(10).
@@ -44,7 +56,7 @@ A crash game in the Chicken Catch world. The farmer chases a hen that lays golde
 
   If a `games` row already exists, the dashboard merges into it per game: `{ "chicken2": { "rtp": 0.97 } }` next to the other games' `enabled` / `dailyPlays`.
 - **Defaults:** `lib/config/defaults.js` puts `games.chicken2.rtp = 0.98` (via `GAME_EXTRAS`).
-- **Merge:** `lib/config/merge.mjs` keeps `rtp` in the per-game merge, clamps a number to [0.80, 0.99], and drops anything else so the default survives. A dashboard save of `{ chicken2: { enabled } }` without `rtp` keeps it. This is tested in `tests/merge.test.mjs`.
+- **Merge:** `lib/config/merge.mjs` keeps `rtp` in the per-game merge, clamps a number to ~~[0.80, 0.99]~~ [0.97, 0.99], and drops anything else so the default survives. A dashboard save of `{ chicken2: { enabled } }` without `rtp` keeps it. This is tested in `tests/merge.test.mjs`.
 - **Plumbing:** `GET /api/config` → `useRemoteConfig()` → `GamificationPlatform` passes `rtp={cfg.games.chicken2?.rtp}` → `Chicken2Game` → `clampRtp(rtp)` at every RUN. If config fails, the game uses 0.98. A change lands on the next widget load (60 s edge cache).
 - **Dashboard hint:** `GET /api/admin/catalog` lists `chicken2` with `rtp: { default: 0.98, min: 0.8, max: 0.99 }`, so the dashboard can render an RTP field for any game that carries one. The dashboard UI itself is out of scope.
 

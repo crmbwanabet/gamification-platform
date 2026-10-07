@@ -1,5 +1,15 @@
 # Bottle Spin — design
 
+## Economy update — 2026-10-07 (supersedes the stakes, odds and rounding below)
+
+- **Stakes:** 1 / 10 / 25 / 50 coins (default chip 10; a remembered 20/30 falls back to 10). Card footer `stakeRange: '1–50'`. Caption "WIN UP TO" = `payoutFor(stake, 4)`.
+- **Odds per stake:** the prize weights stay 1.5x 14 · 2x 7 · 1.2x 30 · 4x 3 · 3x 4. The three TRY AGAIN segments share a losing weight `L` solved per stake from the actual rounded payouts so the EV is exactly the RTP: `L = Σ w·payout / (stake·rtp) − 58` (`weightsFor`, `chancesFor`, `rtpFor` in `lib/bottle/wheel.mjs`).
+- At the 98% default: stake 10/50 → 1.2x 30.95%, 1.5x 14.44%, 2x 7.22%, 3x 4.13%, 4x 3.09%, TRY AGAIN 40.17%; stake 1 → 30.63 / 14.29 / 7.15 / 4.08 / 3.06%, TRY AGAIN 40.81%; stake 25 → 30.86 / 14.40 / 7.20 / 4.11 / 3.09%, TRY AGAIN 40.34%. The tutorial lists the stake-50 percentages, generated from the engine.
+- At stake 1 the 1.2x segment pays 1 coin (the stake back) and 1.5x pays the same 2 coins as 2x.
+- **Rounding:** every payout is `stake × multiplier` rounded **half up** (.5 up, .4 down), worked in integer hundredths in `lib/rtp.mjs` (`roundHalfUp`) so float noise never flips a half (25 × 1.14 = 28.5 → 29, although `25 * 1.14` is 28.4999… in floats).
+- **RTP:** remote-config key `games.bottle.rtp`, default **0.98**, clamped to **[0.97, 0.99]** (`clampRtp` in `lib/rtp.mjs`, mirrored by `lib/config/merge.mjs`; listed with min/max in `/api/admin/catalog`). `GamificationPlatform` passes `rtp={cfg.games.bottle?.rtp}` into the game, which passes it to the engine on every round.
+- **Max win** is still 200 (the top stake × the top multiplier).
+
 **Date:** 2026-10-07 · **Status:** built on `game/bottle`
 
 ## Context
@@ -12,9 +22,9 @@ just a stake and SPIN.
 ## Game rules
 
 - **Stake-only** (`stakeOnly: true`): no free daily plays, no extra-play charge.
-- **Stakes:** 10 / 20 / 30 / 50 coins. Tiers above the balance are disabled; the last stake is remembered (`localStorage['bottle:last']`).
+- **Stakes:** ~~10 / 20 / 30 / 50~~ 1 / 10 / 25 / 50 coins (see the economy update). Tiers above the balance are disabled; the last stake is remembered (`localStorage['bottle:last']`).
 - **Spin:** tap SPIN. The stake is charged at once, and the result is decided on the device at that moment with `crypto.getRandomValues` (`resolveSpin`). This is the same client-authoritative trust boundary as the rest of the platform.
-- **Payout:** `Math.round(stake × mult)`; TRY AGAIN pays 0. Top prize 4x, so 50 × 4 = 200 = the max-win cap.
+- **Payout:** `stake × mult` rounded half up; TRY AGAIN pays 0. Top prize 4x, so 50 × 4 = 200 = the max-win cap.
 
 ## Pay table (`lib/bottle/wheel.mjs`)
 
@@ -33,7 +43,7 @@ The tutorial says this plainly and lists the chance of each prize.
 | 7 | TRY AGAIN | 14 | 14% | 0 |
 
 - Total weight 100. Any win: 58%. TRY AGAIN: 42%.
-- **EV** = (30·1.2 + 14·1.5 + 7·2 + 4·3 + 3·4) / 100 = (36 + 21 + 14 + 12 + 12) / 100 = **0.95 exactly**, a 5% edge like the other games.
+- **EV** = (30·1.2 + 14·1.5 + 7·2 + 4·3 + 3·4) / 100 = (36 + 21 + 14 + 12 + 12) / 100 = 0.95 — the ORIGINAL table; TRY AGAIN is now solved per stake so the EV equals the configured RTP (see the economy update).
 - Every payout is a whole number for every stake (the multipliers 1.2 / 1.5 / 2 / 3 / 4 give whole numbers on 10/20/30/50 anyway).
 
 ## Player flow

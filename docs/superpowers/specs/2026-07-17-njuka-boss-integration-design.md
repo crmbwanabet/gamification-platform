@@ -1,5 +1,10 @@
 # Njuka Boss — Platform Integration Design
 
+## Economy update — 2026-10-07
+
+- **Stake tiers are now 1 / 10 / 25 / 50** (minimum stake 1 coin). Winner profit = `min(stake × opponents, 200)`: at 4 seats 3 / 30 / 75 / 150; at stake 1 the pot is 2–4 coins and a win pays +1 / +2 / +3 — whole coins, no rounding needed. Default stake stays 10. Mirrored by `stakeRange: '1–50'` in `lib/data/platform.js` (GamesGrid footer) and the tutorial prize lines.
+- Njuka has **no RTP setting**: it is player-vs-bots with no house edge (fair bots ⇒ ~100% return against equal play), so it is not in the `games.<id>.rtp` config.
+
 **Date:** 2026-07-17
 **Status:** Approved design, pending implementation plan
 **Source:** `C:\Users\USER\Desktop\Claude projects\card game\njuka-boss\index.html` (555-line static prototype)
@@ -18,7 +23,7 @@ cheating structurally impossible and proves it with tests.
 |---|---|
 | Table format | Fixed 4-seat table: player + 3 bots (clearly labeled as bots). No lobby, no seat picker. |
 | Economy | **Pure stakes** — no daily free plays, no extra-play charge. Entering is free; every round costs its stake in coins. |
-| Stake tiers | 5 / 10 / 25 / 50 coins (winner profit 15 / 30 / 75 / 150 — under the 200 `MAX_WIN` cap) |
+| Stake tiers | ~~5~~ 1 / 10 / 25 / 50 coins (winner profit 3 / 30 / 75 / 150 — under the 200 `MAX_WIN` cap) |
 | Timeout | Auto-play the turn (auto-draw + auto-discard); round stays live, stake stays in the pot |
 | Name | **Njuka Boss** |
 | Architecture | Pure engine module (`lib/njuka/engine.mjs`, unit-tested) + UI component (`components/games/NjukaGame.jsx`) |
@@ -127,7 +132,7 @@ Native v2 game modal, same shell conventions as the existing 7 games
 (v2 `C` tokens, full-screen overlay, top-right close, help button →
 `TutorialModal`, widget red-X compatible, `useReducedMotion` respected).
 
-- **Stake screen** (on open): tier picker 5/10/25/50 with coin icons
+- **Stake screen** (on open): tier picker 1/10/25/50 with coin icons
   (`RewardIcon`), one-glance rules recap, Play button. Unaffordable
   tiers disabled.
 - **Table**: felt oval restyled to the indigo-plum palette. 3 bots

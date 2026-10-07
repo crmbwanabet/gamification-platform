@@ -1,5 +1,14 @@
 # Scratch Card — design
 
+## Economy update — 2026-10-07 (supersedes the stakes, odds and rounding below)
+
+- **Stakes:** 1 / 10 / 25 / 50 coins (default chip 10; a remembered 20/30 falls back to 10). Card footer `stakeRange: '1–50'`. Caption "WIN UP TO" = `payoutFor(stake, 4)`.
+- **Odds per stake:** the `p` column below is now the SHAPE of the ladder (Σ p × mult = 0.95). `winProbs(stake, rtp)` rescales it from the actual rounded payouts: `p' = p × rtp / E(stake)`, `E = Σ p·payout / stake`, so the EV is exactly the RTP. Win chance at the 98% default: stake 1 47.79%, 10 50.81%, 25 50.61%, 50 50.81%. Near misses are still 42% of the losing cards.
+- Payouts: stake 1 → 1 / 2 / 2 / 3 / 3 / 4; stake 25 → 30 / 38 / 50 / 63 / 75 / 100; stakes 10 and 50 as before. At stake 1 three maize pay 1 coin (the stake back).
+- **Rounding:** every payout is `stake × multiplier` rounded **half up** (.5 up, .4 down), worked in integer hundredths in `lib/rtp.mjs` (`roundHalfUp`) so float noise never flips a half (25 × 1.14 = 28.5 → 29, although `25 * 1.14` is 28.4999… in floats).
+- **RTP:** remote-config key `games.scratch.rtp`, default **0.98**, clamped to **[0.97, 0.99]** (`clampRtp` in `lib/rtp.mjs`, mirrored by `lib/config/merge.mjs`; listed with min/max in `/api/admin/catalog`). `GamificationPlatform` passes `rtp={cfg.games.scratch?.rtp}` into the game, which passes it to the engine on every round.
+- **Max win** is still 200 (the top stake × the top multiplier).
+
 **Date:** 2026-10-07 · **Status:** built on the candy Penalty Crash / Chicken Catch pattern
 
 ## Context
@@ -8,13 +17,13 @@ Fourth "candy" game. Same constraints: cheap phones and poor internet, no skill,
 
 ## Game rules
 
-- **Stake-only** (`stakeOnly: true`): no free daily plays and no extra-play charge. Stakes are 10 / 20 / 30 / 50, and tiers above the balance are disabled.
+- **Stake-only** (`stakeOnly: true`): no free daily plays and no extra-play charge. Stakes are ~~10 / 20 / 30 / 50~~ 1 / 10 / 25 / 50 (see the economy update), and tiers above the balance are disabled.
 - **BUY CARD** charges the stake (`onSpend`) and decides the whole card at once with `crypto.getRandomValues` (`lib/scratch/odds.mjs` → `resolveCard`). Tapping the panels only reveals the result.
-- There are 3 panels. Three matching symbols pay `Math.round(stake × mult)`; anything else loses the stake.
+- There are 3 panels. Three matching symbols pay `stake × mult` rounded half up; anything else loses the stake.
 
 ### Odds (`lib/scratch/odds.mjs`)
 
-`p` is the chance that a card is three of that symbol. The return is `Σ p × mult = 0.95` exactly (5% edge). The win chance is 49.25%.
+`p` is the chance that a card is three of that symbol. This base ladder returns `Σ p × mult = 0.95`; it is rescaled per stake to the configured RTP (see the economy update).
 
 | Symbol | Mult | p | EV share | Pays at 10 / 20 / 30 / 50 |
 |---|---|---|---|---|
