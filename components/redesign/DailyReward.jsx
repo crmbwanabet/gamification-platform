@@ -14,7 +14,9 @@ const rewardText = (r) => rewardParts(r).join(' + ');
 /**
  * 7-day streak-based daily login reward, shown at the top of Home.
  * Glassy panel with a streak rail, a glowing "today" tile, locked upcoming days,
- * and a gold grand-prize Day 7. The claim button overlaps the panel's bottom edge
+ * and a gold grand-prize Day 7 (days 1–6: 10 coins each; day 7 = 7 days in a
+ * row: 100 coins). Day 7 gets a wider column, a coin pile and a BONUS ribbon
+ * so it stands out from the six identical days before it. The claim button overlaps the panel's bottom edge
  * and names today's reward ("Claim 50 coins"). Once claimed it collapses to a
  * slim card that says what was received and what tomorrow brings, so the games
  * below move up.
@@ -26,6 +28,7 @@ export default function DailyReward({ dailyDay = 1, dailyClaimed = false, onClai
   const total = list.length; // 7
   const curDay = Math.min(dailyDay, total);
   const today = list[dailyDay - 1] || list[0];
+  const cols = `repeat(${total - 1},1fr) 1.45fr`; // the grand day gets a wider column
 
   if (dailyClaimed) {
     // claimDailyReward already advanced dailyDay (7 wraps to 1), so the row
@@ -62,6 +65,7 @@ export default function DailyReward({ dailyDay = 1, dailyClaimed = false, onClai
           .rs-daily .rs-dr-count { font-size: 16px !important; }
           .rs-daily .rs-dr-tile { min-height: 82px !important; padding: 8px 2px !important; }
           .rs-daily .rs-dr-amt { font-size: 13px !important; }
+          .rs-daily .rs-dr-grand .rs-dr-amt { font-size: 16px !important; }
           .rs-daily .rs-dr-daylabel { font-size: 8px !important; }
           .rs-daily .rs-dr-panel { padding: 14px 12px 30px !important; }
           .rs-daily .rs-dr-tiles { gap: 5px !important; }
@@ -96,8 +100,8 @@ export default function DailyReward({ dailyDay = 1, dailyClaimed = false, onClai
 
         {/* progress rail */}
         <div style={{ position: 'relative', height: 16, margin: '0 0 12px' }}>
-          <div style={{ position: 'absolute', top: '50%', left: `${100 / (total * 2)}%`, right: `${100 / (total * 2)}%`, height: 2, background: 'rgba(255,255,255,.12)', transform: 'translateY(-50%)' }} />
-          <div style={{ position: 'relative', display: 'grid', gridTemplateColumns: `repeat(${total},1fr)`, height: '100%' }}>
+          <div style={{ position: 'absolute', top: '50%', left: `${100 / ((total + 0.45) * 2)}%`, right: `${145 / ((total + 0.45) * 2)}%`, height: 2, background: 'rgba(255,255,255,.12)', transform: 'translateY(-50%)' }} />
+          <div style={{ position: 'relative', display: 'grid', gridTemplateColumns: cols, height: '100%' }}>
             {list.map((r, i) => {
               const day = i + 1;
               const past = day < dailyDay;
@@ -116,7 +120,7 @@ export default function DailyReward({ dailyDay = 1, dailyClaimed = false, onClai
         </div>
 
         {/* day tiles */}
-        <div className="rs-dr-tiles" style={{ display: 'grid', gridTemplateColumns: `repeat(${total},1fr)`, gap: 8 }}>
+        <div className="rs-dr-tiles" style={{ display: 'grid', gridTemplateColumns: cols, gap: 8 }}>
           {list.map((r, i) => {
             const day = i + 1;
             const past = day < dailyDay;
@@ -125,7 +129,12 @@ export default function DailyReward({ dailyDay = 1, dailyClaimed = false, onClai
             const grand = day === total;
 
             let bg = C.track, textCol = C.text, border = '1px solid rgba(255,255,255,.05)', shadow = 'none';
-            if (isToday) {
+            if (isToday && grand) {
+              bg = 'linear-gradient(180deg,#f6d77c,#cf9a3b)';
+              textCol = '#3a2a08';
+              border = `2px solid ${C.green}`;
+              shadow = '0 0 18px rgba(79,169,139,.55), 0 6px 18px rgba(207,154,59,.45)';
+            } else if (isToday) {
               bg = 'linear-gradient(180deg,#fbfcf8,#e7ebe2)';
               textCol = '#16241c';
               border = `2px solid ${C.green}`;
@@ -138,18 +147,29 @@ export default function DailyReward({ dailyDay = 1, dailyClaimed = false, onClai
             }
 
             return (
-              <div key={day} className="rs-dr-tile" style={{
-                position: 'relative', borderRadius: 13, padding: '10px 3px', minHeight: 96,
+              <div key={day} className={grand ? 'rs-dr-tile rs-dr-grand' : 'rs-dr-tile'} style={{
+                position: 'relative', borderRadius: 13, padding: grand ? '13px 3px 10px' : '10px 3px', minHeight: 96,
                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-between', gap: 4,
                 background: bg, border, boxShadow: shadow, opacity: locked && !grand ? 0.72 : 1,
               }}>
+                {grand && (
+                  <div className="rs-dr-bonus" style={{
+                    position: 'absolute', top: -8, left: '50%', transform: 'translateX(-50%)', whiteSpace: 'nowrap',
+                    padding: '2px 7px', borderRadius: 999, fontSize: 8.5, fontWeight: 900, letterSpacing: '.08em',
+                    color: '#fff', background: 'linear-gradient(180deg,#ff6a4d,#d8342a)', boxShadow: '0 2px 6px rgba(0,0,0,.35)',
+                  }}>BONUS</div>
+                )}
                 <div className="rs-dr-daylabel" style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '.04em', color: isToday ? '#3a6a55' : grand ? '#5c4410' : C.muted }}>DAY {day}</div>
 
                 <div style={{ position: 'relative', display: 'grid', placeItems: 'center', height: 36 }}>
                   {past ? (
                     <img src={`${IC}/check.png`} alt="" width={32} height={32} style={{ objectFit: 'contain' }} />
                   ) : grand ? (
-                    <img src={`${IC}/diamond.png`} alt="" width={36} height={36} className="anim-breathe" style={{ objectFit: 'contain', filter: 'drop-shadow(0 2px 5px rgba(0,0,0,.35))' }} />
+                    <span className="anim-breathe" style={{ position: 'relative', display: 'block', width: 48, height: 36, filter: 'drop-shadow(0 2px 5px rgba(0,0,0,.35))' }}>
+                      <img src={`${IC}/coins.png`} alt="" width={28} height={28} style={{ position: 'absolute', left: 0, bottom: 0, objectFit: 'contain' }} />
+                      <img src={`${IC}/coins.png`} alt="" width={28} height={28} style={{ position: 'absolute', right: 0, bottom: 0, objectFit: 'contain' }} />
+                      <img src={`${IC}/coins.png`} alt="" width={32} height={32} style={{ position: 'absolute', left: 8, top: -2, objectFit: 'contain' }} />
+                    </span>
                   ) : (
                     <>
                       <img src={`${IC}/coins.png`} alt="" width={34} height={34} className={isToday ? 'anim-bob' : undefined} style={{ objectFit: 'contain', opacity: locked ? 0.92 : 1, filter: locked ? 'saturate(.8) brightness(.9)' : 'none' }} />
@@ -159,7 +179,7 @@ export default function DailyReward({ dailyDay = 1, dailyClaimed = false, onClai
                 </div>
 
                 <div aria-label={`Day ${day}: ${rewardText(r)}`} style={{ textAlign: 'center', lineHeight: 1.05 }}>
-                  <div className="rs-dr-amt" style={{ fontSize: 15, fontWeight: 800, color: textCol }}>{r.kwacha}</div>
+                  <div className="rs-dr-amt" style={{ fontSize: grand ? 19 : 15, fontWeight: 900, color: textCol }}>{r.kwacha}</div>
                   <div className="rs-dr-unit" style={{ fontSize: 9.5, fontWeight: 700, color: textCol, opacity: 0.8 }}>{r.kwacha === 1 ? 'coin' : 'coins'}</div>
                   {r.gems ? <div className="rs-dr-extra" style={{ fontSize: 9, fontWeight: 800, marginTop: 3, color: grand ? '#3a2a08' : isToday ? '#1d7a6f' : C.teal, whiteSpace: 'nowrap' }}>+{amountText(r.gems, 'gems')}</div> : null}
                   {r.diamonds ? <div className="rs-dr-extra" style={{ fontSize: 9, fontWeight: 800, marginTop: 1, color: grand ? '#1c3a5c' : DIAMOND, whiteSpace: 'nowrap' }}>+{amountText(r.diamonds, 'diamonds')}</div> : null}
