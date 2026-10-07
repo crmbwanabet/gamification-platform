@@ -30,7 +30,7 @@ Three moving parts, two repos. The **Gamification Supabase project** (the one ho
 | `economy` | `{ "maxWin": 200, "extraPlayCost": 50 }` | `GAME_ECONOMY` |
 | `games` | `{ "wheel": { "enabled": true, "dailyPlays": 3 }, ... }` (all 7 game ids) | Play-grid visibility + daily free-play allowances |
 | `daily_rewards` | array of 7 `{ "kwacha": n, "gems"?: n, "diamonds"?: n }` | 7-day daily calendar |
-| `streak_rewards` | same shape as hardcoded `STREAK_REWARDS` | streak bonuses |
+| `streak_rewards` | same shape as hardcoded `STREAK_REWARDS` | streak bonuses. **Ignored since 2026-10-07**: streak bonuses removed (a week of daily rewards = 160 coins); `merge.mjs` no longer applies this row and the `streakRewards` default is `[]` |
 | `level_rewards` | same shape as hardcoded `LEVEL_REWARDS` | level-up rewards |
 | `mission_overrides` | `{ "<missionId>": { "enabled"?: bool, "reward"?: {...}, "xp"?: n, "target"?: n }, ... }` | per-mission patches; missions stay DEFINED in code, the dashboard only overrides |
 
@@ -113,3 +113,9 @@ Rollback at any step: delete the `platform_config` rows → platform reverts to 
 - Realtime config push to open sessions.
 - Store item image uploads (URL field only; images can live in `public/ui/` or any CDN).
 - Quests/predictions/trivia controls (features are parked).
+
+## Update 2026-10-07
+
+- Missions are now the four daily casino-round missions (`casino_starter`, `casino_regular`, `casino_pro`, `casino_legend`), fed by the CRM. See `2026-10-07-casino-round-missions-design.md`. `mission_overrides` keys are these ids, and `/api/admin/catalog` lists only them (pool `daily`). Overrides for the parked mission ids are ignored.
+- The `streak_rewards` row no longer has any effect, so the dashboard's streak editor can be removed.
+- New service-role table `casino_activity` (per-player daily casino rounds), written only by `POST /api/activity/casino-rounds`.
