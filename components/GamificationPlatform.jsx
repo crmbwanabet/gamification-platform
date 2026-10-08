@@ -40,6 +40,7 @@ import {
 import { CASINO_MISSIONS } from '../lib/data/missions';
 import { casinoMissionStates, countClaimable, recordClaim } from '@/lib/missions/casino.mjs';
 import { lusakaDay } from '@/lib/casino/feed.mjs';
+import { DAILY_LOGIN_XP, addGameXp, refundGameXp, casinoXp } from '@/lib/xp/sources.mjs';
 
 // Component imports
 import MissionDetailModal from './modals/MissionDetailModal';
@@ -918,7 +919,13 @@ export default function GamificationPlatform() {
     // missionsComplete above belong to the parked pre-2026-10-07 missions and
     // are kept untouched so saved history survives.
     casinoMissionClaims: { day: null, ids: [] },
+    // XP sources (lib/xp/sources.mjs, 2026-10-08): today's XP per capped
+    // source, and the casino rounds (Lusaka day) already converted to XP.
+    xpToday: { day: null, games: 0, casino: 0 },
+    casinoXp: { day: null, rounds: 0 },
   });
+  const userRef = useRef(user);
+  userRef.current = user;
 
   const level = getLevel(user.xp);
   const nextLevel = getNextLevel(user.xp);
@@ -1102,6 +1109,18 @@ export default function GamificationPlatform() {
     });
   };
   const addXP = (n) => setUser(u => ({ ...u, xp: u.xp + n }));
+  // THE stake handler: every live game charges its round stake through here
+  // (onSpend). 1 XP per coin staked, capped per Lusaka day (lib/xp/sources.mjs).
+  // No animation per round; the header stage bar just moves.
+  const spendStake = (n) => setUser(u => {
+    const g = addGameXp(u.xpToday, n);
+    return { ...u, kwacha: u.kwacha - n, xp: (u.xp || 0) + g.xp, xpToday: g.xpToday };
+  });
+  // A void round's stake comes back, and so does the XP it earned.
+  const refundStake = (n) => setUser(u => {
+    const g = refundGameXp(u.xpToday, n);
+    return { ...u, kwacha: u.kwacha + n, xp: Math.max(0, (u.xp || 0) - g.xp), xpToday: g.xpToday };
+  });
   const useGamePlay = (game) => setUser(u => ({ 
     ...u, 
     gamePlays: { ...u.gamePlays, [game]: Math.max(0, u.gamePlays[game] - 1) } 
@@ -1127,19 +1146,38 @@ export default function GamificationPlatform() {
   const casinoBusyRef = useRef(false);
   const casinoClaimedRef = useRef(new Set()); // `${day}:${id}` — same-tick double-claim guard
   const getCasinoProgress = session.getCasinoProgress;
+  // Casino rounds -> XP: only rounds not yet converted earn (the feed count is
+  // an absolute daily total), so re-fetching never re-awards. One small float
+  // per fetch that adds XP, never per round. Waits for SSO hydration so the
+  // saved casinoXp/xpToday are known before crediting.
+  const awardCasinoXp = useCallback((progress) => {
+    if (!hydratedRef.current) return;
+    const cur = userRef.current;
+    const preview = casinoXp(progress, cur.casinoXp, cur.xpToday);
+    if (preview.credited === cur.casinoXp && preview.xpToday === cur.xpToday) return;
+    setUser(u => {
+      const r = casinoXp(progress, u.casinoXp, u.xpToday);
+      if (r.credited === u.casinoXp && r.xpToday === u.xpToday) return u;
+      return { ...u, xp: (u.xp || 0) + r.xp, casinoXp: r.credited, xpToday: r.xpToday };
+    });
+    if (preview.xp > 0) triggerRewardRef.current?.('small', null, { xp: preview.xp });
+  }, []);
+  const triggerRewardRef = useRef(null);
+  triggerRewardRef.current = triggerReward;
   const fetchCasino = useCallback(async () => {
     if (!loggedIn) return null;
     const { status, data } = await getCasinoProgress();
     if (status === 200 && data && data.day) {
       const next = { status: 'ok', day: data.day, rounds: Math.max(0, Number(data.rounds) || 0), updatedAt: data.updatedAt || null };
       setCasino(next);
+      awardCasinoXp(next);
       return next;
     }
     if (status === 401) { setCasino(c => ({ ...c, status: 'anon' })); return null; }
     if (status === 429) return null; // keep what we have
     setCasino(c => (c.status === 'ok' ? c : { ...c, status: 'unavailable', day: data?.day || c.day }));
     return null;
-  }, [loggedIn, getCasinoProgress]);
+  }, [loggedIn, getCasinoProgress, awardCasinoXp]);
   // Fetch once the widget opens with a session, again on every visit to the
   // Missions tab, and every 60s while that tab is on screen and visible.
   useEffect(() => { if (loggedIn) fetchCasino(); }, [loggedIn, fetchCasino]);
@@ -1306,8 +1344,8 @@ export default function GamificationPlatform() {
         <NjukaGame
           onClose={() => animateClose(() => setActiveGame(null))} closing={closingModal}
           balance={user.kwacha}
-          onSpend={(n) => addCoins(-n)}
-          onRefund={(n) => { addCoins(n); showNotif(`Round void — ${n} Coins returned`); }}
+          onSpend={spendStake}
+          onRefund={(n) => { refundStake(n); showNotif(`Round void — ${n} Coins returned`); }}
           onWin={(n, meta) => {
             addCoins(n);
             showNotif(`🎉 +${meta?.net ?? n} Coins!`);
@@ -1320,7 +1358,7 @@ export default function GamificationPlatform() {
       )}
       {activeGame === 'coinflip' && (
         <CoinFlipGame onClose={() => animateClose(() => setActiveGame(null))} closing={closingModal}
-          balance={user.kwacha} rtp={cfg.games.coinflip?.rtp} onSpend={(n) => addCoins(-n)}
+          balance={user.kwacha} rtp={cfg.games.coinflip?.rtp} onSpend={spendStake}
           onRound={({ stake, win, payout }) => {
             if (win) addCoins(payout); // the game's own WinCelebration shows the win — no toast / float
             setUser(u => ({ ...u, gamesPlayed: u.gamesPlayed + 1, dailyTasksDone: [...new Set([...u.dailyTasksDone, 'game'])] }));
@@ -1330,7 +1368,7 @@ export default function GamificationPlatform() {
       )}
       {activeGame === 'penalty' && (
         <PenaltyGame onClose={() => animateClose(() => setActiveGame(null))} closing={closingModal}
-          balance={user.kwacha} rtp={cfg.games.penalty?.rtp} onSpend={(n) => addCoins(-n)}
+          balance={user.kwacha} rtp={cfg.games.penalty?.rtp} onSpend={spendStake}
           onRound={({ stake, win, payout }) => {
             if (win) addCoins(payout); // the game's own WinCelebration shows the win — no toast / float
             setUser(u => ({ ...u, gamesPlayed: u.gamesPlayed + 1, dailyTasksDone: [...new Set([...u.dailyTasksDone, 'game'])] }));
@@ -1340,7 +1378,7 @@ export default function GamificationPlatform() {
       )}
       {activeGame === 'chicken' && (
         <ChickenGame onClose={() => animateClose(() => setActiveGame(null))} closing={closingModal}
-          balance={user.kwacha} rtp={cfg.games.chicken?.rtp} onSpend={(n) => addCoins(-n)}
+          balance={user.kwacha} rtp={cfg.games.chicken?.rtp} onSpend={spendStake}
           onRound={({ stake, win, payout }) => {
             if (win) addCoins(payout); // the game's own WinCelebration shows the win — no toast / float
             setUser(u => ({ ...u, gamesPlayed: u.gamesPlayed + 1, dailyTasksDone: [...new Set([...u.dailyTasksDone, 'game'])] }));
@@ -1350,7 +1388,7 @@ export default function GamificationPlatform() {
       )}
       {activeGame === 'chicken2' && (
         <Chicken2Game onClose={() => animateClose(() => setActiveGame(null))} closing={closingModal}
-          balance={user.kwacha} rtp={cfg.games.chicken2?.rtp} onSpend={(n) => addCoins(-n)}
+          balance={user.kwacha} rtp={cfg.games.chicken2?.rtp} onSpend={spendStake}
           onRound={({ stake, win, payout }) => {
             if (win) addCoins(payout); // the game's own WinCelebration shows the win — no toast / float
             setUser(u => ({ ...u, gamesPlayed: u.gamesPlayed + 1, dailyTasksDone: [...new Set([...u.dailyTasksDone, 'game'])] }));
@@ -1360,7 +1398,7 @@ export default function GamificationPlatform() {
       )}
       {activeGame === 'minibus' && (
         <MinibusGame onClose={() => animateClose(() => setActiveGame(null))} closing={closingModal}
-          balance={user.kwacha} rtp={cfg.games.minibus?.rtp} onSpend={(n) => addCoins(-n)}
+          balance={user.kwacha} rtp={cfg.games.minibus?.rtp} onSpend={spendStake}
           onRound={({ stake, win, payout }) => {
             if (win) addCoins(payout); // the game's own WinCelebration shows the win — no toast / float
             setUser(u => ({ ...u, gamesPlayed: u.gamesPlayed + 1, dailyTasksDone: [...new Set([...u.dailyTasksDone, 'game'])] }));
@@ -1370,7 +1408,7 @@ export default function GamificationPlatform() {
       )}
       {activeGame === 'bottle' && (
         <BottleGame onClose={() => animateClose(() => setActiveGame(null))} closing={closingModal}
-          balance={user.kwacha} rtp={cfg.games.bottle?.rtp} onSpend={(n) => addCoins(-n)}
+          balance={user.kwacha} rtp={cfg.games.bottle?.rtp} onSpend={spendStake}
           onRound={({ stake, win, payout }) => {
             if (win) addCoins(payout); // the game's own WinCelebration shows the win — no toast / float
             setUser(u => ({ ...u, gamesPlayed: u.gamesPlayed + 1, dailyTasksDone: [...new Set([...u.dailyTasksDone, 'game'])] }));
@@ -1380,7 +1418,7 @@ export default function GamificationPlatform() {
       )}
       {activeGame === 'scratch' && (
         <ScratchGame onClose={() => animateClose(() => setActiveGame(null))} closing={closingModal}
-          balance={user.kwacha} rtp={cfg.games.scratch?.rtp} onSpend={(n) => addCoins(-n)}
+          balance={user.kwacha} rtp={cfg.games.scratch?.rtp} onSpend={spendStake}
           onRound={({ stake, win, payout }) => {
             if (win) addCoins(payout); // the game's own WinCelebration shows the win — no toast / float
             setUser(u => ({ ...u, gamesPlayed: u.gamesPlayed + 1, dailyTasksDone: [...new Set([...u.dailyTasksDone, 'game'])] }));
@@ -1390,7 +1428,7 @@ export default function GamificationPlatform() {
       )}
       {activeGame === 'numbers' && (
         <NumbersGame onClose={() => animateClose(() => setActiveGame(null))} closing={closingModal}
-          balance={user.kwacha} rtp={cfg.games.numbers?.rtp} onSpend={(n) => addCoins(-n)}
+          balance={user.kwacha} rtp={cfg.games.numbers?.rtp} onSpend={spendStake}
           onRound={({ stake, win, payout }) => {
             if (win) addCoins(payout); // the game's own WinCelebration shows the win — no toast / float
             setUser(u => ({ ...u, gamesPlayed: u.gamesPlayed + 1, dailyTasksDone: [...new Set([...u.dailyTasksDone, 'game'])] }));
@@ -1543,7 +1581,7 @@ export default function GamificationPlatform() {
     if (!Object.keys(r).length) return;
     dailyBusyRef.current = true;
     addCurrencies(r);
-    addXP(20);
+    addXP(DAILY_LOGIN_XP);
     const today = new Date().toDateString();
     const wasYesterday = user.lastDailyClaim && Math.round((new Date(today) - new Date(user.lastDailyClaim)) / 86400000) === 1;
     const newStreak = wasYesterday ? user.streak + 1 : user.streak;
@@ -1552,7 +1590,7 @@ export default function GamificationPlatform() {
     trackMission('dailyClaimed');
     track('daily_claimed', { amount: r.kwacha || 0 });
     showNotif(`🎉 +${rewardParts(r).join(' + ')} claimed!`);
-    triggerReward('medium', el || null, { coins: r.kwacha, emeralds: r.emeralds, rubies: r.rubies, diamonds: r.diamonds, xp: 20 });
+    triggerReward('medium', el || null, { coins: r.kwacha, emeralds: r.emeralds, rubies: r.rubies, diamonds: r.diamonds, xp: DAILY_LOGIN_XP });
     // Streak milestone BONUSES removed 2026-10-07 (a week pays exactly
     // 6 x 10 + 100 = 160 coins); the streak counter above still drives day
     // 1->7. Old payout parked in parked/components/GamificationPlatform.removed-wiring.jsx

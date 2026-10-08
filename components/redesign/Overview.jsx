@@ -32,7 +32,7 @@ function MissionCard({ s, onOpen, i = 0 }) {
           {state === 'done' && <Badge bg={C.green}>Claimed today</Badge>}
           {state === 'ready' && <Badge bg={C.green}>Ready to claim</Badge>}
           {state === 'progress' && <Badge bg={C.teal} color="#06231f">In progress</Badge>}
-          {state === 'new' && <div style={{ fontSize: 11, color: C.sub }}><span style={{ color: C.muted }}>Reward:</span> <b style={{ color: C.text }}>{rewardParts(m.reward).join(' + ')}</b></div>}
+          {state === 'new' && <div style={{ fontSize: 11, color: C.sub }}><span style={{ color: C.muted }}>Reward:</span> <b style={{ color: C.text }}>{[...rewardParts(m.reward), m.xp ? amountText(m.xp, 'xp') : null].filter(Boolean).join(' + ')}</b></div>}
           <div style={{ marginTop: 8 }}>
             <Progress value={pct} />
             <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6, fontSize: 10.5, color: C.muted }}>

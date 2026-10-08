@@ -7,6 +7,7 @@ import { IMAGES } from '@/lib/data/images';
 import { amountText } from '@/lib/rewardText.mjs';
 import { CASINO_MISSIONS } from '@/lib/data/missions';
 import { casinoMissionStates } from '@/lib/missions/casino.mjs';
+import { xpSourceLines } from '@/lib/xp/sources.mjs';
 import { XP_LEVELS, LEVEL_REWARDS, getLevel } from '@/lib/data/platform';
 import { Check, Lock, LogIn, RefreshCw } from 'lucide-react';
 
@@ -45,6 +46,30 @@ function MilestoneRow({ icon, title, sub, reward, reached, current }) {
   );
 }
 
+export const XP_COLOR = '#b9a5e8';
+
+function XpChip({ xp, fontSize = 12 }) {
+  return <span style={{ fontSize, fontWeight: 800, color: XP_COLOR, whiteSpace: 'nowrap' }}>⚡ {amountText(xp, 'xp')}</span>;
+}
+
+// "How to earn XP" — the lines come from lib/xp/sources.mjs, so retuning a
+// number there updates this list too.
+function XpSources() {
+  return (
+    <Card style={{ padding: '11px 14px', marginBottom: 12 }}>
+      <div style={{ fontSize: 11, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 7 }}>How to earn XP</div>
+      <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 5 }}>
+        {xpSourceLines().map(l => (
+          <li key={l.id} style={{ display: 'flex', alignItems: 'baseline', gap: 6, fontSize: 12, lineHeight: 1.35 }}>
+            <span style={{ color: XP_COLOR, flex: 'none' }}>⚡</span>
+            <span><b style={{ color: C.text, fontWeight: 800 }}>{l.title}</b><span style={{ color: C.sub }}> — {l.text}</span></span>
+          </li>
+        ))}
+      </ul>
+    </Card>
+  );
+}
+
 // Stage milestones: Vuma Katongo's story stages (levels = stages since
 // 2026-10-08). The streak bonuses that used to sit above them were removed
 // 2026-10-07 — parked/components/GamificationPlatform.removed-wiring.jsx.
@@ -54,6 +79,7 @@ function RewardsSection({ xp = 0, levelRewards = null }) {
   return (
     <section>
       <SectionTitle>Stage Milestones</SectionTitle>
+      <XpSources />
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         {XP_LEVELS.filter(l => lvlRewards[l.level]).map(l => (
           <MilestoneRow key={l.level}
@@ -113,8 +139,9 @@ function MissionRow({ s, i = 0, loggedIn, onOpen, onClaim }) {
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 13.5, fontWeight: 800, color: C.text, marginBottom: 3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.name}</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+            <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', columnGap: 8, rowGap: 4, marginBottom: 6 }}>
               <CurrencyAmounts r={m.reward} size={14} fontSize={12} gap={8} />
+              {m.xp ? <XpChip xp={m.xp} /> : null}
               <Badge bg={d.c} color="#130f1f">{d.label}</Badge>
             </div>
             <Progress value={pct} color={s.claimed ? C.green : s.reached ? C.green : C.teal} height={6} />
