@@ -226,7 +226,7 @@ function TopBar({ points, missionsCount, badges, lvl, nextLvl, xpPct, onNavigate
           <img src={lvl.avatar} alt={`Vuma at stage ${lvl.level}: ${lvl.name}`} width={46} height={46} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
         </div>
         <div style={{ minWidth: 0 }}>
-          <div style={{ fontSize: 15, fontWeight: 800, color: C.text, maxWidth: 116, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{userId || 'Player'}</div>
+          <div style={{ fontSize: 15, fontWeight: 800, color: C.text, maxWidth: 116, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Vuma Katongo</div>
           <span title={`Stage ${lvl.level}: ${lvl.name}`} style={{ display: 'inline-block', maxWidth: 110, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', verticalAlign: 'top', fontSize: 10, fontWeight: 700, color: C.text, background: C.panel2, padding: '2px 8px', borderRadius: 999 }}>{lvl.name}</span>
         </div>
       </button>
