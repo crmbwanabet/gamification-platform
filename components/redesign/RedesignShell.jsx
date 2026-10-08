@@ -227,6 +227,7 @@ function TopBar({ points, missionsCount, badges, lvl, nextLvl, xpPct, onNavigate
         </div>
         <div style={{ minWidth: 0 }}>
           <div style={{ fontSize: 15, fontWeight: 800, color: C.text, maxWidth: 116, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Vuma Katongo</div>
+          {userId && <div title={`Your bwanabet user ID: ${userId}`} style={{ fontSize: 10.5, fontWeight: 600, color: C.muted, maxWidth: 116, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', margin: '1px 0 2px' }}>ID {userId}</div>}
           <span title={`Stage ${lvl.level}: ${lvl.name}`} style={{ display: 'inline-block', maxWidth: 110, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', verticalAlign: 'top', fontSize: 10, fontWeight: 700, color: C.text, background: C.panel2, padding: '2px 8px', borderRadius: 999 }}>{lvl.name}</span>
         </div>
       </button>
