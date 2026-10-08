@@ -1237,7 +1237,7 @@ export default function GamificationPlatform() {
     missions: 'missions',
     earn: 'missions',
     'earn.missions': 'missions',
-    'earn.rewards': 'missions', // streak + level milestones, below the missions
+    'earn.rewards': 'missions', // stage milestones, below the missions
     quests: 'missions',
     'earn.quests': 'missions',
     // no profile tab: the header avatar opens the ProfileModal; me.* ids
@@ -1258,7 +1258,7 @@ export default function GamificationPlatform() {
     setTab(target);
   };
 
-  // Level-up: award cfg.levelRewards + celebrate when the player's level increases.
+  // Stage-up (levels = Vuma stages): award cfg.levelRewards + celebrate when the player's stage increases.
   useEffect(() => {
     const curLevel = getLevel(user.xp).level;
     if (lastLevelRef.current === null) { lastLevelRef.current = curLevel; return; }
@@ -1271,8 +1271,8 @@ export default function GamificationPlatform() {
       lastLevelRef.current = curLevel;
       addCurrencies(total);
       const lvl = getLevel(user.xp);
-      setLevelUp({ level: lvl.level, name: lvl.name, icon: lvl.icon, reward: total });
-      showNotif(`🎉 Level up — ${lvl.name}!`);
+      setLevelUp({ level: lvl.level, name: lvl.name, place: lvl.place, avatar: lvl.avatar, icon: lvl.icon, reward: total });
+      showNotif(`🎉 New stage — ${lvl.name}!`);
       track('level_up', { meta: { level: lvl.level } });
       triggerReward('big', null, { coins: total.kwacha || undefined, emeralds: total.emeralds || undefined, rubies: total.rubies || undefined, diamonds: total.diamonds || undefined });
     }

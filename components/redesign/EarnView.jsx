@@ -32,7 +32,7 @@ function RewardChips({ r }) {
 function MilestoneRow({ icon, title, sub, reward, reached, current }) {
   return (
     <Card style={{ padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 12, border: current ? `1.5px solid ${C.green}` : '1px solid rgba(255,255,255,0.07)' }}>
-      <div style={{ width: 38, height: 38, flex: 'none', borderRadius: 10, background: C.track, display: 'grid', placeItems: 'center', fontSize: 20 }}>{icon}</div>
+      <div style={{ width: 38, height: 38, flex: 'none', borderRadius: 10, overflow: 'hidden', background: C.track, display: 'grid', placeItems: 'center', fontSize: 20 }}>{icon}</div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 13.5, fontWeight: 800, color: C.text }}>{title}</div>
         {sub && <div style={{ fontSize: 11, color: C.muted }}>{sub}</div>}
@@ -45,17 +45,20 @@ function MilestoneRow({ icon, title, sub, reward, reached, current }) {
   );
 }
 
-// Level milestones (the streak bonuses that used to sit above them were
-// removed 2026-10-07 — parked/components/GamificationPlatform.removed-wiring.jsx).
+// Stage milestones: Vuma Katongo's story stages (levels = stages since
+// 2026-10-08). The streak bonuses that used to sit above them were removed
+// 2026-10-07 — parked/components/GamificationPlatform.removed-wiring.jsx.
 function RewardsSection({ xp = 0, levelRewards = null }) {
   const curLevel = getLevel(xp).level;
   const lvlRewards = levelRewards || LEVEL_REWARDS;
   return (
     <section>
-      <SectionTitle>Level Milestones</SectionTitle>
+      <SectionTitle>Stage Milestones</SectionTitle>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         {XP_LEVELS.filter(l => lvlRewards[l.level]).map(l => (
-          <MilestoneRow key={l.level} icon={l.icon} title={l.name} sub={`Reach level ${l.level} · ${l.xp.toLocaleString()} XP`}
+          <MilestoneRow key={l.level}
+            icon={<img src={l.avatar} alt="" width={38} height={38} loading="lazy" style={{ width: 38, height: 38, objectFit: 'cover', display: 'block', filter: curLevel >= l.level ? 'none' : 'grayscale(.6) brightness(.8)' }} />}
+            title={l.name} sub={`Stage ${l.level} · ${l.club ? l.place + ' · ' : ''}${l.xp.toLocaleString()} XP`}
             reward={lvlRewards[l.level]} reached={curLevel >= l.level} current={curLevel + 1 === l.level} />
         ))}
       </div>
@@ -137,7 +140,7 @@ function MissionRow({ s, i = 0, loggedIn, onOpen, onClaim }) {
 /**
  * The Missions tab (internal component name kept from the old Earn tab).
  * Four DAILY casino missions driven by ONE counter — casino rounds played on
- * bwanabet.com today (CRM feed, Lusaka day) — then the level milestones.
+ * bwanabet.com today (CRM feed, Lusaka day) — then the stage milestones.
  * The daily reward lives on Home.
  */
 export default function EarnView({ wallet = null, points = '0', missionsCount = 0, badges = 0, xp = 0, onNavigate, onOpenProfile, onOpenMission, onClaimMission, userId = null, navBadges = {}, missions = null, missionStates = null, casinoStatus = 'anon', loggedIn = false, levelRewards = null, focusRewards = 0 }) {

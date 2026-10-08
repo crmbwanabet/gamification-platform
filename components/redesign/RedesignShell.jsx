@@ -222,10 +222,12 @@ function TopBar({ points, missionsCount, badges, lvl, nextLvl, xpPct, onNavigate
   return (
     <div className="rs-topbar" style={{ display: 'flex', alignItems: 'center', gap: 26, padding: '14px 22px', background: C.bgTop, borderBottom: `1px solid ${C.line}`, boxShadow: '0 2px 10px rgba(0,0,0,.2)', flexShrink: 0 }}>
       <button onClick={() => (onOpenProfile ? onOpenProfile() : onNavigate && onNavigate('me.profile'))} title="Your profile" className="rs-profile" style={{ all: 'unset', display: 'flex', alignItems: 'center', gap: 12, width: 168, flex: 'none', cursor: 'pointer', borderRadius: 12, padding: 2 }}>
-        <div style={{ width: 46, height: 46, borderRadius: '50%', background: 'linear-gradient(135deg,#7fd7e8,#3a7d8c)', display: 'grid', placeItems: 'center', fontSize: 24, border: `2px solid ${C.teal}` }}>🧑‍🦰</div>
-        <div>
+        <div style={{ width: 46, height: 46, flex: 'none', borderRadius: '50%', overflow: 'hidden', background: 'linear-gradient(135deg,#7fd7e8,#3a7d8c)', border: `2px solid ${C.teal}`, boxSizing: 'border-box' }}>
+          <img src={lvl.avatar} alt={`Vuma at stage ${lvl.level}: ${lvl.name}`} width={46} height={46} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+        </div>
+        <div style={{ minWidth: 0 }}>
           <div style={{ fontSize: 15, fontWeight: 800, color: C.text, maxWidth: 116, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{userId || 'Player'}</div>
-          <span style={{ fontSize: 10, fontWeight: 700, color: C.text, background: C.panel2, padding: '2px 8px', borderRadius: 999 }}>{lvl.name}</span>
+          <span title={`Stage ${lvl.level}: ${lvl.name}`} style={{ display: 'inline-block', maxWidth: 110, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', verticalAlign: 'top', fontSize: 10, fontWeight: 700, color: C.text, background: C.panel2, padding: '2px 8px', borderRadius: 999 }}>{lvl.name}</span>
         </div>
       </button>
       <WalletButton wallet={wallet || { kwacha: typeof points === 'number' ? points : 0 }} onOpen={onOpenWallet} />
@@ -234,9 +236,9 @@ function TopBar({ points, missionsCount, badges, lvl, nextLvl, xpPct, onNavigate
         <Stat img="badges" value={badges} label="Badges" />
       </div>
       <div className="rs-level" style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 12, width: 300 }}>
-        <div style={{ fontSize: 30 }}>{nextLvl ? nextLvl.icon : lvl.icon}</div>
-        <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 12, color: C.sub, marginBottom: 6, fontWeight: 600 }}>Next level is, <b style={{ color: C.text }}>{nextLvl ? nextLvl.name : 'Max'}</b></div>
+        <img src={(nextLvl || lvl).avatar} alt="" width={34} height={34} style={{ width: 34, height: 34, flex: 'none', borderRadius: '50%', objectFit: 'cover', border: `1.5px solid ${C.line}`, opacity: nextLvl ? 0.85 : 1 }} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 12, color: C.sub, marginBottom: 6, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{nextLvl ? <>Next stage: <b style={{ color: C.text }}>{nextLvl.name}</b></> : <b style={{ color: C.text }}>Final stage</b>}</div>
           <Progress value={xpPct} color="linear-gradient(90deg,#4fa98b,#8b5cf6)" height={8} />
         </div>
       </div>
