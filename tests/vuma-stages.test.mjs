@@ -70,6 +70,8 @@ test('every banner and avatar file exists under public/', () => {
     const nn = String(s.stage).padStart(2, '0');
     assert.equal(s.banner, `/vuma/banner-${nn}.jpg`);
     assert.equal(s.avatar, `/vuma/avatar-${nn}.jpg`);
+    assert.equal(s.hero, `/vuma/hero-${nn}.jpg`);
+    assert.ok(existsSync(path.join(PUBLIC, s.hero)), s.hero);
     assert.ok(existsSync(path.join(PUBLIC, s.banner)), s.banner);
     assert.ok(existsSync(path.join(PUBLIC, s.avatar)), s.avatar);
   }

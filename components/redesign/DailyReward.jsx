@@ -4,9 +4,8 @@ import React from 'react';
 import { C } from './tokens';
 import { DAILY_REWARDS } from '@/lib/data/platform';
 import { RewardIcon } from './RedesignShell';
-import { rewardParts, amountText } from '@/lib/rewardText.mjs';
+import { rewardParts } from '@/lib/rewardText.mjs';
 
-const GEM_TEXT = { emeralds: '#2fbf83', rubies: '#ff6b81', diamonds: '#7db8ff' };
 const IC = '/ui/reward'; // generated 3D reward icons
 
 const rewardText = (r) => rewardParts(r).join(' + ');
@@ -28,6 +27,8 @@ export default function DailyReward({ dailyDay = 1, dailyClaimed = false, onClai
   const total = list.length; // 7
   const curDay = Math.min(dailyDay, total);
   const today = list[dailyDay - 1] || list[0];
+  const isGrand = curDay === total;
+  const grandReward = list[total - 1];
   const cols = `repeat(${total - 1},1fr) 1.45fr`; // the grand day gets a wider column
 
   if (dailyClaimed) {
@@ -60,18 +61,20 @@ export default function DailyReward({ dailyDay = 1, dailyClaimed = false, onClai
   return (
     <div className="rs-daily" style={{ position: 'relative', paddingBottom: 22 }}>
       <style>{`
-        @media (max-width: 560px) {
-          .rs-daily .rs-dr-title { font-size: 19px !important; }
-          .rs-daily .rs-dr-count { font-size: 16px !important; }
-          .rs-daily .rs-dr-tile { min-height: 82px !important; padding: 8px 2px !important; }
-          .rs-daily .rs-dr-amt { font-size: 13px !important; }
-          .rs-daily .rs-dr-grand .rs-dr-amt { font-size: 16px !important; }
-          .rs-daily .rs-dr-daylabel { font-size: 8px !important; }
-          .rs-daily .rs-dr-panel { padding: 14px 12px 30px !important; }
-          .rs-daily .rs-dr-tiles { gap: 5px !important; }
-          .rs-daily .rs-dr-unit { font-size: 8.5px !important; }
-          .rs-daily .rs-dr-extra { font-size: 7.5px !important; letter-spacing: -.01em; }
-          .rs-daily .rs-dr-claim { font-size: 13px !important; padding: 10px 18px !important; }
+        @media (max-width: 480px) {
+          .rs-daily { padding-bottom: 16px !important; }
+          .rs-daily .rs-dr-title { font-size: 16px !important; gap: 6px !important; }
+          .rs-daily .rs-dr-title img { width: 20px !important; height: 20px !important; }
+          .rs-daily .rs-dr-count { font-size: 14px !important; }
+          .rs-daily .rs-dr-panel { padding: 10px 12px 24px !important; border-radius: 16px !important; }
+          .rs-daily .rs-dr-head { margin-bottom: 4px !important; }
+          .rs-daily .rs-dr-rail { margin-bottom: 8px !important; }
+          .rs-daily .rs-dr-todaytile { padding: 6px 10px !important; gap: 8px !important; }
+          .rs-daily .rs-dr-coin { width: 26px !important; height: 26px !important; }
+          .rs-daily .rs-dr-amt { font-size: 15px !important; }
+          .rs-daily .rs-dr-daylabel { font-size: 8.5px !important; }
+          .rs-daily .rs-dr-hint { font-size: 9.5px !important; }
+          .rs-daily .rs-dr-claim { font-size: 13px !important; padding: 8px 16px !important; }
         }
       `}</style>
 
@@ -83,7 +86,7 @@ export default function DailyReward({ dailyDay = 1, dailyClaimed = false, onClai
         padding: '18px 20px 30px',
       }}>
         {/* header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+        <div className="rs-dr-head" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
           <div className="rs-dr-title" style={{ fontSize: 25, fontWeight: 800, color: C.text, fontFamily: "var(--font-display, 'Bricolage Grotesque', sans-serif)", display: 'inline-flex', alignItems: 'center', gap: 10, lineHeight: 1 }}>
             Daily Reward <img src={`${IC}/gift.png`} alt="" width={28} height={28} className="anim-wiggle" style={{ objectFit: 'contain' }} />
           </div>
@@ -91,15 +94,8 @@ export default function DailyReward({ dailyDay = 1, dailyClaimed = false, onClai
             Day {curDay} / {total}
           </div>
         </div>
-        <div className="rs-dr-today" style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6, fontSize: 13.5, fontWeight: 700, color: C.sub, marginBottom: 12 }}>
-          Today:
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, color: C.gold, fontWeight: 800 }}>
-            <RewardIcon kind="coins" size={17} />{rewardText(today)}
-          </span>
-        </div>
-
         {/* progress rail */}
-        <div style={{ position: 'relative', height: 16, margin: '0 0 12px' }}>
+        <div className="rs-dr-rail" style={{ position: 'relative', height: 16, margin: '0 0 12px' }}>
           <div style={{ position: 'absolute', top: '50%', left: `${100 / ((total + 0.45) * 2)}%`, right: `${145 / ((total + 0.45) * 2)}%`, height: 2, background: 'rgba(255,255,255,.12)', transform: 'translateY(-50%)' }} />
           <div style={{ position: 'relative', display: 'grid', gridTemplateColumns: cols, height: '100%' }}>
             {list.map((r, i) => {
@@ -119,73 +115,18 @@ export default function DailyReward({ dailyDay = 1, dailyClaimed = false, onClai
           </div>
         </div>
 
-        {/* day tiles */}
-        <div className="rs-dr-tiles" style={{ display: 'grid', gridTemplateColumns: cols, gap: 8 }}>
-          {list.map((r, i) => {
-            const day = i + 1;
-            const past = day < dailyDay;
-            const isToday = day === dailyDay && !dailyClaimed;
-            const locked = !past && !isToday;
-            const grand = day === total;
-
-            let bg = C.track, textCol = C.text, border = '1px solid rgba(255,255,255,.05)', shadow = 'none';
-            if (isToday && grand) {
-              bg = 'linear-gradient(180deg,#f6d77c,#cf9a3b)';
-              textCol = '#3a2a08';
-              border = `2px solid ${C.green}`;
-              shadow = '0 0 18px rgba(79,169,139,.55), 0 6px 18px rgba(207,154,59,.45)';
-            } else if (isToday) {
-              bg = 'linear-gradient(180deg,#fbfcf8,#e7ebe2)';
-              textCol = '#16241c';
-              border = `2px solid ${C.green}`;
-              shadow = '0 0 18px rgba(79,169,139,.55)';
-            } else if (grand) {
-              bg = 'linear-gradient(180deg,#ecc665,#cf9a3b)';
-              textCol = '#3a2a08';
-              border = '1px solid rgba(255,255,255,.25)';
-              shadow = '0 6px 16px rgba(207,154,59,.3)';
-            }
-
-            return (
-              <div key={day} className={grand ? 'rs-dr-tile rs-dr-grand' : 'rs-dr-tile'} style={{
-                position: 'relative', borderRadius: 13, padding: grand ? '13px 3px 10px' : '10px 3px', minHeight: 96,
-                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-between', gap: 4,
-                background: bg, border, boxShadow: shadow, opacity: locked && !grand ? 0.72 : 1,
-              }}>
-                {grand && (
-                  <div className="rs-dr-bonus" style={{
-                    position: 'absolute', top: -8, left: '50%', transform: 'translateX(-50%)', whiteSpace: 'nowrap',
-                    padding: '2px 7px', borderRadius: 999, fontSize: 8.5, fontWeight: 900, letterSpacing: '.08em',
-                    color: '#fff', background: 'linear-gradient(180deg,#ff6a4d,#d8342a)', boxShadow: '0 2px 6px rgba(0,0,0,.35)',
-                  }}>BONUS</div>
-                )}
-                <div className="rs-dr-daylabel" style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '.04em', color: isToday ? '#3a6a55' : grand ? '#5c4410' : C.muted }}>DAY {day}</div>
-
-                <div style={{ position: 'relative', display: 'grid', placeItems: 'center', height: 36 }}>
-                  {past ? (
-                    <img src={`${IC}/check.png`} alt="" width={32} height={32} style={{ objectFit: 'contain' }} />
-                  ) : grand ? (
-                    <span className="anim-breathe" style={{ position: 'relative', display: 'block', width: 48, height: 36, filter: 'drop-shadow(0 2px 5px rgba(0,0,0,.35))' }}>
-                      <img src={`${IC}/coins.png`} alt="" width={28} height={28} style={{ position: 'absolute', left: 0, bottom: 0, objectFit: 'contain' }} />
-                      <img src={`${IC}/coins.png`} alt="" width={28} height={28} style={{ position: 'absolute', right: 0, bottom: 0, objectFit: 'contain' }} />
-                      <img src={`${IC}/coins.png`} alt="" width={32} height={32} style={{ position: 'absolute', left: 8, top: -2, objectFit: 'contain' }} />
-                    </span>
-                  ) : (
-                    <>
-                      <img src={`${IC}/coins.png`} alt="" width={34} height={34} className={isToday ? 'anim-bob' : undefined} style={{ objectFit: 'contain', opacity: locked ? 0.92 : 1, filter: locked ? 'saturate(.8) brightness(.9)' : 'none' }} />
-                      {locked && <img src={`${IC}/lock.png`} alt="" width={16} height={16} style={{ position: 'absolute', right: -2, bottom: -3, objectFit: 'contain', filter: 'drop-shadow(0 1px 2px rgba(0,0,0,.55))' }} />}
-                    </>
-                  )}
-                </div>
-
-                <div aria-label={`Day ${day}: ${rewardText(r)}`} style={{ textAlign: 'center', lineHeight: 1.05 }}>
-                  <div className="rs-dr-amt" style={{ fontSize: grand ? 19 : 15, fontWeight: 900, color: textCol }}>{r.kwacha}</div>
-                  <div className="rs-dr-unit" style={{ fontSize: 9.5, fontWeight: 700, color: textCol, opacity: 0.8 }}>{r.kwacha === 1 ? 'coin' : 'coins'}</div>
-                  {['emeralds', 'rubies', 'diamonds'].map((g, gi) => r[g] ? <div key={g} className="rs-dr-extra" style={{ fontSize: 9, fontWeight: 800, marginTop: gi ? 1 : 3, color: grand ? '#3a2a08' : GEM_TEXT[g], whiteSpace: 'nowrap' }}>+{amountText(r[g], g)}</div> : null)}
-                </div>
-              </div>
-            );
-          })}
+        {/* today's reward only */}
+        <div className="rs-dr-todaytile" style={{
+          display: 'flex', alignItems: 'center', gap: 12, borderRadius: 13, padding: '10px 14px',
+          background: isGrand ? 'linear-gradient(180deg,#f6d77c,#cf9a3b)' : 'linear-gradient(180deg,#fbfcf8,#e7ebe2)',
+          color: isGrand ? '#3a2a08' : '#16241c', border: `2px solid ${C.green}`, boxShadow: '0 0 18px rgba(79,169,139,.45)',
+        }}>
+          <img src={`${IC}/coins.png`} alt="" width={38} height={38} className="anim-bob rs-dr-coin" style={{ objectFit: 'contain', flex: 'none' }} />
+          <div aria-label={`Day ${curDay}: ${rewardText(today)}`} style={{ flex: 1, minWidth: 0, lineHeight: 1.1 }}>
+            <div className="rs-dr-daylabel" style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.05em', opacity: .75 }}>DAY {curDay}{isGrand ? ' · BONUS' : ''}</div>
+            <div className="rs-dr-amt" style={{ fontSize: 20, fontWeight: 900 }}>{rewardText(today)}</div>
+          </div>
+          {!isGrand && grandReward && <div className="rs-dr-hint" style={{ fontSize: 11, fontWeight: 700, opacity: .65, textAlign: 'right', lineHeight: 1.2 }}>Day {total}:<br />{rewardText(grandReward)}</div>}
         </div>
       </div>
 

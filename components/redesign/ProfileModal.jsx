@@ -12,7 +12,7 @@ import { XP_LEVELS } from '@/lib/data/platform';
  * shared gameOverlays), opened from the top-bar profile button. Replaces the
  * old `me.profile` tab navigation.
  */
-export default function ProfileModal({ open, onClose, name = 'Player', level, nextLevel, xpPct = 0, vip, user }) {
+export default function ProfileModal({ open, onClose, level, nextLevel, xpPct = 0, vip, user }) {
   if (!open) return null;
   const u = user || {};
   const money = [
@@ -39,15 +39,17 @@ export default function ProfileModal({ open, onClose, name = 'Player', level, ne
       <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 460, maxHeight: '92vh', overflowY: 'auto', borderRadius: 20, background: `linear-gradient(180deg, ${C.bgTop}, ${C.bg})`, border: '1px solid rgba(255,255,255,.09)', boxShadow: '0 24px 60px rgba(0,0,0,.55)', position: 'relative', animation: 'rs-pm-pop .2s cubic-bezier(.2,.8,.3,1)' }}>
         <button onClick={onClose} aria-label="Close" style={{ all: 'unset', position: 'absolute', top: 12, right: 12, zIndex: 2, cursor: 'pointer', width: 32, height: 32, borderRadius: 9, display: 'grid', placeItems: 'center', background: 'rgba(0,0,0,.4)', color: '#fff' }}><X size={18} /></button>
 
-        {/* Top: the current Vuma stage's scene as a cover banner, fading into the modal background. */}
-        <div style={{ position: 'relative', padding: '26px 22px 18px', textAlign: 'center', borderBottom: `1px solid ${C.line}`, overflow: 'hidden', borderRadius: '20px 20px 0 0', backgroundColor: C.bgTop, backgroundImage: level?.banner ? `linear-gradient(180deg, rgba(0,0,0,.08) 0%, rgba(0,0,0,.18) 40%, ${C.bgTop} 100%), url(${level.banner})` : 'radial-gradient(120% 100% at 50% 0%, rgba(79,169,139,.16), transparent 70%)', backgroundSize: 'cover', backgroundPosition: 'center' }}>
-          <div style={{ width: 84, height: 84, margin: '0 auto 12px', borderRadius: '50%', overflow: 'hidden', background: 'linear-gradient(135deg,#7fd7e8,#3a7d8c)', border: `3px solid ${C.teal}`, boxShadow: '0 8px 24px rgba(0,0,0,.45)', boxSizing: 'border-box' }}>
-            {level?.avatar && <img src={level.avatar} alt={`Vuma at stage ${level.level}: ${level.name}`} width={84} height={84} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />}
-          </div>
-          <div style={{ fontSize: 21, fontWeight: 800, color: C.text, marginBottom: 8, fontFamily: "var(--font-display, 'Bricolage Grotesque', sans-serif)", textShadow: '0 2px 8px rgba(0,0,0,.7)' }}>{name}</div>
-          <div style={{ display: 'flex', justifyContent: 'center', gap: 8, flexWrap: 'wrap' }}>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 800, color: C.text, background: C.panel2, padding: '4px 11px', borderRadius: 999, boxShadow: '0 2px 8px rgba(0,0,0,.35)' }}>{level?.name}</span>
-            {vip?.name && <span style={{ fontSize: 12, fontWeight: 800, color: '#08210f', background: C.gold, padding: '4px 11px', borderRadius: 999 }}>{vip.name} VIP</span>}
+        {/* Top: the current Vuma stage's full scene (Vuma in it), name + chips overlaid on a bottom fade. */}
+        <div style={{ position: 'relative', borderRadius: '20px 20px 0 0', overflow: 'hidden', background: C.bgTop, borderBottom: `1px solid ${C.line}` }}>
+          {level?.hero
+            ? <img src={level.hero} alt={`Vuma at stage ${level.level}: ${level.name}`} width={600} height={540} style={{ width: '100%', aspectRatio: '10 / 9', height: 'auto', objectFit: 'cover', display: 'block' }} />
+            : <div style={{ width: '100%', aspectRatio: '10 / 9', background: 'radial-gradient(120% 100% at 50% 0%, rgba(79,169,139,.16), transparent 70%)' }} />}
+          <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, padding: '56px 22px 14px', textAlign: 'center', background: `linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(8,10,16,.72) 55%, ${C.bgTop} 100%)` }}>
+            <div style={{ fontSize: 24, fontWeight: 800, color: C.text, marginBottom: 8, fontFamily: "var(--font-display, 'Bricolage Grotesque', sans-serif)", textShadow: '0 2px 8px rgba(0,0,0,.7)' }}>Vuma Katongo</div>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 800, color: C.text, background: C.panel2, padding: '4px 11px', borderRadius: 999, boxShadow: '0 2px 8px rgba(0,0,0,.35)' }}>{level?.name}</span>
+              {vip?.name && <span style={{ fontSize: 12, fontWeight: 800, color: '#08210f', background: C.gold, padding: '4px 11px', borderRadius: 999 }}>{vip.name} VIP</span>}
+            </div>
           </div>
         </div>
 
