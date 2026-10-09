@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { X } from 'lucide-react';
+import { X, Pencil } from 'lucide-react';
 import { C, CANDY, APP_BG, VIOLET_EDGE, VIOLET_BASE, goldTitle, violetCard, goldRim, dotRow } from './tokens';
 import NavIcon from './NavIcons';
 import StoryBubble, { STORY_CSS } from './StoryBubble';
@@ -9,6 +9,7 @@ import CandyButton, { CANDY_BTN_CSS } from '../games/candy/CandyButton';
 import { getLevel, getNextLevel, getXPProgress } from '@/lib/data/platform';
 import { GEMS, GEM_LABEL, gemCoins, gemKwacha, coinsToKwacha, economyRates, formatKwacha, formatNumber } from '@/lib/economy/currency.mjs';
 import { amountText } from '@/lib/rewardText.mjs';
+import { playerLabel } from '@/lib/profile/name.mjs';
 
 /* ---------------- shared UI primitives (used by all redesign views) ------- */
 // 2026-10-09: candy reskin (design "A · Full candy") — the primitives carry
@@ -253,24 +254,32 @@ function NavTabs({ active, onNavigate, navBadges = {}, place }) {
   });
 }
 
-function TopBar({ lvl, nextLvl, xpPct, activeTab, onNavigate, onOpenProfile, userId, wallet, onOpenWallet, navBadges, story, onStoryOpen, onStoryClose }) {
+function TopBar({ lvl, nextLvl, xpPct, activeTab, onNavigate, onOpenProfile, userId, displayName, onEditName, wallet, onOpenWallet, navBadges, story, onStoryOpen, onStoryClose }) {
   const stageTitle = `Stage ${lvl.level}: ${lvl.name}${nextLvl ? ` · next: ${nextLvl.name}` : ' · final stage'}`;
+  // The PLAYER's identity (2026-10-09): their name over "ID x", else the ID
+  // itself, else "Player". Vuma stays in the avatar art (the story character).
+  const who = playerLabel({ displayName }, userId);
   return (
     <header className="rs-topbar">
-      <div className="rs-who-wrap" style={{ position: 'relative', zIndex: 2 }}>
-        <button type="button" onClick={() => (onOpenProfile ? onOpenProfile() : onNavigate && onNavigate('me.profile'))} title="Your profile" aria-label={`Your profile: Vuma Katongo, ${stageTitle}`} className="rs-profile">
+      <div className="rs-who-wrap" style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', gap: 4 }}>
+        <button type="button" onClick={() => (onOpenProfile ? onOpenProfile() : onNavigate && onNavigate('me.profile'))} title="Your profile" aria-label={`Your profile: ${who.title}${who.sub ? `, ${who.sub}` : ''}, ${stageTitle}`} className="rs-profile">
           <span className="rs-ava" style={{ borderRadius: '50%', padding: 3, boxSizing: 'border-box', background: 'linear-gradient(180deg, #FFE27A, #E0A300)', boxShadow: '0 3px 0 #8a5a00', flex: 'none', display: 'block' }}>
             <img src={lvl.avatar} alt="" width={50} height={50} style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover', display: 'block' }} />
           </span>
           <span className="rs-who" style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, textAlign: 'left' }}>
-            <span className="rs-name" style={{ fontFamily: CANDY.display, lineHeight: 1.05, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Vuma Katongo</span>
-            {userId && <span title={`Your bwanabet user ID: ${userId}`} style={{ fontSize: 11.5, color: 'rgba(255,255,255,.62)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>ID {userId}</span>}
+            <span className="rs-name" data-player-name style={{ fontFamily: CANDY.display, lineHeight: 1.05, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{who.title}</span>
+            {who.sub && <span title={`Your bwanabet user ID: ${userId}`} style={{ fontSize: 11.5, color: 'rgba(255,255,255,.62)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{who.sub}</span>}
             <span title={stageTitle} style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
               <span style={{ fontSize: 10.5, fontWeight: 900, color: CANDY.outline, background: CANDY.gold, borderRadius: 999, padding: '2px 8px', whiteSpace: 'nowrap', flex: 'none' }}>STAGE {lvl.level}</span>
               <span style={{ flex: 1, minWidth: 36 }}><Progress value={xpPct} height={7} color="linear-gradient(90deg, #FFE27A, #FFD21F)" /></span>
             </span>
           </span>
         </button>
+        {!who.named && onEditName && (
+          <button type="button" onClick={onEditName} className="rs-addname" aria-label="Add your name" title="Add your name">
+            <span className="rs-addname-face"><Pencil size={12} strokeWidth={3} aria-hidden /><span className="rs-addname-t">Add name</span></span>
+          </button>
+        )}
         <StoryBubble mode={story} onOpen={onStoryOpen} onClose={onStoryClose} />
       </div>
       <nav className="rs-topnav" aria-label="Main">
@@ -293,8 +302,14 @@ const SHELL_CSS = `
   }
   .rs-widget .rs-topbar { padding-right: 62px; }
   .rs-who-wrap { flex: 1; min-width: 0; }
-  .rs-profile { all: unset; box-sizing: border-box; cursor: pointer; display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px; border-radius: 14px; -webkit-tap-highlight-color: transparent; }
-  .rs-profile:focus-visible, .rs-wallet:focus-visible, .rs-tab:focus-visible { outline: 3px solid ${CANDY.gold}; outline-offset: 3px; }
+  .rs-profile { all: unset; box-sizing: border-box; cursor: pointer; display: flex; align-items: center; gap: 10px; flex: 1 1 auto; min-width: 0; min-height: 44px; border-radius: 14px; -webkit-tap-highlight-color: transparent; }
+  /* "Add name": phones = a pencil badge on the avatar's corner (44px hit area),
+     desktop = a pill beside the name */
+  .rs-addname { all: unset; box-sizing: border-box; cursor: pointer; flex: none; width: 44px; height: 44px; display: grid; place-items: center; -webkit-tap-highlight-color: transparent; position: absolute; left: 24px; top: calc(50% - 2px); z-index: 1; }
+  .rs-addname-face { display: inline-flex; align-items: center; justify-content: center; gap: 5px; width: 24px; height: 24px; padding: 0; box-sizing: border-box; border-radius: 999px; color: #fff; font-family: ${CANDY.body}; font-size: 12px; font-weight: 900; background: linear-gradient(180deg, ${CANDY.green.light}, ${CANDY.green.fill} 55%); border: 2px solid ${CANDY.green.light}; box-shadow: 0 3px 0 ${CANDY.green.dark}; }
+  .rs-addname:active .rs-addname-face { transform: translateY(2px); box-shadow: 0 1px 0 ${CANDY.green.dark}; }
+  .rs-addname-t { display: none; }
+  .rs-profile:focus-visible, .rs-addname:focus-visible, .rs-wallet:focus-visible, .rs-tab:focus-visible { outline: 3px solid ${CANDY.gold}; outline-offset: 3px; }
   .rs-ava { width: 50px; height: 50px; }
   .rs-who { flex: 1; }
   .rs-name { font-size: 17px; }
@@ -325,6 +340,9 @@ const SHELL_CSS = `
     .rs-who-wrap { flex: none; width: 320px; }
     .rs-ava { width: 54px; height: 54px; }
     .rs-name { font-size: 20px; }
+    .rs-addname { position: static; width: auto; min-width: 44px; }
+    .rs-addname-face { width: auto; height: 30px; padding: 0 10px; }
+    .rs-addname-t { display: inline; }
     .rs-topnav { display: flex; flex: 1; justify-content: center; gap: 10px; }
     .rs-bottomnav { display: none; }
     .rs-gem-n { display: inline; }
@@ -343,7 +361,7 @@ const SHELL_CSS = `
  */
 export default function RedesignShell({
   xp = 0, activeTab = 'home', onNavigate, onOpenProfile, children,
-  userId = null, navBadges = {}, wallet = null, isWidget = false,
+  userId = null, displayName = null, onEditName, navBadges = {}, wallet = null, isWidget = false,
   story = null, onStoryOpen, onStoryClose,
 }) {
   const [walletOpen, setWalletOpen] = React.useState(false);
@@ -352,7 +370,7 @@ export default function RedesignShell({
     <div className={`rs-shell${isWidget ? ' rs-widget' : ''}`} style={{ display: 'flex', flexDirection: 'column', overflowX: 'hidden', background: APP_BG, color: C.text, fontFamily: CANDY.body, WebkitFontSmoothing: 'antialiased' }}>
       <style dangerouslySetInnerHTML={{ __html: SHELL_CSS + CANDY_BTN_CSS + STORY_CSS }} />
       <TopBar lvl={lvl} nextLvl={nextLvl} xpPct={xpPct} activeTab={activeTab} onNavigate={onNavigate} onOpenProfile={onOpenProfile}
-        userId={userId} wallet={wallet || { kwacha: 0 }} onOpenWallet={() => setWalletOpen(true)} navBadges={navBadges}
+        userId={userId} displayName={displayName} onEditName={onEditName} wallet={wallet || { kwacha: 0 }} onOpenWallet={() => setWalletOpen(true)} navBadges={navBadges}
         story={walletOpen ? null : story} onStoryOpen={onStoryOpen} onStoryClose={onStoryClose} />
       <main className="rs-main">{children}</main>
       <nav className="rs-bottomnav" aria-label="Main">

@@ -256,7 +256,7 @@ function VumaRoad({ xp = 0, levelRewards = null }) {
  * bwanabet.com today (CRM feed, Lusaka day) — then the stage milestones.
  * The daily reward lives on Home.
  */
-export default function EarnView({ wallet = null, xp = 0, onNavigate, onOpenProfile, onOpenMission, onClaimMission, userId = null, navBadges = {}, missions = null, missionStates = null, casinoStatus = 'anon', loggedIn = false, levelRewards = null, focusRewards = 0, isWidget = false, story = null, onStoryOpen, onStoryClose }) {
+export default function EarnView({ wallet = null, xp = 0, onNavigate, onOpenProfile, onOpenMission, onClaimMission, userId = null, displayName = null, onEditName, navBadges = {}, missions = null, missionStates = null, casinoStatus = 'anon', loggedIn = false, levelRewards = null, focusRewards = 0, isWidget = false, story = null, onStoryOpen, onStoryClose }) {
   const states = missionStates || casinoMissionStates(missions || CASINO_MISSIONS, { rounds: 0, today: null });
   const rounds = states[0]?.rounds || 0;
   const resetLabel = useResetText();
@@ -268,7 +268,7 @@ export default function EarnView({ wallet = null, xp = 0, onNavigate, onOpenProf
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, [focusRewards]);
   return (
-    <RedesignShell wallet={wallet} xp={xp} userId={userId} navBadges={navBadges} activeTab="missions" onNavigate={onNavigate} onOpenProfile={onOpenProfile}
+    <RedesignShell wallet={wallet} xp={xp} userId={userId} displayName={displayName} onEditName={onEditName} navBadges={navBadges} activeTab="missions" onNavigate={onNavigate} onOpenProfile={onOpenProfile}
       isWidget={isWidget} story={story} onStoryOpen={onStoryOpen} onStoryClose={onStoryClose}>
       {/* Quests parked — see parked/components/redesign/EarnView.QuestCard.parked.jsx */}
       <style>{EV_CSS}</style>

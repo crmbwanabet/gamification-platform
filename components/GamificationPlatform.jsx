@@ -19,6 +19,7 @@ import ProfileModal from './redesign/ProfileModal';
 // SSO session (bwanabet token -> Supabase profile)
 import { useSession } from './session/SessionProvider';
 import { useRemoteConfig } from '@/lib/config/useRemoteConfig';
+import { setName as setPlayerName, validateName, canRename, normalizeNameState } from '@/lib/profile/name.mjs';
 import { GEMS, CURRENCY_VERSION, migrateCurrencyState, cleanReward, canAfford, formatKwacha } from '@/lib/economy/currency.mjs';
 import { paidFromPurchase, refundTotals } from '@/lib/store/catalog.mjs';
 
@@ -926,6 +927,10 @@ export default function GamificationPlatform() {
     // source, and the casino rounds (Lusaka day) already converted to XP.
     xpToday: { day: null, games: 0, casino: 0 },
     casinoXp: { day: null, rounds: 0 },
+    // Player display name (lib/profile/name.mjs, 2026-10-09): shown in the
+    // header/profile over the bwanabet ID; renamable once per stage-up.
+    displayName: null,
+    nameSetAtStage: null,
   });
   const userRef = useRef(user);
   userRef.current = user;
@@ -950,6 +955,8 @@ export default function GamificationPlatform() {
     const params = new URLSearchParams(window.location.search);
     setWidgetCtx({ isWidget: inIframe || params.get('widget') === '1', widgetUid: params.get('uid') });
   }, []);
+  // The player's ID shown under their name (header + profile).
+  const playerId = session?.profile?.bwanabet_user_id || session?.profile?.username || widgetUid || null;
   useEffect(() => {
     const id = session?.profile?.bwanabet_user_id || session?.profile?.username || widgetUid;
     if (id) setTrackUid(id);
@@ -960,13 +967,24 @@ export default function GamificationPlatform() {
   const lastLevelRef = useRef(null);
   const [levelUp, setLevelUp] = useState(null);
   const [showProfile, setShowProfile] = useState(false);
+  const [profileEdit, setProfileEdit] = useState(false); // open the profile straight into the name form
+  const openProfile = (edit = false) => { setProfileEdit(!!edit); setShowProfile(true); };
+  // Save the player's name (first name any time, then once per stage-up).
+  const savePlayerName = (name) => {
+    const v = validateName(name);
+    if (!v.ok) return v;
+    const stage = getLevel(userRef.current.xp).level;
+    if (!setPlayerName(userRef.current, v.name, stage)) return { ok: false, reason: `You can change your name again at Stage ${stage + 1}` };
+    setUser(u => setPlayerName(u, v.name, getLevel(u.xp).level) || u);
+    return { ok: true, name: v.name };
+  };
   useEffect(() => {
     if (hydratedRef.current) return;
     if (session.status === 'ready' && session.profile) {
       const saved = session.profile.state;
       if (saved && typeof saved === 'object' && Object.keys(saved).length) {
         // Saved blobs from before the gem economy reset gems/diamonds to 0.
-        setUser(u => ({ ...u, ...migrateCurrencyState(saved) }));
+        setUser(u => ({ ...u, ...migrateCurrencyState(saved), ...normalizeNameState(saved) }));
         lastLevelRef.current = getLevel(saved.xp || 0).level; // don't award levels already earned
       }
       hydratedRef.current = true;
@@ -1531,10 +1549,11 @@ export default function GamificationPlatform() {
       {flyingCoins.map(c => (
         <div key={c.id} className="reward-flying-coin" style={{ left: c.fromX, top: c.fromY, '--fly-dx': `${c.toX - c.fromX}px`, '--fly-dy': `${c.toY - c.fromY}px`, '--fly-dx-half': `${(c.toX - c.fromX) * 0.3}px`, '--fly-dy-half': `${(c.toY - c.fromY) * 0.5 - 60}px` }}>{c.icon ? <img src={c.icon} alt="" width={22} height={22} style={{ display: 'block' }} /> : c.emoji}</div>
       ))}
-      <LevelUpModal levelUp={levelUp} onClose={() => setLevelUp(null)} />
+      <LevelUpModal levelUp={levelUp} onClose={() => setLevelUp(null)}
+        onRename={levelUp && user.displayName && canRename(user, levelUp.level) ? () => { setLevelUp(null); openProfile(true); } : undefined} />
       <ProfileModal
-        open={showProfile} onClose={() => setShowProfile(false)}
-        name={session?.profile?.username || session?.profile?.first_name || 'Player'}
+        open={showProfile} onClose={() => { setShowProfile(false); setProfileEdit(false); }}
+        startEditing={profileEdit} userId={playerId} onSaveName={savePlayerName}
         level={level} nextLevel={nextLevel} xpPct={xpProgress} vip={vip} user={user}
       />
     </>
@@ -1551,9 +1570,12 @@ export default function GamificationPlatform() {
     badges: user.missionsComplete.length,
     xp: user.xp,
     onNavigate: navigateTab,
-    onOpenProfile: () => setShowProfile(true),
-    // the header shows the bwanabet user id once the SSO session resolves
-    userId: session?.profile?.bwanabet_user_id || session?.profile?.username || widgetUid || null,
+    onOpenProfile: () => openProfile(false),
+    // header = the PLAYER: their name over "ID x" (bwanabet user id once the
+    // SSO session resolves), else the ID with an "Add name" button
+    userId: playerId,
+    displayName: user.displayName || null,
+    onEditName: () => openProfile(true),
     // nav badges = things to attend to, not catalog sizes
     // (every live game is stakeOnly, so the old Play "free plays left" badge
     // is gone; Home flags the unclaimed daily reward instead)

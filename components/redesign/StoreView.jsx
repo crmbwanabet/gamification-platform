@@ -97,13 +97,13 @@ function GemRedeemCard({ item, balances, onBuy, busy, i }) {
   );
 }
 
-export default function StoreView({ wallet = null, xp = 0, onNavigate, onOpenProfile, onBuy, userId = null, navBadges = {}, storeItems = null, busyId = null, isWidget = false, story = null, onStoryOpen, onStoryClose }) {
+export default function StoreView({ wallet = null, xp = 0, onNavigate, onOpenProfile, onBuy, userId = null, displayName = null, onEditName, navBadges = {}, storeItems = null, busyId = null, isWidget = false, story = null, onStoryOpen, onStoryClose }) {
   const { coinPacks, gemRedemptions, items } = splitCatalog(storeItems || STORE_ITEMS);
   const balances = balancesOf(wallet);
   const { coinsPerKwacha } = economyRates(wallet?.economy);
   const hasRedeem = coinPacks.length + gemRedemptions.length > 0;
   return (
-    <RedesignShell wallet={wallet} xp={xp} userId={userId} navBadges={navBadges} activeTab="store" onNavigate={onNavigate} onOpenProfile={onOpenProfile}
+    <RedesignShell wallet={wallet} xp={xp} userId={userId} displayName={displayName} onEditName={onEditName} navBadges={navBadges} activeTab="store" onNavigate={onNavigate} onOpenProfile={onOpenProfile}
       isWidget={isWidget} story={story} onStoryOpen={onStoryOpen} onStoryClose={onStoryClose}>
       <style>{`
         .rs-redeem-coins { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; }

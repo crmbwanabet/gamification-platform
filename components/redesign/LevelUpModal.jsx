@@ -9,7 +9,9 @@ import { XP_LEVELS } from '@/lib/data/platform';
 // Celebratory stage-up modal (levels = Vuma Katongo story stages), in the
 // candy look: gold-rimmed panel with marquee dots, Vuma in a gold ring.
 // Driven by a `levelUp` object: { level, name, place, avatar, icon, reward: { kwacha, emeralds, rubies, diamonds } }
-export default function LevelUpModal({ levelUp, onClose }) {
+// `onRename` (set when this stage-up unlocks a rename for a named player)
+// adds a "You can change your name now" line that opens the profile's name form.
+export default function LevelUpModal({ levelUp, onClose, onRename }) {
   if (!levelUp) return null;
   const r = cleanReward(levelUp.reward);
   const hasReward = Object.keys(r).length > 0;
@@ -36,6 +38,12 @@ export default function LevelUpModal({ levelUp, onClose }) {
               </div>
             </div>
           ) : null}
+          {onRename && (
+            <div data-rename-unlocked style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, background: C.track, border: `2px solid ${CANDY.violet.dark}`, borderRadius: 14, padding: '6px 6px 6px 12px', marginBottom: 14, textAlign: 'left' }}>
+              <span style={{ fontSize: 13.5, fontWeight: 800 }}>You can change your name now</span>
+              <GreenBtn color="violet" size={15} onClick={onRename} style={{ minHeight: 44, padding: '0 12px', marginBottom: 4 }}>Change name</GreenBtn>
+            </div>
+          )}
           <GreenBtn full size={24} onClick={onClose} style={{ minHeight: 56, borderRadius: 18 }}>Continue</GreenBtn>
         </div>
       </div>
