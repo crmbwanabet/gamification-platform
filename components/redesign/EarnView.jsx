@@ -11,6 +11,7 @@ import { xpSourceLines } from '@/lib/xp/sources.mjs';
 import { XP_LEVELS, LEVEL_REWARDS, getLevel } from '@/lib/data/platform';
 import { Check, Lock, LogIn, RefreshCw } from 'lucide-react';
 import { getStage, getNextStage, stageProgress, STAGE_COUNT } from '@/lib/vuma/stages.mjs';
+import { SeasonSection } from './SeasonCards';
 
 const LUSAKA_OFFSET_MS = 2 * 60 * 60 * 1000;
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -89,12 +90,12 @@ function XpChip({ xp, fontSize = 12 }) {
 
 // "How to earn XP" — the lines come from lib/xp/sources.mjs, so retuning a
 // number there updates this list too.
-function XpSources() {
+function XpSources({ cfg = null }) {
   return (
     <Card style={{ padding: '11px 14px', marginBottom: 12 }}>
       <div style={{ fontFamily: CANDY.display, fontSize: 16, color: CANDY.gold, letterSpacing: '.03em', marginBottom: 7 }}>How to earn XP</div>
       <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 5 }}>
-        {xpSourceLines().map(l => (
+        {xpSourceLines(cfg || undefined).map(l => (
           <li key={l.id} style={{ display: 'flex', alignItems: 'baseline', gap: 6, fontSize: 12, lineHeight: 1.35 }}>
             <span style={{ color: XP_COLOR, flex: 'none' }}>⚡</span>
             <span><b style={{ color: C.text, fontWeight: 800 }}>{l.title}</b><span style={{ color: C.sub }}> — {l.text}</span></span>
@@ -108,13 +109,13 @@ function XpSources() {
 // Stage milestones: Vuma Katongo's story stages (levels = stages since
 // 2026-10-08). The streak bonuses that used to sit above them were removed
 // 2026-10-07 — parked/components/GamificationPlatform.removed-wiring.jsx.
-function RewardsSection({ xp = 0, levelRewards = null }) {
+function RewardsSection({ xp = 0, levelRewards = null, seasonCfg = null }) {
   const curLevel = getLevel(xp).level;
   const lvlRewards = levelRewards || LEVEL_REWARDS;
   return (
     <section>
       <SectionTitle>Stage milestones</SectionTitle>
-      <div className="ev-xp-sources"><XpSources /></div>
+      <div className="ev-xp-sources"><XpSources cfg={seasonCfg} /></div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         {XP_LEVELS.filter(l => lvlRewards[l.level]).map(l => (
           <MilestoneRow key={l.level}
@@ -202,7 +203,7 @@ function MissionRow({ s, i = 0, loggedIn, onOpen, onClaim }) {
 
 // Desktop-only right column: Vuma's current scene, XP to the next stage,
 // the next three stage rewards and how to earn XP.
-function VumaRoad({ xp = 0, levelRewards = null }) {
+function VumaRoad({ xp = 0, levelRewards = null, seasonCfg = null }) {
   const cur = getStage(xp);
   const next = getNextStage(xp);
   const rewards = levelRewards || LEVEL_REWARDS;
@@ -238,7 +239,7 @@ function VumaRoad({ xp = 0, levelRewards = null }) {
             </div>
           )}
           <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 5 }}>
-            {xpSourceLines().map(l => (
+            {xpSourceLines(seasonCfg || undefined).map(l => (
               <li key={l.id} style={{ fontSize: 12, lineHeight: 1.35, color: C.muted }}>
                 <b style={{ color: C.text, fontWeight: 800 }}>{l.title}</b> — {l.text}
               </li>
@@ -256,7 +257,7 @@ function VumaRoad({ xp = 0, levelRewards = null }) {
  * bwanabet.com today (CRM feed, Lusaka day) — then the stage milestones.
  * The daily reward lives on Home.
  */
-export default function EarnView({ wallet = null, xp = 0, onNavigate, onOpenProfile, onOpenMission, onClaimMission, userId = null, displayName = null, onEditName, navBadges = {}, missions = null, missionStates = null, casinoStatus = 'anon', loggedIn = false, levelRewards = null, focusRewards = 0, isWidget = false, story = null, onStoryOpen, onStoryClose }) {
+export default function EarnView({ wallet = null, xp = 0, onNavigate, onOpenProfile, onOpenMission, onClaimMission, userId = null, displayName = null, onEditName, navBadges = {}, missions = null, missionStates = null, casinoStatus = 'anon', loggedIn = false, levelRewards = null, focusRewards = 0, isWidget = false, story = null, onStoryOpen, onStoryClose, season = null, onClaimLeague, onClaimWc, onClaimPrize, prizeBusy = false }) {
   const states = missionStates || casinoMissionStates(missions || CASINO_MISSIONS, { rounds: 0, today: null });
   const rounds = states[0]?.rounds || 0;
   const resetLabel = useResetText();
@@ -281,11 +282,16 @@ export default function EarnView({ wallet = null, xp = 0, onNavigate, onOpenProf
               <MissionRow key={s.mission.id} i={i} s={s} loggedIn={loggedIn} onOpen={onOpenMission} onClaim={onClaimMission} />
             ))}
           </div>
+          {season && (
+            <div id="missions-season" style={{ marginTop: 26, scrollMarginTop: 12 }}>
+              <SeasonSection season={season} onClaimLeague={onClaimLeague} onClaimWc={onClaimWc} onClaimPrize={onClaimPrize} prizeBusy={prizeBusy} />
+            </div>
+          )}
         </section>
-        <VumaRoad xp={xp} levelRewards={levelRewards} />
+        <VumaRoad xp={xp} levelRewards={levelRewards} seasonCfg={season?.cfg} />
       </div>
       <div id="missions-rewards" style={{ marginTop: 26, scrollMarginTop: 12, maxWidth: 720 }}>
-        <RewardsSection xp={xp} levelRewards={levelRewards} />
+        <RewardsSection xp={xp} levelRewards={levelRewards} seasonCfg={season?.cfg} />
       </div>
     </RedesignShell>
   );

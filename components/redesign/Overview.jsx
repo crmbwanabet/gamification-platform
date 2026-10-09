@@ -5,6 +5,7 @@ import { C, CANDY } from './tokens';
 import RedesignShell, { Badge, Progress, GreenBtn, SectionTitle, TitleNote, Card, Thumb, CurrencyAmounts, RewardIcon } from './RedesignShell';
 import DailyReward from './DailyReward';
 import GamesGrid from './GamesGrid';
+import { MatchCard, HustleCard } from './SeasonCards';
 import { useResetText } from './EarnView';
 import { IMAGES } from '@/lib/data/images';
 import { amountText } from '@/lib/rewardText.mjs';
@@ -18,12 +19,12 @@ import { GEMS } from '@/lib/economy/currency.mjs';
 // missions teaser and featured item in a 380px left column and the games
 // grid (3 per row) on the right.
 const OV_CSS = `
-  .ov-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 26px; grid-template-areas: "daily" "games" "missions" "featured"; }
-  .ov-daily { grid-area: daily; } .ov-games { grid-area: games; } .ov-missions { grid-area: missions; } .ov-featured { grid-area: featured; }
+  .ov-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 26px; grid-template-areas: "daily" "season" "games" "missions" "featured"; }
+  .ov-daily { grid-area: daily; } .ov-season { grid-area: season; display: grid; gap: 12px; } .ov-games { grid-area: games; } .ov-missions { grid-area: missions; } .ov-featured { grid-area: featured; }
   .ov-grid > * { min-width: 0; align-self: start; }
   @media (min-width: 861px) {
-    .ov-grid { grid-template-columns: 380px minmax(0, 1fr); grid-template-rows: auto auto 1fr; column-gap: 28px; row-gap: 24px;
-      grid-template-areas: "daily games" "missions games" "featured games"; }
+    .ov-grid { grid-template-columns: 380px minmax(0, 1fr); grid-template-rows: auto auto auto 1fr; column-gap: 28px; row-gap: 24px;
+      grid-template-areas: "daily games" "season games" "missions games" "featured games"; }
   }
   .ov-link { all: unset; box-sizing: border-box; cursor: pointer; display: flex; align-items: center; justify-content: center; min-height: 44px; margin-top: 8px; width: 100%;
     font-size: 13px; font-weight: 900; color: ${CANDY.gold}; border-radius: 12px; }
@@ -67,7 +68,7 @@ function MissionTeaser({ s, onOpen }) {
  * the missions teaser and the featured store item. `focusGames` is a nonce —
  * when it changes the view scrolls to the games (legacy "Go to Games" CTAs).
  */
-export default function Overview({ wallet = null, xp = 1200, activeTab = 'home', onNavigate, onOpenProfile, onOpenMission, missionStates = null, loggedIn = false, canClaimDaily = loggedIn, dailyDay = 1, dailyClaimed = false, onClaimDaily, userId = null, displayName = null, onEditName, navBadges = {}, games = null, storeItems = null, missions = null, dailyRewards = null, gamePlays = null, onPlay, focusGames = 0, isWidget = false, story = null, onStoryOpen, onStoryClose } = {}) {
+export default function Overview({ wallet = null, xp = 1200, activeTab = 'home', onNavigate, onOpenProfile, onOpenMission, missionStates = null, loggedIn = false, canClaimDaily = loggedIn, dailyDay = 1, dailyClaimed = false, onClaimDaily, userId = null, displayName = null, onEditName, navBadges = {}, games = null, storeItems = null, missions = null, dailyRewards = null, gamePlays = null, onPlay, focusGames = 0, isWidget = false, story = null, onStoryOpen, onStoryClose, season = null, onCollectHustle, onClaimLeague } = {}) {
   const go = (t) => onNavigate && onNavigate(t);
   const states = missionStates || casinoMissionStates(missions || CASINO_MISSIONS, { rounds: 0, today: null });
   const top = pickTopMission(states);
@@ -90,6 +91,14 @@ export default function Overview({ wallet = null, xp = 1200, activeTab = 'home',
         <div className="ov-daily">
           <DailyReward dailyDay={dailyDay} dailyClaimed={dailyClaimed} onClaim={onClaimDaily} rewards={dailyRewards} loggedIn={canClaimDaily} />
         </div>
+
+        {season && (
+          <section className="ov-season" aria-labelledby="ov-season-title">
+            <SectionTitle id="ov-season-title" right={season.league?.unlocked ? <TitleNote>W {season.league.record.won} · L {season.league.record.lost}</TitleNote> : null}>This week</SectionTitle>
+            <MatchCard season={season} compact onClaimLeague={onClaimLeague} onNavigate={onNavigate} />
+            <HustleCard hustle={season.hustle} onCollect={onCollectHustle} />
+          </section>
+        )}
 
         <div className="ov-games">
           <GamesGrid gamePlays={gamePlays} onPlay={onPlay} games={gameList} />

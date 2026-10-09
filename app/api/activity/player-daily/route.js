@@ -2,26 +2,28 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { rateLimit } from '@/lib/rateLimit';
 import { bearerMatches } from '@/lib/auth/feedSecret';
-import { validateCasinoBatch, collapseBatch, mergeWithStored, FEED_LIMITS } from '@/lib/casino/feed.mjs';
+import { validatePlayerBatch, collapsePlayerBatch, mergePlayerWithStored, FEED_LIMITS } from '@/lib/season/feed.mjs';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-// CRM -> platform feed of casino rounds per player per Lusaka day.
-// Spec for the CRM developers: docs/integrations/crm-casino-rounds-feed.md
+// CRM -> platform feed of each player's daily real-money activity (deposits,
+// withdrawals, casino stake/rounds, settled sports stake/slips) per Lusaka day.
+// Drives the Season XP (lib/season/xp.mjs). Contract for the CRM developers:
+// docs/integrations/crm-player-activity-feed.md
 //
-// Auth: Authorization: Bearer <CASINO_FEED_SECRET> (constant-time compare;
-// the endpoint is disabled while the env var is unset). Rows are ABSOLUTE
-// daily totals, upserted max-wins, so re-sending is always safe.
+// Auth: Authorization: Bearer <PLAYER_FEED_SECRET> (falls back to
+// CASINO_FEED_SECRET, same CRM); disabled while unset. Rows are ABSOLUTE
+// daily totals, upserted max-wins per column, so re-sending is always safe.
 
 const json = (body, status = 200) => NextResponse.json(body, { status, headers: { 'Cache-Control': 'no-store' } });
 
 export async function POST(req) {
-  const secret = process.env.CASINO_FEED_SECRET;
+  const secret = process.env.PLAYER_FEED_SECRET || process.env.CASINO_FEED_SECRET;
   if (!secret || secret.length < 16) return json({ error: 'feed_disabled' }, 503);
 
   const ip = (req.headers.get('x-forwarded-for') || 'unknown').split(',')[0].trim();
-  if (!rateLimit(`casino-feed:${ip}`, 120, 60000)) return json({ error: 'slow_down' }, 429);
+  if (!rateLimit(`player-feed:${ip}`, 120, 60000)) return json({ error: 'slow_down' }, 429);
 
   if (!bearerMatches(req, secret)) return json({ error: 'unauthorized' }, 401);
 
@@ -33,37 +35,36 @@ export async function POST(req) {
   let body;
   try { body = JSON.parse(text); } catch { return json({ error: 'bad_json' }, 400); }
 
-  const v = validateCasinoBatch(body);
+  const v = validatePlayerBatch(body);
   if (v.error) return json({ error: v.error, maxBatch: FEED_LIMITS.maxBatch }, v.error === 'batch_too_large' ? 413 : 400);
   if (!v.rows.length) return json({ error: 'no_valid_rows', rejected: v.rejected }, 400);
 
-  const rows = collapseBatch(v.rows);
+  const rows = collapsePlayerBatch(v.rows);
 
-  // Preferred path: one atomic statement (insert ... on conflict do update
-  // set rounds = greatest(stored, incoming)) — see the migration.
-  const { error: rpcErr } = await supabaseAdmin.rpc('upsert_casino_rounds', { p_rows: rows });
+  // Preferred: one atomic statement (greatest() per column) — see the migration.
+  const { error: rpcErr } = await supabaseAdmin.rpc('upsert_player_activity', { p_rows: rows });
   if (rpcErr) {
     // Fallback while the SQL function is missing: read, merge max-wins in JS,
-    // upsert. Not atomic against a concurrent batch for the same player/day,
-    // but the feed is absolute totals, so the next send heals any race.
+    // upsert. Not atomic against a concurrent batch for the same key, but the
+    // feed is absolute totals, so the next send heals any race.
     const missingFn = rpcErr.code === 'PGRST202' || /function .* does not exist|could not find the function/i.test(rpcErr.message || '');
     if (!missingFn) {
-      console.error('[casino-feed] rpc failed:', rpcErr.message);
+      console.error('[player-feed] rpc failed:', rpcErr.message);
       return json({ error: 'db_error' }, 500);
     }
     const users = [...new Set(rows.map(r => r.user_id))];
     const days = [...new Set(rows.map(r => r.day))];
     const { data: stored, error: selErr } = await supabaseAdmin
-      .from('casino_activity').select('user_id,day,rounds').in('user_id', users).in('day', days);
+      .from('player_activity').select('*').in('user_id', users).in('day', days);
     if (selErr) {
-      console.error('[casino-feed] select failed:', selErr.message);
+      console.error('[player-feed] select failed:', selErr.message);
       return json({ error: 'db_error' }, 500);
     }
     const now = new Date().toISOString();
-    const merged = mergeWithStored(rows, stored || []).map(r => ({ ...r, updated_at: now }));
-    const { error: upErr } = await supabaseAdmin.from('casino_activity').upsert(merged, { onConflict: 'user_id,day' });
+    const merged = mergePlayerWithStored(rows, stored || []).map(r => ({ ...r, updated_at: now }));
+    const { error: upErr } = await supabaseAdmin.from('player_activity').upsert(merged, { onConflict: 'user_id,day' });
     if (upErr) {
-      console.error('[casino-feed] upsert failed:', upErr.message);
+      console.error('[player-feed] upsert failed:', upErr.message);
       return json({ error: 'db_error' }, 500);
     }
   }

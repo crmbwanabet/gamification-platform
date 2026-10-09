@@ -14,7 +14,13 @@ test('17 stages numbered 1..17, thresholds strictly increasing from 0', () => {
     assert.equal(s.stage, i + 1);
     if (i > 0) assert.ok(s.xp > VUMA_STAGES[i - 1].xp, `stage ${s.stage} threshold must rise`);
   });
-  assert.equal(VUMA_STAGES[16].xp, 32500);
+  assert.equal(VUMA_STAGES[16].xp, 50000);
+});
+
+test('season thresholds (2026-10-09)', () => {
+  assert.deepEqual(VUMA_STAGES.map(s => s.xp), [0, 50, 300, 800, 1600, 3000, 4800, 7000, 9600, 12600, 16000, 19800, 24000, 28600, 33600, 39000, 50000]);
+  assert.equal(VUMA_STAGES[15].name, 'Manchester Metropolis', 'stage 16 unlocks the World Cup');
+  assert.equal(VUMA_STAGES[9].name, 'Shaka Chiefs', 'renamed from Emperor Chiefs 2026-10-09');
 });
 
 test('name = club || place; deliberate club spellings kept', () => {
@@ -28,12 +34,14 @@ test('name = club || place; deliberate club spellings kept', () => {
 
 test('getStage at boundaries', () => {
   assert.equal(getStage(0).stage, 1);
-  assert.equal(getStage(99).stage, 1);
-  assert.equal(getStage(100).stage, 2);
-  assert.equal(getStage(1499).stage, 5);
-  assert.equal(getStage(1500).stage, 6);
-  assert.equal(getStage(32499).stage, 16);
-  assert.equal(getStage(32500).stage, 17);
+  assert.equal(getStage(49).stage, 1);
+  assert.equal(getStage(50).stage, 2);
+  assert.equal(getStage(2999).stage, 5);
+  assert.equal(getStage(3000).stage, 6);
+  assert.equal(getStage(38999).stage, 15);
+  assert.equal(getStage(39000).stage, 16);
+  assert.equal(getStage(49999).stage, 16);
+  assert.equal(getStage(50000).stage, 17);
   assert.equal(getStage(999999).stage, 17);
 });
 
@@ -47,19 +55,20 @@ test('bad xp counts as 0', () => {
 
 test('getNextStage: following stage, null at the top', () => {
   assert.equal(getNextStage(0).stage, 2);
-  assert.equal(getNextStage(100).stage, 3);
-  assert.equal(getNextStage(32499).stage, 17);
-  assert.equal(getNextStage(32500), null);
+  assert.equal(getNextStage(50).stage, 3);
+  assert.equal(getNextStage(49999).stage, 17);
+  assert.equal(getNextStage(50000), null);
   assert.equal(getNextStage(1e9), null);
 });
 
 test('stageProgress stays within 0..100', () => {
   assert.equal(stageProgress(0), 0);
-  assert.equal(stageProgress(50), 50);
-  assert.equal(stageProgress(100), 0);
-  assert.equal(stageProgress(32500), 100);
+  assert.equal(stageProgress(25), 50);
+  assert.equal(stageProgress(50), 0);
+  assert.equal(stageProgress(175), 50);
+  assert.equal(stageProgress(50000), 100);
   assert.equal(stageProgress(999999), 100);
-  for (let xp = 0; xp <= 40000; xp += 37) {
+  for (let xp = 0; xp <= 60000; xp += 37) {
     const p = stageProgress(xp);
     assert.ok(p >= 0 && p <= 100, `xp ${xp} -> ${p}`);
   }

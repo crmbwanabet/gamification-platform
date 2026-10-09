@@ -10,7 +10,7 @@ import React, { createContext, useContext, useEffect, useState, useCallback, use
 // a `#token=...` URL hash (signed-URL embeds). All trust is enforced server-side
 // in /api/session — this component just relays the token.
 
-const SessionContext = createContext({ status: 'idle', profile: null, verified: false, error: null, saveState: async () => null, buyItem: async () => null, listPurchases: async () => null, getCasinoProgress: async () => ({ status: 401 }) });
+const SessionContext = createContext({ status: 'idle', profile: null, verified: false, error: null, saveState: async () => null, buyItem: async () => null, listPurchases: async () => null, getCasinoProgress: async () => ({ status: 401 }), getSeason: async () => ({ status: 401 }), claimSeasonPrize: async () => ({ status: 401 }) });
 export const useSession = () => useContext(SessionContext);
 
 // The live operator site is bwanabet.co.zm (Zambia); .com kept for any legacy
@@ -126,11 +126,39 @@ export default function SessionProvider({ children }) {
     } catch (e) { return { status: 0, data: null }; }
   }, []);
 
+  // Season (2026-10-09): the player's daily CRM activity rows (player_activity)
+  // + World Cup prize status. Identity from the token server-side.
+  const getSeason = useCallback(async () => {
+    if (!tokenRef.current) return { status: 401, data: null };
+    try {
+      const res = await fetch('/api/season', { headers: { Authorization: `Bearer ${tokenRef.current}` }, cache: 'no-store' });
+      let data = null;
+      try { data = await res.json(); } catch { /* non-JSON */ }
+      return { status: res.status, data };
+    } catch (e) { return { status: 0, data: null }; }
+  }, []);
+
+  // Claim the World Cup Final prize. The server re-verifies the whole season;
+  // platformXp = the client's per-day platform XP (clamped to 60/day there).
+  const claimSeasonPrize = useCallback(async (platformXp) => {
+    if (!tokenRef.current) return { status: 401, data: null };
+    try {
+      const res = await fetch('/api/season/claim-prize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tokenRef.current}` },
+        body: JSON.stringify({ platformXp }),
+      });
+      let data = null;
+      try { data = await res.json(); } catch { /* non-JSON */ }
+      return { status: res.status, data };
+    } catch (e) { return { status: 0, data: null }; }
+  }, []);
+
   // claimVoucher (streak-voucher via /api/predictions/voucher) parked with the
   // predictions feature on 2026-07-15 — see parked/ + git history to restore.
 
   return (
-    <SessionContext.Provider value={{ ...state, saveState, buyItem, listPurchases, getCasinoProgress }}>
+    <SessionContext.Provider value={{ ...state, saveState, buyItem, listPurchases, getCasinoProgress, getSeason, claimSeasonPrize }}>
       {children}
     </SessionContext.Provider>
   );

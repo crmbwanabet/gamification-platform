@@ -41,7 +41,14 @@ import {
 import { CASINO_MISSIONS } from '../lib/data/missions';
 import { casinoMissionStates, countClaimable, recordClaim } from '@/lib/missions/casino.mjs';
 import { lusakaDay } from '@/lib/casino/feed.mjs';
-import { DAILY_LOGIN_XP, addGameXp, refundGameXp, casinoXp } from '@/lib/xp/sources.mjs';
+import { DAILY_LOGIN_XP, addGameXp, refundGameXp, casinoXp, addDailyXp, addMissionXp, recordXpDay } from '@/lib/xp/sources.mjs';
+// Season (2026-10-09): XP from real play (CRM feed), side hustle, league, World Cup
+import { seasonDefaults } from '@/lib/season/config.mjs';
+import { computeSeasonXp, addDays } from '@/lib/season/xp.mjs';
+import { hustleState, collectHustle } from '@/lib/season/hustle.mjs';
+import { leagueState, claimLeagueBonus } from '@/lib/season/league.mjs';
+import { worldCupState, claimWorldCupBonus } from '@/lib/season/worldcup.mjs';
+import { SeasonResultModal } from './redesign/SeasonCards';
 
 // Component imports
 import MissionDetailModal from './modals/MissionDetailModal';
@@ -86,6 +93,8 @@ const playsRefreshKey = () => {
 
 // Prize-gem reward animation: fly-to-header icon type + float colour per gem.
 const GEM_FLY = { emeralds: 'emerald', rubies: 'ruby', diamonds: 'diamond' };
+// Season numbers when /api/config predates the `season` key.
+const SEASON_FALLBACK = seasonDefaults();
 const GEM_FLOAT_COLOR = { emeralds: '#3ee6a0', rubies: '#ff6b81', diamonds: '#a9e2ff' };
 
 export default function GamificationPlatform() {
@@ -925,8 +934,15 @@ export default function GamificationPlatform() {
     casinoMissionClaims: { day: null, ids: [] },
     // XP sources (lib/xp/sources.mjs, 2026-10-08): today's XP per capped
     // source, and the casino rounds (Lusaka day) already converted to XP.
-    xpToday: { day: null, games: 0, casino: 0 },
+    xpToday: { day: null, daily: 0, games: 0, missions: 0, casino: 0 },
     casinoXp: { day: null, rounds: 0 },
+    // Season (lib/season/*, 2026-10-09). xpDays = platform XP per Lusaka day
+    // (the season engine merges it with the CRM rows; user.xp is DERIVED from
+    // both and only mirrored here for saves). hustle = side-hustle collects.
+    // season = league / World Cup bonus claims, result moments seen, prize claim.
+    xpDays: {},
+    hustle: { lastCollectDay: null, collected: 0 },
+    season: { leagueClaims: [], wcClaims: [], seen: [], prize: null },
     // Player display name (lib/profile/name.mjs, 2026-10-09): shown in the
     // header/profile over the bwanabet ID; renamable once per stage-up.
     displayName: null,
@@ -963,6 +979,7 @@ export default function GamificationPlatform() {
   }, [session?.profile, widgetUid]);
   useEffect(() => { track('session_start'); }, []);
   const hydratedRef = useRef(false);
+  const hydratedXpRef = useRef(0); // saved xp: the floor until the season feed answers
   const saveTimer = useRef(null);
   const lastLevelRef = useRef(null);
   const [levelUp, setLevelUp] = useState(null);
@@ -984,7 +1001,12 @@ export default function GamificationPlatform() {
       const saved = session.profile.state;
       if (saved && typeof saved === 'object' && Object.keys(saved).length) {
         // Saved blobs from before the gem economy reset gems/diamonds to 0.
-        setUser(u => ({ ...u, ...migrateCurrencyState(saved), ...normalizeNameState(saved) }));
+        setUser(u => {
+          const next = { ...u, ...migrateCurrencyState(saved), ...normalizeNameState(saved) };
+          next.xpDays = recordXpDay(next.xpDays, next.xpToday);
+          return next;
+        });
+        hydratedXpRef.current = Math.max(0, Number(saved.xp) || 0);
         lastLevelRef.current = getLevel(saved.xp || 0).level; // don't award levels already earned
       }
       hydratedRef.current = true;
@@ -1033,7 +1055,7 @@ export default function GamificationPlatform() {
           };
         });
         setTimeout(() => {
-          if (applied) showNotif(`↩️ ${applied.count > 1 ? applied.count + ' purchases were' : 'A purchase was'} refunded: +${rewardParts(applied.total).join(' + ')}`);
+          if (applied && rewardParts(applied.total).length) showNotif(`↩️ ${applied.count > 1 ? applied.count + ' purchases were' : 'A purchase was'} refunded: +${rewardParts(applied.total).join(' + ')}`);
         }, 0);
       })
       .catch(() => {});
@@ -1129,18 +1151,20 @@ export default function GamificationPlatform() {
       return next;
     });
   };
-  const addXP = (n) => setUser(u => ({ ...u, xp: u.xp + n }));
+  // Platform XP is tallied per source per Lusaka day (user.xpToday) and copied
+  // into user.xpDays; user.xp itself is DERIVED by the season engine (below).
+  const withTally = (u, xpToday) => ({ ...u, xpToday, xpDays: recordXpDay(u.xpDays, xpToday) });
   // THE stake handler: every live game charges its round stake through here
   // (onSpend). 1 XP per coin staked, capped per Lusaka day (lib/xp/sources.mjs).
   // No animation per round; the header stage bar just moves.
   const spendStake = (n) => setUser(u => {
     const g = addGameXp(u.xpToday, n);
-    return { ...u, kwacha: u.kwacha - n, xp: (u.xp || 0) + g.xp, xpToday: g.xpToday };
+    return withTally({ ...u, kwacha: u.kwacha - n }, g.xpToday);
   });
   // A void round's stake comes back, and so does the XP it earned.
   const refundStake = (n) => setUser(u => {
     const g = refundGameXp(u.xpToday, n);
-    return { ...u, kwacha: u.kwacha + n, xp: Math.max(0, (u.xp || 0) - g.xp), xpToday: g.xpToday };
+    return withTally({ ...u, kwacha: u.kwacha + n }, g.xpToday);
   });
   const useGamePlay = (game) => setUser(u => ({ 
     ...u, 
@@ -1172,7 +1196,8 @@ export default function GamificationPlatform() {
     const t = setTimeout(() => setStory(s => s || 'hint'), 900);
     return () => clearTimeout(t);
   }, []);
-  const anyModalOpen = !!activeGame || !!selectedMission || showProfile || !!levelUp;
+  const [seasonResult, setSeasonResult] = useState(null); // result-moment modal event
+  const anyModalOpen = !!activeGame || !!selectedMission || showProfile || !!levelUp || !!seasonResult;
   useEffect(() => {
     if (story !== 'hint' || anyModalOpen) return undefined;
     const t = setTimeout(() => setStory(s => (s === 'hint' ? null : s)), 10000);
@@ -1221,9 +1246,12 @@ export default function GamificationPlatform() {
     setUser(u => {
       const r = casinoXp(progress, u.casinoXp, u.xpToday);
       if (r.credited === u.casinoXp && r.xpToday === u.xpToday) return u;
-      return { ...u, xp: (u.xp || 0) + r.xp, casinoXp: r.credited, xpToday: r.xpToday };
+      return withTally({ ...u, casinoXp: r.credited }, r.xpToday);
     });
-    if (preview.xp > 0) triggerRewardRef.current?.('small', null, { xp: preview.xp });
+    // Casino-rounds XP is dropped on days the player_activity feed covers (its
+    // casino stake already pays XP), so no float then.
+    const feedCovers = (seasonRowsRef.current || []).some(x => x && x.day === progress.day);
+    if (preview.xp > 0 && !feedCovers) triggerRewardRef.current?.('small', null, { xp: preview.xp });
   }, []);
   const triggerRewardRef = useRef(null);
   triggerRewardRef.current = triggerReward;
@@ -1266,6 +1294,162 @@ export default function GamificationPlatform() {
     : casino.status === 'anon' ? 'anon'
     : casino.status === 'unavailable' ? 'unavailable'
     : (!casino.updatedAt && casino.rounds === 0) ? 'nodata' : 'ok';
+
+  // === Season (lib/season/*, 2026-10-09) ===
+  // XP now comes mostly from real play on bwanabet (CRM player_activity feed,
+  // GET /api/season) merged with the platform XP the client tallies per day
+  // (user.xpDays). user.xp is DERIVED from both; league, World Cup and the
+  // side hustle are all deterministic from the same daily rows.
+  const seasonCfg = cfg.season || SEASON_FALLBACK;
+  const [today, setToday] = useState(() => lusakaDay());
+  const [nowTick, setNowTick] = useState(() => Date.now());
+  useEffect(() => {
+    const iv = setInterval(() => { setToday(lusakaDay()); setNowTick(Date.now()); }, 60000);
+    return () => clearInterval(iv);
+  }, []);
+  // status: idle | ok | unavailable (table missing / feed down) | anon
+  const [seasonFeed, setSeasonFeed] = useState({ status: 'idle', rows: null, prize: null });
+  const seasonRowsRef = useRef(null);
+  seasonRowsRef.current = seasonFeed.rows;
+  const getSeasonFeed = session.getSeason;
+  const fetchSeason = useCallback(async () => {
+    if (!loggedIn || !getSeasonFeed) return;
+    const { status, data } = await getSeasonFeed();
+    if (status === 200 && data && Array.isArray(data.days)) {
+      setSeasonFeed({ status: 'ok', rows: data.days, prize: data.prize || null });
+      return;
+    }
+    if (status === 401) { setSeasonFeed(f => ({ ...f, status: 'anon' })); return; }
+    if (status === 429) return; // keep what we have
+    setSeasonFeed(f => (f.status === 'ok' ? f : { ...f, status: 'unavailable' }));
+  }, [loggedIn, getSeasonFeed]);
+  // Fetch when the widget opens on Home/Missions, on every visit to them, and
+  // every 2 minutes while visible ("your matches update every few minutes").
+  useEffect(() => {
+    if (!loggedIn || (tab !== 'home' && tab !== 'missions')) return undefined;
+    fetchSeason();
+    const iv = setInterval(() => {
+      if (typeof document === 'undefined' || document.visibilityState === 'visible') fetchSeason();
+    }, 120000);
+    return () => clearInterval(iv);
+  }, [loggedIn, tab, fetchSeason]);
+
+  const seasonCalc = useMemo(
+    () => computeSeasonXp({ rows: seasonFeed.rows || [], platform: user.xpDays || {}, cfg: seasonCfg, today }),
+    [seasonFeed.rows, user.xpDays, seasonCfg, today]
+  );
+  // Until the feed answers, the saved xp is a floor (it already counted the
+  // CRM days), so the stage bar never dips while loading or offline.
+  const derivedXp = seasonFeed.rows ? seasonCalc.xp : Math.max(hydratedXpRef.current || 0, seasonCalc.xp);
+  useEffect(() => {
+    setUser(u => (u.xp === derivedXp ? u : { ...u, xp: derivedXp }));
+  }, [derivedXp]);
+
+  const userSeason = user.season || {};
+  const hustle = useMemo(() => hustleState({ season: seasonCalc, hustle: user.hustle, today, cfg: seasonCfg }), [seasonCalc, user.hustle, today, seasonCfg]);
+  const league = useMemo(() => leagueState({ season: seasonCalc, today, cfg: seasonCfg, claims: userSeason.leagueClaims, now: nowTick }), [seasonCalc, today, seasonCfg, userSeason.leagueClaims, nowTick]);
+  const worldCup = useMemo(() => worldCupState({ season: seasonCalc, today, cfg: seasonCfg, claims: userSeason.wcClaims, now: nowTick }), [seasonCalc, today, seasonCfg, userSeason.wcClaims, nowTick]);
+  const seasonStatus = !loggedIn
+    ? (session.status === 'loading' ? 'loading' : 'anon')
+    : seasonFeed.status === 'idle' ? 'loading'
+    : seasonFeed.status === 'anon' ? 'anon'
+    : seasonFeed.status === 'unavailable' ? 'unavailable'
+    : (seasonFeed.rows && seasonFeed.rows.length ? 'ok' : 'nodata');
+  const seasonPrize = seasonFeed.prize || userSeason.prize || null;
+  const seasonView = { status: seasonStatus, today, xp: seasonCalc.xp, overflow: seasonCalc.overflow, cfg: seasonCfg, league, worldCup, hustle, prize: seasonPrize, loggedIn };
+
+  // Bonus claims (once each; state keys in user.season) + the hustle collect.
+  const seasonBusyRef = useRef(new Set());
+  const claimSeasonBonus = (kind, id, el) => {
+    const isLeague = kind === 'league';
+    const listKey = isLeague ? 'leagueClaims' : 'wcClaims';
+    const guard = `${kind}:${id}`;
+    if (seasonBusyRef.current.has(guard)) return;
+    const next = isLeague ? claimLeagueBonus(userSeason.leagueClaims, id, league) : claimWorldCupBonus(userSeason.wcClaims, id, worldCup);
+    const m = isLeague ? league.matches.find(x => x.id === id) : worldCup.rounds.find(x => x.id === id);
+    if (!next || !m || !(m.bonus > 0)) return;
+    seasonBusyRef.current.add(guard);
+    setUser(u => {
+      const s = u.season || {};
+      const list = Array.isArray(s[listKey]) ? s[listKey] : [];
+      if (list.includes(id)) return u;
+      return { ...u, kwacha: u.kwacha + m.bonus, season: { ...s, [listKey]: [...list, id] } };
+    });
+    showNotif(`⚽ Win bonus: +${rewardParts({ kwacha: m.bonus }).join(' + ')}`);
+    triggerReward('medium', el || null, { coins: m.bonus });
+  };
+  const onClaimLeague = (id, el) => claimSeasonBonus('league', id, el);
+  const onClaimWc = (id, el) => claimSeasonBonus('wc', id, el);
+  const onCollectHustle = (el) => {
+    if (!canClaimDaily) { showNotif('Log in on bwanabet.com to collect', 'error'); return; }
+    const c = collectHustle(hustle, user.hustle, today);
+    const guard = `hustle:${today}:${user.hustle?.lastCollectDay || 'none'}`;
+    if (!c || seasonBusyRef.current.has(guard)) return;
+    seasonBusyRef.current.add(guard);
+    setUser(u => (u.hustle?.lastCollectDay === today ? u : { ...u, kwacha: u.kwacha + c.coins, hustle: c.hustle }));
+    showNotif(`🧽 ${hustle.level.name}: +${rewardParts({ kwacha: c.coins }).join(' + ')}`);
+    triggerReward('medium', el || null, { coins: c.coins });
+  };
+  // World Cup Final prize (K10,000 real money): the SERVER re-verifies the
+  // whole season and queues it for the admins; nothing is credited here.
+  const [prizeBusy, setPrizeBusy] = useState(false);
+  const claimSeasonPrize = session.claimSeasonPrize;
+  const onClaimPrize = async () => {
+    if (!loggedIn) { showNotif('Log in on bwanabet.com to claim', 'error'); return; }
+    if (prizeBusy) return;
+    setPrizeBusy(true);
+    try {
+      const platformXp = Object.fromEntries(seasonCalc.days.map(d => [d.day, d.platformXp]));
+      const { status, data } = await claimSeasonPrize(platformXp);
+      if (status === 200 && data && data.ok) {
+        const p = { status: data.status || 'pending', at: new Date().toISOString() };
+        setUser(u => ({ ...u, season: { ...(u.season || {}), prize: p } }));
+        setSeasonFeed(f => ({ ...f, prize: p }));
+        showNotif('🏆 Prize claimed — being verified');
+      } else if (status === 403) {
+        showNotif('We could not confirm the win yet. Try again once your play has synced.', 'error');
+      } else {
+        showNotif('Prize claim failed — try again soon', 'error');
+      }
+    } finally {
+      setPrizeBusy(false);
+    }
+  };
+
+  // Result moments: a modal per newly resolved match (recent ones only; a
+  // loss waits a day for late CRM updates). Ids carry the outcome, so a loss
+  // that late data turns into a win still gets its win moment.
+  const seasonEvents = useMemo(() => {
+    if (seasonFeed.status !== 'ok' || !seasonFeed.rows || !seasonFeed.rows.length) return [];
+    const recent = addDays(today, -14);
+    const club = getLevel(seasonCalc.xp).club || XP_LEVELS[5].club;
+    const ev = [];
+    for (const m of league.matches) {
+      if (m.weekEnd < recent) continue;
+      const base = { end: m.weekEnd, matchKind: 'league', matchId: m.id, homeStage: m.homeStage, home: m.home || club, away: m.opponent, xp: m.xp, target: m.target, bonus: m.bonus, claimable: m.claimable };
+      if (m.status === 'won') ev.push({ ...base, id: `L:${m.id}:won`, kind: 'win' });
+      else if (m.status === 'lost' && today > addDays(m.weekEnd, 1)) ev.push({ ...base, id: `L:${m.id}:lost`, kind: 'loss' });
+    }
+    for (const r of worldCup.rounds) {
+      if (!r.end || r.end < recent) continue;
+      const base = { end: r.end, matchKind: 'wc', matchId: r.id, label: r.label, home: 'Zambia', away: r.opponent, xp: r.xp, target: r.target, bonus: r.bonus, claimable: r.claimable };
+      if (r.status === 'won') ev.push({ ...base, id: `W:${r.id}:won`, kind: r.round === 'final' ? 'champion' : 'win' });
+      else if (r.status === 'lost' && today > addDays(r.end, 1)) ev.push({ ...base, id: `W:${r.id}:lost`, kind: r.round === 'group' ? 'loss' : 'knockedOut' });
+    }
+    return ev.sort((a, b) => (a.end < b.end ? -1 : a.end > b.end ? 1 : 0));
+  }, [seasonFeed.status, seasonFeed.rows, today, seasonCalc.xp, league, worldCup]);
+  useEffect(() => {
+    if (!hydratedRef.current || !loggedIn || seasonResult || activeGame || selectedMission || showProfile || levelUp) return;
+    const seen = new Set(userRef.current.season?.seen || []);
+    const unseen = seasonEvents.filter(e => !seen.has(e.id));
+    if (!unseen.length) return;
+    setSeasonResult(unseen[unseen.length - 1]);
+    setUser(u => {
+      const s = u.season || {};
+      const list = [...(Array.isArray(s.seen) ? s.seen : []), ...unseen.map(e => e.id)].slice(-80);
+      return { ...u, season: { ...s, seen: list } };
+    });
+  }, [seasonEvents, loggedIn, seasonResult, activeGame, selectedMission, showProfile, levelUp]);
 
   // The old progress engine (daily pool / weekly / permanent missions counted
   // from in-app actions) is parked with those missions — see
@@ -1549,6 +1733,11 @@ export default function GamificationPlatform() {
       {flyingCoins.map(c => (
         <div key={c.id} className="reward-flying-coin" style={{ left: c.fromX, top: c.fromY, '--fly-dx': `${c.toX - c.fromX}px`, '--fly-dy': `${c.toY - c.fromY}px`, '--fly-dx-half': `${(c.toX - c.fromX) * 0.3}px`, '--fly-dy-half': `${(c.toY - c.fromY) * 0.5 - 60}px` }}>{c.icon ? <img src={c.icon} alt="" width={22} height={22} style={{ display: 'block' }} /> : c.emoji}</div>
       ))}
+      <SeasonResultModal event={seasonResult} prizeStatus={seasonPrize?.status || null}
+        prizeK={`K${Number(seasonCfg.worldCup.prizeKwacha).toLocaleString('en-US')}`}
+        onClose={() => setSeasonResult(null)}
+        onClaim={(el) => { const e = seasonResult; setSeasonResult(null); if (e) claimSeasonBonus(e.matchKind === 'wc' ? 'wc' : 'league', e.matchId, el); }}
+        onClaimPrize={() => { setSeasonResult(null); onClaimPrize(); }} />
       <LevelUpModal levelUp={levelUp} onClose={() => setLevelUp(null)}
         onRename={levelUp && user.displayName && canRename(user, levelUp.level) ? () => { setLevelUp(null); openProfile(true); } : undefined} />
       <ProfileModal
@@ -1581,7 +1770,8 @@ export default function GamificationPlatform() {
     // is gone; Home flags the unclaimed daily reward instead)
     navBadges: {
       home: canClaimDaily && !user.dailyClaimed ? 1 : null,
-      missions: claimableCount || null,
+      // + season win bonuses waiting (league / World Cup)
+      missions: (claimableCount + (loggedIn ? league.matches.filter(m => m.claimable).length + worldCup.rounds.filter(r => r.claimable).length : 0)) || null,
       store: null, // store is empty until the admin dashboard stocks it
     },
     games: activeGames,
@@ -1593,6 +1783,9 @@ export default function GamificationPlatform() {
     casinoStatus,
     loggedIn,
     canClaimDaily,
+    // Season (2026-10-09): match card, league, World Cup, side hustle
+    season: seasonView,
+    onClaimLeague, onClaimWc, onCollectHustle, onClaimPrize, prizeBusy,
     // candy shell: widget padding for the red X + the "My story" bubble
     isWidget,
     story: anyModalOpen || story === 'done' ? null : story,
@@ -1631,8 +1824,8 @@ export default function GamificationPlatform() {
           emeralds: (u.emeralds || 0) + (r.emeralds || 0),
           rubies: (u.rubies || 0) + (r.rubies || 0),
           diamonds: (u.diamonds || 0) + (r.diamonds || 0),
-          xp: u.xp + (m.xp || 0),
           casinoMissionClaims: { day: src.day, ids: [...ids, m.id] },
+          ...(m.xp ? (() => { const t = addMissionXp(u.xpToday, m.xp, src.day).xpToday; return { xpToday: t, xpDays: recordXpDay(u.xpDays, t) }; })() : null),
         };
       });
       track('mission_completed', { amount: r.kwacha || 0, meta: { missionId: m.id, day: src.day } });
@@ -1653,7 +1846,7 @@ export default function GamificationPlatform() {
     if (!Object.keys(r).length) return;
     dailyBusyRef.current = true;
     addCurrencies(r);
-    addXP(DAILY_LOGIN_XP);
+    setUser(u => withTally(u, addDailyXp(u.xpToday).xpToday));
     const today = new Date().toDateString();
     const wasYesterday = user.lastDailyClaim && Math.round((new Date(today) - new Date(user.lastDailyClaim)) / 86400000) === 1;
     const newStreak = wasYesterday ? user.streak + 1 : user.streak;
