@@ -64,11 +64,11 @@ function Silhouettes({ count = 1, tint = '#000' }) {
 function VsArt({ src, alt, side, count }) {
   const [failed, setFailed] = React.useState(false);
   React.useEffect(() => setFailed(false), [src]);
-  const box = { position: 'absolute', bottom: 0, top: 6, [side]: 0, width: count > 1 ? '48%' : '40%', display: 'flex', alignItems: 'flex-end', justifyContent: side === 'left' ? 'flex-start' : 'flex-end' };
+  const box = { flex: count > 1 ? '0 1 45%' : '0 1 30%', minWidth: 0, height: '100%', display: 'flex', alignItems: 'flex-end', justifyContent: side === 'left' ? 'flex-end' : 'flex-start' };
   return (
     <div style={box}>
       {src && !failed
-        ? <img src={src} alt={alt} onError={() => setFailed(true)} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', objectPosition: `${side} bottom`, display: 'block', filter: 'drop-shadow(0 6px 10px rgba(0,0,0,.6))', transform: side === 'right' ? 'none' : undefined }} />
+        ? <img src={src} alt={alt} onError={() => setFailed(true)} style={{ height: '100%', width: 'auto', maxWidth: '100%', objectFit: 'contain', objectPosition: `${side === 'left' ? 'right' : 'left'} bottom`, display: 'block', filter: 'drop-shadow(0 6px 10px rgba(0,0,0,.6))' }} />
         : <div data-vs-fallback style={{ width: '100%', height: '88%' }}><Silhouettes count={count} tint={side === 'left' ? '#2a1458' : '#160626'} /></div>}
     </div>
   );
@@ -91,22 +91,44 @@ export function VersusPicture({ home, away, vumaSrc, oppSrc, h = 170 }) {
       ].join(', '),
       border: `2px solid ${CANDY.violet.dark}`, boxShadow: 'inset 0 -14px 24px rgba(0,0,0,.45)' }}>
       <span aria-hidden style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: '22%', background: 'linear-gradient(180deg, transparent, rgba(0,0,0,.55))', zIndex: 2 }} />
-      <VsArt src={vumaSrc} alt={`Vuma for ${home}`} side="left" count={1} />
-      <VsArt src={oppSrc} alt={`${away} players`} side="right" count={3} />
-      <span style={{ position: 'absolute', left: '50%', top: '42%', transform: 'translate(-50%, -50%) rotate(-6deg)', zIndex: 3, ...goldTitle(Math.round(h * 0.3)), fontSize: Math.round(h * 0.3), letterSpacing: 1 }}>VS</span>
+      <div style={{ position: 'absolute', inset: '8px 6px 0', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: 4, zIndex: 1 }}>
+        <VsArt src={vumaSrc} alt={`Vuma for ${home}`} side="left" count={1} />
+        <span style={{ flex: 'none', width: 48, textAlign: 'center', alignSelf: 'center', transform: 'rotate(-6deg)', ...goldTitle(30), fontSize: 30, letterSpacing: 1 }}>VS</span>
+        <VsArt src={oppSrc} alt={`${away} players`} side="right" count={3} />
+      </div>
       <span style={{ position: 'absolute', left: 8, bottom: 6, zIndex: 3, maxWidth: '46%', fontSize: 11.5, fontWeight: 900, textShadow: '0 2px 4px #000', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{home}</span>
       <span style={{ position: 'absolute', right: 8, bottom: 6, zIndex: 3, maxWidth: '46%', fontSize: 11.5, fontWeight: 900, textShadow: '0 2px 4px #000', textAlign: 'right', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{away}</span>
     </div>
   );
 }
 
-/** Big centred countdown: "2d 4h" / "14h 20m" / "35m". */
+/** Big centred countdown: "2d 05:14:32" / "05:14:32" (under 24h). */
 export function countdownText(ms) {
-  const mins = Math.max(0, Math.ceil(ms / 60000));
-  if (mins >= 1440) return `${Math.floor(mins / 1440)}d ${Math.floor((mins % 1440) / 60)}h`;
-  if (mins >= 60) return `${Math.floor(mins / 60)}h ${mins % 60}m`;
-  return `${mins}m`;
+  const secs = Math.max(0, Math.ceil(ms / 1000));
+  const d = Math.floor(secs / 86400);
+  const p = (n) => String(n).padStart(2, '0');
+  const hms = `${p(Math.floor((secs % 86400) / 3600))}:${p(Math.floor((secs % 3600) / 60))}:${p(secs % 60)}`;
+  return d > 0 ? `${d}d ${hms}` : hms;
 }
+
+/** Ticks once a second from a fresh msLeft. */
+function useLiveMs(msLeft) {
+  const [ms, setMs] = React.useState(msLeft);
+  React.useEffect(() => {
+    const end = Date.now() + (Number(msLeft) || 0);
+    setMs(msLeft);
+    const t = setInterval(() => setMs(Math.max(0, end - Date.now())), 1000);
+    return () => clearInterval(t);
+  }, [msLeft]);
+  return ms;
+}
+
+// Slow red glow pulse for the countdown + lose line (static glow when reduced motion).
+const SEASON_CSS = `
+@keyframes sc-glow{0%,100%{text-shadow:0 3px 0 #2a0a0a,0 0 8px rgba(255,77,66,.45);box-shadow:0 0 6px rgba(255,77,66,.25)}50%{text-shadow:0 3px 0 #2a0a0a,0 0 22px rgba(255,77,66,.95);box-shadow:0 0 16px rgba(255,77,66,.65)}}
+.sc-pulse{animation:sc-glow 2.4s ease-in-out infinite}
+@media (prefers-reduced-motion:reduce){.sc-pulse{animation:none;text-shadow:0 3px 0 #2a0a0a,0 0 14px rgba(255,77,66,.7);box-shadow:0 0 10px rgba(255,77,66,.4)}}
+`;
 
 const STATUS_CHIP = {
   won: { label: 'Won', bg: C.green, color: '#fff' },
@@ -125,9 +147,9 @@ export function currentMatch(season) {
   const prizeK = `K${fmt(season.cfg?.worldCup?.prizeKwacha ?? 10000)}`;
   if (wc && wc.unlocked && wc.current) {
     const r = wc.current;
-    const lose = r.round === 'final' ? `Miss it and you lose the ${prizeK}`
-      : r.round === 'group' ? `Miss it and you lose: ${fmt(r.reward)} coins bonus`
-      : 'Miss it and Zambia is OUT of the World Cup';
+    const lose = r.round === 'final' ? `MISS IT AND YOU LOSE THE ${prizeK}`
+      : r.round === 'group' ? `MISS IT AND YOU LOSE: ${fmt(r.reward)} COINS + 3 POINTS`
+      : 'MISS IT AND ZAMBIA IS OUT';
     return { kind: 'wc', id: r.id, title: `World Cup · ${r.label}`, home: 'Zambia', away: r.opponent, vumaSrc: vumaArt('zambia'), oppSrc: opponentArt(r.opponent),
       xp: r.xp, target: r.target, gap: r.gap, status: r.status, msLeft: r.msLeft, lose, final: r.round === 'final' };
   }
@@ -139,7 +161,7 @@ export function currentMatch(season) {
     return { kind: 'league', id: m.id, title: `${m.tierName} · Week ${m.n}`, home: VUMA_STAGES[stage - 1].club || m.home, away: m.opponent,
       vumaSrc: vumaArt(stage), oppSrc: opponentArt(m.opponent),
       xp: m.xp, target: m.target, gap: m.gap, status: m.status, msLeft: m.msLeft, claimable: m.claimable, bonus: m.bonus,
-      lose: tierBonus ? `Miss it and you lose: ${fmt(tierBonus)} coins bonus` : null };
+      lose: tierBonus ? `MISS IT AND YOU LOSE: ${fmt(tierBonus)} COINS + 3 POINTS` : null };
   }
   return null;
 }
@@ -149,8 +171,9 @@ export function currentMatch(season) {
  * first club (stage 6). `compact` = the Home version.
  */
 export function MatchCard({ season, compact = false, onClaimLeague, onNavigate }) {
+  const m = season ? currentMatch(season) : null;
+  const liveMs = useLiveMs(m ? m.msLeft : 0);
   if (!season) return null;
-  const m = currentMatch(season);
   const note = feedNote(season.status);
   if (!m) {
     const first = VUMA_STAGES[(season.cfg?.league?.unlockStage || 6) - 1];
@@ -172,8 +195,10 @@ export function MatchCard({ season, compact = false, onClaimLeague, onNavigate }
   }
   const pct = Math.min(100, (m.xp / m.target) * 100);
   const won = m.status === 'won';
+  const finished = won || m.status === 'lost';
   return (
     <Card style={{ padding: compact ? 14 : 16, ...(won ? { borderColor: CANDY.gold } : null) }}>
+      <style dangerouslySetInnerHTML={{ __html: SEASON_CSS }} />
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 10 }}>
         <span style={{ fontSize: 11, fontWeight: 900, color: m.kind === 'wc' ? CANDY.gold : C.muted, textTransform: 'uppercase', letterSpacing: '.06em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.title}</span>
         <Chip status={m.status} />
@@ -183,10 +208,13 @@ export function MatchCard({ season, compact = false, onClaimLeague, onNavigate }
       <div style={{ textAlign: 'center', margin: '12px 0 8px' }}>
         {won ? (
           <div style={{ ...goldTitle(compact ? 30 : 36), color: C.green, textAlign: 'center' }}>Won!</div>
+        ) : m.status === 'lost' ? (
+          <div style={{ ...goldTitle(compact ? 30 : 36), color: C.red, textAlign: 'center' }}>Lost</div>
         ) : (
           <>
-            <div data-countdown style={{ fontFamily: CANDY.display, fontSize: compact ? 36 : 44, lineHeight: 1, color: '#fff', fontVariantNumeric: 'tabular-nums', textShadow: `0 3px 0 ${CANDY.outline}, 0 0 18px rgba(255,210,31,.35)` }}>{countdownText(m.msLeft)}</div>
-            <div style={{ fontSize: 11, fontWeight: 900, color: C.muted, textTransform: 'uppercase', letterSpacing: '.1em', marginTop: 3 }}>left to win</div>
+            <div style={{ fontSize: 11, fontWeight: 900, color: '#ff8a80', textTransform: 'uppercase', letterSpacing: '.12em', marginBottom: 4 }}>Full-time in</div>
+            <div data-countdown className="sc-pulse" style={{ display: 'inline-block', borderRadius: 10, fontFamily: CANDY.display, fontWeight: 900, fontSize: compact ? 34 : 44, lineHeight: 1, color: '#FF4D42', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{countdownText(liveMs)}</div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: C.sub, marginTop: 6 }}>Reach {fmt(m.target)} XP before full-time to win</div>
           </>
         )}
       </div>
@@ -197,8 +225,8 @@ export function MatchCard({ season, compact = false, onClaimLeague, onNavigate }
           ? <span style={{ color: C.green }}>Match won!</span>
           : <span data-live-gap style={{ color: CANDY.gold, textAlign: 'right' }}>{fmt(m.gap)} XP to go</span>}
       </div>
-      {!won && m.lose && (
-        <div data-lose-line style={{ marginTop: 10, padding: '8px 10px', borderRadius: 12, background: 'rgba(227,38,30,.14)', border: '1.5px solid rgba(245,113,107,.55)', fontSize: 12.5, fontWeight: 900, color: '#ffb3ad', textAlign: 'center' }}>{m.lose}</div>
+      {!finished && m.lose && (
+        <div data-lose-line className="sc-pulse" style={{ marginTop: 10, padding: '8px 10px', borderRadius: 12, background: 'rgba(120,10,10,.55)', border: '1.5px solid #FF4D42', fontSize: 12.5, fontWeight: 900, color: '#FF4D42', textAlign: 'center', letterSpacing: '.03em' }}>{m.lose}</div>
       )}
       {m.kind === 'league' && m.claimable && (
         <GreenBtn full onClick={(e) => onClaimLeague && onClaimLeague(m.id, e.currentTarget)} style={{ marginTop: 10 }}>Collect +{fmt(m.bonus)} coins</GreenBtn>
