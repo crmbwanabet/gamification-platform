@@ -48,6 +48,7 @@ import { computeSeasonXp, addDays } from '@/lib/season/xp.mjs';
 import { hustleState, collectHustle } from '@/lib/season/hustle.mjs';
 import { leagueState, claimLeagueBonus } from '@/lib/season/league.mjs';
 import { worldCupState, claimWorldCupBonus } from '@/lib/season/worldcup.mjs';
+import { cleanFriendlies, acceptFriendly, declineFriendly } from '@/lib/season/friendly.mjs';
 import { SeasonResultModal } from './redesign/SeasonCards';
 
 // Component imports
@@ -942,7 +943,8 @@ export default function GamificationPlatform() {
     // season = league / World Cup bonus claims, result moments seen, prize claim.
     xpDays: {},
     hustle: { lastCollectDay: null, collected: 0 },
-    season: { leagueClaims: [], wcClaims: [], seen: [], prize: null },
+    // friendlies = FRIENDLY second chances { [key]: { acceptedAt, paid } | { declinedAt } } (lib/season/friendly.mjs)
+    season: { leagueClaims: [], wcClaims: [], seen: [], prize: null, friendlies: {} },
     // Player display name (lib/profile/name.mjs, 2026-10-09): shown in the
     // header/profile over the bwanabet ID; renamable once per stage-up.
     displayName: null,
@@ -1346,9 +1348,13 @@ export default function GamificationPlatform() {
   }, [derivedXp]);
 
   const userSeason = user.season || {};
+  // saved state from before the friendly has no `friendlies`: cleanFriendlies -> {}
+  const friendlyMap = useMemo(() => cleanFriendlies(userSeason.friendlies), [userSeason.friendlies]);
   const hustle = useMemo(() => hustleState({ season: seasonCalc, hustle: user.hustle, today, cfg: seasonCfg }), [seasonCalc, user.hustle, today, seasonCfg]);
-  const league = useMemo(() => leagueState({ season: seasonCalc, today, cfg: seasonCfg, claims: userSeason.leagueClaims, now: nowTick }), [seasonCalc, today, seasonCfg, userSeason.leagueClaims, nowTick]);
-  const worldCup = useMemo(() => worldCupState({ season: seasonCalc, today, cfg: seasonCfg, claims: userSeason.wcClaims, now: nowTick }), [seasonCalc, today, seasonCfg, userSeason.wcClaims, nowTick]);
+  const league = useMemo(() => leagueState({ season: seasonCalc, today, cfg: seasonCfg, claims: userSeason.leagueClaims, now: nowTick, friendlies: friendlyMap }), [seasonCalc, today, seasonCfg, userSeason.leagueClaims, nowTick, friendlyMap]);
+  const worldCup = useMemo(() => worldCupState({ season: seasonCalc, today, cfg: seasonCfg, claims: userSeason.wcClaims, now: nowTick, friendlies: friendlyMap }), [seasonCalc, today, seasonCfg, userSeason.wcClaims, nowTick, friendlyMap]);
+  // FRIENDLY offers + live friendlies (World Cup first); only with a feed and a session
+  const activeFriendlies = loggedIn && seasonFeed.rows ? [...worldCup.friendlies, ...league.friendlies] : [];
   const seasonStatus = !loggedIn
     ? (session.status === 'loading' ? 'loading' : 'anon')
     : seasonFeed.status === 'idle' ? 'loading'
@@ -1356,7 +1362,42 @@ export default function GamificationPlatform() {
     : seasonFeed.status === 'unavailable' ? 'unavailable'
     : (seasonFeed.rows && seasonFeed.rows.length ? 'ok' : 'nodata');
   const seasonPrize = seasonFeed.prize || userSeason.prize || null;
-  const seasonView = { status: seasonStatus, today, xp: seasonCalc.xp, overflow: seasonCalc.overflow, cfg: seasonCfg, league, worldCup, hustle, prize: seasonPrize, loggedIn };
+  // FRIENDLY accept / decline (lib/season/friendly.mjs). Accept = the entry
+  // cost in coins, charged like every other coin spend (one setUser on
+  // kwacha) after the card's confirm step; refused when the balance is short.
+  // Returns true when accepted.
+  const friendlyBusyRef = useRef(new Set());
+  const onAcceptFriendly = (key, el) => {
+    if (!loggedIn) { showNotif('Log in on bwanabet.com to play', 'error'); return false; }
+    const f = activeFriendlies.find(x => x.key === key);
+    const now = Date.now();
+    const next = f ? acceptFriendly(friendlyMap, f, now) : null;
+    if (!f || !next || friendlyBusyRef.current.has(key)) return false;
+    if ((Number(user.kwacha) || 0) < f.cost) { showNotif(`Not enough coins: the friendly costs ${f.cost.toLocaleString('en-US')}`, 'error'); return false; }
+    friendlyBusyRef.current.add(key);
+    setUser(u => {
+      const s = u.season || {};
+      const cur = cleanFriendlies(s.friendlies);
+      if (cur[key] || u.kwacha < f.cost) return u;
+      return { ...u, kwacha: u.kwacha - f.cost, season: { ...s, friendlies: { ...cur, [key]: next[key] } } };
+    });
+    setNowTick(now);
+    showNotif(`🤝 Friendly vs ${f.opponent}: reach ${f.target.toLocaleString('en-US')} XP in ${seasonCfg.friendly?.windowHours ?? 24}h`);
+    return true;
+  };
+  const onDeclineFriendly = (key) => {
+    const f = activeFriendlies.find(x => x.key === key);
+    const next = f ? declineFriendly(friendlyMap, f, Date.now()) : null;
+    if (!next) return;
+    setUser(u => {
+      const s = u.season || {};
+      const cur = cleanFriendlies(s.friendlies);
+      if (cur[key]) return u;
+      return { ...u, season: { ...s, friendlies: { ...cur, [key]: next[key] } } };
+    });
+  };
+  const seasonView = { status: seasonStatus, today, xp: seasonCalc.xp, overflow: seasonCalc.overflow, cfg: seasonCfg, league, worldCup, hustle, prize: seasonPrize, loggedIn,
+    friendlies: activeFriendlies, coins: user.kwacha, onAcceptFriendly, onDeclineFriendly };
 
   // Bonus claims (once each; state keys in user.season) + the hustle collect.
   const seasonBusyRef = useRef(new Set());
@@ -1400,7 +1441,8 @@ export default function GamificationPlatform() {
     setPrizeBusy(true);
     try {
       const platformXp = Object.fromEntries(seasonCalc.days.map(d => [d.day, d.platformXp]));
-      const { status, data } = await claimSeasonPrize(platformXp);
+      // + the World Cup friendly's accept time (the server re-checks its window + result)
+      const { status, data } = await claimSeasonPrize(platformXp, friendlyMap);
       if (status === 200 && data && data.ok) {
         const p = { status: data.status || 'pending', at: new Date().toISOString() };
         setUser(u => ({ ...u, season: { ...(u.season || {}), prize: p } }));
@@ -1417,8 +1459,10 @@ export default function GamificationPlatform() {
   };
 
   // Result moments: a modal per newly resolved match (recent ones only; a
-  // loss waits a day for late CRM updates). Ids carry the outcome, so a loss
-  // that late data turns into a win still gets its win moment.
+  // loss waits a day for late CRM updates, EXCEPT while its FRIENDLY offer is
+  // open: then it shows right after full-time, offer inside). Ids carry the
+  // outcome, so a loss that late data turns into a win still gets its win
+  // moment. Friendly results: F:<key>:won ("Chance won back!") / F:<key>:lost.
   const seasonEvents = useMemo(() => {
     if (seasonFeed.status !== 'ok' || !seasonFeed.rows || !seasonFeed.rows.length) return [];
     const recent = addDays(today, -14);
@@ -1427,14 +1471,21 @@ export default function GamificationPlatform() {
     for (const m of league.matches) {
       if (m.weekEnd < recent) continue;
       const base = { end: m.weekEnd, matchKind: 'league', matchId: m.id, homeStage: m.homeStage, home: m.home || club, away: m.opponent, xp: m.xp, target: m.target, bonus: m.bonus, claimable: m.claimable };
-      if (m.status === 'won') ev.push({ ...base, id: `L:${m.id}:won`, kind: 'win' });
-      else if (m.status === 'lost' && today > addDays(m.weekEnd, 1)) ev.push({ ...base, id: `L:${m.id}:lost`, kind: 'loss' });
+      const f = m.friendly;
+      if (m.status === 'won' && !m.viaFriendly) ev.push({ ...base, id: `L:${m.id}:won`, kind: 'win' });
+      else if (m.status === 'lost' && (today > addDays(m.weekEnd, 1) || f?.status === 'offer')) ev.push({ ...base, id: `L:${m.id}:lost`, kind: 'loss', friendlyKey: f?.status === 'offer' ? f.key : null });
+      if (f && (f.status === 'won' || f.status === 'lost')) ev.push({ ...base, end: f.to, id: `F:${f.key}:${f.status}`, kind: f.status === 'won' ? 'friendlyWon' : 'friendlyLost', away: f.opponent, lostTo: m.opponent, xp: f.xp, target: f.target });
     }
     for (const r of worldCup.rounds) {
       if (!r.end || r.end < recent) continue;
-      const base = { end: r.end, matchKind: 'wc', matchId: r.id, label: r.label, home: 'Zambia', away: r.opponent, xp: r.xp, target: r.target, bonus: r.bonus, claimable: r.claimable };
-      if (r.status === 'won') ev.push({ ...base, id: `W:${r.id}:won`, kind: r.round === 'final' ? 'champion' : 'win' });
-      else if (r.status === 'lost' && today > addDays(r.end, 1)) ev.push({ ...base, id: `W:${r.id}:lost`, kind: r.round === 'group' ? 'loss' : 'knockedOut' });
+      const base = { end: r.end, matchKind: 'wc', matchId: r.id, label: r.label, round: r.round, home: 'Zambia', away: r.opponent, xp: r.xp, target: r.target, bonus: r.bonus, claimable: r.claimable };
+      const f = r.friendly;
+      if (r.status === 'won' && !r.viaFriendly) ev.push({ ...base, id: `W:${r.id}:won`, kind: r.round === 'final' ? 'champion' : 'win' });
+      else if (r.status === 'lost' && (today > addDays(r.end, 1) || f?.status === 'offer')) ev.push({ ...base, id: `W:${r.id}:lost`, kind: r.round === 'group' ? 'loss' : 'knockedOut', friendlyKey: f?.status === 'offer' ? f.key : null });
+      if (f && (f.status === 'won' || f.status === 'lost')) {
+        const nextRound = worldCup.rounds[worldCup.rounds.indexOf(r) + 1];
+        ev.push({ ...base, end: f.to, id: `F:${f.key}:${f.status}`, kind: f.status === 'won' ? 'friendlyWon' : 'friendlyLost', away: f.opponent, lostTo: r.opponent, xp: f.xp, target: f.target, next: nextRound ? `${nextRound.label} vs ${nextRound.opponent}` : null });
+      }
     }
     return ev.sort((a, b) => (a.end < b.end ? -1 : a.end > b.end ? 1 : 0));
   }, [seasonFeed.status, seasonFeed.rows, today, seasonCalc.xp, league, worldCup]);
@@ -1734,6 +1785,7 @@ export default function GamificationPlatform() {
         <div key={c.id} className="reward-flying-coin" style={{ left: c.fromX, top: c.fromY, '--fly-dx': `${c.toX - c.fromX}px`, '--fly-dy': `${c.toY - c.fromY}px`, '--fly-dx-half': `${(c.toX - c.fromX) * 0.3}px`, '--fly-dy-half': `${(c.toY - c.fromY) * 0.5 - 60}px` }}>{c.icon ? <img src={c.icon} alt="" width={22} height={22} style={{ display: 'block' }} /> : c.emoji}</div>
       ))}
       <SeasonResultModal event={seasonResult} prizeStatus={seasonPrize?.status || null}
+        season={seasonView} offer={seasonResult?.friendlyKey ? activeFriendlies.find(f => f.key === seasonResult.friendlyKey) || null : null}
         prizeK={`K${Number(seasonCfg.worldCup.prizeKwacha).toLocaleString('en-US')}`}
         onClose={() => setSeasonResult(null)}
         onClaim={(el) => { const e = seasonResult; setSeasonResult(null); if (e) claimSeasonBonus(e.matchKind === 'wc' ? 'wc' : 'league', e.matchId, el); }}

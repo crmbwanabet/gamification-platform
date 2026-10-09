@@ -72,6 +72,31 @@ was won does it insert one `purchases` row (`prize_key = 'worldcup:<season id>'`
 with the season summary to the Telegram admin group (✅ button = existing fulfilment flow).
 Idempotent. Client shows "Prize claimed — being verified".
 
+## 5b. Friendly match: the second chance (`lib/season/friendly.mjs`)
+
+When a league match or a World Cup group/knockout match ends LOST (never the Final), the player is offered a
+friendly vs a weaker local side (synonym parodies: Kabwe Fighters, Nchanga Wanderers, Lusaka Dynamics, Fish Eagles FC;
+silhouettes where no `opp-*.png` exists). All numbers in `SEASON_DEFAULTS.friendly`, overridable via the `season` row.
+
+| Rule | Value |
+|---|---|
+| Offer | open 24h from full-time (the Lusaka midnight ending the match); expires otherwise; "No thanks" declines |
+| Cost (coins, paid on accept after a confirm step) | league 50% of the win bonus (75 / 125 / 200 / 300), WC group 250, WC knockout 1,000 |
+| Target | half the lost match's target, rounded up to 10 (league 600, group 700, R32 800, R16 850, QF 900, SF 950) |
+| Window | 24h from the accept time; XP is daily, so it counts the capped XP of every Lusaka day the window touches (accept day + next day). The same XP also counts toward the next match |
+| Limits | league: one per week (that week's lost match); World Cup: ONE accepted friendly per cup run |
+| Win | loss reversed: league = win (bonus + 3 pts claimable); WC group = bonus claimable; WC knockout = Zambia reinstated (no bonus) and every later round shifts so the next round starts the day after the friendly's last day |
+| Lose / expire | the original loss stands; no refund |
+
+State `user.season.friendlies = { 'league:<weekStart>' | 'wc:<roundId>': { acceptedAt, paid } | { declinedAt } }`.
+Prize check: the client sends `friendlies` with the claim; the server cannot see coin payments, so a WC friendly
+counts when its accept time lies inside the 24h offer window (and not in the future); its result is recomputed from
+`player_activity` (platform XP ≤ 60/day as before). The Telegram summary lists it ("🤝 Friendly after the … loss").
+
+Known limits: with the 400/day cap a 2-day friendly can reach at most 800 XP, so the R16/QF/SF friendly targets
+(850/900/950) cannot be reached unless the caps or `targetPercent` change. XP earned on the accept day before the
+accept counts too (daily totals).
+
 ## 6. UI
 
 Missions tab: Season section (current match card with live gap "340 XP to go · 14h left", league

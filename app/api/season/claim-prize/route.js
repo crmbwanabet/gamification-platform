@@ -14,7 +14,8 @@ export const dynamic = 'force-dynamic';
 const json = (body, status = 200) => NextResponse.json(body, { status, headers: { 'Cache-Control': 'no-store' } });
 
 // POST /api/season/claim-prize  (Authorization: Bearer <SSO token>; body
-// { platformXp?: { 'YYYY-MM-DD': n } }) — the World Cup Final's K10,000
+// { platformXp?: { 'YYYY-MM-DD': n }, friendlies?: { 'wc:<round>': { acceptedAt } } })
+// — the World Cup Final's K10,000
 // REAL-MONEY prize. NEVER auto-credited: the server recomputes the whole
 // season from player_activity (lib/season/verify.mjs: platform XP at most
 // 60/day) and only when it agrees the Final was won inserts ONE fulfilment
@@ -50,7 +51,11 @@ export async function POST(req) {
     return json({ error: 'unavailable' }, 503);
   }
 
-  const v = verifyWorldCupPrize({ rows: rows || [], clientPlatform: body.platformXp, cfg, today: lusakaDay() });
+  // friendlies: the client's accept times (user.season.friendlies); a World Cup
+  // friendly counts only when accepted inside its 24h offer window, and its
+  // result is recomputed from the rows (lib/season/verify.mjs).
+  const now = Date.now();
+  const v = verifyWorldCupPrize({ rows: rows || [], clientPlatform: body.platformXp, friendlies: body.friendlies, cfg, today: lusakaDay(now), now });
   if (!v.won) return json({ error: 'not_verified', reason: v.reason }, 403);
 
   const { data: ins, error: insErr } = await supabaseAdmin.from('purchases').insert({

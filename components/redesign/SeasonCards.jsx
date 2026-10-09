@@ -168,12 +168,29 @@ export function currentMatch(season) {
 
 /**
  * Current match card. Before the league unlocks it shows the road to the
- * first club (stage 6). `compact` = the Home version.
+ * first club (stage 6). `compact` = the Home version. An open FRIENDLY offer
+ * or a live friendly (season.friendlies) takes the slot on Home and leads the
+ * Missions season section.
  */
 export function MatchCard({ season, compact = false, onClaimLeague, onNavigate }) {
-  const m = season ? currentMatch(season) : null;
-  const liveMs = useLiveMs(m ? m.msLeft : 0);
   if (!season) return null;
+  const friendlies = Array.isArray(season.friendlies) ? season.friendlies : [];
+  const link = compact && onNavigate
+    ? <button type="button" className="ov-link" onClick={() => onNavigate('missions')}>Season, league and World Cup ›</button>
+    : null;
+  if (friendlies.length) {
+    return (
+      <>
+        {friendlies.map(f => <FriendlySlot key={f.key} f={f} season={season} compact={compact} />)}
+        {compact ? link : <RegularMatchCard season={season} onClaimLeague={onClaimLeague} />}
+      </>
+    );
+  }
+  return <RegularMatchCard season={season} compact={compact} onClaimLeague={onClaimLeague} link={link} />;
+}
+
+function RegularMatchCard({ season, compact = false, onClaimLeague, link = null }) {
+  const m = currentMatch(season);
   const note = feedNote(season.status);
   if (!m) {
     const first = VUMA_STAGES[(season.cfg?.league?.unlockStage || 6) - 1];
@@ -190,18 +207,25 @@ export function MatchCard({ season, compact = false, onClaimLeague, onNavigate }
         </div>
         <div style={{ marginTop: 10 }}><Progress value={pct} height={12} /></div>
         <Note text={note} />
+        {link}
       </Card>
     );
   }
+  return <MatchBody m={m} compact={compact} note={note} onClaimLeague={onClaimLeague} link={link} />;
+}
+
+/** The match card itself (league, World Cup or a live friendly: the same design). */
+function MatchBody({ m, compact = false, note = null, onClaimLeague, link = null }) {
+  const liveMs = useLiveMs(m.msLeft);
   const pct = Math.min(100, (m.xp / m.target) * 100);
   const won = m.status === 'won';
   const finished = won || m.status === 'lost';
   return (
-    <Card style={{ padding: compact ? 14 : 16, ...(won ? { borderColor: CANDY.gold } : null) }}>
+    <Card style={{ padding: compact ? 14 : 16, ...(won || m.kind === 'friendly' ? { borderColor: CANDY.gold } : null) }}>
       <style dangerouslySetInnerHTML={{ __html: SEASON_CSS }} />
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 10 }}>
-        <span style={{ fontSize: 11, fontWeight: 900, color: m.kind === 'wc' ? CANDY.gold : C.muted, textTransform: 'uppercase', letterSpacing: '.06em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.title}</span>
-        <Chip status={m.status} />
+        <span style={{ fontSize: 11, fontWeight: 900, color: m.kind === 'league' ? C.muted : CANDY.gold, textTransform: 'uppercase', letterSpacing: '.06em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.title}</span>
+        {m.kind === 'friendly' ? <Badge bg={CANDY.gold}>Friendly</Badge> : <Chip status={m.status} />}
       </div>
       <VersusPicture home={m.home} away={m.away} vumaSrc={m.vumaSrc} oppSrc={m.oppSrc} h={compact ? 150 : 180} />
       {/* the countdown sits in the centre, big */}
@@ -214,7 +238,7 @@ export function MatchCard({ season, compact = false, onClaimLeague, onNavigate }
           <>
             <div style={{ fontSize: 11, fontWeight: 900, color: '#ff8a80', textTransform: 'uppercase', letterSpacing: '.12em', marginBottom: 4 }}>Full-time in</div>
             <div data-countdown className="sc-pulse" style={{ display: 'inline-block', borderRadius: 10, fontFamily: CANDY.display, fontWeight: 900, fontSize: compact ? 34 : 44, lineHeight: 1, color: '#FF4D42', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{countdownText(liveMs)}</div>
-            <div style={{ fontSize: 12, fontWeight: 700, color: C.sub, marginTop: 6 }}>Reach {fmt(m.target)} XP before full-time to win</div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: C.sub, marginTop: 6 }}>Reach {fmt(m.target)} XP before full-time to win{m.winBack ? `: ${m.winBack}` : ''}</div>
           </>
         )}
       </div>
@@ -232,11 +256,99 @@ export function MatchCard({ season, compact = false, onClaimLeague, onNavigate }
         <GreenBtn full onClick={(e) => onClaimLeague && onClaimLeague(m.id, e.currentTarget)} style={{ marginTop: 10 }}>Collect +{fmt(m.bonus)} coins</GreenBtn>
       )}
       <Note text={note} />
-      {compact && onNavigate && (
-        <button type="button" className="ov-link" onClick={() => onNavigate('missions')}>Season, league and World Cup ›</button>
-      )}
+      {link}
     </Card>
   );
+}
+
+// ---- FRIENDLY MATCH: the second chance after a loss (lib/season/friendly.mjs) ----
+
+/** What winning the friendly gives back: "+150 coins + 3 points" / "Zambia back in the World Cup". */
+export function friendlyWinBack(f) {
+  if (!f) return '';
+  if (f.kind === 'league') return `+${fmt(f.winBonus)} coins + ${f.winPoints ?? 3} points`;
+  if (f.round === 'knockout') return 'Zambia back in the World Cup';
+  return `+${fmt(f.winBonus)} coins`;
+}
+const friendlyArt = (f) => ({ vumaSrc: f.kind === 'wc' ? vumaArt('zambia') : vumaArt(f.homeStage || 6), oppSrc: opponentArt(f.opponent) });
+
+function FriendlySlot({ f, season, compact }) {
+  if (f.status === 'offer') return <FriendlyOfferCard f={f} season={season} compact={compact} />;
+  const m = {
+    kind: 'friendly', id: f.key, title: `Friendly · ${f.title || ''}`, home: f.home || 'Vuma', away: f.opponent, ...friendlyArt(f),
+    xp: f.xp, target: f.target, gap: f.gap, status: f.status === 'won' ? 'won' : f.status === 'lost' ? 'lost' : 'live', msLeft: f.msLeft,
+    lose: 'MISS IT AND THE LOSS STANDS', winBack: friendlyWinBack(f),
+  };
+  return <MatchBody m={m} compact={compact} />;
+}
+
+/**
+ * The offer: opponent squad art, target, what you win back, cost, its own
+ * countdown, accept (two taps: Play -> Confirm) and "No thanks". Actions come
+ * from season.onAcceptFriendly / season.onDeclineFriendly; season.coins is the
+ * balance for the "not enough coins" state.
+ */
+export function FriendlyOfferCard({ f, season, compact = false, inModal = false, onDone }) {
+  const liveMs = useLiveMs(f ? f.msLeft : 0);
+  const [confirm, setConfirm] = React.useState(false);
+  if (!f) return null;
+  const coins = Number(season?.coins) || 0;
+  const short = coins < f.cost;
+  const hours = season?.cfg?.friendly?.windowHours ?? 24;
+  const expired = liveMs <= 0;
+  const small = compact || inModal;
+  const onAccept = (el) => {
+    const ok = season?.onAcceptFriendly ? season.onAcceptFriendly(f.key, el) : false;
+    if (ok) { setConfirm(false); if (onDone) onDone(); }
+  };
+  const inner = (
+    <>
+      <style dangerouslySetInnerHTML={{ __html: SEASON_CSS }} />
+      <div data-friendly-offer style={{ textAlign: 'center' }}>
+        <div style={{ fontSize: 10.5, fontWeight: 900, color: C.muted, textTransform: 'uppercase', letterSpacing: '.08em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Lost to {f.lostTo} · {f.title}</div>
+        <div style={{ ...goldTitle(small ? 22 : 26), textAlign: 'center', marginTop: 3, lineHeight: 1.05 }}>Friendly match</div>
+        <div style={{ fontFamily: CANDY.display, fontSize: small ? 13.5 : 15, color: '#fff', letterSpacing: '.05em', textTransform: 'uppercase', marginTop: 2 }}>Win your chance back</div>
+      </div>
+      <div style={{ margin: '10px 0' }}>
+        <VersusPicture home={f.home || 'Vuma'} away={f.opponent} {...friendlyArt(f)} h={inModal ? 120 : compact ? 140 : 165} />
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)', gap: 8 }}>
+        <div style={{ background: C.panel2, border: `1.5px solid ${CANDY.violet.dark}`, borderRadius: 12, padding: '8px 10px' }}>
+          <div style={{ fontSize: 10, fontWeight: 900, color: C.muted, textTransform: 'uppercase', letterSpacing: '.06em' }}>Your target</div>
+          <div data-friendly-target style={{ fontFamily: CANDY.display, fontSize: 15.5, lineHeight: 1.2 }}>Reach {fmt(f.target)} XP in {hours}h</div>
+        </div>
+        <div style={{ background: 'rgba(67,194,26,.12)', border: `1.5px solid ${C.green}`, borderRadius: 12, padding: '8px 10px' }}>
+          <div style={{ fontSize: 10, fontWeight: 900, color: C.muted, textTransform: 'uppercase', letterSpacing: '.06em' }}>Win it back</div>
+          <div data-friendly-winback style={{ fontFamily: CANDY.display, fontSize: 15.5, lineHeight: 1.2, color: '#9BF06F' }}>{friendlyWinBack(f)}</div>
+        </div>
+      </div>
+      <div style={{ textAlign: 'center', margin: '12px 0 10px' }}>
+        <span data-offer-countdown className="sc-pulse" style={{ display: 'inline-block', padding: '6px 12px', borderRadius: 999, background: 'rgba(120,10,10,.55)', border: '1.5px solid #FF4D42', color: '#FF4D42', fontWeight: 900, fontSize: 12.5, letterSpacing: '.05em', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+          {expired ? 'OFFER ENDED' : `OFFER ENDS IN ${countdownText(liveMs)}`}
+        </span>
+      </div>
+      {short ? (
+        <>
+          <GreenBtn full disabled size={18} style={{ minHeight: 50 }}>Play for {fmt(f.cost)} coins</GreenBtn>
+          <div data-friendly-short style={{ fontSize: 12.5, fontWeight: 800, color: '#ff8a80', textAlign: 'center', marginTop: 6 }}>Not enough coins: you have {fmt(coins)}, you need {fmt(f.cost)}</div>
+        </>
+      ) : confirm ? (
+        <div data-friendly-confirm style={{ background: C.track, border: `2px solid ${CANDY.gold}`, borderRadius: 14, padding: 10 }}>
+          <div style={{ fontSize: 13, fontWeight: 800, textAlign: 'center', marginBottom: 8, lineHeight: 1.35 }}>Pay {fmt(f.cost)} coins to play {f.opponent}? If you miss the target the loss stands. No refund.</div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <GreenBtn color="violet" size={16} onClick={() => setConfirm(false)} style={{ flex: 1, padding: '0 10px' }}>Cancel</GreenBtn>
+            <GreenBtn size={16} disabled={expired} onClick={(e) => onAccept(e.currentTarget)} style={{ flex: 1.4, padding: '0 10px' }}>Confirm</GreenBtn>
+          </div>
+        </div>
+      ) : (
+        <GreenBtn full size={18} disabled={expired} onClick={() => setConfirm(true)} style={{ minHeight: 50 }}>Play for {fmt(f.cost)} coins</GreenBtn>
+      )}
+      <button type="button" data-friendly-decline onClick={() => { if (season?.onDeclineFriendly) season.onDeclineFriendly(f.key); if (onDone) onDone(); }}
+        style={{ all: 'unset', boxSizing: 'border-box', cursor: 'pointer', display: 'block', width: '100%', minHeight: 40, lineHeight: '40px', textAlign: 'center', fontSize: 13, fontWeight: 800, color: C.sub, textDecoration: 'underline' }}>No thanks</button>
+    </>
+  );
+  if (inModal) return <div>{inner}</div>;
+  return <Card style={{ padding: compact ? 14 : 16, borderColor: CANDY.gold }}>{inner}</Card>;
 }
 
 /** League record + recent results + unclaimed win bonuses. */
@@ -321,7 +433,7 @@ export function WorldCupPath({ worldCup, cfg, prize, onClaim, onClaimPrize, priz
                 </span>
                 {r.claimable
                   ? <GreenBtn size={14} onClick={(e) => onClaim && onClaim(r.id, e.currentTarget)} style={{ minHeight: 40, padding: '0 12px', marginBottom: 4 }}>+{fmt(r.bonus)}</GreenBtn>
-                  : <Chip status={r.status} />}
+                  : r.friendly && r.friendly.status === 'live' ? <Badge bg={CANDY.gold}>Friendly</Badge> : <Chip status={r.status} />}
               </div>
               {(r.status === 'live' || r.status === 'won' || r.status === 'lost') && (
                 <div style={{ marginTop: 6 }}>
@@ -329,6 +441,8 @@ export function WorldCupPath({ worldCup, cfg, prize, onClaim, onClaimPrize, priz
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, fontWeight: 800, marginTop: 4, color: C.sub }}>
                     <span>{fmt(r.xp)} / {fmt(r.target)} XP</span>
                     {r.status === 'live' && <span style={{ color: CANDY.gold }}>{fmt(r.gap)} XP to go, {leftText(r.msLeft)}</span>}
+                    {r.friendly && r.friendly.status === 'live' && <span style={{ color: CANDY.gold, textAlign: 'right' }}>Friendly: {fmt(r.friendly.xp)} / {fmt(r.friendly.target)} XP</span>}
+                    {r.status === 'won' && r.viaFriendly && !(r.claimed && r.bonus > 0) && <span style={{ color: C.green }}>Won back in the friendly</span>}
                     {r.status === 'won' && r.claimed && r.bonus > 0 && <span style={{ color: C.green, display: 'inline-flex', alignItems: 'center', gap: 3 }}><Check size={12} /> {fmt(r.bonus)} collected</span>}
                   </div>
                 </div>
@@ -435,30 +549,42 @@ const RESULT_COPY = {
   loss: { title: 'Match lost', line: (e) => `${e.away} were too strong this time` },
   knockedOut: { title: 'Knocked out', line: (e) => `${e.away} knock Zambia out. The league goes on!` },
   champion: { title: 'Champions!', line: () => 'Zambia win the World Cup!' },
+  friendlyWon: { title: 'Chance won back!', line: (e) => e.matchKind === 'wc' && e.round === 'knockout'
+    ? `Zambia are back in the World Cup!${e.next ? ` Next: ${e.next}` : ''}`
+    : `The loss to ${e.lostTo} now counts as a win` },
+  friendlyLost: { title: 'The loss stands', line: (e) => `${e.away} held on. The loss to ${e.lostTo} stands.` },
 };
 
 /**
  * Result moment (LevelUpModal style). event = { kind: 'win'|'loss'|'knockedOut'|'champion',
  * home, away, xp, target, bonus, claimable, matchKind: 'league'|'wc', matchId }.
  */
-export function SeasonResultModal({ event, onClose, onClaim, onClaimPrize, prizeK = 'K10,000', prizeStatus = null }) {
+export function SeasonResultModal({ event, onClose, onClaim, onClaimPrize, prizeK = 'K10,000', prizeStatus = null, offer = null, season = null }) {
   if (!event) return null;
   const copy = RESULT_COPY[event.kind] || RESULT_COPY.win;
-  const good = event.kind === 'win' || event.kind === 'champion';
+  const good = event.kind === 'win' || event.kind === 'champion' || event.kind === 'friendlyWon';
+  const isFriendly = event.kind === 'friendlyWon' || event.kind === 'friendlyLost';
+  // a loss with an open FRIENDLY offer shows the offer instead of "Continue"
+  const showOffer = !!(offer && offer.status === 'offer' && (event.kind === 'loss' || event.kind === 'knockedOut'));
   return (
-    <div onClick={onClose} role="dialog" aria-modal="true" aria-label={copy.title} style={{ position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(8,4,20,.78)', backdropFilter: 'blur(4px)', display: 'grid', placeItems: 'center', padding: 20, fontFamily: CANDY.body, color: '#fff' }}>
-      <div onClick={(e) => e.stopPropagation()} style={{ ...goldRim, boxShadow: `${goldRim.boxShadow}, 0 24px 70px rgba(0,0,0,.6)`, position: 'relative', width: 'min(380px, 100%)', boxSizing: 'border-box', padding: 9, borderRadius: 26 }}>
+    <div onClick={onClose} role="dialog" aria-modal="true" aria-label={copy.title} style={{ position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(8,4,20,.78)', backdropFilter: 'blur(4px)', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', placeItems: 'center', padding: 20, fontFamily: CANDY.body, color: '#fff', overflowY: 'auto' }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ ...goldRim, boxShadow: `${goldRim.boxShadow}, 0 24px 70px rgba(0,0,0,.6)`, position: 'relative', width: 'min(380px, 100%)', boxSizing: 'border-box', padding: 9, borderRadius: 26, margin: 'auto 0' }}>
         <span aria-hidden style={{ ...dotRow(false), top: 0.5, left: 22, right: 22, height: 8 }} />
         <span aria-hidden style={{ ...dotRow(false), bottom: 0.5, left: 22, right: 22, height: 8 }} />
         <div style={{ borderRadius: 18, background: innerGlow, padding: '22px 18px 12px', textAlign: 'center' }}>
-          <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: C.muted }}>{event.matchKind === 'wc' ? `World Cup · ${event.label || ''}` : 'League match'}</div>
-          <h2 style={{ ...goldTitle(32), textAlign: 'center', marginTop: 4, ...(good ? null : { color: '#fff' }) }}>{copy.title}</h2>
-          <div style={{ margin: '14px 0 10px' }}>
-            <VersusPicture home={event.home} away={event.away} h={150}
+          <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: C.muted }}>{isFriendly ? 'Friendly match' : event.matchKind === 'wc' ? `World Cup · ${event.label || ''}` : 'League match'}</div>
+          <h2 data-result-title style={{ ...goldTitle(32), textAlign: 'center', marginTop: 4, ...(good ? null : { color: '#fff' }) }}>{copy.title}</h2>
+          <div style={{ margin: showOffer ? '10px 0 8px' : '14px 0 10px' }}>
+            <VersusPicture home={event.home} away={event.away} h={showOffer ? 100 : 150}
               vumaSrc={event.matchKind === 'wc' ? vumaArt('zambia') : vumaArt(event.homeStage || 6)} oppSrc={opponentArt(event.away)} />
           </div>
           <div style={{ fontFamily: CANDY.display, fontSize: 19, lineHeight: 1.2 }}>{copy.line(event)}</div>
-          {event.kind !== 'champion' && <div style={{ fontSize: 12.5, color: C.sub, margin: '4px 0 14px' }}>{fmt(event.xp)} / {fmt(event.target)} XP</div>}
+          {event.kind !== 'champion' && <div style={{ fontSize: 12.5, color: C.sub, margin: showOffer ? '4px 0 12px' : '4px 0 14px' }}>{fmt(event.xp)} / {fmt(event.target)} XP</div>}
+          {showOffer && (
+            <div style={{ borderTop: `2px dashed ${CANDY.violet.dark}`, paddingTop: 12, marginBottom: 4 }}>
+              <FriendlyOfferCard f={offer} season={season} inModal onDone={onClose} />
+            </div>
+          )}
           {event.kind === 'champion' && <div style={{ fontSize: 13.5, color: CANDY.gold, fontWeight: 900, margin: '6px 0 14px' }}>{prizeK} real-money prize</div>}
           {event.claimable && event.bonus > 0 && (
             <div style={{ background: C.track, border: `2px solid ${CANDY.violet.dark}`, borderRadius: 14, padding: '10px 14px', marginBottom: 14 }}>
@@ -466,7 +592,7 @@ export function SeasonResultModal({ event, onClose, onClaim, onClaimPrize, prize
               <CurrencyAmounts r={{ kwacha: event.bonus }} size={22} fontSize={18} style={{ justifyContent: 'center' }} />
             </div>
           )}
-          {event.kind === 'champion' && !prizeStatus
+          {showOffer ? null : event.kind === 'champion' && !prizeStatus
             ? <GreenBtn full size={22} onClick={onClaimPrize} style={{ minHeight: 56, borderRadius: 18 }}><Trophy size={20} /> Claim {prizeK}</GreenBtn>
             : event.claimable && event.bonus > 0
               ? <GreenBtn full size={22} onClick={(e) => onClaim && onClaim(e.currentTarget)} style={{ minHeight: 56, borderRadius: 18 }}>Collect</GreenBtn>

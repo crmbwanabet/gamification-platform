@@ -140,13 +140,14 @@ export default function SessionProvider({ children }) {
 
   // Claim the World Cup Final prize. The server re-verifies the whole season;
   // platformXp = the client's per-day platform XP (clamped to 60/day there).
-  const claimSeasonPrize = useCallback(async (platformXp) => {
+  // friendlies = user.season.friendlies (accept times of the FRIENDLY matches).
+  const claimSeasonPrize = useCallback(async (platformXp, friendlies = null) => {
     if (!tokenRef.current) return { status: 401, data: null };
     try {
       const res = await fetch('/api/season/claim-prize', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tokenRef.current}` },
-        body: JSON.stringify({ platformXp }),
+        body: JSON.stringify({ platformXp, friendlies }),
       });
       let data = null;
       try { data = await res.json(); } catch { /* non-JSON */ }
