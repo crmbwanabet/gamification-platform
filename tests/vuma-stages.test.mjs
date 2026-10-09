@@ -20,9 +20,9 @@ test('17 stages numbered 1..17, thresholds strictly increasing from 0', () => {
 test('name = club || place; deliberate club spellings kept', () => {
   assert.equal(VUMA_STAGES[0].name, 'The village');
   assert.equal(VUMA_STAGES[4].name, 'Chelstone academy');
-  assert.equal(VUMA_STAGES[5].name, 'Kafue Keltic FC');
-  assert.equal(VUMA_STAGES[14].name, 'Manchesta United');
-  assert.equal(VUMA_STAGES[16].name, 'Al Sadh SC');
+  assert.equal(VUMA_STAGES[5].name, 'Kafue Gaels FC');
+  assert.equal(VUMA_STAGES[14].name, 'Manchester Union');
+  assert.equal(VUMA_STAGES[16].name, 'Doha Dam SC');
   for (const s of VUMA_STAGES) assert.equal(s.name, s.club || s.place);
 });
 
