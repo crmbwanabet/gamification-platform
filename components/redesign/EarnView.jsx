@@ -1,8 +1,8 @@
 'use client';
 
 import React from 'react';
-import { C } from './tokens';
-import RedesignShell, { GreenBtn, SectionTitle, Card, Thumb, Badge, Progress, RewardIcon, CurrencyAmounts } from './RedesignShell';
+import { C, CANDY } from './tokens';
+import RedesignShell, { GreenBtn, SectionTitle, TitleNote, Card, Thumb, Badge, Progress, CurrencyAmounts } from './RedesignShell';
 import { IMAGES } from '@/lib/data/images';
 import { amountText } from '@/lib/rewardText.mjs';
 import { CASINO_MISSIONS } from '@/lib/data/missions';
@@ -24,7 +24,7 @@ export function resetText(ms) {
   const mins = Math.max(1, Math.ceil(ms / 60000));
   return `Resets in ${Math.floor(mins / 60)}h ${mins % 60}m`;
 }
-function useResetText() {
+export function useResetText() {
   const [t, setT] = React.useState('Resets at midnight');
   React.useEffect(() => {
     const tick = () => setT(resetText(msToLusakaReset()));
@@ -40,7 +40,7 @@ const EV_CSS = `
   .ev-cols { display: block; }
   .ev-vuma { display: none; }
   @media (min-width: 861px) {
-    .ev-cols { display: grid; grid-template-columns: 1.25fr 1fr; gap: 18px; align-items: start; }
+    .ev-cols { display: grid; grid-template-columns: 1.25fr 1fr; gap: 28px; align-items: start; }
     .ev-vuma { display: block; }
     .ev-xp-sources { display: none; }
   }
@@ -67,10 +67,10 @@ function RewardChips({ r }) {
 
 function MilestoneRow({ icon, title, sub, reward, reached, current }) {
   return (
-    <Card style={{ padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 12, border: current ? `1.5px solid ${C.green}` : '1px solid rgba(255,255,255,0.07)' }}>
+    <Card style={{ padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 12, borderRadius: 18, ...(current ? { borderColor: CANDY.gold } : null), opacity: reached || current ? 1 : 0.85 }}>
       <div style={{ width: 38, height: 38, flex: 'none', borderRadius: 10, overflow: 'hidden', background: C.track, display: 'grid', placeItems: 'center', fontSize: 20 }}>{icon}</div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 13.5, fontWeight: 800, color: C.text }}>{title}</div>
+        <div style={{ fontFamily: CANDY.display, fontSize: 16, lineHeight: 1.15, color: C.text }}>{title}</div>
         {sub && <div style={{ fontSize: 11, color: C.muted }}>{sub}</div>}
       </div>
       <RewardChips r={reward} />
@@ -92,7 +92,7 @@ function XpChip({ xp, fontSize = 12 }) {
 function XpSources() {
   return (
     <Card style={{ padding: '11px 14px', marginBottom: 12 }}>
-      <div style={{ fontSize: 11, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 7 }}>How to earn XP</div>
+      <div style={{ fontFamily: CANDY.display, fontSize: 16, color: CANDY.gold, letterSpacing: '.03em', marginBottom: 7 }}>How to earn XP</div>
       <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 5 }}>
         {xpSourceLines().map(l => (
           <li key={l.id} style={{ display: 'flex', alignItems: 'baseline', gap: 6, fontSize: 12, lineHeight: 1.35 }}>
@@ -113,7 +113,7 @@ function RewardsSection({ xp = 0, levelRewards = null }) {
   const lvlRewards = levelRewards || LEVEL_REWARDS;
   return (
     <section>
-      <SectionTitle>Stage Milestones</SectionTitle>
+      <SectionTitle>Stage milestones</SectionTitle>
       <div className="ev-xp-sources"><XpSources /></div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         {XP_LEVELS.filter(l => lvlRewards[l.level]).map(l => (
@@ -138,8 +138,8 @@ function RoundsSummary({ status, rounds, nextIn = null }) {
       </div>
       <div style={{ flex: 1, minWidth: 0, lineHeight: 1.3 }}>
         {showCount && (
-          <div style={{ fontSize: 15, fontWeight: 800, color: C.text }}>
-            <span style={{ fontVariantNumeric: 'tabular-nums', color: C.teal }}>{rounds}</span> casino {rounds === 1 ? 'round' : 'rounds'} today
+          <div style={{ fontFamily: CANDY.display, fontSize: 18, color: C.text }}>
+            <span style={{ fontVariantNumeric: 'tabular-nums', color: CANDY.gold }}>{rounds}</span> casino {rounds === 1 ? 'round' : 'rounds'} today
           </div>
         )}
         {note ? (
@@ -166,7 +166,7 @@ function MissionRow({ s, i = 0, loggedIn, onOpen, onClaim }) {
   const pct = s.claimed ? 100 : Math.min(100, Math.round((s.progress / m.target) * 100));
   const ready = loggedIn && s.claimable;
   return (
-    <Card className="card-enter" style={{ animationDelay: `${i * 40}ms`, opacity: s.claimed ? 0.65 : 1, border: ready ? `1.5px solid ${C.gold}` : '1px solid rgba(255,255,255,0.07)', boxShadow: ready ? '0 0 0 3px rgba(230,173,74,.18), 0 0 18px rgba(230,173,74,.25), 0 5px 16px rgba(0,0,0,0.3)' : undefined }}>
+    <Card className="card-enter" style={{ animationDelay: `${i * 40}ms`, opacity: s.claimed ? 0.7 : 1, ...(ready ? { borderColor: CANDY.gold, boxShadow: `0 5px 0 ${CANDY.violet.dark}, 0 0 0 2px rgba(255,210,31,.35), 0 0 22px rgba(255,210,31,.35)` } : null) }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '10px 12px' }}>
         <button onClick={() => onOpen && onOpen(m)} aria-label={`${m.name} details`} style={{ all: 'unset', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 11, flex: 1, minWidth: 0 }}>
           <div style={{ width: 46, flex: 'none' }}>
@@ -174,7 +174,7 @@ function MissionRow({ s, i = 0, loggedIn, onOpen, onClaim }) {
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3, minWidth: 0 }}>
-              <span style={{ fontSize: 14, fontWeight: 800, color: C.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.name}</span>
+              <span style={{ fontFamily: CANDY.display, fontSize: 17, lineHeight: 1.15, color: C.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.name}</span>
               <Badge bg={d.c} color="#130f1f">{d.label}</Badge>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', columnGap: 10, rowGap: 4 }}>
@@ -182,7 +182,7 @@ function MissionRow({ s, i = 0, loggedIn, onOpen, onClaim }) {
               {m.xp ? <XpChip xp={m.xp} /> : null}
             </div>
             <div style={{ marginTop: 7 }}>
-              <Progress value={pct} color={s.claimed || s.reached ? C.green : C.teal} height={6} />
+              <Progress value={pct} color={s.claimed || s.reached ? C.green : undefined} height={12} />
             </div>
           </div>
         </button>
@@ -192,7 +192,7 @@ function MissionRow({ s, i = 0, loggedIn, onOpen, onClaim }) {
           ) : ready ? (
             <GreenBtn onClick={(e) => onClaim && onClaim(m, e.currentTarget)}>Claim</GreenBtn>
           ) : (
-            <span style={{ fontSize: 12, fontWeight: 700, color: C.muted, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{s.progress} / {m.target}</span>
+            <span style={{ fontFamily: CANDY.display, fontSize: 15, color: 'rgba(255,255,255,.8)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{s.progress} / {m.target}</span>
           )}
         </div>
       </div>
@@ -210,26 +210,26 @@ function VumaRoad({ xp = 0, levelRewards = null }) {
   const x = Math.max(0, Math.floor(Number(xp) || 0));
   return (
     <div className="ev-vuma">
-      <SectionTitle right={<span style={{ fontSize: 11.5, fontWeight: 700, color: C.muted }}>Stage {cur.stage} of {STAGE_COUNT}</span>}>Vuma's road</SectionTitle>
+      <SectionTitle right={<TitleNote>Stage {cur.stage} of {STAGE_COUNT}</TitleNote>}>Vuma&apos;s road</SectionTitle>
       <Card style={{ overflow: 'hidden' }}>
         <img src={cur.hero} alt={`Vuma at ${cur.name}`} style={{ width: '100%', display: 'block', aspectRatio: '10 / 9', objectFit: 'cover' }} />
         <div style={{ padding: '16px 18px 18px', display: 'grid', gap: 12, marginTop: -62, position: 'relative', background: `linear-gradient(180deg, transparent, ${C.panelLo} 62px)` }}>
-          <div style={{ fontFamily: "var(--font-display, 'Bricolage Grotesque', system-ui, sans-serif)", fontWeight: 800, fontSize: 22, color: C.text, textShadow: '0 2px 8px #000' }}>{cur.name}</div>
+          <div style={{ fontFamily: CANDY.display, fontSize: 24, color: C.text, textShadow: '0 2px 8px #000' }}>{cur.name}</div>
           {next ? (
             <>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, fontWeight: 700, flexWrap: 'wrap' }}>
                 <span style={{ background: 'rgba(0,0,0,.25)', padding: '2px 9px', borderRadius: 999, color: C.text, fontVariantNumeric: 'tabular-nums' }}>{x.toLocaleString()} / {next.xp.toLocaleString()} XP</span>
                 <span style={{ color: C.muted, fontWeight: 600 }}>{(next.xp - x).toLocaleString()} XP to {next.name}</span>
               </div>
-              <Progress value={stageProgress(x)} color={C.green} height={7} />
+              <Progress value={stageProgress(x)} height={14} />
             </>
           ) : (
-            <div style={{ fontSize: 13, fontWeight: 800, color: C.green }}>Final stage reached</div>
+            <div style={{ fontSize: 13, fontWeight: 900, color: CANDY.gold }}>Final stage reached</div>
           )}
           {upcoming.length > 0 && (
             <div style={{ display: 'grid', gap: 8 }}>
               {upcoming.map(l => (
-                <div key={l.level} style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(0,0,0,.22)', borderRadius: 10, padding: '7px 10px', fontSize: 12.5, fontWeight: 700, color: C.text }}>
+                <div key={l.level} style={{ display: 'flex', alignItems: 'center', gap: 10, background: C.panel2, border: `1.5px solid ${CANDY.violet.dark}`, borderRadius: 12, padding: '7px 10px', fontSize: 12.5, fontWeight: 800, color: C.text }}>
                   <img src={l.avatar} alt="" width={30} height={30} loading="lazy" style={{ width: 30, height: 30, borderRadius: 8, objectFit: 'cover', filter: 'grayscale(.6)' }} />
                   <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.name}</span>
                   {rewards[l.level] && <CurrencyAmounts r={rewards[l.level]} size={14} fontSize={12} gap={8} />}
@@ -256,7 +256,7 @@ function VumaRoad({ xp = 0, levelRewards = null }) {
  * bwanabet.com today (CRM feed, Lusaka day) — then the stage milestones.
  * The daily reward lives on Home.
  */
-export default function EarnView({ wallet = null, points = '0', missionsCount = 0, badges = 0, xp = 0, onNavigate, onOpenProfile, onOpenMission, onClaimMission, userId = null, navBadges = {}, missions = null, missionStates = null, casinoStatus = 'anon', loggedIn = false, levelRewards = null, focusRewards = 0 }) {
+export default function EarnView({ wallet = null, xp = 0, onNavigate, onOpenProfile, onOpenMission, onClaimMission, userId = null, navBadges = {}, missions = null, missionStates = null, casinoStatus = 'anon', loggedIn = false, levelRewards = null, focusRewards = 0, isWidget = false, story = null, onStoryOpen, onStoryClose }) {
   const states = missionStates || casinoMissionStates(missions || CASINO_MISSIONS, { rounds: 0, today: null });
   const rounds = states[0]?.rounds || 0;
   const resetLabel = useResetText();
@@ -268,12 +268,13 @@ export default function EarnView({ wallet = null, points = '0', missionsCount = 
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, [focusRewards]);
   return (
-    <RedesignShell wallet={wallet} points={points} missionsCount={missionsCount} badges={badges} xp={xp} userId={userId} navBadges={navBadges} activeTab="missions" onNavigate={onNavigate} onOpenProfile={onOpenProfile}>
+    <RedesignShell wallet={wallet} xp={xp} userId={userId} navBadges={navBadges} activeTab="missions" onNavigate={onNavigate} onOpenProfile={onOpenProfile}
+      isWidget={isWidget} story={story} onStoryOpen={onStoryOpen} onStoryClose={onStoryClose}>
       {/* Quests parked — see parked/components/redesign/EarnView.QuestCard.parked.jsx */}
       <style>{EV_CSS}</style>
       <div className="ev-cols">
         <section style={{ maxWidth: 720, minWidth: 0 }}>
-          <SectionTitle right={<span style={{ fontSize: 11.5, fontWeight: 700, color: C.muted }}>{resetLabel}</span>}>Daily Missions</SectionTitle>
+          <SectionTitle right={<TitleNote>{resetLabel}</TitleNote>}>Daily missions</SectionTitle>
           <RoundsSummary status={casinoStatus} rounds={rounds} nextIn={nextIn} />
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {states.map((s, i) => (

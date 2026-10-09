@@ -181,7 +181,8 @@ export default function GamificationPlatform() {
         p.rotation += p.rotSpeed;
         p.life--;
 
-        const alpha = Math.min(1, p.life / (p.maxLife * 0.3));
+        // clamp: a negative globalAlpha is ignored by canvas (draws at full opacity)
+        const alpha = Math.max(0, Math.min(1, p.life / (p.maxLife * 0.3)));
         ctx.save();
         ctx.globalAlpha = alpha;
         ctx.translate(p.x, p.y);
@@ -198,6 +199,8 @@ export default function GamificationPlatform() {
       if (particles.length > 0) {
         rewardAnimFrameRef.current = requestAnimationFrame(loop);
       } else {
+        // wipe the last frame so no particle stays painted on the canvas
+        ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
         rewardAnimFrameRef.current = null;
       }
     };
@@ -1141,6 +1144,48 @@ export default function GamificationPlatform() {
   // their progress is looked up by the bwanabet user id.)
   const REQUIRE_LOGIN_TO_CLAIM = false;
   const canClaimDaily = loggedIn || !REQUIRE_LOGIN_TO_CLAIM;
+
+  // "My story" speech bubble on Vuma's header avatar: the small hint shows
+  // once per widget open (this page load), logged in or not; tapping it opens
+  // the big story bubble. Hidden (not dismissed) while any modal is open; the
+  // hint auto-hides after 10s of being visible.
+  const [story, setStory] = useState(null); // null | 'hint' | 'open'
+  useEffect(() => {
+    const t = setTimeout(() => setStory(s => s || 'hint'), 900);
+    return () => clearTimeout(t);
+  }, []);
+  const anyModalOpen = !!activeGame || !!selectedMission || showProfile || !!levelUp;
+  useEffect(() => {
+    if (story !== 'hint' || anyModalOpen) return undefined;
+    const t = setTimeout(() => setStory(s => (s === 'hint' ? null : s)), 10000);
+    return () => clearTimeout(t);
+  }, [story, anyModalOpen]);
+  const openStory = useCallback(() => setStory('open'), []);
+  const closeStory = useCallback(() => setStory('done'), []);
+
+  // Daily reward READY (logged in, unclaimed) on Home: one confetti burst over
+  // the daily reward card per widget open, from the reward system's particle
+  // engine. Waits for the saved state (hydration) so a player who already
+  // claimed today never sees it; none with prefers-reduced-motion.
+  const dailyConfettiRef = useRef(false);
+  useEffect(() => {
+    if (dailyConfettiRef.current || prefersReducedMotion) return undefined;
+    if (tab !== 'home' || !loggedIn || !canClaimDaily || user.dailyClaimed || !hydratedRef.current) return undefined;
+    const t = setTimeout(() => {
+      const el = document.getElementById('daily-reward-card');
+      if (!el) return;
+      dailyConfettiRef.current = true;
+      const r = el.getBoundingClientRect();
+      for (let i = 0; i < 26; i++) {
+        setTimeout(() => {
+          spawnParticles(r.left + r.width * (0.1 + Math.random() * 0.8), r.top + r.height * 0.3, 1, {
+            type: ['coin', 'star', 'sparkle'][i % 3], spread: 80, speed: 6, gravity: 0.17, life: 70, size: 18,
+          });
+        }, i * 30);
+      }
+    }, 700);
+    return () => clearTimeout(t);
+  }, [tab, loggedIn, canClaimDaily, user.dailyClaimed, prefersReducedMotion, spawnParticles]);
   // status: idle (not fetched) | ok | unavailable (feed/table down) | anon
   const [casino, setCasino] = useState({ status: 'idle', day: null, rounds: 0, updatedAt: null });
   const casinoBusyRef = useRef(false);
@@ -1526,6 +1571,11 @@ export default function GamificationPlatform() {
     casinoStatus,
     loggedIn,
     canClaimDaily,
+    // candy shell: widget padding for the red X + the "My story" bubble
+    isWidget,
+    story: anyModalOpen || story === 'done' ? null : story,
+    onStoryOpen: openStory,
+    onStoryClose: closeStory,
   };
 
   // Claim a daily casino mission. Re-reads today's rounds from the server
