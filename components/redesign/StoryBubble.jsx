@@ -4,13 +4,17 @@ import React from 'react';
 import { X } from 'lucide-react';
 import { CANDY } from './tokens';
 import CandyButton from '../games/candy/CandyButton';
+import { playerName } from '@/lib/profile/name.mjs';
 
 // "My story" comic speech bubbles anchored under Vuma's header avatar.
 // mode 'hint' = the small "My story" bubble (tap to open); 'open' = the big
 // bubble with Vuma's intro. When and how long they show is decided by
 // GamificationPlatform (once per widget open, hidden while a modal is open).
+// The hero carries the PLAYER's name (`displayName`); unnamed players keep
+// "Vuma Katongo".
 
-const STORY = "I'm Vuma Katongo. I grew up kicking a plastic ball in the village — no boots, just a big dream. One day I want to wear the Zambia shirt and play for the biggest clubs in the world. Every time you play, you help me train and move up. The more you play, the more you unlock: new places, new clubs, bigger rewards. Let's make it to the top together!";
+const HERO_FULL = 'Vuma Katongo';
+const storyText = (hero) => `I'm ${hero}. I grew up kicking a plastic ball in the village — no boots, just a big dream. One day I want to wear the Zambia shirt and play for the biggest clubs in the world. Every time you play, you help me train and move up. The more you play, the more you unlock: new places, new clubs, bigger rewards. Let's make it to the top together!`;
 
 const CREAM = '#FFF8E7';
 const INK = CANDY.outline;
@@ -32,7 +36,8 @@ const tail = (left) => ({
   borderTop: `3px solid ${INK}`, borderLeft: `3px solid ${INK}`, transform: 'rotate(45deg)', borderTopLeftRadius: 4,
 });
 
-export default function StoryBubble({ mode, onOpen, onClose }) {
+export default function StoryBubble({ mode, onOpen, onClose, displayName = null }) {
+  const hero = playerName({ displayName }) || HERO_FULL;
   const closeRef = React.useRef(null);
   React.useEffect(() => {
     if (mode !== 'open') return undefined;
@@ -44,7 +49,7 @@ export default function StoryBubble({ mode, onOpen, onClose }) {
 
   if (mode === 'hint') {
     return (
-      <button type="button" onClick={onOpen} className="rs-sb-hint" aria-label="My story: read Vuma Katongo's story"
+      <button type="button" onClick={onOpen} className="rs-sb-hint" aria-label={`My story: read ${hero}'s story`}
         style={{
           position: 'absolute', top: 'calc(100% + 10px)', left: 0, zIndex: 3,
           minHeight: 44, padding: '0 16px', borderRadius: 16, cursor: 'pointer',
@@ -71,15 +76,15 @@ export default function StoryBubble({ mode, onOpen, onClose }) {
         }}>
         <span aria-hidden="true" style={tail(20)} />
         <div style={{ position: 'relative', display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-          <h2 id="rs-story-title" style={{ flex: 1, margin: '4px 0 0', fontFamily: CANDY.display, fontWeight: 400, fontSize: 24, lineHeight: 1.05, color: INK, letterSpacing: 0.4 }}>Vuma Katongo</h2>
-          <button ref={closeRef} type="button" onClick={onClose} aria-label="Close Vuma's story" className="rs-sb-x"
+          <h2 id="rs-story-title" style={{ flex: 1, margin: '4px 0 0', fontFamily: CANDY.display, fontWeight: 400, fontSize: 24, lineHeight: 1.05, color: INK, letterSpacing: 0.4 }}>{hero}</h2>
+          <button ref={closeRef} type="button" onClick={onClose} aria-label={`Close ${hero}'s story`} className="rs-sb-x"
             style={{ width: 44, height: 44, margin: '-8px -8px 0 0', flex: 'none', border: 'none', background: 'transparent', padding: 0, display: 'grid', placeItems: 'center', cursor: 'pointer', borderRadius: '50%' }}>
             <span style={{ width: 32, height: 32, borderRadius: '50%', display: 'grid', placeItems: 'center', color: '#fff', background: `linear-gradient(180deg, ${CANDY.red.light}, ${CANDY.red.fill})`, border: `2px solid ${INK}`, boxShadow: `0 3px 0 ${CANDY.red.dark}` }}>
               <X size={17} strokeWidth={3.25} />
             </span>
           </button>
         </div>
-        <p style={{ position: 'relative', margin: '8px 0 14px', fontFamily: CANDY.body, fontSize: 15, lineHeight: 1.5, color: '#3B2559' }}>{STORY}</p>
+        <p style={{ position: 'relative', margin: '8px 0 14px', fontFamily: CANDY.body, fontSize: 15, lineHeight: 1.5, color: '#3B2559' }}>{storyText(hero)}</p>
         <CandyButton color="green" onClick={onClose} style={{ width: '100%', fontSize: 22, minHeight: 52 }}>Let&apos;s go!</CandyButton>
       </div>
     </>

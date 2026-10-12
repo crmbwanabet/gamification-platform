@@ -22,10 +22,20 @@ const ALLOWED_ORIGINS = (process.env.NEXT_PUBLIC_ALLOWED_PARENT_ORIGINS ||
 export default function SessionProvider({ children }) {
   const [state, setState] = useState({ status: 'idle', profile: null, verified: false, error: null });
   const tokenRef = useRef(null);
+  // The token's `id` claim, decoded client-side for DISPLAY only (the header's
+  // "ID x" while the session loads or when the exchange fails, e.g. an expired
+  // token). Never used for identity — the server decides that.
+  const [tokenUid, setTokenUid] = useState(null);
 
   const exchangeToken = useCallback(async (token) => {
     if (!token || tokenRef.current === token) return;
     tokenRef.current = token;
+    try {
+      let b = String(token).split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+      while (b.length % 4) b += '=';
+      const id = JSON.parse(atob(b))?.id;
+      if (id != null && /^\d{1,15}$/.test(String(id))) setTokenUid(String(id));
+    } catch { /* not a JWT: no display id */ }
     setState((s) => ({ ...s, status: 'loading', error: null }));
     try {
       const res = await fetch('/api/session', {
@@ -45,7 +55,7 @@ export default function SessionProvider({ children }) {
     const onMsg = (ev) => {
       if (!ALLOWED_ORIGINS.includes(ev.origin)) return;
       const d = ev.data || {};
-      const t = d.bwanabetToken || (d.type === 'bwanabet-token' && d.token);
+      const t = d.bwanabetToken || ((d.type === 'bwanabet-token' || d.type === 'bwanabet-auth') && d.token);
       if (t) exchangeToken(t);
     };
     window.addEventListener('message', onMsg);
@@ -159,7 +169,7 @@ export default function SessionProvider({ children }) {
   // predictions feature on 2026-07-15 — see parked/ + git history to restore.
 
   return (
-    <SessionContext.Provider value={{ ...state, saveState, buyItem, listPurchases, getCasinoProgress, getSeason, claimSeasonPrize }}>
+    <SessionContext.Provider value={{ ...state, tokenUid, saveState, buyItem, listPurchases, getCasinoProgress, getSeason, claimSeasonPrize }}>
       {children}
     </SessionContext.Provider>
   );

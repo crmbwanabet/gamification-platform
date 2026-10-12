@@ -8,6 +8,7 @@ import { amountText } from '@/lib/rewardText.mjs';
 import { CASINO_MISSIONS } from '@/lib/data/missions';
 import { casinoMissionStates } from '@/lib/missions/casino.mjs';
 import { xpSourceLines } from '@/lib/xp/sources.mjs';
+import { heroName, heroText } from '@/lib/profile/name.mjs';
 import { XP_LEVELS, LEVEL_REWARDS, getLevel } from '@/lib/data/platform';
 import { Check, Lock, LogIn, RefreshCw } from 'lucide-react';
 import { getStage, getNextStage, stageProgress, STAGE_COUNT } from '@/lib/vuma/stages.mjs';
@@ -90,7 +91,7 @@ function XpChip({ xp, fontSize = 12 }) {
 
 // "How to earn XP" — the lines come from lib/xp/sources.mjs, so retuning a
 // number there updates this list too.
-function XpSources({ cfg = null }) {
+function XpSources({ cfg = null, displayName = null }) {
   return (
     <Card style={{ padding: '11px 14px', marginBottom: 12 }}>
       <div style={{ fontFamily: CANDY.display, fontSize: 16, color: CANDY.gold, letterSpacing: '.03em', marginBottom: 7 }}>How to earn XP</div>
@@ -98,7 +99,7 @@ function XpSources({ cfg = null }) {
         {xpSourceLines(cfg || undefined).map(l => (
           <li key={l.id} style={{ display: 'flex', alignItems: 'baseline', gap: 6, fontSize: 12, lineHeight: 1.35 }}>
             <span style={{ color: XP_COLOR, flex: 'none' }}>⚡</span>
-            <span><b style={{ color: C.text, fontWeight: 800 }}>{l.title}</b><span style={{ color: C.sub }}> — {l.text}</span></span>
+            <span><b style={{ color: C.text, fontWeight: 800 }}>{l.title}</b><span style={{ color: C.sub }}> — {heroText(l.text, displayName)}</span></span>
           </li>
         ))}
       </ul>
@@ -109,13 +110,13 @@ function XpSources({ cfg = null }) {
 // Stage milestones: Vuma Katongo's story stages (levels = stages since
 // 2026-10-08). The streak bonuses that used to sit above them were removed
 // 2026-10-07 — parked/components/GamificationPlatform.removed-wiring.jsx.
-function RewardsSection({ xp = 0, levelRewards = null, seasonCfg = null }) {
+function RewardsSection({ xp = 0, levelRewards = null, seasonCfg = null, displayName = null }) {
   const curLevel = getLevel(xp).level;
   const lvlRewards = levelRewards || LEVEL_REWARDS;
   return (
     <section>
       <SectionTitle>Stage milestones</SectionTitle>
-      <div className="ev-xp-sources"><XpSources cfg={seasonCfg} /></div>
+      <div className="ev-xp-sources"><XpSources cfg={seasonCfg} displayName={displayName} /></div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         {XP_LEVELS.filter(l => lvlRewards[l.level]).map(l => (
           <MilestoneRow key={l.level}
@@ -201,9 +202,11 @@ function MissionRow({ s, i = 0, loggedIn, onOpen, onClaim }) {
   );
 }
 
-// Desktop-only right column: Vuma's current scene, XP to the next stage,
+// Desktop-only right column: the hero's current scene (named after the
+// player, "Vuma" when unnamed), XP to the next stage,
 // the next three stage rewards and how to earn XP.
-function VumaRoad({ xp = 0, levelRewards = null, seasonCfg = null }) {
+function VumaRoad({ xp = 0, levelRewards = null, seasonCfg = null, displayName = null }) {
+  const hero = heroName(displayName);
   const cur = getStage(xp);
   const next = getNextStage(xp);
   const rewards = levelRewards || LEVEL_REWARDS;
@@ -211,9 +214,9 @@ function VumaRoad({ xp = 0, levelRewards = null, seasonCfg = null }) {
   const x = Math.max(0, Math.floor(Number(xp) || 0));
   return (
     <div className="ev-vuma">
-      <SectionTitle right={<TitleNote>Stage {cur.stage} of {STAGE_COUNT}</TitleNote>}>Vuma&apos;s road</SectionTitle>
+      <SectionTitle right={<TitleNote>Stage {cur.stage} of {STAGE_COUNT}</TitleNote>}>{hero}&apos;s road</SectionTitle>
       <Card style={{ overflow: 'hidden' }}>
-        <img src={cur.hero} alt={`Vuma at ${cur.name}`} style={{ width: '100%', display: 'block', aspectRatio: '10 / 9', objectFit: 'cover' }} />
+        <img src={cur.hero} alt={`${hero} at ${cur.name}`} style={{ width: '100%', display: 'block', aspectRatio: '10 / 9', objectFit: 'cover' }} />
         <div style={{ padding: '16px 18px 18px', display: 'grid', gap: 12, marginTop: -62, position: 'relative', background: `linear-gradient(180deg, transparent, ${C.panelLo} 62px)` }}>
           <div style={{ fontFamily: CANDY.display, fontSize: 24, color: C.text, textShadow: '0 2px 8px #000' }}>{cur.name}</div>
           {next ? (
@@ -241,7 +244,7 @@ function VumaRoad({ xp = 0, levelRewards = null, seasonCfg = null }) {
           <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 5 }}>
             {xpSourceLines(seasonCfg || undefined).map(l => (
               <li key={l.id} style={{ fontSize: 12, lineHeight: 1.35, color: C.muted }}>
-                <b style={{ color: C.text, fontWeight: 800 }}>{l.title}</b> — {l.text}
+                <b style={{ color: C.text, fontWeight: 800 }}>{l.title}</b> — {heroText(l.text, displayName)}
               </li>
             ))}
           </ul>
@@ -288,10 +291,10 @@ export default function EarnView({ wallet = null, xp = 0, onNavigate, onOpenProf
             </div>
           )}
         </section>
-        <VumaRoad xp={xp} levelRewards={levelRewards} seasonCfg={season?.cfg} />
+        <VumaRoad xp={xp} levelRewards={levelRewards} seasonCfg={season?.cfg} displayName={displayName} />
       </div>
       <div id="missions-rewards" style={{ marginTop: 26, scrollMarginTop: 12, maxWidth: 720 }}>
-        <RewardsSection xp={xp} levelRewards={levelRewards} seasonCfg={season?.cfg} />
+        <RewardsSection xp={xp} levelRewards={levelRewards} seasonCfg={season?.cfg} displayName={displayName} />
       </div>
     </RedesignShell>
   );

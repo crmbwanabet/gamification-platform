@@ -5,13 +5,15 @@ import { C, CANDY, goldRim, dotRow, goldTitle, innerGlow } from './tokens';
 import { GreenBtn, CurrencyAmounts } from './RedesignShell';
 import { cleanReward } from '@/lib/economy/currency.mjs';
 import { XP_LEVELS } from '@/lib/data/platform';
+import { HERO_DEFAULT } from '@/lib/profile/name.mjs';
 
 // Celebratory stage-up modal (levels = Vuma Katongo story stages), in the
 // candy look: gold-rimmed panel with marquee dots, Vuma in a gold ring.
 // Driven by a `levelUp` object: { level, name, place, avatar, icon, reward: { kwacha, emeralds, rubies, diamonds } }
 // `onRename` (set when this stage-up unlocks a rename for a named player)
 // adds a "You can change your name now" line that opens the profile's name form.
-export default function LevelUpModal({ levelUp, onClose, onRename }) {
+// `hero` = the player's name ("Vuma" when unnamed) in the copy.
+export default function LevelUpModal({ levelUp, onClose, onRename, hero = HERO_DEFAULT }) {
   if (!levelUp) return null;
   const r = cleanReward(levelUp.reward);
   const hasReward = Object.keys(r).length > 0;
@@ -24,11 +26,11 @@ export default function LevelUpModal({ levelUp, onClose, onRename }) {
           <h2 style={{ ...goldTitle(30), textAlign: 'center' }}>New stage!</h2>
           {levelUp.avatar
             ? <span style={{ display: 'block', width: 112, height: 112, margin: '14px auto 10px', borderRadius: '50%', padding: 4, boxSizing: 'border-box', background: 'linear-gradient(180deg, #FFE27A, #E0A300)', boxShadow: '0 4px 0 #8a5a00, 0 10px 24px rgba(0,0,0,.45)' }}>
-                <img src={levelUp.avatar} alt={`Vuma at ${levelUp.name}`} width={104} height={104} style={{ display: 'block', width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+                <img src={levelUp.avatar} alt={`${hero} at ${levelUp.name}`} width={104} height={104} style={{ display: 'block', width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
               </span>
             : <div style={{ fontSize: 64, margin: '10px 0 2px', lineHeight: 1 }}>{levelUp.icon}</div>}
           <div style={{ fontFamily: CANDY.display, fontSize: 26, lineHeight: 1.1 }}>{levelUp.name}</div>
-          {levelUp.place && <div style={{ fontSize: 13.5, marginTop: 4 }}>Vuma moves to {levelUp.place}</div>}
+          {levelUp.place && <div style={{ fontSize: 13.5, marginTop: 4 }}>{hero} moves to {levelUp.place}</div>}
           <div style={{ fontSize: 12, color: C.sub, margin: '2px 0 16px' }}>Stage {levelUp.level} of {XP_LEVELS.length}</div>
           {hasReward ? (
             <div style={{ background: C.track, border: `2px solid ${CANDY.violet.dark}`, borderRadius: 14, padding: '10px 14px', marginBottom: 16 }}>

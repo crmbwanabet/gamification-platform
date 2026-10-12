@@ -280,7 +280,7 @@ function TopBar({ lvl, nextLvl, xpPct, activeTab, onNavigate, onOpenProfile, use
             <span className="rs-addname-face"><Pencil size={12} strokeWidth={3} aria-hidden /><span className="rs-addname-t">Add name</span></span>
           </button>
         )}
-        <StoryBubble mode={story} onOpen={onStoryOpen} onClose={onStoryClose} />
+        <StoryBubble mode={story} onOpen={onStoryOpen} onClose={onStoryClose} displayName={displayName} />
       </div>
       <nav className="rs-topnav" aria-label="Main">
         <NavTabs active={activeTab} onNavigate={onNavigate} navBadges={navBadges} place="top" />

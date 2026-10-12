@@ -8,7 +8,7 @@ import { formatNumber } from '@/lib/economy/currency.mjs';
 import { XP_LEVELS } from '@/lib/data/platform';
 import { textStroke } from '../games/candy/tokens';
 import CandyButton from '../games/candy/CandyButton';
-import { validateName, canRename, nextRenameStage, playerLabel, playerName, NAME_MAX } from '@/lib/profile/name.mjs';
+import { validateName, canRename, nextRenameStage, playerLabel, playerName, heroName, NAME_MAX } from '@/lib/profile/name.mjs';
 
 const tile = { background: `linear-gradient(180deg, ${C.panelHi}, ${C.panelLo})`, border: `2px solid ${CANDY.violet.dark}`, borderRadius: 14 };
 
@@ -26,6 +26,7 @@ export default function ProfileModal({ open, onClose, level, nextLevel, xpPct = 
   const u = user || {};
   const stage = level?.level || 1;
   const current = playerName(u);
+  const hero = heroName(u.displayName); // story copy names the player ("Vuma" when unnamed)
   const allowed = canRename(u, stage);
   const [editing, setEditing] = React.useState(false);
   const [draft, setDraft] = React.useState('');
@@ -89,13 +90,13 @@ export default function ProfileModal({ open, onClose, level, nextLevel, xpPct = 
           {/* Top: the current Vuma stage's full scene, name + chips on a bottom fade. */}
           <div style={{ position: 'relative', overflow: 'hidden', borderRadius: '18px 18px 0 0' }}>
             {level?.hero
-              ? <img src={level.hero} alt={`Vuma at stage ${level.level}: ${level.name}`} width={600} height={540} style={{ width: '100%', aspectRatio: '10 / 9', height: 'auto', objectFit: 'cover', display: 'block' }} />
+              ? <img src={level.hero} alt={`${hero} at stage ${level.level}: ${level.name}`} width={600} height={540} style={{ width: '100%', aspectRatio: '10 / 9', height: 'auto', objectFit: 'cover', display: 'block' }} />
               : <div style={{ width: '100%', aspectRatio: '10 / 9' }} />}
             <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, padding: '60px 18px 12px', textAlign: 'center', background: `linear-gradient(180deg, rgba(43,15,94,0) 0%, rgba(43,15,94,.8) 55%, ${CANDY.bgTop} 100%)` }}>
               <div data-profile-name style={{ fontFamily: CANDY.display, fontSize: 28, lineHeight: 1.05, color: '#fff', overflowWrap: 'anywhere', textShadow: `${textStroke(2.5, CANDY.outline)}, 0 4px 0 ${CANDY.outline}` }}>{who.title}</div>
               {who.sub && <div style={{ fontSize: 12.5, fontWeight: 800, color: 'rgba(255,255,255,.75)', marginTop: 4 }}>{who.sub}</div>}
               <div style={{ display: 'flex', justifyContent: 'center', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
-                <span style={{ fontSize: 12, fontWeight: 900, color: '#fff', background: 'rgba(20,4,48,.8)', border: `1.5px solid ${CANDY.violet.fill}`, padding: '2px 11px', borderRadius: 999 }}>Vuma&apos;s story · Stage {stage}{level?.place ? ` · ${level.place}` : ''}</span>
+                <span style={{ fontSize: 12, fontWeight: 900, color: '#fff', background: 'rgba(20,4,48,.8)', border: `1.5px solid ${CANDY.violet.fill}`, padding: '2px 11px', borderRadius: 999 }}>{hero}&apos;s story · Stage {stage}{level?.place ? ` · ${level.place}` : ''}</span>
                 {vip?.name && <span style={{ fontSize: 12, fontWeight: 900, color: CANDY.outline, background: CANDY.gold, padding: '3px 11px', borderRadius: 999 }}>{vip.name} VIP</span>}
               </div>
             </div>

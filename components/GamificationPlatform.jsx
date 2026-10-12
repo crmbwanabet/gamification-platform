@@ -19,7 +19,7 @@ import ProfileModal from './redesign/ProfileModal';
 // SSO session (bwanabet token -> Supabase profile)
 import { useSession } from './session/SessionProvider';
 import { useRemoteConfig } from '@/lib/config/useRemoteConfig';
-import { setName as setPlayerName, validateName, canRename, normalizeNameState } from '@/lib/profile/name.mjs';
+import { setName as setPlayerName, validateName, canRename, normalizeNameState, heroName, heroText } from '@/lib/profile/name.mjs';
 import { GEMS, CURRENCY_VERSION, migrateCurrencyState, cleanReward, canAfford, formatKwacha } from '@/lib/economy/currency.mjs';
 import { paidFromPurchase, refundTotals } from '@/lib/store/catalog.mjs';
 
@@ -188,7 +188,8 @@ export default function GamificationPlatform() {
         p.x += p.vx;
         p.y += p.vy;
         p.vy += p.gravity;
-        p.vx *= 0.99;
+        p.vx *= p.paper ? 0.97 : 0.99;
+        if (p.paper && p.vy > 2.6) p.vy = 2.6; // paper drifts down slowly
         p.rotation += p.rotSpeed;
         p.life--;
 
@@ -198,10 +199,17 @@ export default function GamificationPlatform() {
         ctx.globalAlpha = alpha;
         ctx.translate(p.x, p.y);
         ctx.rotate((p.rotation * Math.PI) / 180);
-        ctx.font = `${p.size}px sans-serif`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(p.emoji, 0, 0);
+        if (p.paper) {
+          // paper confetti: a coloured strip that flutters (no emoji font needed)
+          ctx.scale(1, Math.cos((p.rotation * 3 * Math.PI) / 180) * 0.8 + 0.2);
+          ctx.fillStyle = p.color;
+          ctx.fillRect(-p.size / 2, -p.size / 4, p.size, p.size / 2);
+        } else {
+          ctx.font = `${p.size}px sans-serif`;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(p.emoji, 0, 0);
+        }
         ctx.restore();
 
         if (p.life <= 0) particles.splice(i, 1);
@@ -217,6 +225,41 @@ export default function GamificationPlatform() {
     };
     rewardAnimFrameRef.current = requestAnimationFrame(loop);
   }, []);
+
+  // Paper-confetti burst out of an element (the daily reward card): coloured
+  // strips shot up from its top edge plus a few coins/stars. Canvas-drawn, so
+  // it shows on phones whose emoji font lacks the coin glyph. Callers skip it
+  // under prefers-reduced-motion.
+  const burstConfetti = useCallback((el, pieces = 90) => {
+    const r = el?.getBoundingClientRect?.() || { left: window.innerWidth * 0.2, top: window.innerHeight * 0.3, width: window.innerWidth * 0.6, height: 0 };
+    const colors = ['#FFD21F', '#FF6B9A', '#4ADE80', '#60A5FA', '#C084FC', '#FB923C', '#FFFFFF'];
+    const W = window.innerWidth;
+    for (let i = 0; i < pieces; i++) {
+      const fromCard = i % 2 === 0;
+      // half pop out of the card's middle, half rain from the top of the screen
+      const vel = 4 + Math.random() * 5.5;
+      const angle = (Math.random() - 0.5) * 2; // radians around straight up
+      rewardParticlesRef.current.push(fromCard ? {
+        x: r.left + r.width * (0.1 + Math.random() * 0.8), y: r.top + r.height * (0.25 + Math.random() * 0.3),
+        vx: Math.sin(angle) * vel * 1.3, vy: -Math.cos(angle) * vel,
+        life: 120 + Math.random() * 50, maxLife: 170, size: 9 + Math.random() * 7,
+      } : {
+        x: Math.random() * W, y: -10 - Math.random() * 120,
+        vx: (Math.random() - 0.5) * 2, vy: 1 + Math.random() * 1.5,
+        life: 150 + Math.random() * 60, maxLife: 210, size: 9 + Math.random() * 7,
+      });
+      Object.assign(rewardParticlesRef.current[rewardParticlesRef.current.length - 1], {
+        rotation: Math.random() * 360, rotSpeed: (Math.random() - 0.5) * 16,
+        paper: true, color: colors[i % colors.length], gravity: 0.2, type: 'paper',
+      });
+    }
+    for (let i = 0; i < 12; i++) {
+      spawnParticles(r.left + r.width * (0.15 + Math.random() * 0.7), r.top + r.height * 0.4, 1, {
+        type: ['coin', 'star', 'sparkle'][i % 3], spread: 90, speed: 6, gravity: 0.18, life: 80, size: 22,
+      });
+    }
+    if (!rewardAnimFrameRef.current) startParticleLoop();
+  }, [spawnParticles, startParticleLoop]);
 
   // Screen flash effect — short, amber-tinted acknowledgement (~180ms)
   const triggerFlash = useCallback((color = 'gold') => {
@@ -974,7 +1017,9 @@ export default function GamificationPlatform() {
     setWidgetCtx({ isWidget: inIframe || params.get('widget') === '1', widgetUid: params.get('uid') });
   }, []);
   // The player's ID shown under their name (header + profile).
-  const playerId = session?.profile?.bwanabet_user_id || session?.profile?.username || widgetUid || null;
+  // Order: the SSO profile, else the token's id claim (display only, while
+  // the session loads or if it failed), else the host's ?uid=.
+  const playerId = session?.profile?.bwanabet_user_id || session?.profile?.username || session?.tokenUid || widgetUid || null;
   useEffect(() => {
     const id = session?.profile?.bwanabet_user_id || session?.profile?.username || widgetUid;
     if (id) setTrackUid(id);
@@ -1208,29 +1253,34 @@ export default function GamificationPlatform() {
   const openStory = useCallback(() => setStory('open'), []);
   const closeStory = useCallback(() => setStory('done'), []);
 
-  // Daily reward READY (logged in, unclaimed) on Home: one confetti burst over
-  // the daily reward card per widget open, from the reward system's particle
-  // engine. Waits for the saved state (hydration) so a player who already
-  // claimed today never sees it; none with prefers-reduced-motion.
+  // Daily reward READY (logged in, unclaimed) on Home: one paper-confetti
+  // burst over the daily reward card per widget open (claiming bursts again).
+  // Waits for the saved state (hydration) so a player who already claimed
+  // today never sees it, for any modal (season result, level-up, story) to
+  // close so the card is in view, and for the tab to be visible; none with
+  // prefers-reduced-motion.
   const dailyConfettiRef = useRef(false);
+  const [pageVisible, setPageVisible] = useState(true);
   useEffect(() => {
-    if (dailyConfettiRef.current || prefersReducedMotion) return undefined;
+    const on = () => setPageVisible(document.visibilityState !== 'hidden');
+    on();
+    document.addEventListener('visibilitychange', on);
+    return () => document.removeEventListener('visibilitychange', on);
+  }, []);
+  useEffect(() => {
+    if (dailyConfettiRef.current || prefersReducedMotion || !pageVisible) return undefined;
     if (tab !== 'home' || !loggedIn || !canClaimDaily || user.dailyClaimed || !hydratedRef.current) return undefined;
+    if (anyModalOpen || story === 'open') return undefined;
     const t = setTimeout(() => {
       const el = document.getElementById('daily-reward-card');
       if (!el) return;
-      dailyConfettiRef.current = true;
       const r = el.getBoundingClientRect();
-      for (let i = 0; i < 26; i++) {
-        setTimeout(() => {
-          spawnParticles(r.left + r.width * (0.1 + Math.random() * 0.8), r.top + r.height * 0.3, 1, {
-            type: ['coin', 'star', 'sparkle'][i % 3], spread: 80, speed: 6, gravity: 0.17, life: 70, size: 18,
-          });
-        }, i * 30);
-      }
-    }, 700);
+      if (r.bottom < 0 || r.top > window.innerHeight) return; // scrolled away: keep it for later
+      dailyConfettiRef.current = true;
+      burstConfetti(el, 70);
+    }, 600);
     return () => clearTimeout(t);
-  }, [tab, loggedIn, canClaimDaily, user.dailyClaimed, prefersReducedMotion, spawnParticles]);
+  }, [tab, loggedIn, canClaimDaily, user.dailyClaimed, prefersReducedMotion, pageVisible, anyModalOpen, story, burstConfetti]);
   // status: idle (not fetched) | ok | unavailable (feed/table down) | anon
   const [casino, setCasino] = useState({ status: 'idle', day: null, rounds: 0, updatedAt: null });
   const casinoBusyRef = useRef(false);
@@ -1397,7 +1447,8 @@ export default function GamificationPlatform() {
     });
   };
   const seasonView = { status: seasonStatus, today, xp: seasonCalc.xp, overflow: seasonCalc.overflow, cfg: seasonCfg, league, worldCup, hustle, prize: seasonPrize, loggedIn,
-    friendlies: activeFriendlies, coins: user.kwacha, onAcceptFriendly, onDeclineFriendly };
+    friendlies: activeFriendlies, coins: user.kwacha, onAcceptFriendly, onDeclineFriendly,
+    heroName: heroName(user.displayName) }; // the story hero = the player's name, else "Vuma"
 
   // Bonus claims (once each; state keys in user.season) + the hustle collect.
   const seasonBusyRef = useRef(new Set());
@@ -1428,7 +1479,7 @@ export default function GamificationPlatform() {
     if (!c || seasonBusyRef.current.has(guard)) return;
     seasonBusyRef.current.add(guard);
     setUser(u => (u.hustle?.lastCollectDay === today ? u : { ...u, kwacha: u.kwacha + c.coins, hustle: c.hustle }));
-    showNotif(`🧽 ${hustle.level.name}: +${rewardParts({ kwacha: c.coins }).join(' + ')}`);
+    showNotif(`🧽 ${heroText(hustle.level.name, user.displayName)}: +${rewardParts({ kwacha: c.coins }).join(' + ')}`);
     triggerReward('medium', el || null, { coins: c.coins });
   };
   // World Cup Final prize (K10,000 real money): the SERVER re-verifies the
@@ -1790,7 +1841,7 @@ export default function GamificationPlatform() {
         onClose={() => setSeasonResult(null)}
         onClaim={(el) => { const e = seasonResult; setSeasonResult(null); if (e) claimSeasonBonus(e.matchKind === 'wc' ? 'wc' : 'league', e.matchId, el); }}
         onClaimPrize={() => { setSeasonResult(null); onClaimPrize(); }} />
-      <LevelUpModal levelUp={levelUp} onClose={() => setLevelUp(null)}
+      <LevelUpModal levelUp={levelUp} onClose={() => setLevelUp(null)} hero={heroName(user.displayName)}
         onRename={levelUp && user.displayName && canRename(user, levelUp.level) ? () => { setLevelUp(null); openProfile(true); } : undefined} />
       <ProfileModal
         open={showProfile} onClose={() => { setShowProfile(false); setProfileEdit(false); }}
@@ -1908,6 +1959,11 @@ export default function GamificationPlatform() {
     track('daily_claimed', { amount: r.kwacha || 0 });
     showNotif(`🎉 +${rewardParts(r).join(' + ')} claimed!`);
     triggerReward('medium', el || null, { coins: r.kwacha, emeralds: r.emeralds, rubies: r.rubies, diamonds: r.diamonds, xp: DAILY_LOGIN_XP });
+    // + a paper-confetti burst out of the daily reward card (skipped under reduced motion)
+    if (!prefersReducedMotion) {
+      dailyConfettiRef.current = true;
+      burstConfetti(document.getElementById('daily-reward-card') || el, 110);
+    }
     // Streak milestone BONUSES removed 2026-10-07 (a week pays exactly
     // 6 x 10 + 100 = 160 coins); the streak counter above still drives day
     // 1->7. Old payout parked in parked/components/GamificationPlatform.removed-wiring.jsx

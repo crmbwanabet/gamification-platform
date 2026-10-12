@@ -96,7 +96,7 @@ export default function Overview({ wallet = null, xp = 1200, activeTab = 'home',
           <section className="ov-season" aria-labelledby="ov-season-title">
             <SectionTitle id="ov-season-title" right={season.league?.unlocked ? <TitleNote>W {season.league.record.won} · L {season.league.record.lost}</TitleNote> : null}>This week</SectionTitle>
             <MatchCard season={season} compact onClaimLeague={onClaimLeague} onNavigate={onNavigate} />
-            <HustleCard hustle={season.hustle} onCollect={onCollectHustle} />
+            <HustleCard hustle={season.hustle} hero={season.heroName} onCollect={onCollectHustle} />
           </section>
         )}
 

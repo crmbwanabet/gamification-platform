@@ -1,7 +1,7 @@
 /* 100xBet Rewards — embeddable widget for bwanabet.com (desktop + mobile).
  *
  * Usage on the host page:
- *   <script>window.X100_WIDGET = { uid: 'BWANABET_USER_ID' };</script>
+ *   <script>window.X100_WIDGET = { uid: 'BWANABET_USER_ID' };</script>   (optional)
  *   <script src="https://100xbet-gamification.vercel.app/widget.js" defer></script>
  *
  * Renders a floating launcher bubble (bottom-right). Clicking it opens the
@@ -23,7 +23,38 @@
   })();
   var HIDE_KEY = 'x100-widget-hidden';
   var cfg = window.X100_WIDGET || {};
-  var uid = cfg.uid ? String(cfg.uid) : '';
+
+  // SSO: the player's bwanabet session lives in the host page's `token`
+  // cookie (JS-readable JWT). Read it fresh each time (it refreshes on the
+  // host), skip it once expired, and hand it to the iframe by postMessage —
+  // the app's server validates it (/api/session). Without this hand-off the
+  // app runs anonymous: no player ID, no daily reward, no saved progress.
+  // The token is never put in the iframe URL or logged.
+  function readToken() {
+    try {
+      var m = document.cookie.match(/(?:^|;\s*)token=([^;]+)/);
+      if (!m) return null;
+      var t = decodeURIComponent(m[1]);
+      var p = tokenClaims(t);
+      if (p && p.exp && p.exp * 1000 < Date.now()) return null;
+      return t;
+    } catch (e) { return null; }
+  }
+  function tokenClaims(t) {
+    try {
+      var b = t.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+      while (b.length % 4) b += '=';
+      return JSON.parse(atob(b));
+    } catch (e) { return null; }
+  }
+  // Display-only player ID for the iframe URL (the header shows it even
+  // before / without the session exchange); identity is still decided server-side.
+  function currentUid() {
+    if (cfg.uid) return String(cfg.uid);
+    var t = readToken();
+    var p = t && tokenClaims(t);
+    return p && p.id != null ? String(p.id) : '';
+  }
 
   // Dismissed = hidden while the visitor moves between pages (nav type
   // 'navigate'/'back_forward'), but an explicit RELOAD clears the flag so the
@@ -89,9 +120,12 @@
       frame = document.createElement('iframe');
       frame.className = 'x100w-frame';
       frame.allow = 'clipboard-write';
+      var uid = currentUid();
       frame.src = APP_ORIGIN + '/?widget=1' + (uid ? '&uid=' + encodeURIComponent(uid) : '');
+      frame.addEventListener('load', sendToken);
       overlay.appendChild(frame);
     }
+    sendToken();
     overlay.classList.add('open');
     launcher.style.display = 'none';
     document.documentElement.style.overflow = 'hidden';
@@ -102,10 +136,18 @@
     document.documentElement.style.overflow = '';
   }
 
+  function sendToken() {
+    var t = readToken();
+    if (!t || !frame || !frame.contentWindow) return;
+    try { frame.contentWindow.postMessage({ type: 'bwanabet-token', token: t }, APP_ORIGIN); } catch (e) { /* ignore */ }
+  }
+
   launcher.addEventListener('click', openWidget);
   window.addEventListener('message', function (e) {
     if (e.origin !== APP_ORIGIN) return;
     if (e.data && e.data.type === '100x-widget:close') closeWidget();
+    // the app says it is mounted and listening: hand it the session token
+    if (e.data && e.data.type === 'gamification-ready') sendToken();
   });
 
   document.body.appendChild(launcher);

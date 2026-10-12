@@ -6,9 +6,11 @@ import { Card, GreenBtn, Progress, Badge, SectionTitle, TitleNote, CurrencyAmoun
 import { VUMA_STAGES, getStage } from '@/lib/vuma/stages.mjs';
 import { opponentArt, vumaArt } from '@/lib/season/league.mjs';
 import { RefreshCw, Lock, Trophy, Check } from 'lucide-react';
+import { HERO_DEFAULT, heroText } from '@/lib/profile/name.mjs';
 
 // Season UI (2026-10-09, candy design A): the current match card, league
-// record, World Cup path, Vuma's side hustle and the result-moment modal.
+// record, World Cup path, the side hustle and the result-moment modal. The
+// hero is the PLAYER's name (season.heroName, "Vuma" when unnamed).
 // Everything is prop-driven from the `season` view GamificationPlatform
 // builds with lib/season/* (xp, hustle, league, worldcup).
 
@@ -94,7 +96,7 @@ const VS_CSS = `
  * (right) on a dark stadium glow with a big VS. Art: public/vuma/vs/
  * vuma-NN.png | vuma-zambia.png and opp-<slug>.png; silhouettes if missing.
  */
-export function VersusPicture({ home, away, vumaSrc, oppSrc, h = 170 }) {
+export function VersusPicture({ home, away, vumaSrc, oppSrc, h = 170, hero = HERO_DEFAULT }) {
   return (
     <div data-versus className="vs-pic" style={{ '--vs-h': `${h}px`, position: 'relative', height: h, borderRadius: 16, overflow: 'hidden', isolation: 'isolate',
       background: [
@@ -108,7 +110,7 @@ export function VersusPicture({ home, away, vumaSrc, oppSrc, h = 170 }) {
       <style dangerouslySetInnerHTML={{ __html: VS_CSS }} />
       <span aria-hidden style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: '22%', background: 'linear-gradient(180deg, transparent, rgba(0,0,0,.55))', zIndex: 2 }} />
       <div className="vs-row" style={{ position: 'absolute', inset: '8px 6px 0', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: 4, zIndex: 1 }}>
-        <VsArt src={vumaSrc} alt={`Vuma for ${home}`} side="left" count={1} />
+        <VsArt src={vumaSrc} alt={`${hero || HERO_DEFAULT} for ${home}`} side="left" count={1} />
         <span className="vs-mid" style={{ flex: 'none', width: 48, textAlign: 'center', alignSelf: 'center', transform: 'rotate(-6deg)', ...goldTitle(30), fontSize: 30, letterSpacing: 1 }}>VS</span>
         <VsArt src={oppSrc} alt={`${away} players`} side="right" count={3} />
       </div>
@@ -227,7 +229,7 @@ function RegularMatchCard({ season, compact = false, onClaimLeague, link = null 
       </Card>
     );
   }
-  return <MatchBody m={m} compact={compact} note={note} onClaimLeague={onClaimLeague} link={link} />;
+  return <MatchBody m={{ ...m, hero: season.heroName }} compact={compact} note={note} onClaimLeague={onClaimLeague} link={link} />;
 }
 
 /** The match card itself (league, World Cup or a live friendly: the same design). */
@@ -243,7 +245,7 @@ function MatchBody({ m, compact = false, note = null, onClaimLeague, link = null
         <span style={{ fontSize: 11, fontWeight: 900, color: m.kind === 'league' ? C.muted : CANDY.gold, textTransform: 'uppercase', letterSpacing: '.06em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.title}</span>
         {m.kind === 'friendly' ? <Badge bg={CANDY.gold}>Friendly</Badge> : <Chip status={m.status} />}
       </div>
-      <VersusPicture home={m.home} away={m.away} vumaSrc={m.vumaSrc} oppSrc={m.oppSrc} h={compact ? 150 : 180} />
+      <VersusPicture home={m.home} away={m.away} vumaSrc={m.vumaSrc} oppSrc={m.oppSrc} hero={m.hero} h={compact ? 150 : 180} />
       {/* the countdown sits in the centre, big */}
       <div style={{ textAlign: 'center', margin: '12px 0 8px' }}>
         {won ? (
@@ -291,7 +293,7 @@ const friendlyArt = (f) => ({ vumaSrc: f.kind === 'wc' ? vumaArt('zambia') : vum
 function FriendlySlot({ f, season, compact }) {
   if (f.status === 'offer') return <FriendlyOfferCard f={f} season={season} compact={compact} />;
   const m = {
-    kind: 'friendly', id: f.key, title: `Friendly · ${f.title || ''}`, home: f.home || 'Vuma', away: f.opponent, ...friendlyArt(f),
+    kind: 'friendly', id: f.key, title: `Friendly · ${f.title || ''}`, home: f.home || season?.heroName || HERO_DEFAULT, hero: season?.heroName, away: f.opponent, ...friendlyArt(f),
     xp: f.xp, target: f.target, gap: f.gap, status: f.status === 'won' ? 'won' : f.status === 'lost' ? 'lost' : 'live', msLeft: f.msLeft,
     lose: 'MISS IT AND THE LOSS STANDS', winBack: friendlyWinBack(f),
   };
@@ -326,7 +328,7 @@ export function FriendlyOfferCard({ f, season, compact = false, inModal = false,
         <div style={{ fontFamily: CANDY.display, fontSize: small ? 13.5 : 15, color: '#fff', letterSpacing: '.05em', textTransform: 'uppercase', marginTop: 2 }}>Win your chance back</div>
       </div>
       <div style={{ margin: '10px 0' }}>
-        <VersusPicture home={f.home || 'Vuma'} away={f.opponent} {...friendlyArt(f)} h={inModal ? 120 : compact ? 140 : 165} />
+        <VersusPicture home={f.home || season?.heroName || HERO_DEFAULT} hero={season?.heroName} away={f.opponent} {...friendlyArt(f)} h={inModal ? 120 : compact ? 140 : 165} />
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)', gap: 8 }}>
         <div style={{ background: C.panel2, border: `1.5px solid ${CANDY.violet.dark}`, borderRadius: 12, padding: '8px 10px' }}>
@@ -483,11 +485,11 @@ export function WorldCupPath({ worldCup, cfg, prize, onClaim, onClaimPrize, priz
 }
 
 const HUSTLE_EMOJI = ['🧽', '🏪', '🚿', '🚐', '🛒'];
-function HustleArt({ hustle, h = 120 }) {
+function HustleArt({ hustle, h = 120, hero }) {
   const [failed, setFailed] = React.useState(false);
   React.useEffect(() => setFailed(false), [hustle.image]);
   if (!failed) {
-    return <img src={hustle.image} alt={hustle.level.name} onError={() => setFailed(true)} style={{ width: '100%', height: h, objectFit: 'cover', display: 'block', borderRadius: 14 }} />;
+    return <img src={hustle.image} alt={heroText(hustle.level.name, hero)} onError={() => setFailed(true)} style={{ width: '100%', height: h, objectFit: 'cover', display: 'block', borderRadius: 14 }} />;
   }
   return (
     <div data-hustle-fallback style={{ height: h, borderRadius: 14, display: 'grid', placeItems: 'center', position: 'relative', overflow: 'hidden',
@@ -498,15 +500,16 @@ function HustleArt({ hustle, h = 120 }) {
   );
 }
 
-/** Vuma's side hustle: image, level, coins ready, Collect. */
-export function HustleCard({ hustle, onCollect, busy = false }) {
+/** The hero's side hustle: image, level, coins ready, Collect. `hero` = the
+ *  player's name (level names say "Vuma" in config; swapped at render). */
+export function HustleCard({ hustle, onCollect, busy = false, hero = HERO_DEFAULT }) {
   if (!hustle) return null;
   if (!hustle.unlocked) {
     return (
       <Card style={{ padding: 14, display: 'flex', alignItems: 'center', gap: 12 }}>
         <span style={{ fontSize: 30 }}>🧽</span>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontFamily: CANDY.display, fontSize: 17 }}>Vuma&apos;s side hustle</div>
+          <div style={{ fontFamily: CANDY.display, fontSize: 17 }}>{hero || HERO_DEFAULT}&apos;s side hustle</div>
           <div style={{ fontSize: 12, color: C.sub }}>Opens at stage 2. Claim your daily reward to get there.</div>
         </div>
       </Card>
@@ -518,10 +521,10 @@ export function HustleCard({ hustle, onCollect, busy = false }) {
   return (
     <Card style={{ padding: 12 }}>
       <div style={{ display: 'grid', gridTemplateColumns: '112px minmax(0,1fr)', gap: 12, alignItems: 'center' }}>
-        <HustleArt hustle={hustle} h={104} />
+        <HustleArt hustle={hustle} h={104} hero={hero} />
         <div style={{ minWidth: 0 }}>
           <div style={{ fontSize: 10.5, fontWeight: 900, color: C.muted, textTransform: 'uppercase', letterSpacing: '.06em' }}>Side hustle · Level {L.level}</div>
-          <div style={{ fontFamily: CANDY.display, fontSize: 17, lineHeight: 1.15 }}>{L.name}</div>
+          <div style={{ fontFamily: CANDY.display, fontSize: 17, lineHeight: 1.15 }}>{heroText(L.name, hero)}</div>
           <div style={{ fontSize: 12, color: C.sub, marginTop: 2 }}>Pays {fmt(L.pay)} coins a day</div>
           <div style={{ marginTop: 8 }}>
             {hustle.ready > 0
@@ -536,7 +539,7 @@ export function HustleCard({ hustle, onCollect, busy = false }) {
       {next && (
         <div style={{ marginTop: 10 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, fontWeight: 800, color: C.sub, marginBottom: 4 }}>
-            <span>Next: {next.name}</span><span style={{ fontVariantNumeric: 'tabular-nums' }}>{fmt(hustle.toNext)} XP stock to go</span>
+            <span>Next: {heroText(next.name, hero)}</span><span style={{ fontVariantNumeric: 'tabular-nums' }}>{fmt(hustle.toNext)} XP stock to go</span>
           </div>
           <Progress value={stockPct} height={8} color="linear-gradient(180deg, #7BE34F, #43C21A)" />
           <div style={{ fontSize: 10.5, color: C.muted, marginTop: 4 }}>XP over the daily and weekly limits stocks the hustle.</div>
@@ -591,7 +594,7 @@ export function SeasonResultModal({ event, onClose, onClaim, onClaimPrize, prize
           <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: C.muted }}>{isFriendly ? 'Friendly match' : event.matchKind === 'wc' ? `World Cup · ${event.label || ''}` : 'League match'}</div>
           <h2 data-result-title style={{ ...goldTitle(32), textAlign: 'center', marginTop: 4, ...(good ? null : { color: '#fff' }) }}>{copy.title}</h2>
           <div style={{ margin: showOffer ? '10px 0 8px' : '14px 0 10px' }}>
-            <VersusPicture home={event.home} away={event.away} h={showOffer ? 100 : 150}
+            <VersusPicture home={event.home} away={event.away} hero={season?.heroName} h={showOffer ? 100 : 150}
               vumaSrc={event.matchKind === 'wc' ? vumaArt('zambia') : vumaArt(event.homeStage || 6)} oppSrc={opponentArt(event.away)} />
           </div>
           <div style={{ fontFamily: CANDY.display, fontSize: 19, lineHeight: 1.2 }}>{copy.line(event)}</div>
