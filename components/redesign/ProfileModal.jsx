@@ -17,7 +17,8 @@ const tile = { background: `linear-gradient(180deg, ${C.panelHi}, ${C.panelLo})`
  * Vuma's current stage scene on top (the story character) with the PLAYER's
  * name (or bwanabet ID) over it, the name editor, then the stage bar,
  * balances and stats. Rendered as a fixed overlay (in the shared
- * gameOverlays), opened from the header's profile button; `startEditing`
+ * gameOverlays, z 140: above the widget's fixed red X at 130, so the card's
+ * own candy X is the only close button), opened from the header's profile button; `startEditing`
  * opens it straight into the name form (header "Add name", level-up modal).
  * Rename rules live in lib/profile/name.mjs.
  */
@@ -70,13 +71,13 @@ export default function ProfileModal({ open, onClose, level, nextLevel, xpPct = 
     // Predictions stat row parked with the predictions feature — see git history
   ];
   return (
-    <div onClick={onClose} role="dialog" aria-modal="true" aria-label="Your profile" className="rs-pm-backdrop" style={{ position: 'fixed', inset: 0, zIndex: 120, display: 'grid', placeItems: 'center', padding: 16, background: 'rgba(8,4,20,.74)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)', fontFamily: CANDY.body, color: '#fff', animation: 'rs-pm-fade .16s ease-out' }}>
+    <div onClick={onClose} role="dialog" aria-modal="true" aria-label="Your profile" className="rs-pm-backdrop" style={{ position: 'fixed', inset: 0, zIndex: 140, display: 'grid', placeItems: 'center', padding: 16, background: 'rgba(8,4,20,.74)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)', fontFamily: CANDY.body, color: '#fff', animation: 'rs-pm-fade .16s ease-out' }}>
       <style>{`
         @keyframes rs-pm-fade { from { opacity: 0 } to { opacity: 1 } }
         @keyframes rs-pm-pop { from { opacity: 0; transform: translateY(10px) scale(.97) } to { opacity: 1; transform: none } }
         @media (max-width: 420px) { .rs-pm-stats { grid-template-columns: 1fr !important; } }
-        /* phones: keep the card clear of the widget's fixed red X (top-right) */
-        @media (max-width: 600px) { .rs-pm-backdrop { padding-top: 64px !important; } .rs-pm-card { max-height: calc(100dvh - 80px) !important; } }
+        /* phones: fit the dynamic viewport (the backdrop sits above the widget's red X, so the card's own X is the only one) */
+        @media (max-width: 600px) { .rs-pm-card { max-height: calc(100dvh - 32px) !important; } }
         @media (prefers-reduced-motion: reduce) { .rs-pm-card { animation: none !important; } }
       `}</style>
       <div onClick={(e) => e.stopPropagation()} className="rs-pm-card" style={{ ...goldRim, boxShadow: `${goldRim.boxShadow}, 0 24px 60px rgba(0,0,0,.6)`, position: 'relative', width: '100%', maxWidth: 460, maxHeight: '92vh', boxSizing: 'border-box', padding: 9, borderRadius: 26, display: 'flex', animation: 'rs-pm-pop .2s cubic-bezier(.2,.8,.3,1)' }}>

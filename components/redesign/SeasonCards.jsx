@@ -66,13 +66,28 @@ function VsArt({ src, alt, side, count }) {
   React.useEffect(() => setFailed(false), [src]);
   const box = { flex: count > 1 ? '0 1 45%' : '0 1 30%', minWidth: 0, height: '100%', display: 'flex', alignItems: 'flex-end', justifyContent: side === 'left' ? 'flex-end' : 'flex-start' };
   return (
-    <div style={box}>
+    <div className={`vs-box vs-box-${side}`} style={box}>
       {src && !failed
-        ? <img src={src} alt={alt} onError={() => setFailed(true)} style={{ height: '100%', width: 'auto', maxWidth: '100%', objectFit: 'contain', objectPosition: `${side === 'left' ? 'right' : 'left'} bottom`, display: 'block', filter: 'drop-shadow(0 6px 10px rgba(0,0,0,.6))' }} />
+        ? <img className="vs-img" src={src} alt={alt} onError={() => setFailed(true)} style={{ height: '100%', width: 'auto', maxWidth: '100%', objectFit: 'contain', objectPosition: `${side === 'left' ? 'right' : 'left'} bottom`, display: 'block', filter: 'drop-shadow(0 6px 10px rgba(0,0,0,.6))' }} />
         : <div data-vs-fallback style={{ width: '100%', height: '88%' }}><Silhouettes count={count} tint={side === 'left' ? '#2a1458' : '#160626'} /></div>}
     </div>
   );
 }
+
+// Phones: a taller picture, figures sized by height (they may spill into the
+// art's transparent side margins), a slimmer VS and a name strip under the
+// players' feet. Desktop keeps the inline layout.
+const VS_CSS = `
+@media (max-width:600px){
+.vs-pic{height:calc(var(--vs-h) * 1.3) !important}
+.vs-row{inset:6px 0 22px !important;gap:0 !important}
+.vs-box{justify-content:center !important;overflow:visible}
+.vs-box-left{flex:0 0 30% !important}
+.vs-box-right{flex:1 1 0 !important}
+.vs-img{max-width:none !important}
+.vs-mid{width:34px !important;font-size:26px !important}
+.vs-name{bottom:4px !important;font-size:11px !important}
+}`;
 
 /**
  * VERSUS picture: Vuma (left, in his current kit) vs a squad of opponents
@@ -81,7 +96,7 @@ function VsArt({ src, alt, side, count }) {
  */
 export function VersusPicture({ home, away, vumaSrc, oppSrc, h = 170 }) {
   return (
-    <div data-versus style={{ position: 'relative', height: h, borderRadius: 16, overflow: 'hidden', isolation: 'isolate',
+    <div data-versus className="vs-pic" style={{ '--vs-h': `${h}px`, position: 'relative', height: h, borderRadius: 16, overflow: 'hidden', isolation: 'isolate',
       background: [
         'radial-gradient(60% 45% at 50% -8%, rgba(255,255,255,.38), transparent 70%)',
         'radial-gradient(30% 30% at 12% 0%, rgba(255,240,200,.35), transparent 70%)',
@@ -90,14 +105,15 @@ export function VersusPicture({ home, away, vumaSrc, oppSrc, h = 170 }) {
         'linear-gradient(180deg, #0b0322 0%, #1d0846 60%, #12052c 100%)',
       ].join(', '),
       border: `2px solid ${CANDY.violet.dark}`, boxShadow: 'inset 0 -14px 24px rgba(0,0,0,.45)' }}>
+      <style dangerouslySetInnerHTML={{ __html: VS_CSS }} />
       <span aria-hidden style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: '22%', background: 'linear-gradient(180deg, transparent, rgba(0,0,0,.55))', zIndex: 2 }} />
-      <div style={{ position: 'absolute', inset: '8px 6px 0', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: 4, zIndex: 1 }}>
+      <div className="vs-row" style={{ position: 'absolute', inset: '8px 6px 0', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: 4, zIndex: 1 }}>
         <VsArt src={vumaSrc} alt={`Vuma for ${home}`} side="left" count={1} />
-        <span style={{ flex: 'none', width: 48, textAlign: 'center', alignSelf: 'center', transform: 'rotate(-6deg)', ...goldTitle(30), fontSize: 30, letterSpacing: 1 }}>VS</span>
+        <span className="vs-mid" style={{ flex: 'none', width: 48, textAlign: 'center', alignSelf: 'center', transform: 'rotate(-6deg)', ...goldTitle(30), fontSize: 30, letterSpacing: 1 }}>VS</span>
         <VsArt src={oppSrc} alt={`${away} players`} side="right" count={3} />
       </div>
-      <span style={{ position: 'absolute', left: 8, bottom: 6, zIndex: 3, maxWidth: '46%', fontSize: 11.5, fontWeight: 900, textShadow: '0 2px 4px #000', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{home}</span>
-      <span style={{ position: 'absolute', right: 8, bottom: 6, zIndex: 3, maxWidth: '46%', fontSize: 11.5, fontWeight: 900, textShadow: '0 2px 4px #000', textAlign: 'right', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{away}</span>
+      <span className="vs-name" style={{ position: 'absolute', left: 8, bottom: 6, zIndex: 3, maxWidth: '46%', fontSize: 11.5, fontWeight: 900, textShadow: '0 2px 4px #000', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{home}</span>
+      <span className="vs-name" style={{ position: 'absolute', right: 8, bottom: 6, zIndex: 3, maxWidth: '46%', fontSize: 11.5, fontWeight: 900, textShadow: '0 2px 4px #000', textAlign: 'right', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{away}</span>
     </div>
   );
 }
@@ -535,7 +551,7 @@ export function SeasonSection({ season, onClaimLeague, onClaimWc, onClaimPrize, 
   if (!season) return null;
   const L = season.league;
   return (
-    <section aria-labelledby="season-title" style={{ display: 'grid', gap: 12 }}>
+    <section aria-labelledby="season-title" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 12 }}>
       <SectionTitle id="season-title" right={L?.unlocked ? <TitleNote>{L.record.points} pts</TitleNote> : null}>Season</SectionTitle>
       <MatchCard season={season} onClaimLeague={onClaimLeague} />
       <LeagueRecord league={L} onClaim={onClaimLeague} />
