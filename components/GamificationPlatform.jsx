@@ -1934,7 +1934,7 @@ export default function GamificationPlatform() {
       try {
         const d = await session.buyItem(item.id);
         if (!d || !d.ok) {
-          const msg = d && d.error === 'weekly_limit' ? 'Kwacha redemptions are limited to one per week — come back soon!'
+          const msg = d && d.error === 'weekly_limit' ? 'You can buy one kwacha pack per week — come back soon!'
             : d && d.error === 'out_of_stock' ? 'Sold out — someone beat you to it!'
             : d && d.error === 'item_unavailable' ? 'That item is no longer available.'
             : d && d.error === 'slow_down' ? 'Too many attempts — wait a minute.'
