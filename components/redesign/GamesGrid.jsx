@@ -32,7 +32,7 @@ function GameCard({ g, free, onPlay }) {
   const out = !g.stakeOnly && free <= 0;
   const note = g.stakeOnly ? (g.stakeRange ?? '1–50') : free > 0 ? `${free} free` : g.cost;
   return (
-    <button type="button" className="rs-game" onClick={() => onPlay && onPlay(g.id)}
+    <button type="button" className="rs-game" data-game-tile={g.id} onClick={() => onPlay && onPlay(g.id)}
       aria-label={`Play ${g.name}${g.stakeOnly ? `, stakes ${g.stakeRange ?? '1–50'} coins` : out ? `, paid play ${g.cost} coins` : ''}`}>
       <span className="rs-thumb rs-game-img" style={{ position: 'relative', display: 'block', overflow: 'hidden' }}>
         <img src={IMAGES[g.image]} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />

@@ -15,6 +15,8 @@ import Overview from './redesign/Overview';
 import EarnView from './redesign/EarnView';
 import StoreView from './redesign/StoreView';
 import LevelUpModal from './redesign/LevelUpModal';
+import { XpFxContext, useXpCollect, XpFeedCard } from './redesign/XpCollect';
+import { feedNews, splitBarHustle } from '@/lib/xp/collect.mjs';
 import ProfileModal from './redesign/ProfileModal';
 // SSO session (bwanabet token -> Supabase profile)
 import { useSession } from './session/SessionProvider';
@@ -1301,12 +1303,16 @@ export default function GamificationPlatform() {
       return withTally({ ...u, casinoXp: r.credited }, r.xpToday);
     });
     // Casino-rounds XP is dropped on days the player_activity feed covers (its
-    // casino stake already pays XP), so no float then.
+    // casino stake already pays XP), so no collect then. Otherwise it arrives
+    // as a one-row "XP from your bets" card (the XP collect moment).
     const feedCovers = (seasonRowsRef.current || []).some(x => x && x.day === progress.day);
-    if (preview.xp > 0 && !feedCovers) triggerRewardRef.current?.('small', null, { xp: preview.xp });
+    if (preview.xp > 0 && !feedCovers) {
+      showXpCardRef.current?.(`+${preview.xp.toLocaleString('en-US')} XP from casino`, [
+        { key: 'rounds', label: 'Casino rounds', sub: `${Number(progress.rounds || 0).toLocaleString('en-US')} rounds today · 1 XP a round`, xp: preview.xp },
+      ], preview.xp);
+    }
   }, []);
-  const triggerRewardRef = useRef(null);
-  triggerRewardRef.current = triggerReward;
+  const showXpCardRef = useRef(null);
   const fetchCasino = useCallback(async () => {
     if (!loggedIn) return null;
     const { status, data } = await getCasinoProgress();
@@ -1396,6 +1402,70 @@ export default function GamificationPlatform() {
   useEffect(() => {
     setUser(u => (u.xp === derivedXp ? u : { ...u, xp: derivedXp }));
   }, [derivedXp]);
+
+  // === XP collect moments (2026-10-13, components/redesign/XpCollect.jsx) ===
+  // Stars fly from where XP was earned into the header stage bar. The header
+  // shows xpFx.shown, which holds still while a collect is pending.
+  const xpNote = (over) => {
+    const d = seasonCalc.days.find(x => x.day === today);
+    if (over || (d && d.overflow > 0)) return 'daily max reached';
+    return `today ${(d ? d.xp : 0).toLocaleString('en-US')} / ${seasonCfg.dailyCap.toLocaleString('en-US')}`;
+  };
+  const xpFx = useXpCollect(user.xp, prefersReducedMotion, xpNote);
+  const xpFxRef = useRef(xpFx);
+  xpFxRef.current = xpFx;
+  const [xpCard, setXpCard] = useState(null);
+  // "+86 XP from your bets": rows fill the bar in order up to barXp; the rest
+  // flies to the side hustle. Holds the bar from now, before the xp lands.
+  const showXpCard = (title, rows, barXp) => {
+    const release = xpFxRef.current.hold();
+    const split = splitBarHustle(rows, barXp).filter(r => r.bar + r.hustle > 0);
+    if (!split.length) { release(); return; }
+    setXpCard({ id: `${Date.now()}-${Math.random()}`, title, rows: split, release });
+  };
+  showXpCardRef.current = showXpCard;
+  // New CRM XP since the player last saw it (user.xpFeedSeen per day per
+  // source). No marker yet = set it silently, so history never arrives as
+  // one giant card. xpFeedOverflow = season overflow at that moment: what the
+  // overflow grew by since is the part that goes to the side hustle.
+  useEffect(() => {
+    const rows = seasonFeed.rows;
+    if (!rows || !loggedIn || !hydratedRef.current) return;
+    const cur = userRef.current;
+    const news = feedNews(rows, cur.xpFeedSeen, seasonCfg);
+    const seenOverflow = Number(cur.xpFeedOverflow);
+    if (JSON.stringify(news.seen) !== JSON.stringify(cur.xpFeedSeen) || seenOverflow !== seasonCalc.overflow) {
+      setUser(u => ({ ...u, xpFeedSeen: news.seen, xpFeedOverflow: seasonCalc.overflow }));
+    }
+    if (news.first || news.total <= 0) return;
+    const hustleXp = Number.isFinite(seenOverflow) ? Math.min(news.total, Math.max(0, seasonCalc.overflow - seenOverflow)) : 0;
+    const st = news.stakes, crm = seasonCfg.crm;
+    showXpCard(`+${news.total.toLocaleString('en-US')} XP from your bets`, [
+      { key: 'casino', label: 'Casino', sub: `${formatKwacha(st.casino)} staked · 1 XP per K${crm.casinoStakePerXp}`, xp: news.parts.casino },
+      { key: 'sports', label: 'Sports', sub: `${st.slips} ${st.slips === 1 ? 'slip' : 'slips'}, ${formatKwacha(st.sports)} staked · 1 XP per K${crm.sportsStakePerXp}`, xp: news.parts.sports },
+      { key: 'deposit', label: 'Deposit day', sub: 'You deposited on bwanabet', xp: news.parts.deposit },
+    ], news.total - hustleXp);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [seasonFeed.rows, session.status]);
+  // Game rounds stay silent in the game (1 XP per coin staked); when it
+  // closes, everything it earned flies in once from its Home tile.
+  const gameXpBaseRef = useRef(null);
+  useEffect(() => {
+    if (activeGame) {
+      if (!gameXpBaseRef.current) gameXpBaseRef.current = { id: activeGame, xp: userRef.current.xp };
+      return;
+    }
+    const base = gameXpBaseRef.current;
+    gameXpBaseRef.current = null;
+    if (!base) return;
+    const now = userRef.current.xp;
+    if (now <= base.xp) return;
+    xpFxRef.current.collect({
+      fromAt: () => document.querySelector(`[data-game-tile="${base.id}"]`),
+      startXp: Math.max(base.xp, getLevel(now).xp), // a stage-up already played in-game
+      amount: now - base.xp, delay: 350,
+    });
+  }, [activeGame]);
 
   const userSeason = user.season || {};
   // saved state from before the friendly has no `friendlies`: cleanFriendlies -> {}
@@ -1658,10 +1728,15 @@ export default function GamificationPlatform() {
       lastLevelRef.current = curLevel;
       addCurrencies(total);
       const lvl = getLevel(user.xp);
-      setLevelUp({ level: lvl.level, name: lvl.name, place: lvl.place, avatar: lvl.avatar, icon: lvl.icon, reward: total });
-      showNotif(`🎉 New stage — ${lvl.name}!`);
       track('level_up', { meta: { level: lvl.level } });
-      triggerReward('big', null, { coins: total.kwacha || undefined, emeralds: total.emeralds || undefined, rubies: total.rubies || undefined, diamonds: total.diamonds || undefined });
+      // The celebration waits until the XP stars have filled the bar (the
+      // bar crosses into the new stage first), then: ring, modal, coins.
+      xpFx.whenIdle(() => {
+        xpFxRef.current.ring();
+        setLevelUp({ level: lvl.level, name: lvl.name, place: lvl.place, avatar: lvl.avatar, icon: lvl.icon, reward: total });
+        showNotif(`🎉 New stage — ${lvl.name}!`);
+        triggerReward('big', null, { coins: total.kwacha || undefined, emeralds: total.emeralds || undefined, rubies: total.rubies || undefined, diamonds: total.diamonds || undefined });
+      });
     }
   }, [user.xp]);
 
@@ -1934,7 +2009,8 @@ export default function GamificationPlatform() {
       track('mission_completed', { amount: r.kwacha || 0, meta: { missionId: m.id, day: src.day } });
       const won = [...rewardParts(r), m.xp ? amountText(m.xp, 'xp') : null].filter(Boolean);
       showNotif(`✅ ${m.name} claimed!${won.length ? ` +${won.join(' + ')}` : ''}`);
-      triggerReward('medium', el || null, { coins: r.kwacha || 0, emeralds: r.emeralds, rubies: r.rubies, diamonds: r.diamonds, xp: m.xp || undefined });
+      triggerReward('medium', el || null, { coins: r.kwacha || 0, emeralds: r.emeralds, rubies: r.rubies, diamonds: r.diamonds });
+      if (m.xp) xpFx.collect({ from: el || null, amount: m.xp, delay: 250 });
     } finally {
       casinoBusyRef.current = false;
     }
@@ -1958,7 +2034,8 @@ export default function GamificationPlatform() {
     trackMission('dailyClaimed');
     track('daily_claimed', { amount: r.kwacha || 0 });
     showNotif(`🎉 +${rewardParts(r).join(' + ')} claimed!`);
-    triggerReward('medium', el || null, { coins: r.kwacha, emeralds: r.emeralds, rubies: r.rubies, diamonds: r.diamonds, xp: DAILY_LOGIN_XP });
+    triggerReward('medium', el || null, { coins: r.kwacha, emeralds: r.emeralds, rubies: r.rubies, diamonds: r.diamonds });
+    xpFx.collect({ from: el || null, amount: DAILY_LOGIN_XP, delay: 250 });
     // + a paper-confetti burst out of the daily reward card (skipped under reduced motion)
     if (!prefersReducedMotion) {
       dailyConfettiRef.current = true;
@@ -1972,9 +2049,19 @@ export default function GamificationPlatform() {
   // placePrediction + streak-voucher check + prediction settlement parked —
   // see parked/components/GamificationPlatform.removed-wiring.jsx
 
+  // Every view renders inside the XP collect context (the header bar reads it)
+  // with the star layer and the "XP from your bets" card on top.
+  const withXp = (node) => (
+    <XpFxContext.Provider value={xpFx}>
+      {node}
+      <XpFeedCard card={xpCard} collect={xpFx.collect} onDone={() => setXpCard(null)} />
+      {xpFx.layer}
+    </XpFxContext.Provider>
+  );
+
   // === Missions tab (was Earn; navigateTab maps earn/earn.* here) ===
   if (tab === 'missions') {
-    return (<>
+    return withXp(<>
       <EarnView {...v2Stats} focusRewards={focus.rewards}
         onOpenMission={setSelectedMission} onClaimMission={claimCasinoMission} />
       {gameOverlays}
@@ -2019,7 +2106,7 @@ export default function GamificationPlatform() {
         setStoreBusy(null);
       }
     };
-    return (<>
+    return withXp(<>
       <StoreView {...v2Stats} onBuy={buyStoreItem} busyId={storeBusy} />
       {gameOverlays}
     </>);
@@ -2029,7 +2116,7 @@ export default function GamificationPlatform() {
   // Any unknown tab also lands here. The old pre-v2 shell that used to
   // render here (trivia / quests / predictions / me.* tabs) was parked on
   // 2026-07-15 — see parked/components/legacy/GamificationPlatform.legacy-return.jsx
-  return (<>
+  return withXp(<>
     <Overview {...v2Stats} activeTab="home"
       onOpenMission={setSelectedMission}
       dailyDay={user.dailyDay} dailyClaimed={user.dailyClaimed} onClaimDaily={claimDailyReward}

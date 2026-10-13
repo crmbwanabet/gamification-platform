@@ -537,7 +537,7 @@ export function HustleCard({ hustle, onCollect, busy = false, hero = HERO_DEFAUL
         <div style={{ fontSize: 11.5, color: '#ffb199', marginTop: 8, fontWeight: 700 }}>{hustle.closedDays > 7 ? 'The shop was closed while you were away.' : `The shop was closed for ${hustle.closedDays} ${hustle.closedDays === 1 ? 'day' : 'days'}.`} Pay keeps for 2 days, so collect daily.</div>
       )}
       {next && (
-        <div style={{ marginTop: 10 }}>
+        <div style={{ marginTop: 10 }} data-hustle-target>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, fontWeight: 800, color: C.sub, marginBottom: 4 }}>
             <span>Next: {heroText(next.name, hero)}</span><span style={{ fontVariantNumeric: 'tabular-nums' }}>{fmt(hustle.toNext)} XP stock to go</span>
           </div>
