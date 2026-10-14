@@ -2042,7 +2042,7 @@ export default function GamificationPlatform() {
       burstConfetti(document.getElementById('daily-reward-card') || el, 110);
     }
     // Streak milestone BONUSES removed 2026-10-07 (a week pays exactly
-    // 6 x 10 + 100 = 160 coins); the streak counter above still drives day
+    // 10+20+30+40+50+60+100 = 310 coins since 2026-10-14); the streak counter above still drives day
     // 1->7. Old payout parked in parked/components/GamificationPlatform.removed-wiring.jsx
   };
 
