@@ -284,10 +284,10 @@ export default function GamificationPlatform() {
 
   // Currency fly-to-header animation
   const spawnFlyingCoin = useCallback((fromX, fromY, type = 'coin') => {
-    // Coins fly as the coin emoji; prize gems fly as their SVG icon into their
-    // own header slot (.currency-emerald-target etc. in the wallet pill).
+    // Coins fly as the K coin (CURRENCY_ICONS.coin); prize gems fly as their
+    // SVG icon into their own header slot (.currency-emerald-target etc.).
     const emojis = { coin: '🪙' };
-    const icons = { emerald: '/ui/gems/emerald.svg', ruby: '/ui/gems/ruby.svg', diamond: '/ui/gems/diamond.svg' };
+    const icons = { coin: CURRENCY_ICONS.coin, emerald: '/ui/gems/emerald.svg', ruby: '/ui/gems/ruby.svg', diamond: '/ui/gems/diamond.svg' };
     const targets = { coin: '.currency-coin-target', emerald: '.currency-emerald-target', ruby: '.currency-ruby-target', diamond: '.currency-diamond-target' };
     const targetEl = document.querySelector(targets[type]);
     const toX = targetEl ? targetEl.getBoundingClientRect().left + 12 : window.innerWidth / 2;

@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { X } from 'lucide-react';
-import { CANDY, textStroke } from './tokens';
+import { CANDY, COIN_ICON, textStroke } from './tokens';
 import { CANDY_BTN_CSS } from './CandyButton';
 
 // Candy game pop-up: the same pattern as gameKit's GameShell (dimmed, blurred
@@ -92,7 +92,7 @@ export default function CandyScreen({ title, balance, pillRef, onClose, onHelp, 
             </div>
             <div ref={pillRef} aria-label={`Balance ${balance} coins`}
               style={{ alignSelf: 'center', flex: 'none', display: 'flex', alignItems: 'center', gap: 5, height: 26, margin: '2px 0 0', padding: '0 12px 0 4px', borderRadius: 999, background: 'rgba(16,3,38,.62)', border: `2px solid ${CANDY.gold}`, boxShadow: 'inset 0 0 8px rgba(255,210,31,.18)' }}>
-              <img src="/ui/reward/coins.png" alt="" width={18} height={18} style={{ display: 'block' }} />
+              <img src={COIN_ICON} alt="" width={18} height={18} style={{ display: 'block' }} />
               <span style={{ fontFamily: CANDY.display, fontSize: 16, color: '#fff', letterSpacing: .5, fontVariantNumeric: 'tabular-nums', textShadow: '0 1.5px 0 rgba(0,0,0,.4)' }}>{Number(balance || 0).toLocaleString()}</span>
             </div>
             <div style={{ position: 'relative', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>

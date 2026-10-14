@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { X, Pencil } from 'lucide-react';
-import { C, CANDY, APP_BG, VIOLET_EDGE, VIOLET_BASE, goldTitle, violetCard, goldRim, dotRow } from './tokens';
+import { C, CANDY, COIN_ICON, APP_BG, VIOLET_EDGE, VIOLET_BASE, goldTitle, violetCard, goldRim, dotRow } from './tokens';
 import NavIcon from './NavIcons';
 import StoryBubble, { STORY_CSS } from './StoryBubble';
 import CandyButton, { CANDY_BTN_CSS } from '../games/candy/CandyButton';
@@ -122,10 +122,22 @@ const GEM_ICON = {
 export const CURRENCY_COLOR = { kwacha: C.gold, coins: C.gold, emeralds: '#3ee6a0', rubies: '#ff6b81', diamonds: '#a9e2ff' };
 const GEM_PLURAL = { emeralds: 'Emeralds', rubies: 'Rubies', diamonds: 'Diamonds' };
 
-/** Currency icon: coins = 3D png from public/ui/reward; emeralds/rubies/diamonds = SVG gems. */
-export function RewardIcon({ kind = 'coins', size = 15, style, className }) {
-  const src = GEM_ICON[kind] || `/ui/reward/${kind}.png`;
-  return <img src={src} alt="" width={size} height={size} className={`icon-pop${className ? ' ' + className : ''}`} style={{ objectFit: 'contain', verticalAlign: 'middle', flex: 'none', ...style }} />;
+// Coins (state key `kwacha`) = the gold BwanaBet K coin, whatever the alias.
+const COIN_KINDS = new Set(['coins', 'coin', 'kwacha']);
+
+/** Currency icon: coins = the K coin (COIN_ICON); emeralds/rubies/diamonds = SVG gems; other kinds = public/ui/reward/<kind>.png. */
+export function RewardIcon({ kind = 'coins', size = 15, style, className, shine = null }) {
+  const src = COIN_KINDS.has(kind) ? COIN_ICON : GEM_ICON[kind] || `/ui/reward/${kind}.png`;
+  const img = <img src={src} alt="" width={size} height={size} className={`icon-pop${className ? ' ' + className : ''}`} style={{ objectFit: 'contain', verticalAlign: 'middle', flex: 'none', ...style }} />;
+  // `shine` ({ delay, duration, strength } or true): the periodic light sweep
+  // (Shine.jsx) — for the BIG coins only (balance hero, Claim button, day tiles).
+  if (!shine) return img;
+  const o = shine === true ? {} : shine;
+  return (
+    <span className="bb-shine" style={{ '--shine-src': `url(${src})`, '--shine-delay': `${o.delay || 0}s`, '--shine-dur': `${o.duration || 5}s`, '--shine-a': o.strength ?? 0.85 }}>
+      {img}
+    </span>
+  );
 }
 
 /**

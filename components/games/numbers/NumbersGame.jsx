@@ -7,7 +7,7 @@ import CandyScreen from '../candy/CandyScreen';
 import CandyButton from '../candy/CandyButton';
 import CandyChip from '../candy/CandyChip';
 import WinCelebration from '../candy/WinCelebration';
-import { CANDY, outlineShadow, textStroke } from '../candy/tokens';
+import { CANDY, COIN_ICON, outlineShadow, textStroke } from '../candy/tokens';
 import { resolveDraw, tierIndex, tierPays, STAKES, TIERS, PICKS, POOL, DEFAULT_STAKE } from '@/lib/numbers/paytable.mjs';
 import Machine, { MACHINE_CSS, MACH_H, CHUTE_PATH, RAIL_Y } from './Machine';
 import Grid, { GRID_CSS } from './Grid';
@@ -162,7 +162,7 @@ function Paytable({ active, settled, left, pays }) {
                 minWidth: 18, height: 18, padding: '0 3px', boxSizing: 'border-box', borderRadius: 9, display: 'grid', placeItems: 'center',
                 background: '#fff', boxShadow: `0 0 0 1.5px ${CANDY.outline}`, fontFamily: CANDY.display, fontSize: 12, color: CANDY.outline, lineHeight: 1,
               }}>{t.label}</span>
-              <span style={{ fontFamily: CANDY.display, fontSize: 15, lineHeight: 1, color: on ? CANDY.outline : CANDY.gold, textShadow: on ? 'none' : `0 1.5px 0 ${CANDY.outline}`, display: 'inline-flex', alignItems: 'center', gap: 3 }}>{pays[i]}<img src="/ui/reward/coins.png" alt="coins" width={13} height={13} style={{ objectFit: 'contain' }} /></span>
+              <span style={{ fontFamily: CANDY.display, fontSize: 15, lineHeight: 1, color: on ? CANDY.outline : CANDY.gold, textShadow: on ? 'none' : `0 1.5px 0 ${CANDY.outline}`, display: 'inline-flex', alignItems: 'center', gap: 3 }}>{pays[i]}<img src={COIN_ICON} alt="coins" width={13} height={13} style={{ objectFit: 'contain' }} /></span>
             </div>
           );
         })}

@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import CandyButton from './CandyButton';
-import { CANDY, textStroke } from './tokens';
+import { CANDY, COIN_ICON, textStroke } from './tokens';
 import { RewardIcon } from '../../redesign/RedesignShell';
 
 // Win celebration for the candy games (the old design's "YOU WON / K100 /
@@ -159,7 +159,7 @@ export default function WinCelebration({ payout, reduced = false, delay = 0, pil
         const side = i % 2 ? 1 : -1;
         const ctrl = { x: (from.x + to.x) / 2 + side * (50 + Math.random() * 60), y: Math.min(from.y, to.y) + (from.y - to.y) * .35 };
         const img = document.createElement('img');
-        img.src = '/ui/reward/coins.png'; img.alt = ''; img.width = SZ; img.height = SZ;
+        img.src = COIN_ICON; img.alt = ''; img.width = SZ; img.height = SZ;
         img.style.cssText = `position:absolute;left:0;top:0;width:${SZ}px;height:${SZ}px;pointer-events:none;filter:drop-shadow(0 2px 3px rgba(0,0,0,.45));will-change:transform`;
         layer.appendChild(img);
         const anim = img.animate(arcFrames(from, ctrl, to), { duration: FLY_MS, easing: 'cubic-bezier(.4,0,.8,.6)', fill: 'forwards' });
@@ -195,7 +195,7 @@ export default function WinCelebration({ payout, reduced = false, delay = 0, pil
           {/* burst behind the panel */}
           {stage !== 'closing' && burst.map((p, i) => (
             p.coin
-              ? <img key={i} className="wc-p" src="/ui/reward/coins.png" alt="" width={p.w} height={p.h}
+              ? <img key={i} className="wc-p" src={COIN_ICON} alt="" width={p.w} height={p.h}
                   style={{ '--dx': `${p.dx.toFixed(1)}px`, '--dy': `${p.dy.toFixed(1)}px`, '--r': `${p.r.toFixed(0)}deg`, animationDelay: `${p.delay.toFixed(0)}ms` }} />
               : <span key={i} className="wc-p" aria-hidden
                   style={{ width: p.w, height: p.h, background: p.c, borderRadius: p.round ? '50%' : 2, '--dx': `${p.dx.toFixed(1)}px`, '--dy': `${p.dy.toFixed(1)}px`, '--r': `${p.r.toFixed(0)}deg`, animationDelay: `${p.delay.toFixed(0)}ms` }} />

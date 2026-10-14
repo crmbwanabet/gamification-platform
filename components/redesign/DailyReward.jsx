@@ -2,11 +2,12 @@
 
 import React from 'react';
 import dynamic from 'next/dynamic';
-import { CANDY, goldRim, dotRow, innerGlow, goldTitle } from './tokens';
+import { CANDY, dotRow, innerGlow, goldTitle } from './tokens';
 import { textStroke } from '../games/candy/tokens';
 import { DAILY_REWARDS } from '@/lib/data/platform';
 import { DAILY_LOGIN_XP } from '@/lib/xp/sources.mjs';
 import { RewardIcon } from './RedesignShell';
+import { Sparkles } from './Shine';
 import { rewardParts, amountText } from '@/lib/rewardText.mjs';
 import { GEMS } from '@/lib/economy/currency.mjs';
 
@@ -29,6 +30,9 @@ const headline = (r) => {
 };
 
 const OUT = CANDY.outline;
+// BwanaBet yellow (the logo's #FEF200) bevel for the card frame and the day-7 chest (2026-10-14).
+const YB_BEVEL = 'linear-gradient(155deg, #FFFDE0 0%, #FEF200 16%, #D4B300 40%, #FEF200 60%, #FFF9A8 76%, #A88800 100%)';
+const YB_DOTS = 'radial-gradient(circle, #FFFDE0 0 1.6px, rgba(254,242,0,.5) 2.2px, transparent 3px)';
 const DR_CSS = `
   .dr-head { display: flex; align-items: center; justify-content: center; gap: 10px; }
   .dr-gift { position: relative; flex: none; width: 60px; height: 60px; }
@@ -41,7 +45,7 @@ const DR_CSS = `
     background: linear-gradient(180deg, #3a137a, #24094A); border: 2.5px solid ${CANDY.violet.fill}; box-shadow: 0 4px 0 ${CANDY.violet.dark}; transition: transform .2s; }
   .dr-lbl { font-size: 10px; font-weight: 900; letter-spacing: .05em; color: rgba(255,255,255,.7); }
   .dr-ic { position: relative; width: 38px; height: 38px; display: grid; place-items: center; }
-  .dr-ic > img.dr-coin { filter: drop-shadow(0 3px 4px rgba(0,0,0,.4)); }
+  .dr-ic img.dr-coin { filter: drop-shadow(0 3px 4px rgba(0,0,0,.4)); }
   .dr-ic > img.dr-badge { position: absolute; right: -6px; bottom: -4px; width: 20px; height: 20px; object-fit: contain; }
   .dr-amt { font-family: ${CANDY.display}; font-size: 19px; line-height: 1; color: #fff; text-shadow: ${textStroke(1.5, OUT)}, 0 3px 0 ${OUT}; }
   .dr-unit { font-size: 10px; font-weight: 900; color: rgba(255,255,255,.8); margin-top: -1px; }
@@ -55,10 +59,12 @@ const DR_CSS = `
   .dr-tile.future img.dr-coin { filter: saturate(.7) brightness(.85); }
 
   .dr-chest { grid-column: span 2; position: relative; border-radius: 14px; padding: 8px 6px 7px; display: flex; align-items: center; gap: 4px; min-width: 0;
-    background: radial-gradient(80% 90% at 35% 50%, rgba(255,210,31,.35), transparent 70%), linear-gradient(180deg, #5a2a10, #2c1206);
-    border: 2.5px solid ${CANDY.gold}; box-shadow: 0 4px 0 ${CANDY.goldDeep}, 0 0 18px rgba(255,210,31,.35); }
-  .dr-chest.today { box-shadow: 0 4px 0 ${CANDY.goldDeep}, 0 0 26px rgba(255,210,31,.85); }
+    --yb-w: 2.5px; border: 2.5px solid transparent;
+    background: radial-gradient(80% 90% at 35% 50%, rgba(255,226,60,.35), transparent 70%) padding-box, linear-gradient(180deg, #5a2a10, #2c1206) padding-box, ${YB_BEVEL} border-box;
+    box-shadow: inset 0 0 0 1px rgba(255,255,225,.55), 0 4px 0 #8A7400, 0 0 18px rgba(254,242,0,.38); }
+  .dr-chest.today { box-shadow: inset 0 0 0 1px rgba(255,255,225,.6), 0 4px 0 #8A7400, 0 0 26px rgba(254,242,0,.85); }
   .dr-chest.done { background: linear-gradient(180deg, #2f6e1c, #1d4a10); border-color: ${CANDY.green.fill}; box-shadow: 0 4px 0 ${CANDY.green.dark}; }
+  .dr-chest.done::before { display: none; }
   .dr-ribbon { position: absolute; top: -10px; right: 8px; padding: 3px 10px; border-radius: 999px; font-family: ${CANDY.body}; font-weight: 900; font-size: 10px; letter-spacing: .1em; color: #fff;
     background: linear-gradient(180deg, ${CANDY.red.light}, ${CANDY.red.fill}); border: 2px solid ${CANDY.red.dark}; white-space: nowrap; z-index: 2; }
   .dr-art { position: relative; flex: none; width: 78px; height: 66px; }
@@ -165,10 +171,10 @@ export default function DailyReward({ dailyDay = 1, dailyClaimed = false, onClai
   const fit = (txt, icon = 0) => { const n = txt.length + icon; return n <= 17 ? 22 : n <= 22 ? 19 : n <= 27 ? 17 : 15; };
 
   return (
-    <section id="daily-reward-card" aria-label="Daily reward" className="rs-daily" style={{ ...goldRim, position: 'relative', padding: 9, borderRadius: 24 }}>
+    <section id="daily-reward-card" aria-label="Daily reward" className="rs-daily yb-frame yb-glint" style={{ '--yb-w': '3px', '--yb-dur': '8s', position: 'relative', padding: 8.5, borderRadius: 24 }}>
       <style dangerouslySetInnerHTML={{ __html: DR_CSS }} />
-      <span aria-hidden style={{ ...dotRow(false), top: 0.5, left: 22, right: 22, height: 8 }} />
-      <span aria-hidden style={{ ...dotRow(false), bottom: 0.5, left: 22, right: 22, height: 8 }} />
+      <span aria-hidden style={{ ...dotRow(false), backgroundImage: YB_DOTS, top: 0.5, left: 22, right: 22, height: 8 }} />
+      <span aria-hidden style={{ ...dotRow(false), backgroundImage: YB_DOTS, bottom: 0.5, left: 22, right: 22, height: 8 }} />
       <div style={{ borderRadius: 16, background: innerGlow, padding: '12px 12px 12px', display: 'flex', flexDirection: 'column', gap: 12 }}>
         <div className="dr-head">
           <span className="dr-gift">
@@ -195,7 +201,7 @@ export default function DailyReward({ dailyDay = 1, dailyClaimed = false, onClai
                 aria-label={`Day ${day}: ${rewardText(r)}${past ? ', claimed' : today ? ', today' : ''}`}>
                 <span className="dr-lbl">DAY {day}</span>
                 <span className="dr-ic">
-                  <RewardIcon kind={h.kind} size={36} className="dr-coin" />
+                  <RewardIcon kind={h.kind} size={36} className="dr-coin" shine={past ? null : { delay: 1.5 + i * 0.6, duration: 7, strength: today ? 0.8 : 0.5 }} />
                   {past && <img src={`${IC}/check.png`} alt="" className="dr-badge" />}
                 </span>
                 <span className="dr-amt">{h.n.toLocaleString('en-US')}</span>
@@ -204,12 +210,13 @@ export default function DailyReward({ dailyDay = 1, dailyClaimed = false, onClai
               </div>
             );
           })}
-          <div className={`dr-chest ${chestState}${justClaimed && chestState === 'done' ? ' dr-pop' : ''}`}
+          <div className={`dr-chest yb-glint ${chestState}${justClaimed && chestState === 'done' ? ' dr-pop' : ''}`}
             aria-label={`Day ${total} bonus chest: ${rewardText(last)} for ${total} days in a row${chestState === 'done' ? ', claimed' : chestState === 'today' ? ', today' : ''}`}>
             <span className="dr-ribbon">DAY {total} BONUS</span>
             <span className="dr-art">
               <span className="dr-rays" aria-hidden />
               <span className="dr-3d" aria-hidden><TreasureChest3D mode={chestMode} size={118} /></span>
+              {chestState !== 'done' && <Sparkles variant={1} scale={0.9} />}
               {chestState === 'done' && <img src={`${IC}/check.png`} alt="" className="dr-badge" />}
             </span>
             <span className="dr-ctxt">
@@ -242,7 +249,7 @@ export default function DailyReward({ dailyDay = 1, dailyClaimed = false, onClai
             style={{ '--cb-fill': CANDY.green.fill, '--cb-light': CANDY.green.light, '--cb-dark': CANDY.green.dark, width: '100%', fontSize: fit(claimLabel, 2), minHeight: 56 }}>
             <span className="dr-btn-lbl">
               Claim
-              <RewardIcon kind={shownH.kind} size={26} />
+              <RewardIcon kind={shownH.kind} size={26} shine={{ delay: 0.4, duration: 4 }} />
               {rewardText(shown)}
             </span>
           </button>

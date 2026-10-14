@@ -61,7 +61,7 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en" className={`${display.variable} ${body.variable} ${mono.variable} ${game.variable} ${gameBody.variable}`}>
       <head>
-        <link rel="icon" href="/images/coin.png" />
+        <link rel="icon" href="/ui/reward/coin-k.png" />
       </head>
       <body className="antialiased">
         {children}

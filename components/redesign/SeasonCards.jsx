@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { C, CANDY, goldRim, dotRow, goldTitle, innerGlow, VIOLET_BASE } from './tokens';
+import { C, CANDY, COIN_ICON, goldRim, dotRow, goldTitle, innerGlow, VIOLET_BASE } from './tokens';
 import { Card, GreenBtn, Progress, Badge, SectionTitle, TitleNote, CurrencyAmounts } from './RedesignShell';
 import { VUMA_STAGES, getStage } from '@/lib/vuma/stages.mjs';
 import { opponentArt, vumaArt } from '@/lib/season/league.mjs';
@@ -336,7 +336,7 @@ function RewardPlate({ reward, label, dim = false, children }) {
   if (r.cash) parts.push(<span key="cash" style={{ ...big, fontSize: 34 }}>{r.cash}</span>);
   if (r.coins > 0) parts.push(
     <span key="coins" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-      <img src="/ui/reward/coins.png" alt="" width={30} height={30} style={{ width: 30, height: 30, flex: 'none' }} />
+      <img src={COIN_ICON} alt="" width={30} height={30} style={{ width: 30, height: 30, flex: 'none' }} />
       <span style={big}>+{fmt(r.coins)}</span><span className="pitch-unit">coins</span>
     </span>);
   if (r.points > 0) parts.push(

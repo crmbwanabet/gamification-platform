@@ -2,90 +2,190 @@
 
 import React from 'react';
 import { C, CANDY } from './tokens';
-import { SectionTitle, Card, RewardIcon } from './RedesignShell';
-import { StoreCard, PackBuyButton, balancesOf } from './StoreView';
-import { amountText } from '@/lib/rewardText.mjs';
-import { canAfford, economyRates, formatKwacha } from '@/lib/economy/currency.mjs';
-import { splitCatalog } from '@/lib/store/catalog.mjs';
+import { RewardIcon, CurrencyAmounts } from './RedesignShell';
+import { PackBuyButton, balancesOf } from './StoreView';
+import { BB_CSS, STORE_ART, packArtSrc, CoinMeter, PackLock, goalText } from './storeKit';
+import { ShineImg, Sparkles } from './Shine';
+import { IMAGES } from '@/lib/data/images';
+import { canAfford, cleanReward, coinsToKwacha, formatKwacha, formatNumber } from '@/lib/economy/currency.mjs';
+import { splitCatalog, nextPackGoal } from '@/lib/store/catalog.mjs';
 
-// Home store panel (2026-10-14): a compact slice of the Store beside the
-// daily reward on desktop, under it on phones. Same catalog (remote-config
-// store items via splitCatalog), same buy handler + busy id as the Store tab
+// Home store panel ("Cash out coins", Coins & Store redesign 2026-10-14): a
+// BwanaBet banner with the balance, its kwacha worth and a meter toward the
+// next pack the player can't afford yet, then the kwacha packs as tiles. Same
+// catalog (splitCatalog), same buy handler + busy id as the Store tab
 // (GamificationPlatform's buyStoreItem -> POST /api/purchase), same two-tap
-// confirm for kwacha packs (PackBuyButton). "See all" opens the Store tab.
+// confirm (PackBuyButton). Desktop (>=861px): a panel of at most 780px beside
+// the daily reward, 3 tiles a row (the 6th = "More rewards" -> Store tab),
+// tiles sized to their content (never stretched to the daily card). Phones:
+// one pack per row, Buy on the right.
 const MAX_ON_HOME = 5;
 
 const HS_CSS = `
-  .hs-panel { display: flex; flex-direction: column; min-width: 0; }
-  .hs-card { flex: 1; display: flex; flex-direction: column; gap: 12px; padding: 14px; }
-  .hs-row { display: grid; grid-auto-flow: column; grid-auto-columns: 136px; gap: 10px; overflow-x: auto; scroll-snap-type: x mandatory;
-    margin: 0 -14px; padding: 2px 14px 6px; scrollbar-width: none; }
-  .hs-row::-webkit-scrollbar { display: none; }
-  .hs-row > * { scroll-snap-align: start; min-width: 0; }
-  .hs-all { all: unset; box-sizing: border-box; cursor: pointer; display: inline-flex; align-items: center; min-height: 44px; padding: 0 4px;
-    font-size: 13px; font-weight: 900; color: ${CANDY.gold}; border-radius: 10px; }
-  .hs-all:focus-visible { outline: 3px solid ${CANDY.gold}; outline-offset: 2px; }
-  .hs-pack { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; padding: 12px 10px 10px; height: 100%; box-sizing: border-box; }
-  .hs-pack-icon { width: 46px; height: 46px; }
+  .hs-panel { box-sizing: border-box; width: 100%; min-width: 0; display: flex; flex-direction: column; border-radius: 22px; overflow: hidden;
+    border: 2px solid #5B2BB0; background: #2B1061; --hs-coin: 34px; }
+  .hs-banner { position: relative; background: #2B1061 url(${STORE_ART.banner}) 72% center / cover no-repeat; }
+  .hs-shade { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(31,8,68,.1) 0%, rgba(31,8,68,.9) 100%); }
+  .hs-body { position: relative; box-sizing: border-box; min-height: 176px; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; }
+  .hs-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .hs-titles { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+  .hs-logo { height: 15px; width: auto; display: block; align-self: flex-start; }
+  .hs-title { margin: 0; font-family: ${CANDY.display}; font-weight: 400; font-size: 25px; line-height: 1.05; color: #FFD21F; text-shadow: 0 3px 0 #2A0A4F; }
+  .hs-link { min-height: 44px; padding: 0 14px; font-size: 13px; flex: none; }
+  .hs-bal { margin-top: auto; display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .hs-num { font-family: ${CANDY.display}; font-size: 24px; line-height: 1; color: #fff; text-shadow: 0 2px 0 #2A0A4F; }
+  .hs-sub { font-size: 13px; font-weight: 800; color: #E4D8F7; }
+  .hs-goal { display: flex; flex-direction: column; gap: 6px; }
+  .hs-goal-text { font-size: 12px; font-weight: 800; color: #F1E8FF; white-space: nowrap; }
+  .hs-d { display: none; }
+
+  .hs-grid { padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+  .hs-tile { box-sizing: border-box; min-width: 0; display: grid; grid-template-columns: 64px minmax(0, 1fr) auto;
+    grid-template-areas: "well k act" "well price act"; column-gap: 10px; row-gap: 3px; align-items: center; align-content: center;
+    padding: 6px 10px 6px 6px; border-radius: 14px; }
+  .hs-well { grid-area: well; position: relative; width: 64px; height: 64px; border-radius: 12px; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+  .hs-well img { width: 62px; height: 62px; display: block; }
+  .hs-well img.hs-photo { width: 100%; height: 100%; object-fit: cover; }
+  .hs-k { grid-area: k; align-self: end; font-size: 23px; text-shadow: 0 2px 0 #2A0A4F; }
+  .hs-name { grid-area: k; align-self: end; font-family: ${CANDY.display}; font-size: 16px; line-height: 1.1; color: #fff;
+    overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .hs-price { grid-area: price; align-self: start; font-size: 12px; font-weight: 800; color: #E4D8F7; }
+  .hs-act { grid-area: act; min-width: 104px; min-height: 44px; border-radius: 12px; font-size: 14px; padding: 0 10px; }
+  .hs-lock { font-size: 11.5px; }
+  .hs-more { all: unset; box-sizing: border-box; cursor: pointer; display: none; align-items: center; gap: 10px; padding: 10px; border-radius: 16px;
+    border: 2px dashed #5B2BB0; min-width: 0; }
+  .hs-more:hover { border-color: #8B5BE0; }
+  .hs-more:focus-visible { outline: 3px solid #FFD21F; outline-offset: 2px; }
+  .hs-more img { width: 70px; height: 70px; object-fit: contain; flex: none; }
+  .hs-foot { margin: 0; padding: 4px 12px 14px; font-size: 11.5px; font-weight: 700; line-height: 1.4; color: #B9A0E6; text-align: center; }
+
   @media (min-width: 861px) {
-    .hs-row { grid-auto-flow: row; grid-auto-columns: auto; grid-template-columns: repeat(var(--hs-n), minmax(0, 1fr)); overflow: visible; margin: 0; padding: 0; flex: 1; }
-    .hs-pack { justify-content: space-between; padding: 18px 12px 12px; }
-    .hs-pack-icon { width: 76px; height: 76px; }
+    .hs-panel { max-width: 780px; border-radius: 24px; --hs-coin: 40px; }
+    .hs-banner { background-position: 85% center; }
+    .hs-shade { background: linear-gradient(90deg, rgba(31,8,68,.92) 0%, rgba(31,8,68,.55) 45%, rgba(31,8,68,0) 75%); }
+    .hs-body { min-height: 168px; padding: 16px 22px; gap: 8px; }
+    .hs-top { align-items: flex-end; }
+    .hs-titles { gap: 8px; }
+    .hs-logo { height: 18px; }
+    .hs-title { font-size: 30px; line-height: 1; }
+    .hs-link { min-height: 36px; padding: 0 14px; font-size: 14px; }
+    .hs-bal { margin-top: 0; gap: 10px; }
+    .hs-num { font-size: 28px; }
+    .hs-sub { font-size: 14px; }
+    .hs-goal { flex-direction: row; align-items: center; gap: 10px; max-width: 360px; }
+    .hs-d { display: inline; }
+    .hs-m { display: none; }
+
+    .hs-grid { padding: 16px; display: grid; grid-template-columns: repeat(auto-fill, minmax(216px, 1fr)); gap: 12px; align-items: start; }
+    .hs-tile { grid-template-columns: 84px minmax(0, 1fr); grid-template-areas: "well k" "well price" "well act"; row-gap: 4px; padding: 10px; border-radius: 16px; }
+    .hs-well { width: 84px; height: 84px; border-radius: 14px; }
+    .hs-well img { width: 80px; height: 80px; }
+    .hs-k { font-size: 26px; }
+    .hs-act { min-width: 0; min-height: 36px; border-radius: 11px; }
+    .hs-lock { font-size: 12px; }
+    .hs-more { display: flex; align-self: stretch; }
+    .hs-foot { padding: 0 16px 14px; font-size: 12px; text-align: left; }
+  }
+  /* Narrow desktop column: the text runs over the chest art, so darken more of the banner. */
+  @media (min-width: 861px) and (max-width: 1180px) {
+    .hs-shade { background: linear-gradient(90deg, rgba(31,8,68,.95) 0%, rgba(31,8,68,.82) 55%, rgba(31,8,68,.35) 100%); }
   }
 `;
 
-function HomePackCard({ item, balances, onBuy, busy }) {
+function HomePackTile({ item, balances, onBuy, busy, top, i = 0 }) {
   const coins = item.price.kwacha;
   const ok = canAfford(item.price, balances);
   const short = Math.max(0, coins - balances.kwacha);
+  const k = formatKwacha(item.payoutKwacha);
   return (
-    <Card style={{ height: '100%', opacity: ok ? 1 : 0.82 }}>
-      <div className="hs-pack">
-        <RewardIcon kind="coins" className="hs-pack-icon" size={46} />
-        <div style={{ fontSize: 30, lineHeight: 1, color: CANDY.gold, fontFamily: CANDY.display, textShadow: `0 3px 0 ${CANDY.outline}` }}>{formatKwacha(item.payoutKwacha)}</div>
-        <div style={{ fontSize: 10.5, fontWeight: 700, color: C.muted }}>bwanabet bonus</div>
-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12.5, fontWeight: 800, color: C.gold }}>
-          <RewardIcon kind="coins" size={15} />{amountText(coins, 'coins')}
-        </div>
-        <div style={{ fontSize: 10.5, fontWeight: 600, color: ok ? C.green : C.muted, minHeight: 13 }}>{ok ? 'You can buy this' : `${amountText(short, 'coins')} short`}</div>
-        <div style={{ width: '100%' }}><PackBuyButton item={item} canBuy={ok} onBuy={onBuy} busy={busy} /></div>
+    <div className={`bb-tile hs-tile${ok ? ' bb-ready' : ''}${top ? ' bb-gold yb-glint' : ''}`}>
+      <div className="bb-well hs-well">
+        <ShineImg src={packArtSrc(item)} alt={`${k} pack`} width={80} height={80} imgClassName="bb-art" delay={0.6 + i * 0.85}>
+          <Sparkles variant={i} scale={0.75} />
+        </ShineImg>
       </div>
-    </Card>
+      <div className="bb-k hs-k">{k}</div>
+      <div className="hs-price">{formatNumber(coins)} coins</div>
+      {ok || busy
+        ? <PackBuyButton item={item} canBuy={ok} onBuy={onBuy} busy={busy} className="hs-act" />
+        : <PackLock short={short} className="hs-act hs-lock" />}
+    </div>
+  );
+}
+
+/** An ordinary store item (when fewer than 5 packs are stocked), in the same tile shape. */
+function HomeItemTile({ item, balances, onBuy }) {
+  const ok = canAfford(item.price, balances);
+  const src = item.imageUrl || IMAGES[item.image];
+  return (
+    <div className={`bb-tile hs-tile${ok ? ' bb-ready' : ''}`}>
+      <div className="bb-well hs-well">{src ? <img src={src} alt={item.name} className="hs-photo" /> : <img src={STORE_ART.chest} alt="" />}</div>
+      <div className="hs-name">{item.name}</div>
+      <div className="hs-price">
+        {Object.keys(cleanReward(item.price)).length ? <CurrencyAmounts r={item.price} size={14} fontSize={12} gap={6} /> : <span style={{ color: C.green }}>Free</span>}
+      </div>
+      <button type="button" className="bb-buy hs-act" disabled={!ok} onClick={(e) => ok && onBuy && onBuy(item, e?.currentTarget)}>Buy</button>
+    </div>
   );
 }
 
 /** Store selection for Home: kwacha packs first, then ordinary items, up to 5. Renders nothing when the store is empty. */
 export default function HomeStore({ storeItems, wallet, onBuy, busyId = null, onSeeAll, className = '' }) {
   const { coinPacks, items } = splitCatalog(storeItems);
-  const total = coinPacks.length + items.length;
-  if (!total) return null;
+  if (!(coinPacks.length + items.length)) return null;
   const packs = coinPacks.slice(0, MAX_ON_HOME);
   const extras = items.slice(0, MAX_ON_HOME - packs.length);
-  const shown = packs.length + extras.length;
+  const topId = packs.length > 1 ? packs[packs.length - 1].id : null;
   const balances = balancesOf(wallet);
-  const { coinsPerKwacha } = economyRates(wallet?.economy);
+  const coins = balances.kwacha;
+  const worth = formatKwacha(coinsToKwacha(coins, wallet?.economy));
+  const goal = packs.length ? nextPackGoal(coinPacks, coins) : null;
   return (
     <section className={`hs-panel ${className}`} aria-labelledby="hs-title">
-      <style dangerouslySetInnerHTML={{ __html: HS_CSS }} />
-      <SectionTitle id="hs-title" size={22}
-        right={<button type="button" className="hs-all" onClick={onSeeAll}>See all{total > shown ? ` ${total}` : ''} ›</button>}>Store</SectionTitle>
-      <Card className="hs-card">
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13.5, fontWeight: 800, color: C.text }}>
-            <RewardIcon kind="coins" size={17} />You have {amountText(balances.kwacha, 'coins')}
+      <style dangerouslySetInnerHTML={{ __html: BB_CSS + HS_CSS }} />
+      <div className="hs-banner">
+        <div className="hs-shade" aria-hidden />
+        <div className="hs-body">
+          <div className="hs-top">
+            <div className="hs-titles">
+              <img src={STORE_ART.logo} alt="BwanaBet" className="hs-logo" />
+              <h2 id="hs-title" className="hs-title">Cash out coins</h2>
+            </div>
+            <button type="button" className="bb-link hs-link" onClick={onSeeAll}>
+              <span className="hs-d">See store ›</span><span className="hs-m">Store ›</span>
+            </button>
+          </div>
+          <div className="hs-bal">
+            <RewardIcon kind="coins" size={40} style={{ width: 'var(--hs-coin, 34px)', height: 'var(--hs-coin, 34px)' }} className="hs-coin" shine={{ delay: 1.2, duration: 4.5 }} />
+            <div style={{ minWidth: 0 }}>
+              <span className="hs-num">{formatNumber(coins)}</span>
+              <span className="hs-sub"> coins · <span className="hs-d">worth </span>{worth}</span>
+            </div>
+          </div>
+          {packs.length > 0 && (
+            <div className="hs-goal">
+              <CoinMeter pct={goal ? goal.pct : 100} height={12} label={goalText(goal, true)} style={{ flex: '1 1 auto', width: '100%' }} />
+              <span className="hs-goal-text"><span className="hs-d">{goalText(goal)}</span><span className="hs-m">{goalText(goal, true)}</span></span>
+            </div>
+          )}
+        </div>
+      </div>
+      <div className="hs-grid">
+        {packs.map((it, i) => <HomePackTile key={it.id} i={i} item={it} balances={balances} onBuy={onBuy} busy={busyId === it.id} top={it.id === topId} />)}
+        {extras.map(it => <HomeItemTile key={it.id} item={it} balances={balances} onBuy={onBuy} />)}
+        <button type="button" className="hs-more" onClick={onSeeAll}>
+          <img src={STORE_ART.chest} alt="" />
+          <span style={{ display: 'flex', flexDirection: 'column', gap: 2, fontWeight: 900, fontSize: 15, color: '#FFD21F' }}>
+            More rewards ›<span style={{ fontSize: 12, fontWeight: 700, color: '#B9A0E6' }}>See the whole store</span>
           </span>
-          {packs.length > 0 && <span style={{ fontSize: 12, fontWeight: 800, color: C.muted }}>{amountText(coinsPerKwacha, 'coins')} = {formatKwacha(1)}</span>}
-        </div>
-        <div className="hs-row" style={{ '--hs-n': shown }}>
-          {packs.map(it => <HomePackCard key={it.id} item={it} balances={balances} onBuy={onBuy} busy={busyId === it.id} />)}
-          {extras.map((it, i) => <StoreCard key={it.id} i={i} item={it} canBuy={canAfford(it.price, balances)} onBuy={onBuy} />)}
-        </div>
-        {packs.length > 0 && (
-          <p style={{ margin: 0, fontSize: 11.5, lineHeight: 1.45, color: C.muted }}>
-            Tap Buy twice to confirm. Our team credits the pack to your bwanabet account. One kwacha pack per week.
-          </p>
-        )}
-      </Card>
+        </button>
+      </div>
+      {packs.length > 0 && (
+        <p className="hs-foot">
+          <span className="hs-d">Tap Buy twice to confirm · credited to your bwanabet account · one pack a week</span>
+          <span className="hs-m">Tap Buy twice · credited to bwanabet · one pack a week</span>
+        </p>
+      )}
     </section>
   );
 }

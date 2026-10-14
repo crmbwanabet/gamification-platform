@@ -3,9 +3,9 @@
 // candy games. Every colour comes from the candy kit (components/games/candy/
 // tokens.js); the key names are the v2 ones so existing views keep working.
 
-import { CANDY, textStroke } from '../games/candy/tokens';
+import { CANDY, COIN_ICON, textStroke } from '../games/candy/tokens';
 
-export { CANDY };
+export { CANDY, COIN_ICON };
 
 export const C = {
   bg: CANDY.bgBottom,       // app background (deep violet)

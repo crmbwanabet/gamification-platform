@@ -95,7 +95,7 @@
   launcher.type = 'button';
   launcher.className = 'x100w-launcher';
   launcher.setAttribute('aria-label', 'Open 100xBet Rewards');
-  launcher.innerHTML = '<img src="' + APP_ORIGIN + '/ui/reward/coins.png" alt="">';
+  launcher.innerHTML = '<img src="' + APP_ORIGIN + '/ui/reward/coin-k.png" alt="">';
 
   var dismiss = document.createElement('span');
   dismiss.className = 'x100w-dismiss';

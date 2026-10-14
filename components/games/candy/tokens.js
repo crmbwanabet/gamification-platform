@@ -4,6 +4,10 @@
 // Each button colour has a lighter `light` (top highlight + border) and a
 // darker `dark` (the 6px base the button sits on).
 
+// THE coin icon (2026-10-14): the gold BwanaBet K coin. A new filename (not
+// coins.png) so browsers never show a cached copy of the old coin stack.
+export const COIN_ICON = '/ui/reward/coin-k.png';
+
 export const CANDY = {
   bgTop: '#2B0F5E',
   bgBottom: '#1A0838',

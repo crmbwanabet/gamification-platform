@@ -202,3 +202,51 @@ body {
   83%  { transform: translateX(1px); }
   100% { transform: translateX(0); }
 }
+
+/* === Coin shine, sparkles + BwanaBet yellow frame (2026-10-14) ===========
+   .bb-shine   wraps a coin / pack image (components/redesign/Shine.jsx): a
+               diagonal light band sweeps across it every few seconds, masked
+               to the image's own shape (--shine-src), staggered by --shine-delay.
+   .bb-sparkles 4-point stars that twinkle over pack art and the day-7 chest.
+   .yb-frame   bevelled metallic BwanaBet-yellow frame (logo yellow #FEF200);
+   .yb-glint   a slow light glint travelling round any framed element's border.
+   All motion stops under prefers-reduced-motion. */
+:root { --bb-yellow: #FEF200; --bb-yellow-hi: #FFFBB8; --bb-yellow-deep: #C9A800; --bb-yellow-dark: #6E5800; }
+
+.bb-shine { position: relative; display: inline-block; line-height: 0; flex: none; vertical-align: middle; }
+.bb-shine::after { content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 1;
+  background: linear-gradient(115deg, transparent 40%, rgba(255,255,235,var(--shine-a, .85)) 50%, transparent 60%) no-repeat;
+  background-size: 300% 100%; background-position: 150% 0;
+  -webkit-mask: var(--shine-src) center / contain no-repeat; mask: var(--shine-src) center / contain no-repeat;
+  animation: bbShine var(--shine-dur, 5s) ease-in-out var(--shine-delay, 0s) infinite; }
+@keyframes bbShine { 0% { background-position: 150% 0; } 24%, 100% { background-position: -50% 0; } }
+
+.bb-sparkles { position: absolute; inset: 0; pointer-events: none; z-index: 2; }
+.bb-sparkles > i { position: absolute; width: var(--s, 12px); height: var(--s, 12px); margin: calc(var(--s, 12px) / -2) 0 0 calc(var(--s, 12px) / -2);
+  transform: scale(0); opacity: 0; animation: bbTwinkle var(--tw, 2.6s) ease-in-out var(--d, 0s) infinite; }
+.bb-sparkles > i::before { content: ''; position: absolute; inset: -40%; border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,246,170,.75) 0%, rgba(255,230,90,.25) 40%, transparent 70%); }
+.bb-sparkles > i::after { content: ''; position: absolute; inset: 0;
+  background: radial-gradient(circle, #fff 0 18%, #FFF6B0 38%, #FFD84A 70%);
+  clip-path: polygon(50% 0, 58% 42%, 100% 50%, 58% 58%, 50% 100%, 42% 58%, 0 50%, 42% 42%); }
+@keyframes bbTwinkle { 0%, 55%, 100% { transform: scale(0) rotate(0deg); opacity: 0; } 25% { transform: scale(1) rotate(45deg); opacity: 1; } }
+
+.yb-frame { border: var(--yb-w, 3px) solid transparent;
+  background: var(--yb-fill, linear-gradient(180deg, #24094A, #140430)) padding-box,
+    linear-gradient(155deg, #FFFDE0 0%, #FEF200 16%, #D4B300 40%, #FEF200 60%, #FFF9A8 76%, #A88800 100%) border-box;
+  box-shadow: inset 0 0 0 1px rgba(255,255,225,.6), inset 0 2px 12px rgba(254,242,0,.16), 0 0 0 1.5px var(--bb-yellow-dark), 0 0 24px rgba(254,242,0,.32); }
+@property --yb-a { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+.yb-glint { position: relative; }
+.yb-glint::before { content: ''; position: absolute; inset: calc(-1 * var(--yb-w, 3px)); padding: var(--yb-w, 3px); border-radius: inherit;
+  pointer-events: none; z-index: 3;
+  background: conic-gradient(from var(--yb-a), transparent 0deg 296deg, rgba(255,255,255,.95) 326deg, transparent 356deg);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); mask-composite: exclude;
+  animation: ybGlint var(--yb-dur, 7s) linear infinite; }
+@keyframes ybGlint { to { --yb-a: 360deg; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .bb-shine::after { animation: none; opacity: 0; }
+  .bb-sparkles > i { animation: none; transform: scale(.75) rotate(45deg); opacity: .85; }
+  .yb-glint::before { animation: none; opacity: 0; }
+}

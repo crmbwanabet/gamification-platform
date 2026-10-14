@@ -99,3 +99,24 @@ test('refundTotals: rejected purchases refund the exact currency, exactly once',
   assert.deepEqual(again.ids, []);
   assert.deepEqual(again.total, { kwacha: 0, emeralds: 0, rubies: 0, diamonds: 0 });
 });
+
+test('nextPackGoal aims at the cheapest pack the player cannot afford', async () => {
+  const { nextPackGoal } = await import('../lib/store/catalog.mjs');
+  const pack = (k) => ({ id: `p${k}`, redeem: { currency: 'coins', amount: k }, payoutKwacha: k, price: { kwacha: k * 10000 } });
+  const packs = [pack(50), pack(1), pack(5), pack(10)];
+  const g = nextPackGoal(packs, 23400);
+  assert.equal(g.pack.id, 'p5');
+  assert.equal(g.short, 26600);
+  assert.equal(g.pct, 46);
+  assert.equal(nextPackGoal(packs, 0).pack.id, 'p1');
+  assert.equal(nextPackGoal(packs, 0).pct, 0);
+  assert.equal(nextPackGoal(packs, 10000).pack.id, 'p5'); // K1 exactly affordable
+  assert.equal(nextPackGoal(packs, 500000), null);
+  assert.equal(nextPackGoal([], 10), null);
+  assert.equal(nextPackGoal(null, 10), null);
+});
+
+test('packArtAmount maps a payout to the drawn pack art', async () => {
+  const { packArtAmount } = await import('../lib/store/catalog.mjs');
+  assert.deepEqual([0.5, 1, 2, 5, 7, 10, 20, 49, 50, 100].map(packArtAmount), [1, 1, 1, 5, 5, 10, 20, 20, 50, 50]);
+});

@@ -16,18 +16,18 @@ import { splitCatalog } from '@/lib/store/catalog.mjs';
 
 // Home layout (design "A · Full candy"): phones stack daily reward → store
 // → this week → bonus games → missions; desktop (≥861px) opens with ONE row,
-// daily reward (380px) left + the store panel right (stretched to the daily
-// card's height), then this week + missions on the left beside the games
-// grid (3 per row). With an empty store the games take the top-right slot.
+// daily reward (400px) left + the store panel right (max 780px, sized to its
+// own content, never stretched to the daily card's height), then this week +
+// missions on the left beside the games grid (3 per row). With an empty store
+// the games take the top-right slot.
 const OV_CSS = `
   .ov-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 26px; grid-template-areas: "daily" "store" "season" "games" "missions"; }
   .ov-daily { grid-area: daily; } .ov-store { grid-area: store; } .ov-season { grid-area: season; display: grid; gap: 12px; } .ov-games { grid-area: games; } .ov-missions { grid-area: missions; }
   .ov-grid > * { min-width: 0; align-self: start; }
   .ov-grid--nostore { grid-template-areas: "daily" "season" "games" "missions"; }
   @media (min-width: 861px) {
-    .ov-grid { grid-template-columns: 380px minmax(0, 1fr); grid-template-rows: auto auto 1fr; column-gap: 28px; row-gap: 24px;
+    .ov-grid { grid-template-columns: 400px minmax(0, 1fr); grid-template-rows: auto auto 1fr; column-gap: 28px; row-gap: 24px;
       grid-template-areas: "daily store" "season games" "missions games"; }
-    .ov-grid > .ov-store { align-self: stretch; }
     .ov-grid--nostore { grid-template-rows: auto auto 1fr; grid-template-areas: "daily games" "season games" "missions games"; }
   }
   .ov-link { all: unset; box-sizing: border-box; cursor: pointer; display: flex; align-items: center; justify-content: center; min-height: 44px; margin-top: 8px; width: 100%;
