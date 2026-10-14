@@ -5,12 +5,12 @@ import {
   formatKwacha, formatNumber, migrateCurrencyState, cleanReward, canAfford, CURRENCY_VERSION,
 } from '../lib/economy/currency.mjs';
 
-test('defaults: 1,000 coins = K1; emerald K5, ruby K10, diamond K20', () => {
-  assert.deepEqual(economyRates(undefined), { coinsPerKwacha: 1000, gemValues: { emerald: 5000, ruby: 10000, diamond: 20000 } });
-  assert.equal(coinsToKwacha(1000), 1);
-  assert.equal(coinsToKwacha(3400), 3.4);
-  assert.equal(kwachaToCoins(50), 50000);
-  assert.equal(gemCoins('emeralds'), 5000);
+test('defaults: 10,000 coins = K1; emerald K5, ruby K10, diamond K20', () => {
+  assert.deepEqual(economyRates(undefined), { coinsPerKwacha: 10000, gemValues: { emerald: 50000, ruby: 100000, diamond: 200000 } });
+  assert.equal(coinsToKwacha(10000), 1);
+  assert.equal(coinsToKwacha(34000), 3.4);
+  assert.equal(kwachaToCoins(50), 500000);
+  assert.equal(gemCoins('emeralds'), 50000);
   assert.equal(gemKwacha('emeralds'), 5);
   assert.equal(gemKwacha('rubies'), 10);
   assert.equal(gemKwacha('diamonds'), 20);
@@ -22,16 +22,16 @@ test('conversions follow the configured rate', () => {
   assert.equal(coinsToKwacha(5000, eco), 2.5);
   assert.equal(kwachaToCoins(5, eco), 10000);
   assert.equal(gemKwacha('emeralds', eco), 2.5);
-  assert.equal(gemKwacha('rubies', { coinsPerKwacha: 3000 }), 3.33); // whole ngwee
+  assert.equal(gemKwacha('rubies', { coinsPerKwacha: 3000, gemValues: { ruby: 10000 } }), 3.33); // whole ngwee
 });
 
 test('economyRates: each invalid field falls back on its own', () => {
-  assert.equal(economyRates({ coinsPerKwacha: 0 }).coinsPerKwacha, 1000);
-  assert.equal(economyRates({ coinsPerKwacha: 12.5 }).coinsPerKwacha, 1000);
-  assert.equal(economyRates({ coinsPerKwacha: '1000' }).coinsPerKwacha, 1000);
-  assert.equal(economyRates({ coinsPerKwacha: 2_000_000 }).coinsPerKwacha, 1000); // above the cap
+  assert.equal(economyRates({ coinsPerKwacha: 0 }).coinsPerKwacha, 10000);
+  assert.equal(economyRates({ coinsPerKwacha: 12.5 }).coinsPerKwacha, 10000);
+  assert.equal(economyRates({ coinsPerKwacha: '1000' }).coinsPerKwacha, 10000);
+  assert.equal(economyRates({ coinsPerKwacha: 2_000_000 }).coinsPerKwacha, 10000); // above the cap
   assert.equal(economyRates({ coinsPerKwacha: 500 }).coinsPerKwacha, 500);
-  assert.deepEqual(economyRates({ gemValues: { ruby: 12000, diamond: -3 } }).gemValues, { emerald: 5000, ruby: 12000, diamond: 20000 });
+  assert.deepEqual(economyRates({ gemValues: { ruby: 12000, diamond: -3 } }).gemValues, { emerald: 50000, ruby: 12000, diamond: 200000 });
 });
 
 test('cleanEconomyRow keeps other economy fields and drops bad rates', () => {

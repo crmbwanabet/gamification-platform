@@ -12,8 +12,8 @@ const SEED = [
   ...GEM_REDEMPTIONS.map((g, i) => ({ id: id(10 + i), name: g.currency, redeem_currency: g.currency, redeem_amount: 1, price_kwacha: 0, stock: null, is_money: true })),
 ];
 
-test('redemptionQuote: coin packs K1/K5/K10/K20/K50 at 1,000 coins = K1', () => {
-  assert.deepEqual(KWACHA_PACKS.map(k => redemptionQuote('coins', k).price.kwacha), [1000, 5000, 10000, 20000, 50000]);
+test('redemptionQuote: coin packs K1/K5/K10/K20/K50 at 10,000 coins = K1', () => {
+  assert.deepEqual(KWACHA_PACKS.map(k => redemptionQuote('coins', k).price.kwacha), [10000, 50000, 100000, 200000, 500000]);
   assert.equal(redemptionQuote('coins', 5).payoutKwacha, 5);
 });
 
@@ -34,11 +34,11 @@ test('redemptionQuote follows coinsPerKwacha and gemValues; rejects junk', () =>
 });
 
 test('buildStoreCatalog: seeded redemptions priced from config, named by payout', () => {
-  const cat = buildStoreCatalog(SEED, { coinsPerKwacha: 1000 });
+  const cat = buildStoreCatalog(SEED, {});
   const { coinPacks, gemRedemptions, items } = splitCatalog(cat);
   assert.deepEqual(coinPacks.map(c => [c.name, c.price.kwacha, c.payoutKwacha]), [
-    ['K1 bwanabet bonus', 1000, 1], ['K5 bwanabet bonus', 5000, 5], ['K10 bwanabet bonus', 10000, 10],
-    ['K20 bwanabet bonus', 20000, 20], ['K50 bwanabet bonus', 50000, 50],
+    ['K1 bwanabet bonus', 10000, 1], ['K5 bwanabet bonus', 50000, 5], ['K10 bwanabet bonus', 100000, 10],
+    ['K20 bwanabet bonus', 200000, 20], ['K50 bwanabet bonus', 500000, 50],
   ]);
   assert.deepEqual(gemRedemptions.map(g => [g.redeem.currency, g.price, g.payoutKwacha]), [
     ['emeralds', { emeralds: 1 }, 5], ['rubies', { rubies: 1 }, 10], ['diamonds', { diamonds: 1 }, 20],

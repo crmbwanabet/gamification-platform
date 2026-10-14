@@ -16,9 +16,9 @@ const GREEN = candyVars(CANDY.green);
 const OFF = candyVars(CANDY.off);
 const GOLD = candyVars({ fill: CANDY.gold, light: '#FFE27A', dark: '#8a5a00' });
 
-const balancesOf = (w) => ({ kwacha: w?.kwacha || 0, emeralds: w?.emeralds || 0, rubies: w?.rubies || 0, diamonds: w?.diamonds || 0 });
+export const balancesOf = (w) => ({ kwacha: w?.kwacha || 0, emeralds: w?.emeralds || 0, rubies: w?.rubies || 0, diamonds: w?.diamonds || 0 });
 
-function StoreCard({ item, canBuy, onBuy, i = 0 }) {
+export function StoreCard({ item, canBuy, onBuy, i = 0 }) {
   return (
     <Card className="card-enter" style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column', animationDelay: `${i * 45}ms` }}>
       <div style={{ position: 'relative' }}>
@@ -41,7 +41,7 @@ function StoreCard({ item, canBuy, onBuy, i = 0 }) {
  * Buy button for a kwacha pack, with a two-tap confirm: real money moves, so
  * the first tap arms it ("Confirm K5?") and a second tap within 4s buys it.
  */
-function PackBuyButton({ item, canBuy, onBuy, busy }) {
+export function PackBuyButton({ item, canBuy, onBuy, busy }) {
   const [armed, setArmed] = React.useState(false);
   React.useEffect(() => {
     if (!armed) return undefined;

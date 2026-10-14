@@ -5,11 +5,12 @@
 //
 //   <TreasureChest3D mode="idle|today|open" size={118} />
 //
-// mode  'idle'  day 7 not reached: every ~4.6s the lid lifts to ~68°, the
-//               glowing coin pile shows, it holds ~1s and drops shut with a
-//               little bounce. Gentle sway.
-//       'today' bonus ready: the same peek every ~3s, livelier, a rattle
-//               before each peek, more glow.
+// mode  'idle'  day 7 not reached: loops open/close every ~3.6s — the lid
+//               swings up to ~80°, the glowing gold coin pile shows in the
+//               opening for ~1.4s, then it drops shut with a little bounce.
+//               Gentle sway. (2026-10-14: was a short ~1s peek every 4.6s.)
+//       'today' bonus ready: the same loop every ~3.4s, livelier, a rattle
+//               before each opening, more glow.
 //       'open'  claimed: the lid swings fully open with an overshoot (the
 //               claim moment when it comes from 'today'), stays open, coins
 //               glow, a few hop and sparkle, three spill over the front rim.
@@ -19,8 +20,8 @@
 // size with a drawn SVG chest; the canvas fades in over it after its first
 // frame. No WebGL / three fails to load => the SVG stays. Mode changes never
 // rebuild the scene. Rendering pauses offscreen or while the tab is hidden.
-// prefers-reduced-motion: no loop, one static frame (half open; fully open
-// for 'open').
+// prefers-reduced-motion: no loop, one static frame, lid open with the coin
+// pile showing (fully open for 'open'). Frames are capped at ~30fps.
 
 import React from 'react';
 
@@ -373,7 +374,7 @@ function buildChest({ THREE, RoomEnvironment, RoundedBoxGeometry, host, size, ge
   // ---- motion ----
   const mq = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
   let reduced = !!(mq && mq.matches);
-  const PEEK = -1.18; // ~68°
+  const PEEK = -1.4; // ~80°: the coin pile shows clearly in the opening
   const OPEN = -1.78; // ~102°
   const clamp01 = (x) => Math.min(1, Math.max(0, x));
   const easeOutBack = (x, c1 = 1.7) => { const c3 = c1 + 1; return 1 + c3 * (x - 1) ** 3 + c1 * (x - 1) ** 2; };
@@ -382,8 +383,8 @@ function buildChest({ THREE, RoomEnvironment, RoundedBoxGeometry, host, size, ge
 
   // one peek cycle; returns lid angle, shake and lift
   function loop(t, lively) {
-    const rattle = lively ? 0.5 : 0, lift = lively ? 0.42 : 0.6, hold = lively ? 0.75 : 1.0, close = 0.26, bounce = 0.5;
-    const period = lively ? 3.0 : 4.6;
+    const rattle = lively ? 0.45 : 0, lift = lively ? 0.42 : 0.5, hold = lively ? 1.2 : 1.4, close = 0.3, bounce = 0.45;
+    const period = lively ? 3.4 : 3.6;
     const rest = period - rattle - lift - hold - close - bounce;
     let ph = t % period;
     const out = { lid: 0, rz: 0, y: 0 };
@@ -425,7 +426,7 @@ function buildChest({ THREE, RoomEnvironment, RoundedBoxGeometry, host, size, ge
       if (!reduced && kk < 1) { const w = kk; y = Math.sin(w * Math.PI) * 0.06 * (1 - w); rz = Math.sin(w * Math.PI * 4) * 0.03 * (1 - w); }
       glowA = 1 + (reduced ? 0 : Math.max(0, 0.6 * (1 - Math.abs(kk - 0.5) * 2)));
     } else if (reduced) {
-      lid = PEEK * 0.85;
+      lid = PEEK; // static, open, coins showing
       glowA = mode === 'today' ? 0.95 : 0.75;
     } else {
       const lively = mode === 'today';
@@ -483,9 +484,13 @@ function buildChest({ THREE, RoomEnvironment, RoundedBoxGeometry, host, size, ge
 
   // ---- loop control: pause offscreen / hidden; reduced motion = one frame ----
   let raf = 0, visible = true, onScreen = true, disposed = false, first = true;
+  let lastDraw = -1e9;
   const tick = (now) => {
     raf = 0;
     if (disposed) return;
+    // ~30fps is plenty for a 118px chest and halves the GPU work
+    if (!first && now - lastDraw < 31) { if (shouldLoop()) raf = requestAnimationFrame(tick); return; }
+    lastDraw = now;
     frame(now);
     if (first) { first = false; canvas.style.opacity = '1'; onFirstFrame(); }
     if (shouldLoop()) raf = requestAnimationFrame(tick);

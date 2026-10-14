@@ -2042,7 +2042,7 @@ export default function GamificationPlatform() {
       burstConfetti(document.getElementById('daily-reward-card') || el, 110);
     }
     // Streak milestone BONUSES removed 2026-10-07 (a week pays exactly
-    // 6 x 10 + 100 = 160 coins); the streak counter above still drives day
+    // 10+20+30+40+50+60+100 = 310 coins since 2026-10-14); the streak counter above still drives day
     // 1->7. Old payout parked in parked/components/GamificationPlatform.removed-wiring.jsx
   };
 
@@ -2067,52 +2067,54 @@ export default function GamificationPlatform() {
       {gameOverlays}
     </>);
   }
+  // Store purchase: ONE handler for the Store tab and the Home store panel
+  // (server-backed POST /api/purchase via session.buyItem).
+  const buyStoreItem = async (item, el) => {
+    if (session.status !== 'ready') { showNotif('Connect via bwanabet to buy store items', 'error'); return; }
+    if (!canAfford(item.price, user)) { showNotif('Not enough balance!', 'error'); return; }
+    if (storeBusy) return;
+    setStoreBusy(item.id);
+    try {
+      const d = await session.buyItem(item.id);
+      if (!d || !d.ok) {
+        const msg = d && d.error === 'weekly_limit' ? 'You can buy one kwacha pack per week — come back soon!'
+          : d && d.error === 'out_of_stock' ? 'Sold out — someone beat you to it!'
+          : d && d.error === 'item_unavailable' ? 'That item is no longer available.'
+          : d && d.error === 'slow_down' ? 'Too many attempts — wait a minute.'
+          : d && d.error === 'invalid_token' ? 'Session expired — reload the page.'
+          // Server-held balance was short: recent winnings may not have
+          // synced yet (saves are debounced ~1.5s) — a retry usually works.
+          : d && d.error === 'insufficient_funds' ? 'Balance not synced yet — try again in a moment.'
+          : 'Purchase failed — try again.';
+        showNotif(msg, 'error');
+        return;
+      }
+      // Server accepted: deduct the SERVER-CONFIRMED price (the client's
+      // config snapshot may be stale after an admin repriced the item or
+      // changed coinsPerKwacha) — keeps the deduction equal to any refund.
+      const paid = paidFromPurchase(d.purchase, item.price);
+      addCurrencies(paid, -1);
+      track('purchase', { amount: paid.kwacha, meta: { itemId: item.id, ...(item.redeem ? { redeem: item.redeem.currency } : {}) } });
+      const payout = Number(d.purchase?.payout_kwacha ?? item.payoutKwacha);
+      showNotif(item.redeem && payout > 0
+        ? `💵 ${formatKwacha(payout)} on its way — our team will credit your bwanabet account shortly!`
+        : `🛒 ${item.name} purchased — our team will credit it shortly!`);
+      triggerReward('medium', el || null, { coins: 0 });
+    } catch (e) {
+      showNotif('Purchase failed — try again.', 'error');
+    } finally {
+      setStoreBusy(null);
+    }
+  };
   // === v2 redesigned Store ===
   if (tab === 'store') {
-    const buyStoreItem = async (item, el) => {
-      if (session.status !== 'ready') { showNotif('Connect via bwanabet to buy store items', 'error'); return; }
-      if (!canAfford(item.price, user)) { showNotif('Not enough balance!', 'error'); return; }
-      if (storeBusy) return;
-      setStoreBusy(item.id);
-      try {
-        const d = await session.buyItem(item.id);
-        if (!d || !d.ok) {
-          const msg = d && d.error === 'weekly_limit' ? 'You can buy one kwacha pack per week — come back soon!'
-            : d && d.error === 'out_of_stock' ? 'Sold out — someone beat you to it!'
-            : d && d.error === 'item_unavailable' ? 'That item is no longer available.'
-            : d && d.error === 'slow_down' ? 'Too many attempts — wait a minute.'
-            : d && d.error === 'invalid_token' ? 'Session expired — reload the page.'
-            // Server-held balance was short: recent winnings may not have
-            // synced yet (saves are debounced ~1.5s) — a retry usually works.
-            : d && d.error === 'insufficient_funds' ? 'Balance not synced yet — try again in a moment.'
-            : 'Purchase failed — try again.';
-          showNotif(msg, 'error');
-          return;
-        }
-        // Server accepted: deduct the SERVER-CONFIRMED price (the client's
-        // config snapshot may be stale after an admin repriced the item or
-        // changed coinsPerKwacha) — keeps the deduction equal to any refund.
-        const paid = paidFromPurchase(d.purchase, item.price);
-        addCurrencies(paid, -1);
-        track('purchase', { amount: paid.kwacha, meta: { itemId: item.id, ...(item.redeem ? { redeem: item.redeem.currency } : {}) } });
-        const payout = Number(d.purchase?.payout_kwacha ?? item.payoutKwacha);
-        showNotif(item.redeem && payout > 0
-          ? `💵 ${formatKwacha(payout)} on its way — our team will credit your bwanabet account shortly!`
-          : `🛒 ${item.name} purchased — our team will credit it shortly!`);
-        triggerReward('medium', el || null, { coins: 0 });
-      } catch (e) {
-        showNotif('Purchase failed — try again.', 'error');
-      } finally {
-        setStoreBusy(null);
-      }
-    };
     return withXp(<>
       <StoreView {...v2Stats} onBuy={buyStoreItem} busyId={storeBusy} />
       {gameOverlays}
     </>);
   }
 
-  // === Home: daily reward, all games, missions teaser, featured item ===
+  // === Home: daily reward + store panel, all games, missions teaser ===
   // Any unknown tab also lands here. The old pre-v2 shell that used to
   // render here (trivia / quests / predictions / me.* tabs) was parked on
   // 2026-07-15 — see parked/components/legacy/GamificationPlatform.legacy-return.jsx
@@ -2120,7 +2122,8 @@ export default function GamificationPlatform() {
     <Overview {...v2Stats} activeTab="home"
       onOpenMission={setSelectedMission}
       dailyDay={user.dailyDay} dailyClaimed={user.dailyClaimed} onClaimDaily={claimDailyReward}
-      gamePlays={user.gamePlays} onPlay={playGame} focusGames={focus.games} />
+      gamePlays={user.gamePlays} onPlay={playGame} focusGames={focus.games}
+      onBuy={buyStoreItem} busyId={storeBusy} />
     {gameOverlays}
   </>);
 }

@@ -96,9 +96,11 @@ const VS_CSS = `
  * (right) on a dark stadium glow with a big VS. Art: public/vuma/vs/
  * vuma-NN.png | vuma-zambia.png and opp-<slug>.png; silhouettes if missing.
  */
-export function VersusPicture({ home, away, vumaSrc, oppSrc, h = 170, hero = HERO_DEFAULT }) {
-  return (
-    <div data-versus className="vs-pic" style={{ '--vs-h': `${h}px`, position: 'relative', height: h, borderRadius: 16, overflow: 'hidden', isolation: 'isolate',
+export function VersusPicture({ home, away, vumaSrc, oppSrc, h = 170, hero = HERO_DEFAULT, bare = false }) {
+  // `bare` = no stadium backdrop: the players stand straight on the Home card's pitch.
+  const backdrop = bare
+    ? { background: 'radial-gradient(55% 22% at 50% 100%, rgba(0,0,0,.42), transparent 72%)' }
+    : {
       background: [
         'radial-gradient(60% 45% at 50% -8%, rgba(255,255,255,.38), transparent 70%)',
         'radial-gradient(30% 30% at 12% 0%, rgba(255,240,200,.35), transparent 70%)',
@@ -106,9 +108,12 @@ export function VersusPicture({ home, away, vumaSrc, oppSrc, h = 170, hero = HER
         'radial-gradient(70% 40% at 50% 112%, rgba(67,194,26,.55), transparent 70%)',
         'linear-gradient(180deg, #0b0322 0%, #1d0846 60%, #12052c 100%)',
       ].join(', '),
-      border: `2px solid ${CANDY.violet.dark}`, boxShadow: 'inset 0 -14px 24px rgba(0,0,0,.45)' }}>
+      border: `2px solid ${CANDY.violet.dark}`, boxShadow: 'inset 0 -14px 24px rgba(0,0,0,.45)',
+    };
+  return (
+    <div data-versus className="vs-pic" style={{ '--vs-h': `${h}px`, position: 'relative', height: h, borderRadius: 16, overflow: 'hidden', isolation: 'isolate', ...backdrop }}>
       <style dangerouslySetInnerHTML={{ __html: VS_CSS }} />
-      <span aria-hidden style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: '22%', background: 'linear-gradient(180deg, transparent, rgba(0,0,0,.55))', zIndex: 2 }} />
+      {!bare && <span aria-hidden style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: '22%', background: 'linear-gradient(180deg, transparent, rgba(0,0,0,.55))', zIndex: 2 }} />}
       <div className="vs-row" style={{ position: 'absolute', inset: '8px 6px 0', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: 4, zIndex: 1 }}>
         <VsArt src={vumaSrc} alt={`${hero || HERO_DEFAULT} for ${home}`} side="left" count={1} />
         <span className="vs-mid" style={{ flex: 'none', width: 48, textAlign: 'center', alignSelf: 'center', transform: 'rotate(-6deg)', ...goldTitle(30), fontSize: 30, letterSpacing: 1 }}>VS</span>
@@ -168,8 +173,11 @@ export function currentMatch(season) {
     const lose = r.round === 'final' ? `MISS IT AND YOU LOSE THE ${prizeK}`
       : r.round === 'group' ? `MISS IT AND YOU LOSE: ${fmt(r.reward)} COINS + 3 POINTS`
       : 'MISS IT AND ZAMBIA IS OUT';
+    const reward = r.round === 'final' ? { cash: prizeK, sub: 'Real money for the World Cup winners' }
+      : r.round === 'group' ? { coins: r.reward, points: 3 }
+      : { coins: r.reward, sub: 'and a place in the next round' };
     return { kind: 'wc', id: r.id, title: `World Cup · ${r.label}`, home: 'Zambia', away: r.opponent, vumaSrc: vumaArt('zambia'), oppSrc: opponentArt(r.opponent),
-      xp: r.xp, target: r.target, gap: r.gap, status: r.status, msLeft: r.msLeft, lose, final: r.round === 'final' };
+      xp: r.xp, target: r.target, gap: r.gap, status: r.status, msLeft: r.msLeft, lose, final: r.round === 'final', reward };
   }
   const L = season.league;
   if (L && L.unlocked && L.current) {
@@ -179,7 +187,8 @@ export function currentMatch(season) {
     return { kind: 'league', id: m.id, title: `${m.tierName} · Week ${m.n}`, home: VUMA_STAGES[stage - 1].club || m.home, away: m.opponent,
       vumaSrc: vumaArt(stage), oppSrc: opponentArt(m.opponent),
       xp: m.xp, target: m.target, gap: m.gap, status: m.status, msLeft: m.msLeft, claimable: m.claimable, bonus: m.bonus,
-      lose: tierBonus ? `MISS IT AND YOU LOSE: ${fmt(tierBonus)} COINS + 3 POINTS` : null };
+      lose: tierBonus ? `MISS IT AND YOU LOSE: ${fmt(tierBonus)} COINS + 3 POINTS` : null,
+      reward: { coins: tierBonus, points: season.cfg?.league?.pointsPerWin ?? 3 } };
   }
   return null;
 }
@@ -213,6 +222,26 @@ function RegularMatchCard({ season, compact = false, onClaimLeague, link = null 
   if (!m) {
     const first = VUMA_STAGES[(season.cfg?.league?.unlockStage || 6) - 1];
     const pct = Math.min(100, (season.xp / first.xp) * 100);
+    if (compact) {
+      return (
+        <PitchCard footer={(note || link) ? <><Note text={note} />{link}</> : null}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+            <span className="pitch-kicker">League matches</span>
+            <Chip status="locked" />
+          </div>
+          <PitchCentre>
+            <div className="pitch-plate" style={{ display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left' }}>
+              <img src={first.avatar} alt="" width={48} height={48} style={{ width: 48, height: 48, borderRadius: 12, objectFit: 'cover', filter: 'grayscale(.5)', flex: 'none' }} />
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontFamily: CANDY.display, fontSize: 18, lineHeight: 1.15 }}>First club: {first.club}</div>
+                <div style={{ fontSize: 12, color: C.sub }}>Stage {first.stage} · {fmt(first.xp - season.xp)} XP to go</div>
+              </div>
+            </div>
+          </PitchCentre>
+          <PitchProgress pct={pct} left={`${fmt(season.xp)} / ${fmt(first.xp)} XP`} />
+        </PitchCard>
+      );
+    }
     return (
       <Card style={{ padding: compact ? 14 : 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -232,8 +261,158 @@ function RegularMatchCard({ season, compact = false, onClaimLeague, link = null 
   return <MatchBody m={{ ...m, hero: season.heroName }} compact={compact} note={note} onClaimLeague={onClaimLeague} link={link} />;
 }
 
-/** The match card itself (league, World Cup or a live friendly: the same design). */
+// ---- HOME match card: the match on a football pitch (2026-10-14) ----
+// Mowed stripes + touchlines + penalty boxes behind everything; the halfway line
+// and centre circle run through the REWARD plate in the middle; the XP progress
+// bar sits on the bottom goal line. Text sits on dark plates (scrims) so it
+// reads on the grass. The Missions tab keeps the full card (FullMatchBody).
+const PITCH_LINE = 'rgba(255,255,255,.55)';
+const PITCH_CSS = `
+.pitch{position:relative;isolation:isolate;padding:14px 14px 16px;background:
+ radial-gradient(130% 90% at 50% 50%, transparent 58%, rgba(26,8,56,.6) 100%),
+ linear-gradient(180deg, rgba(26,8,56,.72) 0%, rgba(26,8,56,0) 22%, rgba(26,8,56,0) 74%, rgba(10,4,26,.7) 100%),
+ radial-gradient(70% 40% at 50% 46%, rgba(255,255,255,.10), transparent 72%),
+ repeating-linear-gradient(180deg, #1c6b2e 0 30px, #22803a 30px 60px)}
+.pitch-lines{position:absolute;inset:8px;border:2px solid ${PITCH_LINE};border-radius:8px;pointer-events:none;z-index:0}
+.pitch-lines::before,.pitch-lines::after{content:'';position:absolute;left:22%;right:22%;height:44px;border:2px solid ${PITCH_LINE}}
+.pitch-lines::before{top:-2px;border-top:0;border-radius:0 0 6px 6px}
+.pitch-lines::after{bottom:-2px;border-bottom:0;border-radius:6px 6px 0 0}
+.pitch-body{position:relative;z-index:1}
+.pitch-kicker{font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.06em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-shadow:0 1px 3px rgba(0,0,0,.8)}
+.pitch-mid{position:relative;isolation:isolate;margin:6px -14px 0;padding:16px 14px;display:flex;flex-direction:column;align-items:center}
+.pitch-mid::before{content:'';position:absolute;left:8px;right:8px;top:50%;height:2px;margin-top:-1px;background:${PITCH_LINE};z-index:-1}
+.pitch-mid::after{content:'';position:absolute;left:50%;top:50%;width:136px;height:136px;transform:translate(-50%,-50%);border:2px solid ${PITCH_LINE};border-radius:50%;z-index:-1}
+.pitch-plate{background:rgba(20,6,44,.9);border:2px solid ${CANDY.gold};border-radius:16px;padding:12px 16px 10px;text-align:center;box-shadow:0 0 0 1.5px ${CANDY.goldDeep},0 6px 18px rgba(0,0,0,.45),0 0 22px rgba(255,210,31,.25);max-width:100%;box-sizing:border-box}
+.pitch-plate.is-dim{background:#1d1530;border-color:rgba(255,255,255,.28);box-shadow:0 6px 18px rgba(0,0,0,.45)}
+.pitch-tab{display:inline-block;margin:-24px 0 6px;padding:3px 12px;border-radius:999px;background:${CANDY.gold};color:${CANDY.outline};font-size:11px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;box-shadow:0 2px 0 ${CANDY.goldDeep}}
+.pitch-plate.is-dim .pitch-tab{background:#5b4f72;color:#fff;box-shadow:none}
+.pitch-row{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;column-gap:8px;row-gap:2px}
+.pitch-unit{font-family:${CANDY.body};font-size:14px;font-weight:900;color:#fff;text-transform:lowercase}
+.pitch-plus{font-family:${CANDY.display};font-size:22px;color:rgba(255,255,255,.7)}
+.pitch-sub{font-size:12px;font-weight:800;color:${C.sub};margin-top:4px}
+.pitch-board{margin-top:12px;text-align:center;background:rgba(14,4,32,.84);border:1.5px solid rgba(255,255,255,.14);border-radius:14px;padding:9px 10px 8px}
+.pitch-mono{font-family:var(--font-mono),'JetBrains Mono',ui-monospace,monospace;font-variant-numeric:tabular-nums}
+.pitch-bar{margin-top:12px;padding:9px 10px 10px;border-radius:14px;background:rgba(14,4,32,.78);border:1.5px solid rgba(255,255,255,.12)}
+.pitch-foot{padding:2px 14px 10px;background:${C.panelLo}}
+@media (min-width:861px){.pitch-mid::after{width:148px;height:148px}}
+`;
+
+function PitchCard({ children, footer = null, gold = false }) {
+  return (
+    <Card style={{ padding: 0, overflow: 'hidden', ...(gold ? { borderColor: CANDY.gold } : null) }}>
+      <style dangerouslySetInnerHTML={{ __html: SEASON_CSS + PITCH_CSS }} />
+      <div className="pitch" data-pitch>
+        <span className="pitch-lines" aria-hidden />
+        <div className="pitch-body">{children}</div>
+      </div>
+      {footer && <div className="pitch-foot">{footer}</div>}
+    </Card>
+  );
+}
+
+/** Centre of the pitch: halfway line + centre circle behind whatever sits there. */
+function PitchCentre({ children }) {
+  return <div className="pitch-mid">{children}</div>;
+}
+
+/** The XP bar on the bottom goal line. */
+function PitchProgress({ pct, left, right = null, color }) {
+  return (
+    <div className="pitch-bar" data-pitch-progress>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 7, fontSize: 12.5, fontWeight: 800 }}>
+        <span className="pitch-mono">{left}</span>
+        {right}
+      </div>
+      <Progress value={pct} height={14} color={color} />
+    </div>
+  );
+}
+
+/** What the match pays ({ coins, points, cash, text, sub }) as the big centred plate. */
+function RewardPlate({ reward, label, dim = false, children }) {
+  const r = reward || {};
+  const big = { ...goldTitle(30), fontSize: 30, lineHeight: 1 };
+  const parts = [];
+  if (r.cash) parts.push(<span key="cash" style={{ ...big, fontSize: 34 }}>{r.cash}</span>);
+  if (r.coins > 0) parts.push(
+    <span key="coins" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+      <img src="/ui/reward/coins.png" alt="" width={30} height={30} style={{ width: 30, height: 30, flex: 'none' }} />
+      <span style={big}>+{fmt(r.coins)}</span><span className="pitch-unit">coins</span>
+    </span>);
+  if (r.points > 0) parts.push(
+    <span key="points" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+      <Trophy size={22} color={CANDY.gold} style={{ flex: 'none', filter: 'drop-shadow(0 2px 0 rgba(0,0,0,.5))' }} />
+      <span style={big}>+{fmt(r.points)}</span><span className="pitch-unit">{r.points === 1 ? 'point' : 'points'}</span>
+    </span>);
+  if (r.text) parts.push(<span key="text" style={{ ...goldTitle(20), fontSize: 20, lineHeight: 1.1 }}>{r.text}</span>);
+  return (
+    <div data-match-reward className={`pitch-plate${dim ? ' is-dim' : ''}`}>
+      <span className="pitch-tab">{label}</span>
+      {parts.length > 0 && (
+        <div className="pitch-row" style={dim ? { filter: 'grayscale(.7)' } : null}>
+          {parts.reduce((acc, p, i) => (i ? [...acc, <span key={`plus${i}`} className="pitch-plus" aria-hidden>+</span>, p] : [p]), [])}
+        </div>
+      )}
+      {r.sub && <div className="pitch-sub">{r.sub}</div>}
+      {children}
+    </div>
+  );
+}
+
+/** Home version of the match card (league, World Cup or a live friendly). */
+function PitchMatch({ m, note = null, onClaimLeague, link = null }) {
+  const liveMs = useLiveMs(m.msLeft);
+  const pct = Math.min(100, (m.xp / m.target) * 100);
+  const won = m.status === 'won';
+  const lost = m.status === 'lost';
+  const friendly = m.kind === 'friendly';
+  const label = won ? 'You won' : lost ? 'Missed' : friendly ? 'Win it back' : 'Win';
+  return (
+    <PitchCard gold={won || friendly} footer={(note || link) ? <><Note text={note} />{link}</> : null}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 6 }}>
+        <span className="pitch-kicker" style={{ color: m.kind === 'league' ? '#fff' : CANDY.gold }}>{m.title}</span>
+        {friendly ? <Badge bg={CANDY.gold}>Friendly</Badge> : <Chip status={m.status} />}
+      </div>
+      <VersusPicture bare home={m.home} away={m.away} vumaSrc={m.vumaSrc} oppSrc={m.oppSrc} hero={m.hero} h={130} />
+      <PitchCentre>
+        <RewardPlate reward={m.reward} label={label} dim={lost}>
+          {m.kind === 'league' && m.claimable && (
+            <GreenBtn full onClick={(e) => onClaimLeague && onClaimLeague(m.id, e.currentTarget)} style={{ marginTop: 10 }}>Collect +{fmt(m.bonus)} coins</GreenBtn>
+          )}
+        </RewardPlate>
+      </PitchCentre>
+      <div className="pitch-board">
+        {won ? (
+          <div style={{ ...goldTitle(28), color: C.green, textAlign: 'center' }}>Won!</div>
+        ) : lost ? (
+          <div style={{ ...goldTitle(28), color: C.red, textAlign: 'center' }}>Lost</div>
+        ) : (
+          <>
+            <div style={{ fontSize: 10.5, fontWeight: 900, color: '#ff8a80', textTransform: 'uppercase', letterSpacing: '.14em', marginBottom: 4 }}>Full-time in</div>
+            <div data-countdown className="sc-pulse pitch-mono" style={{ display: 'inline-block', borderRadius: 8, fontWeight: 800, fontSize: 30, lineHeight: 1, color: '#FF4D42', whiteSpace: 'nowrap' }}>{countdownText(liveMs)}</div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: C.sub, marginTop: 6 }}>Reach {fmt(m.target)} XP before full-time to win</div>
+          </>
+        )}
+      </div>
+      {!won && !lost && m.lose && (
+        <div data-lose-line className="sc-pulse" style={{ marginTop: 10, padding: '8px 10px', borderRadius: 12, background: 'rgba(90,6,6,.88)', border: '1.5px solid #FF4D42', fontSize: 12.5, fontWeight: 900, color: '#FF4D42', textAlign: 'center', letterSpacing: '.03em' }}>{m.lose}</div>
+      )}
+      <PitchProgress pct={pct} color={won ? C.green : undefined} left={`${fmt(m.xp)} / ${fmt(m.target)} XP`}
+        right={won
+          ? <span style={{ color: C.green }}>Match won!</span>
+          : <span data-live-gap style={{ color: CANDY.gold, textAlign: 'right' }}>{fmt(m.gap)} XP to go</span>} />
+    </PitchCard>
+  );
+}
+
+/** The match card itself (league, World Cup or a live friendly). `compact` = the Home pitch card. */
 function MatchBody({ m, compact = false, note = null, onClaimLeague, link = null }) {
+  if (compact) return <PitchMatch m={m} note={note} onClaimLeague={onClaimLeague} link={link} />;
+  return <FullMatchBody m={m} note={note} onClaimLeague={onClaimLeague} link={link} />;
+}
+
+/** Missions-tab match card (unchanged design). */
+function FullMatchBody({ m, compact = false, note = null, onClaimLeague, link = null }) {
   const liveMs = useLiveMs(m.msLeft);
   const pct = Math.min(100, (m.xp / m.target) * 100);
   const won = m.status === 'won';
@@ -288,6 +467,13 @@ export function friendlyWinBack(f) {
   if (f.round === 'knockout') return 'Zambia back in the World Cup';
   return `+${fmt(f.winBonus)} coins`;
 }
+/** The same as structured plate data for the Home pitch card. */
+function friendlyReward(f) {
+  if (!f) return null;
+  if (f.kind === 'league') return { coins: f.winBonus, points: f.winPoints ?? 3 };
+  if (f.round === 'knockout') return { text: 'Zambia back in the World Cup' };
+  return { coins: f.winBonus };
+}
 const friendlyArt = (f) => ({ vumaSrc: f.kind === 'wc' ? vumaArt('zambia') : vumaArt(f.homeStage || 6), oppSrc: opponentArt(f.opponent) });
 
 function FriendlySlot({ f, season, compact }) {
@@ -295,7 +481,7 @@ function FriendlySlot({ f, season, compact }) {
   const m = {
     kind: 'friendly', id: f.key, title: `Friendly · ${f.title || ''}`, home: f.home || season?.heroName || HERO_DEFAULT, hero: season?.heroName, away: f.opponent, ...friendlyArt(f),
     xp: f.xp, target: f.target, gap: f.gap, status: f.status === 'won' ? 'won' : f.status === 'lost' ? 'lost' : 'live', msLeft: f.msLeft,
-    lose: 'MISS IT AND THE LOSS STANDS', winBack: friendlyWinBack(f),
+    lose: 'MISS IT AND THE LOSS STANDS', winBack: friendlyWinBack(f), reward: friendlyReward(f),
   };
   return <MatchBody m={m} compact={compact} />;
 }
@@ -319,6 +505,54 @@ export function FriendlyOfferCard({ f, season, compact = false, inModal = false,
     const ok = season?.onAcceptFriendly ? season.onAcceptFriendly(f.key, el) : false;
     if (ok) { setConfirm(false); if (onDone) onDone(); }
   };
+  const offerChip = (
+    <span data-offer-countdown className="sc-pulse" style={{ display: 'inline-block', padding: '6px 12px', borderRadius: 999, background: 'rgba(120,10,10,.55)', border: '1.5px solid #FF4D42', color: '#FF4D42', fontWeight: 900, fontSize: 12.5, letterSpacing: '.05em', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+      {expired ? 'OFFER ENDED' : `OFFER ENDS IN ${countdownText(liveMs)}`}
+    </span>
+  );
+  const actions = (
+    <>
+      {short ? (
+        <>
+          <GreenBtn full disabled size={18} style={{ minHeight: 50 }}>Play for {fmt(f.cost)} coins</GreenBtn>
+          <div data-friendly-short style={{ fontSize: 12.5, fontWeight: 800, color: '#ff8a80', textAlign: 'center', marginTop: 6 }}>Not enough coins: you have {fmt(coins)}, you need {fmt(f.cost)}</div>
+        </>
+      ) : confirm ? (
+        <div data-friendly-confirm style={{ background: C.track, border: `2px solid ${CANDY.gold}`, borderRadius: 14, padding: 10 }}>
+          <div style={{ fontSize: 13, fontWeight: 800, textAlign: 'center', marginBottom: 8, lineHeight: 1.35 }}>Pay {fmt(f.cost)} coins to play {f.opponent}? If you miss the target the loss stands. No refund.</div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <GreenBtn color="violet" size={16} onClick={() => setConfirm(false)} style={{ flex: 1, padding: '0 10px' }}>Cancel</GreenBtn>
+            <GreenBtn size={16} disabled={expired} onClick={(e) => onAccept(e.currentTarget)} style={{ flex: 1.4, padding: '0 10px' }}>Confirm</GreenBtn>
+          </div>
+        </div>
+      ) : (
+        <GreenBtn full size={18} disabled={expired} onClick={() => setConfirm(true)} style={{ minHeight: 50 }}>Play for {fmt(f.cost)} coins</GreenBtn>
+      )}
+      <button type="button" data-friendly-decline onClick={() => { if (season?.onDeclineFriendly) season.onDeclineFriendly(f.key); if (onDone) onDone(); }}
+        style={{ all: 'unset', boxSizing: 'border-box', cursor: 'pointer', display: 'block', width: '100%', minHeight: 40, lineHeight: '40px', textAlign: 'center', fontSize: 13, fontWeight: 800, color: C.sub, textDecoration: 'underline' }}>No thanks</button>
+    </>
+  );
+  if (compact && !inModal) {
+    // Home: the offer on the pitch, what you win back in the centre circle.
+    return (
+      <PitchCard gold>
+        <div data-friendly-offer style={{ textAlign: 'center', textShadow: '0 1px 3px rgba(0,0,0,.8)' }}>
+          <div style={{ fontSize: 10.5, fontWeight: 900, color: 'rgba(255,255,255,.75)', textTransform: 'uppercase', letterSpacing: '.08em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Lost to {f.lostTo} · {f.title}</div>
+          <div style={{ ...goldTitle(22), textAlign: 'center', marginTop: 3, lineHeight: 1.05 }}>Friendly match</div>
+        </div>
+        <VersusPicture bare home={f.home || season?.heroName || HERO_DEFAULT} hero={season?.heroName} away={f.opponent} {...friendlyArt(f)} h={120} />
+        <PitchCentre>
+          <div data-friendly-winback style={{ maxWidth: '100%' }}><RewardPlate reward={friendlyReward(f)} label="Win it back" /></div>
+        </PitchCentre>
+        <div className="pitch-board">
+          <div style={{ fontSize: 10.5, fontWeight: 900, color: C.muted, textTransform: 'uppercase', letterSpacing: '.1em' }}>Your target</div>
+          <div data-friendly-target style={{ fontFamily: CANDY.display, fontSize: 17, lineHeight: 1.2, margin: '2px 0 8px' }}>Reach {fmt(f.target)} XP in {hours}h</div>
+          {offerChip}
+        </div>
+        <div className="pitch-bar">{actions}</div>
+      </PitchCard>
+    );
+  }
   const inner = (
     <>
       <style dangerouslySetInnerHTML={{ __html: SEASON_CSS }} />
@@ -340,29 +574,8 @@ export function FriendlyOfferCard({ f, season, compact = false, inModal = false,
           <div data-friendly-winback style={{ fontFamily: CANDY.display, fontSize: 15.5, lineHeight: 1.2, color: '#9BF06F' }}>{friendlyWinBack(f)}</div>
         </div>
       </div>
-      <div style={{ textAlign: 'center', margin: '12px 0 10px' }}>
-        <span data-offer-countdown className="sc-pulse" style={{ display: 'inline-block', padding: '6px 12px', borderRadius: 999, background: 'rgba(120,10,10,.55)', border: '1.5px solid #FF4D42', color: '#FF4D42', fontWeight: 900, fontSize: 12.5, letterSpacing: '.05em', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
-          {expired ? 'OFFER ENDED' : `OFFER ENDS IN ${countdownText(liveMs)}`}
-        </span>
-      </div>
-      {short ? (
-        <>
-          <GreenBtn full disabled size={18} style={{ minHeight: 50 }}>Play for {fmt(f.cost)} coins</GreenBtn>
-          <div data-friendly-short style={{ fontSize: 12.5, fontWeight: 800, color: '#ff8a80', textAlign: 'center', marginTop: 6 }}>Not enough coins: you have {fmt(coins)}, you need {fmt(f.cost)}</div>
-        </>
-      ) : confirm ? (
-        <div data-friendly-confirm style={{ background: C.track, border: `2px solid ${CANDY.gold}`, borderRadius: 14, padding: 10 }}>
-          <div style={{ fontSize: 13, fontWeight: 800, textAlign: 'center', marginBottom: 8, lineHeight: 1.35 }}>Pay {fmt(f.cost)} coins to play {f.opponent}? If you miss the target the loss stands. No refund.</div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <GreenBtn color="violet" size={16} onClick={() => setConfirm(false)} style={{ flex: 1, padding: '0 10px' }}>Cancel</GreenBtn>
-            <GreenBtn size={16} disabled={expired} onClick={(e) => onAccept(e.currentTarget)} style={{ flex: 1.4, padding: '0 10px' }}>Confirm</GreenBtn>
-          </div>
-        </div>
-      ) : (
-        <GreenBtn full size={18} disabled={expired} onClick={() => setConfirm(true)} style={{ minHeight: 50 }}>Play for {fmt(f.cost)} coins</GreenBtn>
-      )}
-      <button type="button" data-friendly-decline onClick={() => { if (season?.onDeclineFriendly) season.onDeclineFriendly(f.key); if (onDone) onDone(); }}
-        style={{ all: 'unset', boxSizing: 'border-box', cursor: 'pointer', display: 'block', width: '100%', minHeight: 40, lineHeight: '40px', textAlign: 'center', fontSize: 13, fontWeight: 800, color: C.sub, textDecoration: 'underline' }}>No thanks</button>
+      <div style={{ textAlign: 'center', margin: '12px 0 10px' }}>{offerChip}</div>
+      {actions}
     </>
   );
   if (inModal) return <div>{inner}</div>;

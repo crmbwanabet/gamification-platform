@@ -2,29 +2,33 @@
 
 import React from 'react';
 import { C, CANDY } from './tokens';
-import RedesignShell, { Badge, Progress, GreenBtn, SectionTitle, TitleNote, Card, Thumb, CurrencyAmounts, RewardIcon } from './RedesignShell';
+import RedesignShell, { Badge, Progress, SectionTitle, TitleNote, Card, CurrencyAmounts } from './RedesignShell';
 import DailyReward from './DailyReward';
 import GamesGrid from './GamesGrid';
+import HomeStore from './HomeStore';
 import { MatchCard, HustleCard } from './SeasonCards';
 import { useResetText } from './EarnView';
-import { IMAGES } from '@/lib/data/images';
 import { amountText } from '@/lib/rewardText.mjs';
 import { CASINO_MISSIONS } from '@/lib/data/missions';
 import { casinoMissionStates } from '@/lib/missions/casino.mjs';
 import { STORE_ITEMS, MINIGAMES } from '@/lib/data/platform';
-import { GEMS } from '@/lib/economy/currency.mjs';
+import { splitCatalog } from '@/lib/store/catalog.mjs';
 
-// Home layout (design "A · Full candy"): phones stack daily reward → bonus
-// games → missions → featured; desktop (≥861px) puts the daily reward,
-// missions teaser and featured item in a 380px left column and the games
-// grid (3 per row) on the right.
+// Home layout (design "A · Full candy"): phones stack daily reward → store
+// → this week → bonus games → missions; desktop (≥861px) opens with ONE row,
+// daily reward (380px) left + the store panel right (stretched to the daily
+// card's height), then this week + missions on the left beside the games
+// grid (3 per row). With an empty store the games take the top-right slot.
 const OV_CSS = `
-  .ov-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 26px; grid-template-areas: "daily" "season" "games" "missions" "featured"; }
-  .ov-daily { grid-area: daily; } .ov-season { grid-area: season; display: grid; gap: 12px; } .ov-games { grid-area: games; } .ov-missions { grid-area: missions; } .ov-featured { grid-area: featured; }
+  .ov-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 26px; grid-template-areas: "daily" "store" "season" "games" "missions"; }
+  .ov-daily { grid-area: daily; } .ov-store { grid-area: store; } .ov-season { grid-area: season; display: grid; gap: 12px; } .ov-games { grid-area: games; } .ov-missions { grid-area: missions; }
   .ov-grid > * { min-width: 0; align-self: start; }
+  .ov-grid--nostore { grid-template-areas: "daily" "season" "games" "missions"; }
   @media (min-width: 861px) {
-    .ov-grid { grid-template-columns: 380px minmax(0, 1fr); grid-template-rows: auto auto auto 1fr; column-gap: 28px; row-gap: 24px;
-      grid-template-areas: "daily games" "season games" "missions games" "featured games"; }
+    .ov-grid { grid-template-columns: 380px minmax(0, 1fr); grid-template-rows: auto auto 1fr; column-gap: 28px; row-gap: 24px;
+      grid-template-areas: "daily store" "season games" "missions games"; }
+    .ov-grid > .ov-store { align-self: stretch; }
+    .ov-grid--nostore { grid-template-rows: auto auto 1fr; grid-template-areas: "daily games" "season games" "missions games"; }
   }
   .ov-link { all: unset; box-sizing: border-box; cursor: pointer; display: flex; align-items: center; justify-content: center; min-height: 44px; margin-top: 8px; width: 100%;
     font-size: 13px; font-weight: 900; color: ${CANDY.gold}; border-radius: 12px; }
@@ -65,10 +69,11 @@ function MissionTeaser({ s, onOpen }) {
 
 /**
  * Home: daily reward, every game (the old Play tab, headed "Bonus games"),
- * the missions teaser and the featured store item. `focusGames` is a nonce —
+ * the missions teaser and a store panel (kwacha packs first) that buys
+ * through the same onBuy/busyId as the Store tab. `focusGames` is a nonce —
  * when it changes the view scrolls to the games (legacy "Go to Games" CTAs).
  */
-export default function Overview({ wallet = null, xp = 1200, activeTab = 'home', onNavigate, onOpenProfile, onOpenMission, missionStates = null, loggedIn = false, canClaimDaily = loggedIn, dailyDay = 1, dailyClaimed = false, onClaimDaily, userId = null, displayName = null, onEditName, navBadges = {}, games = null, storeItems = null, missions = null, dailyRewards = null, gamePlays = null, onPlay, focusGames = 0, isWidget = false, story = null, onStoryOpen, onStoryClose, season = null, onCollectHustle, onClaimLeague } = {}) {
+export default function Overview({ wallet = null, xp = 1200, activeTab = 'home', onNavigate, onOpenProfile, onOpenMission, missionStates = null, loggedIn = false, canClaimDaily = loggedIn, dailyDay = 1, dailyClaimed = false, onClaimDaily, userId = null, displayName = null, onEditName, navBadges = {}, games = null, storeItems = null, missions = null, dailyRewards = null, gamePlays = null, onPlay, focusGames = 0, isWidget = false, story = null, onStoryOpen, onStoryClose, season = null, onCollectHustle, onClaimLeague, onBuy, busyId = null } = {}) {
   const go = (t) => onNavigate && onNavigate(t);
   const states = missionStates || casinoMissionStates(missions || CASINO_MISSIONS, { rounds: 0, today: null });
   const top = pickTopMission(states);
@@ -76,8 +81,9 @@ export default function Overview({ wallet = null, xp = 1200, activeTab = 'home',
   // Store may be empty until the admin dashboard populates it
   const items = storeItems || STORE_ITEMS;
   const gameList = games || MINIGAMES;
-  const featuredItem = items.find(i => i.featured) || items.find(i => !i.redeem) || items[0] || null;
-  const featuredSrc = featuredItem && (featuredItem.imageUrl || IMAGES[featuredItem.image]);
+  // Gem redemptions are ignored (as in the Store tab), so they don't count
+  const catalog = splitCatalog(items);
+  const hasStore = catalog.coinPacks.length + catalog.items.length > 0;
   React.useEffect(() => {
     if (!focusGames) return;
     const el = typeof document !== 'undefined' && document.getElementById('home-games');
@@ -87,10 +93,14 @@ export default function Overview({ wallet = null, xp = 1200, activeTab = 'home',
     <RedesignShell wallet={wallet} xp={xp} userId={userId} displayName={displayName} onEditName={onEditName} navBadges={navBadges} activeTab={activeTab} onNavigate={onNavigate} onOpenProfile={onOpenProfile}
       isWidget={isWidget} story={story} onStoryOpen={onStoryOpen} onStoryClose={onStoryClose}>
       <style dangerouslySetInnerHTML={{ __html: OV_CSS }} />
-      <div className="ov-grid" style={{ maxWidth: 1240, margin: '0 auto' }}>
+      <div className={`ov-grid${hasStore ? '' : ' ov-grid--nostore'}`} style={{ maxWidth: 1240, margin: '0 auto' }}>
         <div className="ov-daily">
           <DailyReward dailyDay={dailyDay} dailyClaimed={dailyClaimed} onClaim={onClaimDaily} rewards={dailyRewards} loggedIn={canClaimDaily} />
         </div>
+
+        {hasStore && (
+          <HomeStore className="ov-store" storeItems={items} wallet={wallet} onBuy={onBuy} busyId={busyId} onSeeAll={() => go('store')} />
+        )}
 
         {season && (
           <section className="ov-season" aria-labelledby="ov-season-title">
@@ -109,27 +119,6 @@ export default function Overview({ wallet = null, xp = 1200, activeTab = 'home',
             <SectionTitle id="ov-missions-title" right={<TitleNote>{resetLabel}</TitleNote>}>Missions</SectionTitle>
             <MissionTeaser s={top} onOpen={onOpenMission} />
             <button type="button" className="ov-link" onClick={() => go('missions')}>See all {states.length} missions ›</button>
-          </section>
-        )}
-
-        {featuredItem && (
-          <section className="ov-featured" aria-labelledby="ov-featured-title">
-            <SectionTitle id="ov-featured-title" size={22}>Featured reward</SectionTitle>
-            <Card style={{ padding: 12, display: 'flex', gap: 12, alignItems: 'center' }}>
-              <div style={{ width: 96, flex: 'none' }}>
-                {featuredSrc
-                  ? <Thumb src={featuredSrc} alt={featuredItem.name} h={84} />
-                  : <div style={{ height: 84, borderRadius: 12, display: 'grid', placeItems: 'center', background: `radial-gradient(circle at 50% 40%, ${CANDY.glow}, ${C.track})` }}><RewardIcon kind={GEMS.includes(featuredItem.redeem?.currency) ? featuredItem.redeem.currency : 'coins'} size={52} /></div>}
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontFamily: CANDY.display, fontSize: 17, lineHeight: 1.15, marginBottom: 4 }}>{featuredItem.name}</div>
-                {featuredItem.desc && <div style={{ fontSize: 12, color: C.sub, marginBottom: 8 }}>{featuredItem.desc}</div>}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', marginTop: featuredItem.desc ? 0 : 6 }}>
-                  <CurrencyAmounts r={featuredItem.price} size={17} fontSize={14} gap={8} />
-                  <GreenBtn size={16} onClick={() => go('store')} style={{ marginBottom: 6 }}>{featuredItem.redeem ? 'Redeem' : 'Buy now'}</GreenBtn>
-                </div>
-              </div>
-            </Card>
           </section>
         )}
       </div>
