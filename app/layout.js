@@ -62,6 +62,7 @@ export default function RootLayout({ children }) {
     <html lang="en" className={`${display.variable} ${body.variable} ${mono.variable} ${game.variable} ${gameBody.variable}`}>
       <head>
         <link rel="icon" href="/ui/reward/coin-k.png" />
+        <link rel="preload" as="image" href="/ui/reward/chest-closed.png" />
       </head>
       <body className="antialiased">
         {children}

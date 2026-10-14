@@ -16,14 +16,16 @@
 //               glow, a few hop and sparkle, three spill over the front rim.
 // size  CSS width in px; height = size * 0.85.
 //
-// three.js is imported lazily on the client. SSR renders a box of the right
-// size with a drawn SVG chest; the canvas fades in over it after its first
-// frame. No WebGL / three fails to load => the SVG stays. Mode changes never
+// three.js is imported lazily on the client. The box shows a still poster of
+// this same chest (ChestPoster, same camera/size) until the first 3D frame; the
+// canvas then fades in over it (~150ms, instant under reduced motion) and the
+// poster is removed. No WebGL / three fails to load => the poster stays. Mode changes never
 // rebuild the scene. Rendering pauses offscreen or while the tab is hidden.
 // prefers-reduced-motion: no loop, one static frame, lid open with the coin
 // pile showing (fully open for 'open'). Frames are capped at ~30fps.
 
 import React from 'react';
+import ChestPoster from './ChestPoster';
 
 const ASPECT = 0.85;
 
@@ -34,6 +36,15 @@ export default function TreasureChest3D({ mode = 'idle', size = 118 }) {
   const sizeRef = React.useRef(size);
   const [ready, setReady] = React.useState(false);
   const [failed, setFailed] = React.useState(false);
+  const [posterGone, setPosterGone] = React.useState(false);
+
+  // drop the poster once the canvas has finished fading in over it
+  React.useEffect(() => {
+    if (!ready || failed) return undefined;
+    const reduced = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    const id = setTimeout(() => setPosterGone(true), reduced ? 0 : 200);
+    return () => clearTimeout(id);
+  }, [ready, failed]);
 
   // build once per mount
   React.useEffect(() => {
@@ -90,48 +101,20 @@ export default function TreasureChest3D({ mode = 'idle', size = 118 }) {
       aria-hidden="true"
       style={{ position: 'relative', width: size, height: h, flex: 'none' }}
     >
-      {(!ready || failed) && <ChestSVG open={mode === 'open'} />}
+      {(!posterGone || failed) && <ChestPoster mode={mode} />}
     </div>
-  );
-}
-
-// ---------------------------------------------------------------- fallback --
-function ChestSVG({ open }) {
-  return (
-    <svg viewBox="0 0 120 102" width="100%" height="100%" style={{ position: 'absolute', inset: 0 }} aria-hidden="true">
-      <defs>
-        <linearGradient id="tc3-wood" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#7a3d17" /><stop offset="1" stopColor="#3a1806" /></linearGradient>
-        <linearGradient id="tc3-lid" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#9a5524" /><stop offset="1" stopColor="#4a1f08" /></linearGradient>
-        <linearGradient id="tc3-gold" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stopColor="#8a5a00" /><stop offset=".4" stopColor="#fff1b0" /><stop offset=".7" stopColor="#e0a820" /><stop offset="1" stopColor="#7a4c00" /></linearGradient>
-        <radialGradient id="tc3-glow" cx=".5" cy=".6" r=".5"><stop offset="0" stopColor="#fff6c4" /><stop offset=".5" stopColor="#ffd21f" stopOpacity=".6" /><stop offset="1" stopColor="#ffb000" stopOpacity="0" /></radialGradient>
-      </defs>
-      <ellipse cx="60" cy="96" rx="48" ry="5" fill="#000" opacity=".4" />
-      {open && <path d="M18 52 L24 12 Q60 5 96 12 L102 52 Z" fill="#2a1004" stroke="#5a2a0f" strokeWidth="2" />}
-      <ellipse cx="60" cy="50" rx={open ? 50 : 40} ry={open ? 24 : 16} fill="url(#tc3-glow)" />
-      <g fill="#ffcf2e" stroke="#a86e00" strokeWidth="1.2">
-        <ellipse cx="40" cy="52" rx="8" ry="4" /><ellipse cx="56" cy="47" rx="8" ry="4" /><ellipse cx="72" cy="50" rx="8" ry="4" />
-        <ellipse cx="48" cy="44" rx="8" ry="4" /><ellipse cx="66" cy="43" rx="8" ry="4" /><ellipse cx="82" cy="53" rx="8" ry="4" />
-      </g>
-      <rect x="14" y="52" width="92" height="40" rx="3" fill="url(#tc3-wood)" />
-      <path d="M14 66 H106 M14 79 H106" stroke="#1e0b02" strokeWidth="1.5" opacity=".7" />
-      {!open && <path d="M12 54 L12 40 Q12 24 60 24 Q108 24 108 40 L108 54 Z" fill="url(#tc3-lid)" transform="translate(0 -6) rotate(-14 108 54)" />}
-      <rect x="30" y="50" width="9" height="43" fill="url(#tc3-gold)" />
-      <rect x="81" y="50" width="9" height="43" fill="url(#tc3-gold)" />
-      <rect x="11" y="88" width="98" height="6" rx="2" fill="url(#tc3-gold)" />
-      <path d="M51 56 H69 V66 Q69 74 60 78 Q51 74 51 66 Z" fill="url(#tc3-gold)" />
-      <circle cx="60" cy="64" r="2.4" fill="#1a0a02" />
-    </svg>
   );
 }
 
 // ------------------------------------------------------------------ scene --
 function buildChest({ THREE, RoomEnvironment, RoundedBoxGeometry, host, size, getMode, onFirstFrame, onLost }) {
   const small = size <= 170;
+  const reducedAtStart = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
   const canvas = document.createElement('canvas');
   canvas.setAttribute('aria-hidden', 'true');
   Object.assign(canvas.style, {
     position: 'absolute', inset: '0', width: '100%', height: '100%',
-    opacity: '0', transition: 'opacity .25s ease', pointerEvents: 'none',
+    opacity: '0', transition: reducedAtStart ? 'none' : 'opacity .15s ease', pointerEvents: 'none',
   });
 
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'low-power' });

@@ -10,9 +10,15 @@ import { RewardIcon } from './RedesignShell';
 import { Sparkles } from './Shine';
 import { rewardParts, amountText } from '@/lib/rewardText.mjs';
 import { GEMS } from '@/lib/economy/currency.mjs';
+import ChestPoster from './ChestPoster';
 
 // three.js chest, client-only (lazy so the Home bundle stays light)
-const TreasureChest3D = dynamic(() => import('./TreasureChest3D'), { ssr: false, loading: () => null });
+// While the 3D chunk loads, show the chest poster (same image TreasureChest3D starts from) so nothing pops in.
+let chestPosterMode = 'idle';
+const TreasureChest3D = dynamic(() => import('./TreasureChest3D'), {
+  ssr: false,
+  loading: () => <span style={{ position: 'relative', display: 'block', width: 118, height: 100 }}><ChestPoster mode={chestPosterMode} /></span>,
+});
 
 const IC = '/ui/reward'; // generated 3D reward icons
 
@@ -160,6 +166,7 @@ export default function DailyReward({ dailyDay = 1, dailyClaimed = false, onClai
   const lastH = headline(last);
   const chestState = dailyClaimed && isBonusDay ? 'done' : !dailyClaimed && isBonusDay ? 'today' : 'future';
   const chestMode = chestState === 'done' ? 'open' : chestState === 'today' ? 'today' : 'idle';
+  chestPosterMode = chestMode;
   const daysLeft = total - shownDay;
   const shownH = headline(shown);
   // Button labels (2026-10-14): "Claim 1,000 coins" before the claim, then a red,
