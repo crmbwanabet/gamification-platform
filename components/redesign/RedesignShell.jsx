@@ -234,8 +234,8 @@ export function WalletSheet({ open, onClose, wallet, onNavigate }) {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '14px 2px 4px', fontSize: 13, color: C.sub }}>
           <span>Total value</span><span style={{ fontFamily: CANDY.display, fontSize: 22, color: C.gold }}>{formatKwacha(total)}</span>
         </div>
-        <p style={{ margin: '6px 2px 14px', fontSize: 12, lineHeight: 1.45, color: C.muted }}>Gems are won as prizes only. Redeem coins and gems for kwacha in the Store, and our team credits it to your bwanabet account.</p>
-        {onNavigate && <GreenBtn full size={20} onClick={() => { if (onClose) onClose(); onNavigate('store'); }}>Redeem in the Store</GreenBtn>}
+        <p style={{ margin: '6px 2px 14px', fontSize: 12, lineHeight: 1.45, color: C.muted }}>Gems are won as prizes only. Redeem coins and gems for kwacha in the Coin Shop, and our team credits it to your bwanabet account.</p>
+        {onNavigate && <GreenBtn full size={20} onClick={() => { if (onClose) onClose(); onNavigate('store'); }}>Go to the Coin Shop</GreenBtn>}
       </div>
     </div>
   );
@@ -249,7 +249,7 @@ export function WalletSheet({ open, onClose, wallet, onNavigate }) {
 const NAV = [
   { label: 'Home', icon: 'home', tab: 'home' },
   { label: 'Missions', icon: 'missions', tab: 'missions' },
-  { label: 'Store', icon: 'store', tab: 'store' },
+  { label: 'Coin Shop', icon: 'store', tab: 'store' },
 ];
 
 const NavBadge = ({ n }) => (n != null && n > 0 ? (

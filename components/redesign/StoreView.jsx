@@ -91,7 +91,7 @@ function StoreHero({ balances, economy, coinPacks }) {
       <div className="st-hero-shade" aria-hidden />
       <div className="st-hero-body">
         <img src={STORE_ART.logo} alt="BwanaBet" className="st-hero-logo" />
-        <h1 className="bb-display st-hero-title">Store</h1>
+        <h1 className="bb-display st-hero-title">Coin Shop</h1>
         <div className="st-hero-bal" data-store-balance>
           <RewardIcon kind="coins" size={58} className="st-hero-coin" shine={{ delay: 1.2, duration: 4.5 }} />
           <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>

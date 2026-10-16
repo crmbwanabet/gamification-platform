@@ -163,7 +163,7 @@ export default function HomeStore({ storeItems, wallet, onBuy, busyId = null, on
               <h2 id="hs-title" className="hs-title">COIN SHOP</h2>
             </div>
             <button type="button" className="bb-link hs-link" onClick={onSeeAll}>
-              <span className="hs-d">See store ›</span><span className="hs-m">Store ›</span>
+              <span className="hs-d">See coin shop ›</span><span className="hs-m">Shop ›</span>
             </button>
           </div>
           <div className="hs-bal">
@@ -187,7 +187,7 @@ export default function HomeStore({ storeItems, wallet, onBuy, busyId = null, on
         <button type="button" className="hs-more" onClick={onSeeAll}>
           <img src={STORE_ART.chest} alt="" />
           <span style={{ display: 'flex', flexDirection: 'column', gap: 2, fontWeight: 900, fontSize: 15, color: '#FFD21F' }}>
-            More rewards ›<span style={{ fontSize: 12, fontWeight: 700, color: '#B9A0E6' }}>See the whole store</span>
+            More rewards ›<span style={{ fontSize: 12, fontWeight: 700, color: '#B9A0E6' }}>See the whole coin shop</span>
           </span>
         </button>
       </div>
