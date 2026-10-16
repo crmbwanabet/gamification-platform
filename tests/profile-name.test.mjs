@@ -71,27 +71,27 @@ test('playerLabel: name over ID, else ID, else Player', () => {
 
 import { heroName, heroPossessive, heroText, HERO_DEFAULT } from '../lib/profile/name.mjs';
 
-test('heroName: the player name, else Vuma', () => {
+test('heroName: the player name, else Player', () => {
   assert.equal(heroName('Chola'), 'Chola');
   assert.equal(heroName('  Mwila  B '), 'Mwila B');
   assert.equal(heroName(null), HERO_DEFAULT);
-  assert.equal(heroName(''), 'Vuma');
-  assert.equal(heroName('x'), 'Vuma'); // invalid (too short) -> default
-  assert.equal(heroName('<script>'), 'Vuma');
+  assert.equal(heroName(''), 'Player');
+  assert.equal(heroName('x'), 'Player'); // invalid (too short) -> default
+  assert.equal(heroName('<script>'), 'Player');
 });
 
 test('heroPossessive: always \'s', () => {
   assert.equal(heroPossessive('Chola'), "Chola's");
   assert.equal(heroPossessive('James'), "James's");
-  assert.equal(heroPossessive(undefined), "Vuma's");
+  assert.equal(heroPossessive(undefined), "Player's");
 });
 
 test('heroText: swaps Vuma and {name}, keeps other words', () => {
   assert.equal(heroText("Vuma's Car Wash", 'Chola'), "Chola's Car Wash");
   assert.equal(heroText('Vuma Mart', 'Chola'), 'Chola Mart');
   assert.equal(heroText('{name} Mart', 'Chola'), 'Chola Mart');
-  assert.equal(heroText('{name} Mart', null), 'Vuma Mart');
-  assert.equal(heroText("Vuma's Car Wash", null), "Vuma's Car Wash");
+  assert.equal(heroText('{name} Mart', null), 'Player Mart');
+  assert.equal(heroText("Vuma's Car Wash", null), "Player's Car Wash");
   assert.equal(heroText('Kantemba', 'Chola'), 'Kantemba');
   assert.equal(heroText('Vumazone', 'Chola'), 'Vumazone'); // whole word only
   assert.equal(heroText(undefined, 'Chola'), undefined);

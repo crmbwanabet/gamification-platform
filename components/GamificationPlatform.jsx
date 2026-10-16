@@ -1522,7 +1522,7 @@ export default function GamificationPlatform() {
   };
   const seasonView = { status: seasonStatus, today, xp: seasonCalc.xp, overflow: seasonCalc.overflow, cfg: seasonCfg, league, worldCup, hustle, prize: seasonPrize, loggedIn,
     friendlies: activeFriendlies, coins: user.kwacha, onAcceptFriendly, onDeclineFriendly,
-    heroName: heroName(user.displayName) }; // the story hero = the player's name, else "Vuma"
+    heroName: heroName(user.displayName, playerId) }; // the story hero = the player's name, else their ID
 
   // Bonus claims (once each; state keys in user.season) + the hustle collect.
   const seasonBusyRef = useRef(new Set());
@@ -1553,7 +1553,7 @@ export default function GamificationPlatform() {
     if (!c || seasonBusyRef.current.has(guard)) return;
     seasonBusyRef.current.add(guard);
     setUser(u => (u.hustle?.lastCollectDay === today ? u : { ...u, kwacha: u.kwacha + c.coins, hustle: c.hustle }));
-    showNotif(`🧽 ${heroText(hustle.level.name, user.displayName)}: +${rewardParts({ kwacha: c.coins }).join(' + ')}`);
+    showNotif(`🧽 ${heroText(hustle.level.name, user.displayName, playerId)}: +${rewardParts({ kwacha: c.coins }).join(' + ')}`);
     triggerReward('medium', el || null, { coins: c.coins });
   };
   // World Cup Final prize (K10,000 real money): the SERVER re-verifies the
@@ -1920,8 +1920,8 @@ export default function GamificationPlatform() {
         onClose={() => setSeasonResult(null)}
         onClaim={(el) => { const e = seasonResult; setSeasonResult(null); if (e) claimSeasonBonus(e.matchKind === 'wc' ? 'wc' : 'league', e.matchId, el); }}
         onClaimPrize={() => { setSeasonResult(null); onClaimPrize(); }} />
-      <LevelUpModal levelUp={levelUp} onClose={() => setLevelUp(null)} hero={heroName(user.displayName)}
-        onRename={levelUp && user.displayName && canRename(user, levelUp.level) ? () => { setLevelUp(null); openProfile(true); } : undefined} />
+      <LevelUpModal levelUp={levelUp} onClose={() => setLevelUp(null)} hero={heroName(user.displayName, playerId)} named={!!user.displayName}
+        onRename={levelUp && canRename(user, levelUp.level) ? () => { setLevelUp(null); openProfile(true); } : undefined} />
       <ProfileModal
         open={showProfile} onClose={() => { setShowProfile(false); setProfileEdit(false); }}
         startEditing={profileEdit} userId={playerId} onSaveName={savePlayerName}

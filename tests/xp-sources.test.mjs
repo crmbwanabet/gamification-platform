@@ -156,6 +156,6 @@ test('xpSourceLines reflect the constants and the season config', () => {
     '1 XP per K4 on settled slips (odds 1.5+)',
     '30 XP',
     'daily reward 20 XP, games 1 XP per coin, missions 10 to 30 XP (up to 60 a day)',
-    "400 XP a day, 2,000 a week; extra XP stocks Vuma's side hustle",
+    "400 XP a day, 2,000 a week; extra XP stocks your side quest",
   ]);
 });

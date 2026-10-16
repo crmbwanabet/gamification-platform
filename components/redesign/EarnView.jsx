@@ -8,7 +8,7 @@ import { amountText } from '@/lib/rewardText.mjs';
 import { CASINO_MISSIONS } from '@/lib/data/missions';
 import { casinoMissionStates, missionTerms } from '@/lib/missions/casino.mjs';
 import { xpSourceLines } from '@/lib/xp/sources.mjs';
-import { heroName, heroText } from '@/lib/profile/name.mjs';
+import { heroName, heroText, playerName } from '@/lib/profile/name.mjs';
 import { XP_LEVELS, LEVEL_REWARDS, getLevel } from '@/lib/data/platform';
 import { Check, Lock, LogIn, RefreshCw } from 'lucide-react';
 import { getStage, getNextStage, stageProgress, STAGE_COUNT } from '@/lib/vuma/stages.mjs';
@@ -91,7 +91,7 @@ function XpChip({ xp, fontSize = 12 }) {
 
 // "How to earn XP" — the lines come from lib/xp/sources.mjs, so retuning a
 // number there updates this list too.
-function XpSources({ cfg = null, displayName = null }) {
+function XpSources({ cfg = null, displayName = null, userId = null }) {
   return (
     <Card style={{ padding: '11px 14px', marginBottom: 12 }}>
       <div style={{ fontFamily: CANDY.display, textTransform: 'uppercase', fontSize: 16, color: CANDY.gold, letterSpacing: '.03em', marginBottom: 7 }}>How to earn XP</div>
@@ -99,7 +99,7 @@ function XpSources({ cfg = null, displayName = null }) {
         {xpSourceLines(cfg || undefined).map(l => (
           <li key={l.id} style={{ display: 'flex', alignItems: 'baseline', gap: 6, fontSize: 12, lineHeight: 1.35 }}>
             <span style={{ color: XP_COLOR, flex: 'none' }}>⚡</span>
-            <span><b style={{ color: C.text, fontWeight: 800 }}>{l.title}</b><span style={{ color: C.sub }}> — {heroText(l.text, displayName)}</span></span>
+            <span><b style={{ color: C.text, fontWeight: 800 }}>{l.title}</b><span style={{ color: C.sub }}> — {heroText(l.text, displayName, userId)}</span></span>
           </li>
         ))}
       </ul>
@@ -110,13 +110,13 @@ function XpSources({ cfg = null, displayName = null }) {
 // Stage milestones: Vuma Katongo's story stages (levels = stages since
 // 2026-10-08). The streak bonuses that used to sit above them were removed
 // 2026-10-07 — parked/components/GamificationPlatform.removed-wiring.jsx.
-function RewardsSection({ xp = 0, levelRewards = null, seasonCfg = null, displayName = null }) {
+function RewardsSection({ xp = 0, levelRewards = null, seasonCfg = null, displayName = null, userId = null }) {
   const curLevel = getLevel(xp).level;
   const lvlRewards = levelRewards || LEVEL_REWARDS;
   return (
     <section>
       <SectionTitle>Stage milestones</SectionTitle>
-      <div className="ev-xp-sources"><XpSources cfg={seasonCfg} displayName={displayName} /></div>
+      <div className="ev-xp-sources"><XpSources cfg={seasonCfg} displayName={displayName} userId={userId} /></div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         {XP_LEVELS.filter(l => lvlRewards[l.level]).map(l => (
           <MilestoneRow key={l.level}
@@ -206,8 +206,8 @@ function MissionRow({ s, i = 0, loggedIn, onOpen, onClaim }) {
 // Desktop-only right column: the hero's current scene (named after the
 // player, "Vuma" when unnamed), XP to the next stage,
 // the next three stage rewards and how to earn XP.
-function VumaRoad({ xp = 0, levelRewards = null, seasonCfg = null, displayName = null }) {
-  const hero = heroName(displayName);
+function VumaRoad({ xp = 0, levelRewards = null, seasonCfg = null, displayName = null, userId = null, onEditName }) {
+  const hero = heroName(displayName, userId);
   const cur = getStage(xp);
   const next = getNextStage(xp);
   const rewards = levelRewards || LEVEL_REWARDS;
@@ -216,6 +216,13 @@ function VumaRoad({ xp = 0, levelRewards = null, seasonCfg = null, displayName =
   return (
     <div className="ev-vuma">
       <SectionTitle right={<TitleNote>Stage {cur.stage} of {STAGE_COUNT}</TitleNote>}>{hero}&apos;s road</SectionTitle>
+      {!playerName({ displayName }) && onEditName && (
+        <button type="button" onClick={onEditName} className="ev-name-invite"
+          style={{ all: 'unset', boxSizing: 'border-box', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, width: '100%', minHeight: 44, margin: '-4px 0 12px', padding: '6px 6px 6px 12px', borderRadius: 14, background: C.track, border: `2px solid ${CANDY.violet.dark}` }}>
+          <span style={{ fontSize: 13, fontWeight: 800, color: C.text }}>Make this road yours: add your name</span>
+          <span style={{ flex: 'none', padding: '8px 12px', borderRadius: 10, fontWeight: 900, fontSize: 13, color: '#fff', background: `linear-gradient(180deg, ${CANDY.green.light}, ${CANDY.green.fill})` }}>Add name ›</span>
+        </button>
+      )}
       <Card style={{ overflow: 'hidden' }}>
         <img src={cur.hero} alt={`${hero} at ${cur.name}`} style={{ width: '100%', display: 'block', aspectRatio: '10 / 9', objectFit: 'cover' }} />
         <div style={{ padding: '16px 18px 18px', display: 'grid', gap: 12, marginTop: -62, position: 'relative', background: `linear-gradient(180deg, transparent, ${C.panelLo} 62px)` }}>
@@ -245,7 +252,7 @@ function VumaRoad({ xp = 0, levelRewards = null, seasonCfg = null, displayName =
           <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 5 }}>
             {xpSourceLines(seasonCfg || undefined).map(l => (
               <li key={l.id} style={{ fontSize: 12, lineHeight: 1.35, color: C.muted }}>
-                <b style={{ color: C.text, fontWeight: 800 }}>{l.title}</b> — {heroText(l.text, displayName)}
+                <b style={{ color: C.text, fontWeight: 800 }}>{l.title}</b> — {heroText(l.text, displayName, userId)}
               </li>
             ))}
           </ul>
@@ -292,10 +299,10 @@ export default function EarnView({ wallet = null, xp = 0, onNavigate, onOpenProf
             </div>
           )}
         </section>
-        <VumaRoad xp={xp} levelRewards={levelRewards} seasonCfg={season?.cfg} displayName={displayName} />
+        <VumaRoad xp={xp} levelRewards={levelRewards} seasonCfg={season?.cfg} displayName={displayName} userId={userId} onEditName={onEditName} />
       </div>
       <div id="missions-rewards" style={{ marginTop: 26, scrollMarginTop: 12, maxWidth: 720 }}>
-        <RewardsSection xp={xp} levelRewards={levelRewards} seasonCfg={season?.cfg} displayName={displayName} />
+        <RewardsSection xp={xp} levelRewards={levelRewards} seasonCfg={season?.cfg} displayName={displayName} userId={userId} />
       </div>
     </RedesignShell>
   );
