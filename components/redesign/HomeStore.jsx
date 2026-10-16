@@ -10,7 +10,8 @@ import { IMAGES } from '@/lib/data/images';
 import { canAfford, cleanReward, coinsToKwacha, formatKwacha, formatNumber } from '@/lib/economy/currency.mjs';
 import { splitCatalog, nextPackGoal } from '@/lib/store/catalog.mjs';
 
-// Home store panel ("Cash out coins", Coins & Store redesign 2026-10-14): a
+// Home store panel ("COIN SHOP", was "Cash out coins"; a rate plate on the
+// banner art says "10,000 COINS / BUYS / K1.00" from economy.coinsPerKwacha; Coins & Store redesign 2026-10-14): a
 // BwanaBet banner with the balance, its kwacha worth and a meter toward the
 // next pack the player can't afford yet, then the kwacha packs as tiles. Same
 // catalog (splitCatalog), same buy handler + busy id as the Store tab
@@ -38,6 +39,11 @@ const HS_CSS = `
   .hs-goal { display: flex; flex-direction: column; gap: 6px; }
   .hs-goal-text { font-size: 12px; font-weight: 800; color: #F1E8FF; white-space: nowrap; }
   .hs-d { display: none; }
+  .hs-rate { position: absolute; right: 12px; bottom: 50px; z-index: 1; padding: 6px 10px 7px; border-radius: 14px; text-align: center; line-height: 1;
+    background: rgba(20,6,44,.82); border: 2px solid #FFD21F; box-shadow: 0 0 0 1.5px #2A0A4F, 0 6px 16px rgba(0,0,0,.45); font-family: ${CANDY.display}; color: #fff; }
+  .hs-rate b { display: block; font-weight: 400; font-size: 15px; }
+  .hs-rate i { display: block; font-style: normal; font-size: 11px; letter-spacing: .14em; color: #FFD21F; margin: 3px 0 2px; }
+  .hs-rate strong { display: block; font-weight: 400; font-size: 24px; color: #FEF200; text-shadow: 0 2px 0 #2A0A4F; }
 
   .hs-grid { padding: 12px; display: flex; flex-direction: column; gap: 8px; }
   .hs-tile { box-sizing: border-box; min-width: 0; display: grid; grid-template-columns: 64px minmax(0, 1fr) auto;
@@ -72,6 +78,9 @@ const HS_CSS = `
     .hs-bal { margin-top: 0; gap: 10px; }
     .hs-num { font-size: 28px; }
     .hs-sub { font-size: 14px; }
+    .hs-rate { right: 26px; bottom: auto; top: 68px; padding: 6px 14px 7px; }
+    .hs-rate b { font-size: 18px; }
+    .hs-rate strong { font-size: 30px; }
     .hs-goal { flex-direction: row; align-items: center; gap: 10px; max-width: 360px; }
     .hs-d { display: inline; }
     .hs-m { display: none; }
@@ -139,17 +148,19 @@ export default function HomeStore({ storeItems, wallet, onBuy, busyId = null, on
   const balances = balancesOf(wallet);
   const coins = balances.kwacha;
   const worth = formatKwacha(coinsToKwacha(coins, wallet?.economy));
+  const rate = Number(wallet?.economy?.coinsPerKwacha) || 10000;
   const goal = packs.length ? nextPackGoal(coinPacks, coins) : null;
   return (
     <section className={`hs-panel ${className}`} aria-labelledby="hs-title">
       <style dangerouslySetInnerHTML={{ __html: BB_CSS + HS_CSS }} />
       <div className="hs-banner">
         <div className="hs-shade" aria-hidden />
+        <div className="hs-rate"><b>{formatNumber(rate)} COINS</b><i>BUYS</i><strong>K1.00</strong></div>
         <div className="hs-body">
           <div className="hs-top">
             <div className="hs-titles">
               <img src={STORE_ART.logo} alt="BwanaBet" className="hs-logo" />
-              <h2 id="hs-title" className="hs-title">Cash out coins</h2>
+              <h2 id="hs-title" className="hs-title">COIN SHOP</h2>
             </div>
             <button type="button" className="bb-link hs-link" onClick={onSeeAll}>
               <span className="hs-d">See store ›</span><span className="hs-m">Store ›</span>

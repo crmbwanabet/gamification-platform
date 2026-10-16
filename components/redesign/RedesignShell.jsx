@@ -5,7 +5,7 @@ import { X, Pencil } from 'lucide-react';
 import { C, CANDY, COIN_ICON, APP_BG, VIOLET_EDGE, VIOLET_BASE, goldTitle, violetCard, goldRim, dotRow } from './tokens';
 import NavIcon from './NavIcons';
 import StoryBubble, { STORY_CSS } from './StoryBubble';
-import BonusIntro from './BonusIntro';
+import BonusIntro, { BonusCenterTitle } from './BonusIntro';
 import CandyButton, { CANDY_BTN_CSS } from '../games/candy/CandyButton';
 import { getLevel, getNextLevel, getXPProgress } from '@/lib/data/platform';
 import { GEMS, GEM_LABEL, gemCoins, gemKwacha, coinsToKwacha, economyRates, formatKwacha, formatNumber } from '@/lib/economy/currency.mjs';
@@ -393,7 +393,7 @@ export default function RedesignShell({
       <TopBar lvl={lvl} nextLvl={nextLvl} xpPct={xpPct} xpFx={xpFx} activeTab={activeTab} onNavigate={onNavigate} onOpenProfile={onOpenProfile}
         userId={userId} displayName={displayName} onEditName={onEditName} wallet={wallet || { kwacha: 0 }} onOpenWallet={() => setWalletOpen(true)} navBadges={navBadges}
         story={walletOpen ? null : story} onStoryOpen={onStoryOpen} onStoryClose={onStoryClose} />
-      <main className="rs-main">{intro && <BonusIntro stage={lvl.level} {...intro} />}{children}</main>
+      <main className="rs-main"><BonusCenterTitle />{intro && <BonusIntro stage={lvl.level} {...intro} />}{children}</main>
       <nav className="rs-bottomnav" aria-label="Main">
         <NavTabs active={activeTab} onNavigate={onNavigate} navBadges={navBadges} place="bottom" />
       </nav>

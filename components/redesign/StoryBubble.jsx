@@ -104,7 +104,7 @@ export default function StoryBubble({ mode, onOpen, onClose, level = null }) {
         <div style={{ position: 'relative', display: 'flex', alignItems: 'flex-start', gap: 8 }}>
           <div id="rs-story-title" style={{ flex: 1, margin: '2px 0 0' }}>
             <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: 0.6, textTransform: 'uppercase', color: '#6B4E8C' }}>League level</div>
-            <h2 style={{ margin: '0 0 4px', fontFamily: CANDY.display, fontWeight: 400, fontSize: 24, lineHeight: 1.05, color: INK, letterSpacing: 0.4 }}>{level?.league || 'Village football'}</h2>
+            <h2 style={{ margin: '0 0 4px', fontFamily: CANDY.display, textTransform: 'uppercase', fontWeight: 400, fontSize: 24, lineHeight: 1.05, color: INK, letterSpacing: 0.4 }}>{level?.league || 'Village football'}</h2>
             <div style={{ fontSize: 14, fontWeight: 800, color: INK_TEXT }}>Status: <span style={{ fontFamily: CANDY.display, fontWeight: 400, fontSize: 17, color: CANDY.red.fill, letterSpacing: 0.3 }}>{level?.status || 'Street Kid'}</span></div>
           </div>
           <button ref={closeRef} type="button" onClick={onClose} aria-label="Close your story" className="rs-sb-x"

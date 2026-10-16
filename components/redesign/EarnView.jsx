@@ -6,7 +6,7 @@ import RedesignShell, { GreenBtn, SectionTitle, TitleNote, Card, Thumb, Badge, P
 import { IMAGES } from '@/lib/data/images';
 import { amountText } from '@/lib/rewardText.mjs';
 import { CASINO_MISSIONS } from '@/lib/data/missions';
-import { casinoMissionStates } from '@/lib/missions/casino.mjs';
+import { casinoMissionStates, missionTerms } from '@/lib/missions/casino.mjs';
 import { xpSourceLines } from '@/lib/xp/sources.mjs';
 import { heroName, heroText } from '@/lib/profile/name.mjs';
 import { XP_LEVELS, LEVEL_REWARDS, getLevel } from '@/lib/data/platform';
@@ -72,7 +72,7 @@ function MilestoneRow({ icon, title, sub, reward, reached, current }) {
     <Card style={{ padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 12, borderRadius: 18, ...(current ? { borderColor: CANDY.gold } : null), opacity: reached || current ? 1 : 0.85 }}>
       <div style={{ width: 38, height: 38, flex: 'none', borderRadius: 10, overflow: 'hidden', background: C.track, display: 'grid', placeItems: 'center', fontSize: 20 }}>{icon}</div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontFamily: CANDY.display, fontSize: 16, lineHeight: 1.15, color: C.text }}>{title}</div>
+        <div style={{ fontFamily: CANDY.display, textTransform: 'uppercase', fontSize: 16, lineHeight: 1.15, color: C.text }}>{title}</div>
         {sub && <div style={{ fontSize: 11, color: C.muted }}>{sub}</div>}
       </div>
       <RewardChips r={reward} />
@@ -94,7 +94,7 @@ function XpChip({ xp, fontSize = 12 }) {
 function XpSources({ cfg = null, displayName = null }) {
   return (
     <Card style={{ padding: '11px 14px', marginBottom: 12 }}>
-      <div style={{ fontFamily: CANDY.display, fontSize: 16, color: CANDY.gold, letterSpacing: '.03em', marginBottom: 7 }}>How to earn XP</div>
+      <div style={{ fontFamily: CANDY.display, textTransform: 'uppercase', fontSize: 16, color: CANDY.gold, letterSpacing: '.03em', marginBottom: 7 }}>How to earn XP</div>
       <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 5 }}>
         {xpSourceLines(cfg || undefined).map(l => (
           <li key={l.id} style={{ display: 'flex', alignItems: 'baseline', gap: 6, fontSize: 12, lineHeight: 1.35 }}>
@@ -176,9 +176,10 @@ function MissionRow({ s, i = 0, loggedIn, onOpen, onClaim }) {
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3, minWidth: 0 }}>
-              <span style={{ fontFamily: CANDY.display, fontSize: 17, lineHeight: 1.15, color: C.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.name}</span>
+              <span style={{ fontFamily: CANDY.display, fontSize: 17, lineHeight: 1.15, color: C.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textTransform: 'uppercase' }}>{m.name}</span>
               <Badge bg={d.c} color="#130f1f">{d.label}</Badge>
             </div>
+            <div style={{ fontSize: 12.5, fontWeight: 900, letterSpacing: '.02em', color: '#fff', margin: '0 0 5px' }}>{missionTerms(m)}</div>
             <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', columnGap: 10, rowGap: 4 }}>
               <CurrencyAmounts r={m.reward} size={14} fontSize={12} gap={8} />
               {m.xp ? <XpChip xp={m.xp} /> : null}
@@ -218,7 +219,7 @@ function VumaRoad({ xp = 0, levelRewards = null, seasonCfg = null, displayName =
       <Card style={{ overflow: 'hidden' }}>
         <img src={cur.hero} alt={`${hero} at ${cur.name}`} style={{ width: '100%', display: 'block', aspectRatio: '10 / 9', objectFit: 'cover' }} />
         <div style={{ padding: '16px 18px 18px', display: 'grid', gap: 12, marginTop: -62, position: 'relative', background: `linear-gradient(180deg, transparent, ${C.panelLo} 62px)` }}>
-          <div style={{ fontFamily: CANDY.display, fontSize: 24, color: C.text, textShadow: '0 2px 8px #000' }}>{cur.name}</div>
+          <div style={{ fontFamily: CANDY.display, textTransform: 'uppercase', fontSize: 24, color: C.text, textShadow: '0 2px 8px #000' }}>{cur.name}</div>
           {next ? (
             <>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, fontWeight: 700, flexWrap: 'wrap' }}>

@@ -39,7 +39,7 @@ function GameCard({ g, free, onPlay }) {
         {g.isNew && <span style={{ position: 'absolute', top: 6, left: 6 }}><Badge bg={CANDY.red.fill} color="#fff">New</Badge></span>}
       </span>
       <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, padding: '8px 10px 9px', background: `linear-gradient(180deg, ${C.panelHi}, ${C.panelLo})` }}>
-        <span className="rs-game-name" style={{ fontFamily: CANDY.display, lineHeight: 1.1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{g.name}</span>
+        <span className="rs-game-name" style={{ fontFamily: CANDY.display, textTransform: 'uppercase', lineHeight: 1.1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{g.name}</span>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, flex: 'none', fontSize: 11, fontWeight: 900, color: CANDY.gold }}>
           {(g.stakeOnly || out) && <RewardIcon kind="coins" size={13} />}{note}
         </span>

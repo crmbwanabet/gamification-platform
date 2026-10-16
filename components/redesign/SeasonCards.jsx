@@ -220,42 +220,25 @@ function RegularMatchCard({ season, compact = false, onClaimLeague, link = null 
   const m = currentMatch(season);
   const note = feedNote(season.status);
   if (!m) {
+    // Locked until the first club (league unlockStage, 6): greyed out on the
+    // village mud pitch, no link into the season (2026-10-16).
     const first = VUMA_STAGES[(season.cfg?.league?.unlockStage || 6) - 1];
     const pct = Math.min(100, (season.xp / first.xp) * 100);
-    if (compact) {
-      return (
-        <PitchCard footer={(note || link) ? <><Note text={note} />{link}</> : null}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-            <span className="pitch-kicker">League matches</span>
-            <Chip status="locked" />
-          </div>
-          <PitchCentre>
-            <div className="pitch-plate" style={{ display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left' }}>
-              <img src={first.avatar} alt="" width={48} height={48} style={{ width: 48, height: 48, borderRadius: 12, objectFit: 'cover', filter: 'grayscale(.5)', flex: 'none' }} />
-              <div style={{ minWidth: 0 }}>
-                <div style={{ fontFamily: CANDY.display, fontSize: 18, lineHeight: 1.15 }}>First club: {first.club}</div>
-                <div style={{ fontSize: 12, color: C.sub }}>Stage {first.stage} · {fmt(first.xp - season.xp)} XP to go</div>
-              </div>
-            </div>
-          </PitchCentre>
-          <PitchProgress pct={pct} left={`${fmt(season.xp)} / ${fmt(first.xp)} XP`} />
-        </PitchCard>
-      );
-    }
-    return (
-      <Card style={{ padding: compact ? 14 : 16 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <img src={first.avatar} alt="" width={48} height={48} style={{ width: 48, height: 48, borderRadius: 12, objectFit: 'cover', filter: 'grayscale(.5)', flex: 'none' }} />
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 11, fontWeight: 900, color: C.muted, textTransform: 'uppercase', letterSpacing: '.06em' }}>League matches</div>
-            <div style={{ fontFamily: CANDY.display, fontSize: 18, lineHeight: 1.15 }}>First club: {first.club}</div>
-            <div style={{ fontSize: 12, color: C.sub }}>Stage {first.stage} · {fmt(first.xp - season.xp)} XP to go</div>
-          </div>
+    const lockedPlate = (
+      <div className="pitch-plate is-dim" style={{ display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left' }}>
+        <span style={{ width: 44, height: 44, borderRadius: 12, display: 'grid', placeItems: 'center', background: 'rgba(255,255,255,.08)', flex: 'none' }}><Lock size={22} /></span>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontFamily: CANDY.display, fontSize: 18, lineHeight: 1.15, textTransform: 'uppercase' }}>Matches open at stage {first.stage}</div>
+          <div style={{ fontSize: 12, color: C.sub }}>{fmt(first.xp - season.xp)} XP to go</div>
         </div>
-        <div style={{ marginTop: 10 }}><Progress value={pct} height={12} /></div>
-        <Note text={note} />
-        {link}
-      </Card>
+      </div>
+    );
+    return (
+      <PitchCard mud locked footer={note ? <Note text={note} /> : null}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end' }}><Chip status="locked" /></div>
+        <PitchCentre>{lockedPlate}</PitchCentre>
+        <PitchProgress pct={pct} left={`${fmt(season.xp)} / ${fmt(first.xp)} XP`} />
+      </PitchCard>
     );
   }
   return <MatchBody m={{ ...m, hero: season.heroName }} compact={compact} note={note} onClaimLeague={onClaimLeague} link={link} />;
@@ -295,13 +278,23 @@ const PITCH_CSS = `
 .pitch-bar{margin-top:12px;padding:9px 10px 10px;border-radius:14px;background:rgba(14,4,32,.78);border:1.5px solid rgba(255,255,255,.12)}
 .pitch-foot{padding:2px 14px 10px;background:${C.panelLo}}
 @media (min-width:861px){.pitch-mid::after{width:148px;height:148px}}
+.pitch.is-mud{background:
+ radial-gradient(130% 90% at 50% 50%, transparent 55%, rgba(40,18,6,.7) 100%),
+ radial-gradient(18% 10% at 22% 30%, rgba(60,30,10,.45), transparent 70%),
+ radial-gradient(14% 9% at 74% 66%, rgba(60,30,10,.4), transparent 70%),
+ radial-gradient(22% 12% at 60% 20%, rgba(230,190,130,.22), transparent 70%),
+ radial-gradient(20% 12% at 30% 78%, rgba(230,190,130,.18), transparent 70%),
+ linear-gradient(180deg, #8a5a2e 0%, #a0703c 45%, #7b4d25 100%)}
+.pitch.is-mud .pitch-lines,.pitch.is-mud .pitch-lines::before,.pitch.is-mud .pitch-lines::after,.pitch.is-mud .pitch-mid::after{border-color:rgba(255,236,200,.35);border-style:dashed}
+.pitch.is-mud .pitch-mid::before{background:rgba(255,236,200,.35)}
+.pitch.is-locked .pitch-body{filter:grayscale(1);opacity:.78}
 `;
 
-function PitchCard({ children, footer = null, gold = false }) {
+function PitchCard({ children, footer = null, gold = false, mud = false, locked = false }) {
   return (
     <Card style={{ padding: 0, overflow: 'hidden', ...(gold ? { borderColor: CANDY.gold } : null) }}>
       <style dangerouslySetInnerHTML={{ __html: SEASON_CSS + PITCH_CSS }} />
-      <div className="pitch" data-pitch>
+      <div className={`pitch${mud ? ' is-mud' : ''}${locked ? ' is-locked' : ''}`} data-pitch aria-disabled={locked || undefined}>
         <span className="pitch-lines" aria-hidden />
         <div className="pitch-body">{children}</div>
       </div>
@@ -591,7 +584,7 @@ export function LeagueRecord({ league, onClaim }) {
   return (
     <Card style={{ padding: '12px 14px' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
-        <div style={{ fontFamily: CANDY.display, fontSize: 17 }}>League record</div>
+        <div style={{ fontFamily: CANDY.display, textTransform: 'uppercase', fontSize: 17 }}>League record</div>
         <div data-league-record style={{ display: 'flex', gap: 10, fontSize: 13, fontWeight: 900, fontVariantNumeric: 'tabular-nums' }}>
           <span style={{ color: C.green }}>W {r.won}</span><span style={{ color: '#ff8a80' }}>L {r.lost}</span><span style={{ color: CANDY.gold }}>{r.points} pts</span>
         </div>
@@ -631,7 +624,7 @@ export function WorldCupPath({ worldCup, cfg, prize, onClaim, onClaimPrize, priz
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <span style={{ width: 46, height: 46, flex: 'none', borderRadius: 12, display: 'grid', placeItems: 'center', background: C.track }}><Lock size={20} color={CANDY.gold} /></span>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontFamily: CANDY.display, fontSize: 18, lineHeight: 1.15 }}>World Cup with Zambia</div>
+            <div style={{ fontFamily: CANDY.display, textTransform: 'uppercase', fontSize: 18, lineHeight: 1.15 }}>World Cup with Zambia</div>
             <div data-wc-teaser style={{ fontSize: 12.5, color: C.sub, fontWeight: 700 }}>Reach {unlockStage.name} to play for Zambia</div>
           </div>
         </div>
@@ -648,7 +641,7 @@ export function WorldCupPath({ worldCup, cfg, prize, onClaim, onClaimPrize, priz
   return (
     <Card style={{ padding: 12 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, margin: '2px 4px 10px' }}>
-        <div style={{ fontFamily: CANDY.display, fontSize: 17 }}>Zambia at the World Cup</div>
+        <div style={{ fontFamily: CANDY.display, textTransform: 'uppercase', fontSize: 17 }}>Zambia at the World Cup</div>
         {worldCup.champion ? <Badge bg={CANDY.gold}>Champions</Badge> : worldCup.eliminated ? <Badge bg={C.red} color="#fff">Knocked out</Badge> : null}
       </div>
       <ol style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 7 }}>
@@ -660,7 +653,7 @@ export function WorldCupPath({ worldCup, cfg, prize, onClaim, onClaimPrize, priz
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span style={{ flex: 1, minWidth: 0 }}>
                   <span style={{ display: 'block', fontSize: 10.5, fontWeight: 900, color: C.muted, textTransform: 'uppercase', letterSpacing: '.05em' }}>{r.label} · {shortDay(r.start)}–{shortDay(r.end)}</span>
-                  <span style={{ display: 'block', fontFamily: CANDY.display, fontSize: 15.5, lineHeight: 1.2 }}>Zambia vs {r.opponent}</span>
+                  <span style={{ display: 'block', fontFamily: CANDY.display, textTransform: 'uppercase', fontSize: 15.5, lineHeight: 1.2 }}>Zambia vs {r.opponent}</span>
                 </span>
                 {r.claimable
                   ? <GreenBtn size={14} onClick={(e) => onClaim && onClaim(r.id, e.currentTarget)} style={{ minHeight: 40, padding: '0 12px', marginBottom: 4 }}>+{fmt(r.bonus)}</GreenBtn>
@@ -722,7 +715,7 @@ export function HustleCard({ hustle, onCollect, busy = false, hero = HERO_DEFAUL
       <Card style={{ padding: 14, display: 'flex', alignItems: 'center', gap: 12 }}>
         <span style={{ fontSize: 30 }}>🧽</span>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontFamily: CANDY.display, fontSize: 17 }}>{hero || HERO_DEFAULT}&apos;s side hustle</div>
+          <div style={{ fontFamily: CANDY.display, fontSize: 17, textTransform: 'uppercase' }}>Side quest</div>
           <div style={{ fontSize: 12, color: C.sub }}>Opens at stage 2. Claim your daily reward to get there.</div>
         </div>
       </Card>
@@ -736,8 +729,8 @@ export function HustleCard({ hustle, onCollect, busy = false, hero = HERO_DEFAUL
       <div style={{ display: 'grid', gridTemplateColumns: '112px minmax(0,1fr)', gap: 12, alignItems: 'center' }}>
         <HustleArt hustle={hustle} h={104} hero={hero} />
         <div style={{ minWidth: 0 }}>
-          <div style={{ fontSize: 10.5, fontWeight: 900, color: C.muted, textTransform: 'uppercase', letterSpacing: '.06em' }}>Side hustle · Level {L.level}</div>
-          <div style={{ fontFamily: CANDY.display, fontSize: 17, lineHeight: 1.15 }}>{heroText(L.name, hero)}</div>
+          <div style={{ fontSize: 10.5, fontWeight: 900, color: C.muted, textTransform: 'uppercase', letterSpacing: '.06em' }}>Side quest · Level {L.level}</div>
+          <div style={{ fontFamily: CANDY.display, textTransform: 'uppercase', fontSize: 17, lineHeight: 1.15 }}>{heroText(L.name, hero)}</div>
           <div style={{ fontSize: 12, color: C.sub, marginTop: 2 }}>Pays {fmt(L.pay)} coins a day</div>
           <div style={{ marginTop: 8 }}>
             {hustle.ready > 0
@@ -755,7 +748,7 @@ export function HustleCard({ hustle, onCollect, busy = false, hero = HERO_DEFAUL
             <span>Next: {heroText(next.name, hero)}</span><span style={{ fontVariantNumeric: 'tabular-nums' }}>{fmt(hustle.toNext)} XP stock to go</span>
           </div>
           <Progress value={stockPct} height={8} color="linear-gradient(180deg, #7BE34F, #43C21A)" />
-          <div style={{ fontSize: 10.5, color: C.muted, marginTop: 4 }}>XP over the daily and weekly limits stocks the hustle.</div>
+          <div style={{ fontSize: 10.5, color: C.muted, marginTop: 4 }}>XP over the daily and weekly limits stocks the side quest.</div>
         </div>
       )}
     </Card>

@@ -6,6 +6,7 @@ import { C } from '../redesign/tokens';
 import { Badge, Progress, GreenBtn, CurrencyAmounts } from '../redesign/RedesignShell';
 import { amountText, rewardParts } from '@/lib/rewardText.mjs';
 import { IMAGES } from '../../lib/data/images';
+import { missionTerms } from '@/lib/missions/casino.mjs';
 
 import { MISSION_DIFF as DIFF, trackingNote } from '../redesign/EarnView';
 
@@ -78,8 +79,8 @@ export default function MissionDetailModal({ mission, progress, done, claimable 
 
         <div style={{ padding: '16px 18px 18px' }}>
           {/* Title */}
-          <h2 style={{ margin: '0 0 3px', fontSize: 20, fontWeight: 800, color: C.text, letterSpacing: '-.01em' }}>{mission.name}</h2>
-          <p style={{ margin: '0 0 14px', fontSize: 13.5, color: C.sub }}>{mission.desc}</p>
+          <h2 style={{ margin: '0 0 3px', fontSize: 20, fontWeight: 800, color: C.text, letterSpacing: '-.01em', textTransform: 'uppercase' }}>{mission.name}</h2>
+          <p style={{ margin: '0 0 14px', fontSize: 14, fontWeight: 900, color: C.text }}>{missionTerms(mission)}</p>
 
           {/* Progress */}
           <div style={{ marginBottom: 14 }}>

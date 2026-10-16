@@ -118,14 +118,14 @@ const ST_CSS = `
   .st-hero-shade { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(31,8,68,.95) 0%, rgba(31,8,68,.6) 42%, rgba(31,8,68,0) 70%); }
   .st-hero-body { position: relative; box-sizing: border-box; width: 100%; max-width: 534px; padding: 24px 32px; display: flex; flex-direction: column; gap: 12px; }
   .st-hero-logo { height: 26px; width: auto; align-self: flex-start; display: block; }
-  .st-hero-title { margin: 0; font-size: 40px; line-height: 1; color: #FFD21F; text-shadow: 0 4px 0 #2A0A4F; }
+  .st-hero-title { margin: 0; text-transform: uppercase; font-size: 40px; line-height: 1; color: #FFD21F; text-shadow: 0 4px 0 #2A0A4F; }
   .st-hero-bal { display: flex; align-items: center; gap: 12px; }
   .st-hero-coin { filter: drop-shadow(0 6px 10px rgba(20,4,48,.6)); }
   .st-hero-num { font-size: 40px; line-height: 1; color: #fff; text-shadow: 0 3px 0 #2A0A4F; }
   .st-hero-sub { font-size: 15px; font-weight: 800; color: #E4D8F7; }
   .st-hero-goal { font-size: 14px; font-weight: 800; color: #F1E8FF; }
   .st-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
-  .st-h2 { margin: 0; font-size: 28px; line-height: 1.05; color: #FFD21F; text-shadow: 0 3px 0 #2A0A4F; }
+  .st-h2 { margin: 0; text-transform: uppercase; font-size: 28px; line-height: 1.05; color: #FFD21F; text-shadow: 0 3px 0 #2A0A4F; }
   .st-note { font-size: 13px; font-weight: 700; color: #B9A0E6; }
   .st-packs { display: grid; grid-template-columns: repeat(auto-fill, minmax(176px, 1fr)); gap: 16px; padding-top: 12px; }
   .st-pack { position: relative; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 14px; border-radius: 22px; min-width: 0; }

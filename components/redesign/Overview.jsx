@@ -10,7 +10,7 @@ import { MatchCard, HustleCard } from './SeasonCards';
 import { useResetText } from './EarnView';
 import { amountText } from '@/lib/rewardText.mjs';
 import { CASINO_MISSIONS } from '@/lib/data/missions';
-import { casinoMissionStates } from '@/lib/missions/casino.mjs';
+import { casinoMissionStates, missionTerms } from '@/lib/missions/casino.mjs';
 import { STORE_ITEMS, MINIGAMES } from '@/lib/data/platform';
 import { splitCatalog } from '@/lib/store/catalog.mjs';
 
@@ -51,9 +51,10 @@ function MissionTeaser({ s, onOpen }) {
     <Card style={{ overflow: 'hidden' }}>
       <button type="button" className="ov-mission" onClick={() => onOpen && onOpen(m)} aria-label={`${m.name}: ${done ? m.target : s.progress} of ${m.target} casino rounds`}>
         <span style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
-          <span style={{ fontFamily: CANDY.display, fontSize: 19, lineHeight: 1.1, color: '#fff' }}>{m.name}</span>
+          <span style={{ fontFamily: CANDY.display, fontSize: 19, lineHeight: 1.1, color: '#fff', textTransform: 'uppercase' }}>{m.name}</span>
           <CurrencyAmounts r={m.reward} size={18} fontSize={14} gap={8} />
         </span>
+        <span style={{ fontSize: 13, fontWeight: 900, letterSpacing: '.02em', color: '#fff' }}>{missionTerms(m)}</span>
         {(done || s.claimable) && (
           <span>{done ? <Badge bg={C.green} color="#fff">Claimed today</Badge> : <Badge bg={CANDY.gold}>Ready to claim</Badge>}</span>
         )}
@@ -104,7 +105,7 @@ export default function Overview({ wallet = null, xp = 1200, activeTab = 'home',
 
         {season && (
           <section className="ov-season" aria-labelledby="ov-season-title">
-            <SectionTitle id="ov-season-title" right={season.league?.unlocked ? <TitleNote>W {season.league.record.won} · L {season.league.record.lost}</TitleNote> : null}>This week</SectionTitle>
+            <SectionTitle id="ov-season-title" right={season.league?.unlocked ? <TitleNote>W {season.league.record.won} · L {season.league.record.lost}</TitleNote> : null}>Football match</SectionTitle>
             <MatchCard season={season} compact onClaimLeague={onClaimLeague} onNavigate={onNavigate} />
             <HustleCard hustle={season.hustle} hero={season.heroName} onCollect={onCollectHustle} />
           </section>

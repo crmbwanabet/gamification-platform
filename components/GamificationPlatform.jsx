@@ -1252,13 +1252,10 @@ export default function GamificationPlatform() {
     const t = setTimeout(() => setStory(s => (s === 'hint' ? null : s)), 10000);
     return () => clearTimeout(t);
   }, [story, anyModalOpen]);
-  // "BONUS PANEL" intro (components/redesign/BonusIntro.jsx): shown every
-  // widget open until stage 6 (dismiss = this open only, never saved), then
-  // a collapsed header the player can expand.
-  const [introDismissed, setIntroDismissed] = useState(false);
-  const [introOpen, setIntroOpen] = useState(false);
-  const dismissIntro = useCallback(() => setIntroDismissed(true), []);
-  const toggleIntro = useCallback(() => setIntroOpen(o => !o), []);
+  // "HOW IT WORKS" panel (components/redesign/BonusIntro.jsx): null = its
+  // default (expanded below stage 6, the header from stage 6); X / GOT IT /
+  // the header set it for this widget open only, never saved.
+  const [introOpen, setIntroOpen] = useState(null);
   const openStory = useCallback(() => setStory('open'), []);
   const closeStory = useCallback(() => setStory('done'), []);
 
@@ -1976,7 +1973,7 @@ export default function GamificationPlatform() {
     story: anyModalOpen || story === 'done' ? null : story,
     onStoryOpen: openStory,
     onStoryClose: closeStory,
-    intro: { dismissed: introDismissed, onDismiss: dismissIntro, open: introOpen, onToggle: toggleIntro },
+    intro: { open: introOpen, onToggle: setIntroOpen },
   };
 
   // Claim a daily casino mission. Re-reads today's rounds from the server
