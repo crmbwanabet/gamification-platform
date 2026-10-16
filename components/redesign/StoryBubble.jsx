@@ -4,20 +4,45 @@ import React from 'react';
 import { X } from 'lucide-react';
 import { CANDY } from './tokens';
 import CandyButton from '../games/candy/CandyButton';
-import { playerName } from '@/lib/profile/name.mjs';
 
-// "My story" comic speech bubbles anchored under Vuma's header avatar.
+// "My story" comic speech bubbles anchored under the header avatar.
 // mode 'hint' = the small "My story" bubble (tap to open); 'open' = the big
-// bubble with Vuma's intro. When and how long they show is decided by
+// bubble with the player's story. When and how long they show is decided by
 // GamificationPlatform (once per widget open, hidden while a modal is open).
-// The hero carries the PLAYER's name (`displayName`); unnamed players keep
-// "Vuma Katongo".
+// The title is the current stage's level description (2026-10-16: no hero
+// name): "League Level" + "Status" from lib/vuma/stages.mjs. Stage 1 tells
+// the bottle-and-chickens opening; later stages say where the player is now.
 
-const HERO_FULL = 'Vuma Katongo';
-const storyText = (hero) => `I'm ${hero}. I grew up kicking a plastic ball in the village — no boots, just a big dream. One day I want to wear the Zambia shirt and play for the biggest clubs in the world. Every time you play, you help me train and move up. The more you play, the more you unlock: new places, new clubs, bigger rewards. Let's make it to the top together!`;
+const B = ({ children }) => <b style={{ fontWeight: 900, color: INK_TEXT }}>{children}</b>;
+const INK_TEXT = '#2A1446';
+
+function StoryBody({ level }) {
+  const first = !level || level.level <= 1;
+  const where = level ? `${level.club ? `${level.club}, ` : ''}${level.place}` : '';
+  return (
+    <>
+      <p>The game of football is your passion.</p>
+      <p>You dream of representing Zambia at the <B>WORLD CUP</B> and earning <B>MILLIONS</B> while crowds cheer your name.</p>
+      {first ? (<>
+        <p>For now, your football is an empty bottle.<br />Your pitch is the bush.<br />Your goalposts are two tied chickens.</p>
+        <p>You start your journey here.</p>
+      </>) : (
+        <p>You have come a long way. Now you play at <B>{where}</B>.</p>
+      )}
+      <h3 style={H3}>To progress</h3>
+      <p>Earn <B>XP points</B> from <B>EVERY</B> casino or sport bet.</p>
+      <p>More XP points = <B>LEVEL UP</B>: increase your skills and equipment, and win more matches.</p>
+      <p>Move to new locations and clubs. Play for famous clubs.</p>
+      <h3 style={H3}>Super XP missions</h3>
+      <p>Win decisive football matches by earning <B>XP POINTS</B> within the match game time.</p>
+      <p><B>EARN XP POINTS ON TIME</B> = score the decisive <B>GOAL</B>. Get noticed by football scouts.</p>
+    </>
+  );
+}
 
 const CREAM = '#FFF8E7';
 const INK = CANDY.outline;
+const H3 = { margin: '12px 0 4px', fontFamily: CANDY.display, fontWeight: 400, fontSize: 18, letterSpacing: 0.4, color: CANDY.red.fill, textTransform: 'uppercase' };
 
 export const STORY_CSS = `
   @keyframes rs-sb-pop { 0% { opacity: 0; transform: translateY(-6px) scale(.6); } 70% { opacity: 1; transform: translateY(0) scale(1.06); } 100% { transform: none; } }
@@ -25,6 +50,7 @@ export const STORY_CSS = `
   @keyframes rs-sb-fade { from { opacity: 0 } to { opacity: 1 } }
   .rs-sb-hint { animation: rs-sb-pop .38s cubic-bezier(.2,.9,.3,1.3) both, rs-sb-bob 2.2s ease-in-out .5s infinite; transform-origin: 22px 0; }
   .rs-sb-big { animation: rs-sb-pop .3s cubic-bezier(.2,.9,.3,1.2) both; transform-origin: 30px 0; }
+  .rs-sb-story p { margin: 0 0 8px; }
   .rs-sb-scrim { animation: rs-sb-fade .2s ease-out both; }
   .rs-sb-hint:focus-visible, .rs-sb-x:focus-visible { outline: 3px solid ${CANDY.gold}; outline-offset: 3px; }
   @media (prefers-reduced-motion: reduce) { .rs-sb-hint, .rs-sb-big, .rs-sb-scrim { animation: none !important; } }
@@ -36,8 +62,7 @@ const tail = (left) => ({
   borderTop: `3px solid ${INK}`, borderLeft: `3px solid ${INK}`, transform: 'rotate(45deg)', borderTopLeftRadius: 4,
 });
 
-export default function StoryBubble({ mode, onOpen, onClose, displayName = null }) {
-  const hero = playerName({ displayName }) || HERO_FULL;
+export default function StoryBubble({ mode, onOpen, onClose, level = null }) {
   const closeRef = React.useRef(null);
   React.useEffect(() => {
     if (mode !== 'open') return undefined;
@@ -49,7 +74,7 @@ export default function StoryBubble({ mode, onOpen, onClose, displayName = null 
 
   if (mode === 'hint') {
     return (
-      <button type="button" onClick={onOpen} className="rs-sb-hint" aria-label={`My story: read ${hero}'s story`}
+      <button type="button" onClick={onOpen} className="rs-sb-hint" aria-label="My story: read your football story"
         style={{
           position: 'absolute', top: 'calc(100% + 10px)', left: 0, zIndex: 3,
           minHeight: 44, padding: '0 16px', borderRadius: 16, cursor: 'pointer',
@@ -71,21 +96,26 @@ export default function StoryBubble({ mode, onOpen, onClose, displayName = null 
         style={{
           position: 'absolute', top: 'calc(100% + 12px)', left: 0, zIndex: 3,
           width: 'min(360px, calc(100vw - 28px))', boxSizing: 'border-box', padding: '16px 16px 10px',
+          maxHeight: 'calc(100dvh - 110px)', overflowY: 'auto', overscrollBehavior: 'contain',
           borderRadius: 22, background: CREAM, border: `3px solid ${INK}`,
           boxShadow: `0 6px 0 ${INK}, 0 18px 36px rgba(0,0,0,.5)`, color: INK, textAlign: 'left',
         }}>
         <span aria-hidden="true" style={tail(20)} />
         <div style={{ position: 'relative', display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-          <h2 id="rs-story-title" style={{ flex: 1, margin: '4px 0 0', fontFamily: CANDY.display, fontWeight: 400, fontSize: 24, lineHeight: 1.05, color: INK, letterSpacing: 0.4 }}>{hero}</h2>
-          <button ref={closeRef} type="button" onClick={onClose} aria-label={`Close ${hero}'s story`} className="rs-sb-x"
+          <div id="rs-story-title" style={{ flex: 1, margin: '2px 0 0' }}>
+            <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: 0.6, textTransform: 'uppercase', color: '#6B4E8C' }}>League level</div>
+            <h2 style={{ margin: '0 0 4px', fontFamily: CANDY.display, fontWeight: 400, fontSize: 24, lineHeight: 1.05, color: INK, letterSpacing: 0.4 }}>{level?.league || 'Village football'}</h2>
+            <div style={{ fontSize: 14, fontWeight: 800, color: INK_TEXT }}>Status: <span style={{ fontFamily: CANDY.display, fontWeight: 400, fontSize: 17, color: CANDY.red.fill, letterSpacing: 0.3 }}>{level?.status || 'Street Kid'}</span></div>
+          </div>
+          <button ref={closeRef} type="button" onClick={onClose} aria-label="Close your story" className="rs-sb-x"
             style={{ width: 44, height: 44, margin: '-8px -8px 0 0', flex: 'none', border: 'none', background: 'transparent', padding: 0, display: 'grid', placeItems: 'center', cursor: 'pointer', borderRadius: '50%' }}>
             <span style={{ width: 32, height: 32, borderRadius: '50%', display: 'grid', placeItems: 'center', color: '#fff', background: `linear-gradient(180deg, ${CANDY.red.light}, ${CANDY.red.fill})`, border: `2px solid ${INK}`, boxShadow: `0 3px 0 ${CANDY.red.dark}` }}>
               <X size={17} strokeWidth={3.25} />
             </span>
           </button>
         </div>
-        <p style={{ position: 'relative', margin: '8px 0 14px', fontFamily: CANDY.body, fontSize: 15, lineHeight: 1.5, color: '#3B2559' }}>{storyText(hero)}</p>
-        <CandyButton color="green" onClick={onClose} style={{ width: '100%', fontSize: 22, minHeight: 52 }}>Let&apos;s go!</CandyButton>
+        <div className="rs-sb-story" style={{ position: 'relative', margin: '8px 0 14px', fontFamily: CANDY.body, fontSize: 15, lineHeight: 1.45, color: '#3B2559' }}><StoryBody level={level} /></div>
+        <CandyButton color="green" onClick={onClose} style={{ width: '100%', fontSize: 22, minHeight: 52 }}>LET&apos;S GO!</CandyButton>
       </div>
     </>
   );

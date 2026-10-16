@@ -5,6 +5,7 @@ import { X, Pencil } from 'lucide-react';
 import { C, CANDY, COIN_ICON, APP_BG, VIOLET_EDGE, VIOLET_BASE, goldTitle, violetCard, goldRim, dotRow } from './tokens';
 import NavIcon from './NavIcons';
 import StoryBubble, { STORY_CSS } from './StoryBubble';
+import BonusIntro from './BonusIntro';
 import CandyButton, { CANDY_BTN_CSS } from '../games/candy/CandyButton';
 import { getLevel, getNextLevel, getXPProgress } from '@/lib/data/platform';
 import { GEMS, GEM_LABEL, gemCoins, gemKwacha, coinsToKwacha, economyRates, formatKwacha, formatNumber } from '@/lib/economy/currency.mjs';
@@ -297,7 +298,7 @@ function TopBar({ lvl, nextLvl, xpPct, xpFx, activeTab, onNavigate, onOpenProfil
             <span className="rs-addname-face"><Pencil size={12} strokeWidth={3} aria-hidden /><span className="rs-addname-t">Add name</span></span>
           </button>
         )}
-        <StoryBubble mode={story} onOpen={onStoryOpen} onClose={onStoryClose} displayName={displayName} />
+        <StoryBubble mode={story} onOpen={onStoryOpen} onClose={onStoryClose} level={lvl} />
       </div>
       <nav className="rs-topnav" aria-label="Main">
         <NavTabs active={activeTab} onNavigate={onNavigate} navBadges={navBadges} place="top" />
@@ -379,7 +380,7 @@ const SHELL_CSS = `
 export default function RedesignShell({
   xp = 0, activeTab = 'home', onNavigate, onOpenProfile, children,
   userId = null, displayName = null, onEditName, navBadges = {}, wallet = null, isWidget = false,
-  story = null, onStoryOpen, onStoryClose,
+  story = null, onStoryOpen, onStoryClose, intro = null,
 }) {
   const [walletOpen, setWalletOpen] = React.useState(false);
   // The header bar follows the XP collect animation when the platform provides it.
@@ -392,7 +393,7 @@ export default function RedesignShell({
       <TopBar lvl={lvl} nextLvl={nextLvl} xpPct={xpPct} xpFx={xpFx} activeTab={activeTab} onNavigate={onNavigate} onOpenProfile={onOpenProfile}
         userId={userId} displayName={displayName} onEditName={onEditName} wallet={wallet || { kwacha: 0 }} onOpenWallet={() => setWalletOpen(true)} navBadges={navBadges}
         story={walletOpen ? null : story} onStoryOpen={onStoryOpen} onStoryClose={onStoryClose} />
-      <main className="rs-main">{children}</main>
+      <main className="rs-main">{intro && <BonusIntro stage={lvl.level} {...intro} />}{children}</main>
       <nav className="rs-bottomnav" aria-label="Main">
         <NavTabs active={activeTab} onNavigate={onNavigate} navBadges={navBadges} place="bottom" />
       </nav>

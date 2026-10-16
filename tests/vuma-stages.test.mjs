@@ -85,3 +85,11 @@ test('every banner and avatar file exists under public/', () => {
     assert.ok(existsSync(path.join(PUBLIC, s.avatar)), s.avatar);
   }
 });
+
+test('every stage has a level description (league + status); stage 1 = Village football / Street Kid', async () => {
+  const { stageDescription } = await import('../lib/vuma/stages.mjs');
+  for (const s of VUMA_STAGES) assert.ok(s.league && s.status, `stage ${s.stage} needs league + status`);
+  assert.equal(VUMA_STAGES[0].league, 'Village football');
+  assert.equal(VUMA_STAGES[0].status, 'Street Kid');
+  assert.equal(stageDescription(VUMA_STAGES[0]), 'Village football · Street Kid');
+});
