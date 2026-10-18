@@ -32,7 +32,7 @@ export default function LevelUpModal({ levelUp, onClose, onRename, hero = HERO_D
             : <div style={{ fontSize: 64, margin: '10px 0 2px', lineHeight: 1 }}>{levelUp.icon}</div>}
           <div style={{ fontFamily: CANDY.display, textTransform: 'uppercase', fontSize: 26, lineHeight: 1.1 }}>{levelUp.name}</div>
           {levelUp.place && <div style={{ fontSize: 13.5, marginTop: 4 }}>{hero} moves to {levelUp.place}</div>}
-          <div style={{ fontSize: 12, color: C.sub, margin: '2px 0 16px' }}>Stage {levelUp.level} of {XP_LEVELS.length}</div>
+          <div style={{ fontSize: 12, color: C.sub, margin: '2px 0 16px' }}>Stage {levelUp.level} of {XP_LEVELS.length}{levelUp.title ? <> · <b style={{ color: CANDY.gold }}>{levelUp.title}</b></> : null}</div>
           {hasReward ? (
             <div style={{ background: C.track, border: `2px solid ${CANDY.violet.dark}`, borderRadius: 14, padding: '10px 14px', marginBottom: 16 }}>
               <div style={{ fontSize: 11, color: C.muted, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '.08em' }}>Rewards</div>

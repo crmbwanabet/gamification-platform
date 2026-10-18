@@ -89,13 +89,13 @@ export default function ProfileModal({ open, onClose, level, nextLevel, xpPct = 
           {/* Top: the current Vuma stage's full scene, name + chips on a bottom fade. */}
           <div style={{ position: 'relative', overflow: 'hidden', borderRadius: '18px 18px 0 0' }}>
             {level?.hero
-              ? <img src={level.hero} alt={`Stage ${level.level}: ${level.league || level.name}, ${level.status || ''}`} width={600} height={540} style={{ width: '100%', aspectRatio: '10 / 9', height: 'auto', objectFit: 'cover', display: 'block' }} />
+              ? <img src={level.hero} alt={`Stage ${level.level}: ${level.title || level.name}`} width={600} height={540} style={{ width: '100%', aspectRatio: '10 / 9', height: 'auto', objectFit: 'cover', display: 'block' }} />
               : <div style={{ width: '100%', aspectRatio: '10 / 9' }} />}
             <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, padding: '60px 18px 12px', textAlign: 'center', background: `linear-gradient(180deg, rgba(43,15,94,0) 0%, rgba(43,15,94,.8) 55%, ${CANDY.bgTop} 100%)` }}>
               <div data-profile-name style={{ fontFamily: CANDY.display, fontSize: 28, lineHeight: 1.05, color: '#fff', overflowWrap: 'anywhere', textShadow: `${textStroke(2.5, CANDY.outline)}, 0 4px 0 ${CANDY.outline}` }}>{who.title}</div>
               {who.sub && <div style={{ fontSize: 12.5, fontWeight: 800, color: 'rgba(255,255,255,.75)', marginTop: 4 }}>{who.sub}</div>}
               <div style={{ display: 'flex', justifyContent: 'center', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
-                <span style={{ fontSize: 12, fontWeight: 900, color: '#fff', background: 'rgba(20,4,48,.8)', border: `1.5px solid ${CANDY.violet.fill}`, padding: '2px 11px', borderRadius: 999 }}>Stage {stage}{level?.league ? ` · ${level.league} · ${level.status}` : ''}</span>
+                <span style={{ fontSize: 12, fontWeight: 900, color: '#fff', background: 'rgba(20,4,48,.8)', border: `1.5px solid ${CANDY.violet.fill}`, padding: '2px 11px', borderRadius: 999 }}>Stage {stage}{level?.title ? ` · ${level.title}` : ''}</span>
                 {vip?.name && <span style={{ fontSize: 12, fontWeight: 900, color: CANDY.outline, background: CANDY.gold, padding: '3px 11px', borderRadius: 999 }}>{vip.name} VIP</span>}
               </div>
             </div>
@@ -135,7 +135,7 @@ export default function ProfileModal({ open, onClose, level, nextLevel, xpPct = 
           <div style={{ padding: '14px 18px 16px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: C.sub, marginBottom: 7 }}>
               <span>Stage {level?.level} of {XP_LEVELS.length}</span>
-              <span>{nextLevel ? `Next: ${nextLevel.name}` : 'Final stage'}</span>
+              <span>{nextLevel ? `Next: ${nextLevel.title && nextLevel.title !== level?.title ? nextLevel.title : `Stage ${nextLevel.level}`}` : 'Final stage'}</span>
             </div>
             <Progress value={xpPct} height={14} />
           </div>

@@ -12,7 +12,7 @@ import { xpSourceLines } from '@/lib/xp/sources.mjs';
 import { heroName, heroText, playerName } from '@/lib/profile/name.mjs';
 import { XP_LEVELS, LEVEL_REWARDS, getLevel } from '@/lib/data/platform';
 import { Check, Lock, LogIn, RefreshCw } from 'lucide-react';
-import { getStage, getNextStage, stageProgress, STAGE_COUNT } from '@/lib/vuma/stages.mjs';
+import { getStage, getNextStage, stageProgress, nextStageLabel, STAGE_COUNT } from '@/lib/vuma/stages.mjs';
 import { SeasonSection } from './SeasonCards';
 
 const LUSAKA_OFFSET_MS = 2 * 60 * 60 * 1000;
@@ -196,13 +196,13 @@ function MissionRow({ s, i = 0, loggedIn, onOpen, onClaim }) {
 
 // Desktop-only right column: the hero's current scene (named after the
 // player, "Vuma" when unnamed), XP to the next stage,
-// the next three stage rewards and how to earn XP.
+// and how to earn XP (the next-three-stages preview was removed 2026-10-18 so
+// the story stays a surprise).
 function VumaRoad({ xp = 0, levelRewards = null, seasonCfg = null, displayName = null, userId = null, onEditName }) {
   const hero = heroName(displayName, userId);
   const cur = getStage(xp);
   const next = getNextStage(xp);
   const rewards = levelRewards || LEVEL_REWARDS;
-  const upcoming = XP_LEVELS.filter(l => l.level > cur.stage).slice(0, 3);
   const x = Math.max(0, Math.floor(Number(xp) || 0));
   return (
     <div className="ev-vuma">
@@ -222,23 +222,12 @@ function VumaRoad({ xp = 0, levelRewards = null, seasonCfg = null, displayName =
             <>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, fontWeight: 700, flexWrap: 'wrap' }}>
                 <span style={{ background: 'rgba(0,0,0,.25)', padding: '2px 9px', borderRadius: 999, color: C.text, fontVariantNumeric: 'tabular-nums' }}>{x.toLocaleString()} / {next.xp.toLocaleString()} XP</span>
-                <span style={{ color: C.muted, fontWeight: 600 }}>{(next.xp - x).toLocaleString()} XP to {next.name}</span>
+                <span style={{ color: C.muted, fontWeight: 600 }}>{(next.xp - x).toLocaleString()} XP to {nextStageLabel(cur, next)}</span>
               </div>
               <Progress value={stageProgress(x)} height={14} />
             </>
           ) : (
             <div style={{ fontSize: 13, fontWeight: 900, color: CANDY.gold }}>Final stage reached</div>
-          )}
-          {upcoming.length > 0 && (
-            <div style={{ display: 'grid', gap: 8 }}>
-              {upcoming.map(l => (
-                <div key={l.level} style={{ display: 'flex', alignItems: 'center', gap: 10, background: C.panel2, border: `1.5px solid ${CANDY.violet.dark}`, borderRadius: 12, padding: '7px 10px', fontSize: 12.5, fontWeight: 800, color: C.text }}>
-                  <img src={l.avatar} alt="" width={30} height={30} loading="lazy" style={{ width: 30, height: 30, borderRadius: 8, objectFit: 'cover', filter: 'grayscale(.6)' }} />
-                  <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.name}</span>
-                  {rewards[l.level] && <CurrencyAmounts r={rewards[l.level]} size={14} fontSize={12} gap={8} />}
-                </div>
-              ))}
-            </div>
           )}
           <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 5 }}>
             {xpSourceLines(seasonCfg || undefined).map(l => (

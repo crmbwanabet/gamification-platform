@@ -285,8 +285,8 @@ const PITCH_CSS = `
  radial-gradient(22% 12% at 60% 20%, rgba(230,190,130,.22), transparent 70%),
  radial-gradient(20% 12% at 30% 78%, rgba(230,190,130,.18), transparent 70%),
  linear-gradient(180deg, #8a5a2e 0%, #a0703c 45%, #7b4d25 100%)}
-.pitch.is-mud .pitch-lines,.pitch.is-mud .pitch-lines::before,.pitch.is-mud .pitch-lines::after,.pitch.is-mud .pitch-mid::after{border-color:rgba(255,236,200,.35);border-style:dashed}
-.pitch.is-mud .pitch-mid::before{background:rgba(255,236,200,.35)}
+/* village pitch = plain mud, no markings (2026-10-18) */
+.pitch.is-mud .pitch-lines,.pitch.is-mud .pitch-mid::before,.pitch.is-mud .pitch-mid::after{display:none}
 .pitch.is-locked .pitch-body{filter:grayscale(1);opacity:.78}
 `;
 
@@ -625,7 +625,7 @@ export function WorldCupPath({ worldCup, cfg, prize, onClaim, onClaimPrize, priz
           <span style={{ width: 46, height: 46, flex: 'none', borderRadius: 12, display: 'grid', placeItems: 'center', background: C.track }}><Lock size={20} color={CANDY.gold} /></span>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontFamily: CANDY.display, textTransform: 'uppercase', fontSize: 18, lineHeight: 1.15 }}>World Cup with Zambia</div>
-            <div data-wc-teaser style={{ fontSize: 12.5, color: C.sub, fontWeight: 700 }}>Reach {unlockStage.name} to play for Zambia</div>
+            <div data-wc-teaser style={{ fontSize: 12.5, color: C.sub, fontWeight: 700 }}>Reach stage {unlockStage.stage} to play for Zambia</div>
           </div>
         </div>
         <div style={{ display: 'flex', gap: 5, marginTop: 12, flexWrap: 'wrap' }}>

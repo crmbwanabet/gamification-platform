@@ -54,7 +54,7 @@ test('season config: clean + clamp; bad values keep the default', () => {
   const c = cleanSeasonConfig({
     id: 'S2', startDay: '2026-11-01', dailyCap: 500, weeklyCap: -5, platformDailyCap: 'x',
     crm: { casinoStakePerXp: 20, depositDayXp: 0 },
-    hustle: { levels: [{ pay: 30 }, { stock: 2000, pay: 60 }] },
+    hustle: { levels: [{ pay: 30 }, { stock: 1000, pay: 60 }] },
     league: { winXp: 1500, bonus: { zambia: 200, nope: 5 } },
     worldCup: { rounds: [{ target: 1000, bonus: 700, opponent: 'Hacked' }], prizeKwacha: 5000 },
     junk: true,
@@ -65,7 +65,7 @@ test('season config: clean + clamp; bad values keep the default', () => {
   assert.equal(c.weeklyCap, 1, 'clamped into its band');
   assert.equal(c.platformDailyCap, 60);
   assert.deepEqual(c.crm, { casinoStakePerXp: 20, sportsStakePerXp: 4, depositDayXp: 0 });
-  assert.deepEqual(c.hustle.levels.slice(0, 2).map(l => [l.stock, l.pay]), [[0, 30], [2000, 60]]);
+  assert.deepEqual(c.hustle.levels.slice(0, 2).map(l => [l.stock, l.pay]), [[0, 30], [1000, 60]]);
   assert.equal(c.league.winXp, 1500);
   assert.equal(c.league.bonus.zambia, 200);
   assert.equal(c.league.bonus.nope, undefined);

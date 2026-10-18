@@ -86,10 +86,13 @@ test('every banner and avatar file exists under public/', () => {
   }
 });
 
-test('every stage has a level description (league + status); stage 1 = Village football / Street Kid', async () => {
-  const { stageDescription } = await import('../lib/vuma/stages.mjs');
-  for (const s of VUMA_STAGES) assert.ok(s.league && s.status, `stage ${s.stage} needs league + status`);
-  assert.equal(VUMA_STAGES[0].league, 'Village football');
-  assert.equal(VUMA_STAGES[0].status, 'Street Kid');
-  assert.equal(stageDescription(VUMA_STAGES[0]), 'Village football · Street Kid');
+test('every stage has a level name; stage 1 = Village Football, stage 2 = Street Hero, 17 = International League Legend', async () => {
+  const { stageDescription, nextStageLabel } = await import('../lib/vuma/stages.mjs');
+  for (const s of VUMA_STAGES) assert.ok(s.title, `stage ${s.stage} needs a level name`);
+  assert.equal(stageDescription(VUMA_STAGES[0]), 'Village Football');
+  assert.equal(VUMA_STAGES[1].title, 'Street Hero');
+  assert.equal(VUMA_STAGES[16].title, 'International League Legend');
+  assert.equal(nextStageLabel(VUMA_STAGES[0], VUMA_STAGES[1]), 'Street Hero');
+  assert.equal(nextStageLabel(VUMA_STAGES[9], VUMA_STAGES[10]), 'stage 11'); // name repeats
+  assert.equal(nextStageLabel(VUMA_STAGES[16], null), '');
 });

@@ -1766,7 +1766,7 @@ export default function GamificationPlatform() {
       // bar crosses into the new stage first), then: ring, modal, coins.
       xpFx.whenIdle(() => {
         xpFxRef.current.ring();
-        setLevelUp({ level: lvl.level, name: lvl.name, place: lvl.place, avatar: lvl.avatar, icon: lvl.icon, reward: total });
+        setLevelUp({ level: lvl.level, name: lvl.name, title: lvl.title, place: lvl.place, avatar: lvl.avatar, icon: lvl.icon, reward: total });
         showNotif(`🎉 New stage — ${lvl.name}!`);
         triggerReward('big', null, { coins: total.kwacha || undefined, emeralds: total.emeralds || undefined, rubies: total.rubies || undefined, diamonds: total.diamonds || undefined });
       });

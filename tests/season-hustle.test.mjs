@@ -9,19 +9,25 @@ const row = (day, casino_stake) => ({ day, casino_stake });
 
 test('levels: names, stock thresholds, pay', () => {
   assert.deepEqual(SEASON_DEFAULTS.hustle.levels.map(l => [l.level, l.name, l.stock, l.pay]), [
-    [1, 'Washing cars in the compound', 0, 20],
-    [2, 'Kantemba', 1000, 50],
-    [3, "Vuma's Car Wash", 3000, 100],
-    [4, 'Minibus', 7000, 200],
-    [5, 'Vuma Mart', 15000, 400],
+    [1, 'Fried rat selling', 0, 20],
+    [2, 'Car washing', 500, 40],
+    [3, 'Chili bite trading', 1500, 60],
+    [4, 'Wheelbarrow pushing', 3000, 90],
+    [5, 'Tomato trading', 5000, 120],
+    [6, 'Bus conducting', 7500, 160],
+    [7, 'Bus driving', 10000, 200],
+    [8, 'Salaula trading', 13000, 260],
+    [9, 'Mobile money agent', 16500, 330],
+    [10, 'Kapenta trading', 20000, 400],
   ]);
   assert.equal(hustleLevelFor(0).level, 1);
-  assert.equal(hustleLevelFor(999).level, 1);
-  assert.equal(hustleLevelFor(1000).level, 2);
-  assert.equal(hustleLevelFor(14999).level, 4);
-  assert.equal(hustleLevelFor(15000).level, 5);
-  assert.equal(hustleLevelFor(1e9).level, 5);
-  assert.equal(hustleImage(3), '/vuma/hustle-3.jpg');
+  assert.equal(hustleLevelFor(499).level, 1);
+  assert.equal(hustleLevelFor(500).level, 2);
+  assert.equal(hustleLevelFor(19999).level, 9);
+  assert.equal(hustleLevelFor(20000).level, 10);
+  assert.equal(hustleLevelFor(1e9).level, 10);
+  assert.equal(hustleImage(2), '/vuma/hustle-1.jpg'); // car washing (temporary art map)
+  for (let l = 1; l <= 10; l++) assert.match(hustleImage(l), /^\/vuma\/hustle-[1-5]\.jpg$/);
 });
 
 test('locked until stage 2 (50 XP)', () => {
@@ -72,12 +78,12 @@ test('stock = cumulative overflow; each paid day uses the level reached by that 
   // overflow: Mon..Fri 160 each = 800; Sat 560 -> 1360; Sun 560 -> 1920
   assert.equal(s.overflow, 1920);
   const h = hustleState({ season: s, hustle: { lastCollectDay: addDays(MON, 4) }, today: addDays(MON, 6) });
-  assert.equal(h.level.level, 2, 'Kantemba at 1,000 stock');
+  assert.equal(h.level.level, 3, 'Chili bite trading at 1,500 stock');
   assert.equal(h.toNext, 3000 - 1920);
-  assert.equal(h.ready, 50 + 50, 'Sat (1,360 stock) and Sun both pay Kantemba');
+  assert.equal(h.ready, 40 + 60, 'Sat (1,360 stock) pays Car washing, Sun (1,920) Chili bite trading');
   const h2 = hustleState({ season: s, hustle: { lastCollectDay: addDays(MON, 3) }, today: addDays(MON, 5) });
-  // Fri stock 800 -> level 1 (20), Sat stock 1,360 -> level 2 (50)
-  assert.equal(h2.ready, 70);
+  // Fri stock 800 -> level 2 (40), Sat stock 1,360 -> level 2 (40)
+  assert.equal(h2.ready, 80);
 });
 
 test('a lastCollectDay in the future (clock skew) pays nothing', () => {
