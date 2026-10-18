@@ -15,6 +15,7 @@ import Overview from './redesign/Overview';
 import EarnView from './redesign/EarnView';
 import StoreView from './redesign/StoreView';
 import LevelUpModal from './redesign/LevelUpModal';
+import DailyRewardPopup from './redesign/DailyRewardPopup';
 import { XpFxContext, useXpCollect, XpFeedCard } from './redesign/XpCollect';
 import { feedNews, splitBarHustle } from '@/lib/xp/collect.mjs';
 import ProfileModal from './redesign/ProfileModal';
@@ -283,7 +284,7 @@ export default function GamificationPlatform() {
   }, []);
 
   // Currency fly-to-header animation
-  const spawnFlyingCoin = useCallback((fromX, fromY, type = 'coin') => {
+  const spawnFlyingCoin = useCallback((fromX, fromY, type = 'coin', countOverride = 0) => {
     // Coins fly as the K coin (CURRENCY_ICONS.coin); prize gems fly as their
     // SVG icon into their own header slot (.currency-emerald-target etc.).
     const emojis = { coin: '🪙' };
@@ -292,7 +293,7 @@ export default function GamificationPlatform() {
     const targetEl = document.querySelector(targets[type]);
     const toX = targetEl ? targetEl.getBoundingClientRect().left + 12 : window.innerWidth / 2;
     const toY = targetEl ? targetEl.getBoundingClientRect().top + 12 : 30;
-    const count = type === 'coin' ? 6 : 3;
+    const count = countOverride || (type === 'coin' ? 6 : 3);
     for (let i = 0; i < count; i++) {
       const id = ++flyIdRef.current;
       const delay = i * 80;
@@ -302,6 +303,8 @@ export default function GamificationPlatform() {
         setFlyingCoins(prev => [...prev, { id, emoji: emojis[type], icon: icons[type], fromX: startX, fromY: startY, toX, toY }]);
         setTimeout(() => {
           setFlyingCoins(prev => prev.filter(c => c.id !== id));
+          // the wallet slot pops as each coin lands in it
+          if (targetEl) { targetEl.classList.remove('reward-header-pulse'); void targetEl.offsetWidth; targetEl.classList.add('reward-header-pulse'); }
           setCoinBounce(true);
           setTimeout(() => setCoinBounce(false), 300);
         }, 700);
@@ -1246,7 +1249,10 @@ export default function GamificationPlatform() {
     return () => clearTimeout(t);
   }, []);
   const [seasonResult, setSeasonResult] = useState(null); // result-moment modal event
-  const anyModalOpen = !!activeGame || !!selectedMission || showProfile || !!levelUp || !!seasonResult;
+  // Daily reward popup (2026-10-18): idle | open | closing | done (once per widget open)
+  const [dailyPopup, setDailyPopup] = useState('idle');
+  const otherModalOpen = !!activeGame || !!selectedMission || showProfile || !!levelUp || !!seasonResult;
+  const anyModalOpen = otherModalOpen || dailyPopup === 'open' || dailyPopup === 'closing';
   useEffect(() => {
     if (story !== 'hint' || anyModalOpen) return undefined;
     const t = setTimeout(() => setStory(s => (s === 'hint' ? null : s)), 10000);
@@ -1287,6 +1293,29 @@ export default function GamificationPlatform() {
     }, 600);
     return () => clearTimeout(t);
   }, [tab, loggedIn, canClaimDaily, user.dailyClaimed, prefersReducedMotion, pageVisible, anyModalOpen, story, burstConfetti]);
+  // Daily reward POPUP: opens by itself once per widget open while today's
+  // reward is unclaimed. Logged in → waits for the saved state (so a player who
+  // already claimed never sees it); still resolving the session → waits; anonymous
+  // (allowed while REQUIRE_LOGIN_TO_CLAIM is off) → opens after the delay. Waits
+  // for any other modal and the open story bubble.
+  useEffect(() => {
+    if (dailyPopup !== 'idle' || !pageVisible || !canClaimDaily || user.dailyClaimed) return undefined;
+    if (session.status === 'loading' || (loggedIn && !hydratedRef.current)) return undefined;
+    if (otherModalOpen || story === 'open') return undefined;
+    const t = setTimeout(() => setDailyPopup(p => (p === 'idle' ? 'open' : p)), 900);
+    return () => clearTimeout(t);
+  }, [dailyPopup, pageVisible, canClaimDaily, user.dailyClaimed, session.status, loggedIn, otherModalOpen, story]);
+  // Claimed elsewhere (Home card, or hydration says already claimed) → close it.
+  // (A claim made IN the popup closes it itself, after the coins leave.)
+  const popupClaimRef = useRef(false);
+  useEffect(() => {
+    if (dailyPopup === 'open' && user.dailyClaimed && !popupClaimRef.current) setDailyPopup('closing');
+  }, [dailyPopup, user.dailyClaimed]);
+  useEffect(() => {
+    if (dailyPopup !== 'closing') return undefined;
+    const t = setTimeout(() => setDailyPopup('done'), 460);
+    return () => clearTimeout(t);
+  }, [dailyPopup]);
   // status: idle (not fetched) | ok | unavailable (feed/table down) | anon
   const [casino, setCasino] = useState({ status: 'idle', day: null, rounds: 0, updatedAt: null });
   const casinoBusyRef = useRef(false);
@@ -2021,7 +2050,7 @@ export default function GamificationPlatform() {
     }
   };
 
-  const claimDailyReward = (el) => {
+  const claimDailyReward = (el, { popup = false } = {}) => {
     // Logged in = daily reward ready; anonymous visitors can't claim (their
     // state isn't saved, and SSO hydration would overwrite the claim anyway).
     if (!canClaimDaily) { showNotif('Log in on bwanabet.com to claim', 'error'); return; }
@@ -2039,10 +2068,25 @@ export default function GamificationPlatform() {
     trackMission('dailyClaimed');
     track('daily_claimed', { amount: r.kwacha || 0 });
     showNotif(`🎉 +${rewardParts(r).join(' + ')} claimed!`);
-    triggerReward('medium', el || null, { coins: r.kwacha, emeralds: r.emeralds, rubies: r.rubies, diamonds: r.diamonds });
+    if (popup) {
+      // Popup claim: a stream of K coins pours from the CLAIM button into the
+      // header wallet (which pops as each lands) over the "+N coins" float,
+      // then the popup fades out so the wallet is in view as they land.
+      popupClaimRef.current = true;
+      const b = el?.getBoundingClientRect?.();
+      if (!prefersReducedMotion && b) {
+        const cx = b.left + b.width / 2, cy = b.top + b.height / 2;
+        if (r.kwacha) spawnFlyingCoin(cx, cy, 'coin', 12);
+        GEMS.forEach((g, gi) => { if (r[g]) setTimeout(() => spawnFlyingCoin(cx, cy, GEM_FLY[g]), 250 + gi * 200); });
+      }
+      triggerReward('small', el || null, { coins: r.kwacha, emeralds: r.emeralds, rubies: r.rubies, diamonds: r.diamonds });
+      setTimeout(() => setDailyPopup(p => (p === 'open' ? 'closing' : p)), prefersReducedMotion ? 600 : 450);
+    } else {
+      triggerReward('medium', el || null, { coins: r.kwacha, emeralds: r.emeralds, rubies: r.rubies, diamonds: r.diamonds });
+    }
     xpFx.collect({ from: el || null, amount: DAILY_LOGIN_XP, delay: 250 });
     // + a paper-confetti burst out of the daily reward card (skipped under reduced motion)
-    if (!prefersReducedMotion) {
+    if (!prefersReducedMotion && !popup) {
       dailyConfettiRef.current = true;
       burstConfetti(document.getElementById('daily-reward-card') || el, 110);
     }
@@ -2060,6 +2104,9 @@ export default function GamificationPlatform() {
     <XpFxContext.Provider value={xpFx}>
       {node}
       <XpFeedCard card={xpCard} collect={xpFx.collect} onDone={() => setXpCard(null)} />
+      <DailyRewardPopup open={dailyPopup === 'open' || dailyPopup === 'closing'} closing={dailyPopup === 'closing'}
+        onClose={() => setDailyPopup('closing')} onClaim={(el) => claimDailyReward(el, { popup: true })}
+        dailyDay={user.dailyDay} dailyClaimed={user.dailyClaimed} rewards={cfg.dailyRewards} loggedIn={canClaimDaily} />
       {xpFx.layer}
     </XpFxContext.Provider>
   );

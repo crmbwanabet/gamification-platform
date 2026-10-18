@@ -135,9 +135,10 @@ function XpStar({ size = 26 }) {
  * non-actionable "Claim tomorrow {tomorrow's coins}"; logged-out visitors get a grey log-in hint.
  * Amounts come from the remote-config table (cfg.dailyRewards), the same row
  * claimDailyReward credits: rewards[dailyDay - 1], falling back to rewards[0].
- * `id="daily-reward-card"` is where the platform aims the "reward ready" confetti.
+ * `id` (default "daily-reward-card", the Home card) is where the platform aims the
+ * "reward ready" confetti; the popup copy uses "daily-reward-popup".
  */
-export default function DailyReward({ dailyDay = 1, dailyClaimed = false, onClaim, rewards = null, loggedIn = true }) {
+export default function DailyReward({ id = 'daily-reward-card', dailyDay = 1, dailyClaimed = false, onClaim, rewards = null, loggedIn = true }) {
   const list = (rewards && rewards.length ? rewards : DAILY_REWARDS);
   const total = list.length; // 7
   // claimDailyReward already advanced dailyDay (7 wraps to 1), so once claimed
@@ -178,7 +179,7 @@ export default function DailyReward({ dailyDay = 1, dailyClaimed = false, onClai
   const fit = (txt, icon = 0) => { const n = txt.length + icon; return n <= 17 ? 22 : n <= 22 ? 19 : n <= 27 ? 17 : 15; };
 
   return (
-    <section id="daily-reward-card" aria-label="Daily reward" className="rs-daily yb-frame yb-glint" style={{ '--yb-w': '3px', '--yb-dur': '8s', position: 'relative', padding: 8.5, borderRadius: 24 }}>
+    <section id={id} aria-label="Daily reward" className="rs-daily yb-frame yb-glint" style={{ '--yb-w': '3px', '--yb-dur': '8s', position: 'relative', padding: 8.5, borderRadius: 24 }}>
       <style dangerouslySetInnerHTML={{ __html: DR_CSS }} />
       <span aria-hidden style={{ ...dotRow(false), backgroundImage: YB_DOTS, top: 0.5, left: 22, right: 22, height: 8 }} />
       <span aria-hidden style={{ ...dotRow(false), backgroundImage: YB_DOTS, bottom: 0.5, left: 22, right: 22, height: 8 }} />

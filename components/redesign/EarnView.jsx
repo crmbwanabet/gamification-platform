@@ -179,9 +179,9 @@ function MissionRow({ s, i = 0, loggedIn, onOpen, onClaim }) {
               <span style={{ fontFamily: CANDY.display, fontSize: 17, lineHeight: 1.15, color: C.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textTransform: 'uppercase' }}>{m.name}</span>
               <Badge bg={d.c} color="#130f1f">{d.label}</Badge>
             </div>
-            <div style={{ fontSize: 12.5, fontWeight: 900, letterSpacing: '.02em', color: '#fff', margin: '0 0 5px' }}>{missionTerms(m)}</div>
+            <div style={{ fontFamily: CANDY.display, fontSize: 18, lineHeight: 1.15, letterSpacing: '.01em', color: '#fff', margin: '2px 0 6px' }}>{missionTerms(m)}</div>
             <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', columnGap: 10, rowGap: 4 }}>
-              <CurrencyAmounts r={m.reward} size={14} fontSize={12} gap={8} />
+              <CurrencyAmounts r={m.reward} size={28} fontSize={24} gap={8} style={{ fontFamily: CANDY.display, fontWeight: 400, lineHeight: 1 }} />
               {m.xp ? <XpChip xp={m.xp} /> : null}
             </div>
             <div style={{ marginTop: 7 }}>

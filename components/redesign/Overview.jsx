@@ -14,21 +14,21 @@ import { casinoMissionStates, missionTerms } from '@/lib/missions/casino.mjs';
 import { STORE_ITEMS, MINIGAMES } from '@/lib/data/platform';
 import { splitCatalog } from '@/lib/store/catalog.mjs';
 
-// Home layout (design "A · Full candy"): phones stack daily reward → store
-// → this week → bonus games → missions; desktop (≥861px) opens with ONE row,
-// daily reward (400px) left + the store panel right (max 780px, sized to its
-// own content, never stretched to the daily card's height), then this week +
-// missions on the left beside the games grid (3 per row). With an empty store
-// the games take the top-right slot.
+// Home layout (design "A · Full candy"; missions moved to the top 2026-10-18,
+// when the daily reward became a popup on open): phones stack missions → store
+// → daily reward → this week → bonus games; desktop (≥861px) opens with ONE row,
+// missions (400px) left + the store panel right (max 780px, sized to its own
+// content), then the daily reward + this week on the left beside the games grid
+// (3 per row). With an empty store the games take the top-right slot.
 const OV_CSS = `
-  .ov-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 26px; grid-template-areas: "daily" "store" "season" "games" "missions"; }
+  .ov-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 26px; grid-template-areas: "missions" "store" "daily" "season" "games"; }
   .ov-daily { grid-area: daily; } .ov-store { grid-area: store; } .ov-season { grid-area: season; display: grid; gap: 12px; } .ov-games { grid-area: games; } .ov-missions { grid-area: missions; }
   .ov-grid > * { min-width: 0; align-self: start; }
-  .ov-grid--nostore { grid-template-areas: "daily" "season" "games" "missions"; }
+  .ov-grid--nostore { grid-template-areas: "missions" "daily" "season" "games"; }
   @media (min-width: 861px) {
     .ov-grid { grid-template-columns: 400px minmax(0, 1fr); grid-template-rows: auto auto 1fr; column-gap: 28px; row-gap: 24px;
-      grid-template-areas: "daily store" "season games" "missions games"; }
-    .ov-grid--nostore { grid-template-rows: auto auto 1fr; grid-template-areas: "daily games" "season games" "missions games"; }
+      grid-template-areas: "missions store" "daily games" "season games"; }
+    .ov-grid--nostore { grid-template-rows: auto auto 1fr; grid-template-areas: "missions games" "daily games" "season games"; }
   }
   .ov-link { all: unset; box-sizing: border-box; cursor: pointer; display: flex; align-items: center; justify-content: center; min-height: 44px; margin-top: 8px; width: 100%;
     font-size: 13px; font-weight: 900; color: ${CANDY.gold}; border-radius: 12px; }
@@ -50,11 +50,11 @@ function MissionTeaser({ s, onOpen }) {
   return (
     <Card style={{ overflow: 'hidden' }}>
       <button type="button" className="ov-mission" onClick={() => onOpen && onOpen(m)} aria-label={`${m.name}: ${done ? m.target : s.progress} of ${m.target} casino rounds`}>
-        <span style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
+        <span style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '6px 10px' }}>
           <span style={{ fontFamily: CANDY.display, fontSize: 19, lineHeight: 1.1, color: '#fff', textTransform: 'uppercase' }}>{m.name}</span>
-          <CurrencyAmounts r={m.reward} size={18} fontSize={14} gap={8} />
+          <CurrencyAmounts r={m.reward} size={34} fontSize={28} gap={8} style={{ fontFamily: CANDY.display, fontWeight: 400, lineHeight: 1, flex: 'none' }} />
         </span>
-        <span style={{ fontSize: 13, fontWeight: 900, letterSpacing: '.02em', color: '#fff' }}>{missionTerms(m)}</span>
+        <span style={{ fontFamily: CANDY.display, fontSize: 21, lineHeight: 1.15, letterSpacing: '.01em', color: '#fff' }}>{missionTerms(m)}</span>
         {(done || s.claimable) && (
           <span>{done ? <Badge bg={C.green} color="#fff">Claimed today</Badge> : <Badge bg={CANDY.gold}>Ready to claim</Badge>}</span>
         )}
