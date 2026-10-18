@@ -102,6 +102,13 @@ const DR_CSS = `
   .rs-claim-tomorrow:disabled { color: #fff !important; text-shadow: 0 2px 0 rgba(0,0,0,.28) !important; cursor: default !important; }
   .rs-claim-login:disabled { font-size: 18px !important; color: #fff !important; cursor: default !important; }
 
+  /* popup (todayOnly): no week grid, today's prize big */
+  .dr-today-only .dr-prize { padding: 18px 10px 20px; gap: 10px 14px; }
+  .dr-today-only .dr-prize-lbl { font-size: 14px; margin-bottom: 4px; }
+  .dr-today-only .dr-pz { font-size: 44px; gap: 10px; }
+  .dr-today-only .dr-pz small { font-size: 20px; }
+  .dr-today-only .dr-pz img, .dr-today-only .dr-pz svg { width: 52px !important; height: 52px !important; }
+  .dr-today-only .dr-plus { font-size: 32px; }
   @keyframes drBob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
   @keyframes drSpin { to { transform: rotate(360deg); } }
   @keyframes drPop { 0% { transform: scale(.4); opacity: 0; } 60% { transform: scale(1.25); opacity: 1; } 100% { transform: scale(1); } }
@@ -138,7 +145,7 @@ function XpStar({ size = 26 }) {
  * `id` (default "daily-reward-card", the Home card) is where the platform aims the
  * "reward ready" confetti; the popup copy uses "daily-reward-popup".
  */
-export default function DailyReward({ id = 'daily-reward-card', dailyDay = 1, dailyClaimed = false, onClaim, rewards = null, loggedIn = true }) {
+export default function DailyReward({ id = 'daily-reward-card', todayOnly = false, dailyDay = 1, dailyClaimed = false, onClaim, rewards = null, loggedIn = true }) {
   const list = (rewards && rewards.length ? rewards : DAILY_REWARDS);
   const total = list.length; // 7
   // claimDailyReward already advanced dailyDay (7 wraps to 1), so once claimed
@@ -179,7 +186,7 @@ export default function DailyReward({ id = 'daily-reward-card', dailyDay = 1, da
   const fit = (txt, icon = 0) => { const n = txt.length + icon; return n <= 17 ? 22 : n <= 22 ? 19 : n <= 27 ? 17 : 15; };
 
   return (
-    <section id={id} aria-label="Daily reward" className="rs-daily yb-frame yb-glint" style={{ '--yb-w': '3px', '--yb-dur': '8s', position: 'relative', padding: 8.5, borderRadius: 24 }}>
+    <section id={id} aria-label="Daily reward" className={`rs-daily yb-frame yb-glint${todayOnly ? ' dr-today-only' : ''}`} style={{ '--yb-w': '3px', '--yb-dur': '8s', position: 'relative', padding: 8.5, borderRadius: 24 }}>
       <style dangerouslySetInnerHTML={{ __html: DR_CSS }} />
       <span aria-hidden style={{ ...dotRow(false), backgroundImage: YB_DOTS, top: 0.5, left: 22, right: 22, height: 8 }} />
       <span aria-hidden style={{ ...dotRow(false), backgroundImage: YB_DOTS, bottom: 0.5, left: 22, right: 22, height: 8 }} />
@@ -197,7 +204,7 @@ export default function DailyReward({ id = 'daily-reward-card', dailyDay = 1, da
           </div>
         </div>
 
-        <div className="dr-grid">
+        {!todayOnly && <div className="dr-grid">
           {days.map((r, i) => {
             const day = i + 1;
             const past = dailyClaimed ? day <= shownDay : day < shownDay;
@@ -236,7 +243,7 @@ export default function DailyReward({ id = 'daily-reward-card', dailyDay = 1, da
               </span>
             </span>
           </div>
-        </div>
+        </div>}
 
         <div className="dr-prize" aria-label={`${dailyClaimed ? 'Claimed today' : "Today's prize"}: ${rewardText(shown)} and ${xpText}`}>
           <span className={`dr-prize-lbl${dailyClaimed ? ' done' : ''}`}>{dailyClaimed ? 'CLAIMED TODAY' : "TODAY'S PRIZE"}</span>

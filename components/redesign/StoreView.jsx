@@ -81,30 +81,20 @@ function StorePackCard({ item, balances, onBuy, busy, top, i = 0 }) {
   );
 }
 
-/** Store hero: BwanaBet banner, balance, kwacha worth, rate and the meter toward the next pack. */
-function StoreHero({ balances, economy, coinPacks }) {
-  const coins = balances.kwacha;
+/** Store hero: BwanaBet banner, title and the rate guide ("10,000 COINS BUYS K1.00").
+ * The balance + next-pack meter were removed 2026-10-18 (they confused players). */
+function StoreHero({ economy }) {
   const { coinsPerKwacha } = economyRates(economy);
-  const goal = nextPackGoal(coinPacks, coins);
   return (
     <div className="st-hero">
       <div className="st-hero-shade" aria-hidden />
       <div className="st-hero-body">
         <img src={STORE_ART.logo} alt="BwanaBet" className="st-hero-logo" />
         <h1 className="bb-display st-hero-title">Coin Shop</h1>
-        <div className="st-hero-bal" data-store-balance>
+        <div className="st-hero-bal">
           <RewardIcon kind="coins" size={58} className="st-hero-coin" shine={{ delay: 1.2, duration: 4.5 }} />
-          <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-            <span className="bb-display st-hero-num">{formatNumber(coins)}</span>
-            <span className="st-hero-sub">coins · worth {formatKwacha(coinsToKwacha(coins, economy))} · {amountText(coinsPerKwacha, 'coins')} = {formatKwacha(1)}</span>
-          </div>
+          <span className="bb-display st-hero-num">{formatNumber(coinsPerKwacha)} COINS <span style={{ color: '#E4D8F7', fontSize: '.6em' }}>BUYS</span> <span style={{ color: '#FFD21F' }}>K1.00</span></span>
         </div>
-        {coinPacks.length > 0 && (
-          <>
-            <CoinMeter pct={goal ? goal.pct : 100} height={14} label={goalText(goal, true)} style={{ flex: 'none' }} />
-            <div className="st-hero-goal">{goalText(goal, true)}</div>
-          </>
-        )}
       </div>
     </div>
   );

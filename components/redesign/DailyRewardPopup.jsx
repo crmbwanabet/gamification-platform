@@ -26,7 +26,7 @@ const DP_CSS = `
 
 /**
  * Daily reward popup (2026-10-18): opens by itself once per widget open while
- * today's reward is unclaimed. It holds the same DailyReward card as Home; CLAIM
+ * today's reward is unclaimed. It holds the DailyReward card in `todayOnly` mode (just today's prize, no week grid, 2026-10-18); CLAIM
  * credits it (coins fly into the header wallet) and the platform then fades the
  * popup out (`closing`). X / Escape dismiss it; the card stays on Home.
  */
@@ -43,7 +43,7 @@ export default function DailyRewardPopup({ open = false, closing = false, onClos
       <style dangerouslySetInnerHTML={{ __html: DP_CSS }} />
       <div className="dp-box">
         <button type="button" className="dp-x" onClick={onClose} aria-label="Close daily reward">✕</button>
-        <DailyReward id="daily-reward-popup" dailyDay={dailyDay} dailyClaimed={dailyClaimed} onClaim={onClaim} rewards={rewards} loggedIn={loggedIn} />
+        <DailyReward id="daily-reward-popup" todayOnly dailyDay={dailyDay} dailyClaimed={dailyClaimed} onClaim={onClaim} rewards={rewards} loggedIn={loggedIn} />
       </div>
     </div>
   );

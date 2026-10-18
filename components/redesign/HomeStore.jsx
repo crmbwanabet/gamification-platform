@@ -146,10 +146,7 @@ export default function HomeStore({ storeItems, wallet, onBuy, busyId = null, on
   const extras = items.slice(0, MAX_ON_HOME - packs.length);
   const topId = packs.length > 1 ? packs[packs.length - 1].id : null;
   const balances = balancesOf(wallet);
-  const coins = balances.kwacha;
-  const worth = formatKwacha(coinsToKwacha(coins, wallet?.economy));
   const rate = Number(wallet?.economy?.coinsPerKwacha) || 10000;
-  const goal = packs.length ? nextPackGoal(coinPacks, coins) : null;
   return (
     <section className={`hs-panel ${className}`} aria-labelledby="hs-title">
       <style dangerouslySetInnerHTML={{ __html: BB_CSS + HS_CSS }} />
@@ -166,19 +163,6 @@ export default function HomeStore({ storeItems, wallet, onBuy, busyId = null, on
               <span className="hs-d">See coin shop ›</span><span className="hs-m">Shop ›</span>
             </button>
           </div>
-          <div className="hs-bal">
-            <RewardIcon kind="coins" size={40} style={{ width: 'var(--hs-coin, 34px)', height: 'var(--hs-coin, 34px)' }} className="hs-coin" shine={{ delay: 1.2, duration: 4.5 }} />
-            <div style={{ minWidth: 0 }}>
-              <span className="hs-num">{formatNumber(coins)}</span>
-              <span className="hs-sub"> coins · <span className="hs-d">worth </span>{worth}</span>
-            </div>
-          </div>
-          {packs.length > 0 && (
-            <div className="hs-goal">
-              <CoinMeter pct={goal ? goal.pct : 100} height={12} label={goalText(goal, true)} style={{ flex: '1 1 auto', width: '100%' }} />
-              <span className="hs-goal-text"><span className="hs-d">{goalText(goal)}</span><span className="hs-m">{goalText(goal, true)}</span></span>
-            </div>
-          )}
         </div>
       </div>
       <div className="hs-grid">

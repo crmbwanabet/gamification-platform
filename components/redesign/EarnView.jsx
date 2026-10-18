@@ -2,9 +2,10 @@
 
 import React from 'react';
 import { C, CANDY } from './tokens';
-import RedesignShell, { GreenBtn, SectionTitle, TitleNote, Card, Thumb, Badge, Progress, CurrencyAmounts } from './RedesignShell';
+import RedesignShell, { GreenBtn, SectionTitle, TitleNote, Card, Thumb, Badge, Progress, CurrencyAmounts, RewardIcon } from './RedesignShell';
 import { IMAGES } from '@/lib/data/images';
 import { amountText } from '@/lib/rewardText.mjs';
+import { GEMS } from '@/lib/economy/currency.mjs';
 import { CASINO_MISSIONS } from '@/lib/data/missions';
 import { casinoMissionStates, missionTerms } from '@/lib/missions/casino.mjs';
 import { xpSourceLines } from '@/lib/xp/sources.mjs';
@@ -162,6 +163,24 @@ function RoundsSummary({ status, rounds, nextIn = null }) {
   );
 }
 
+// A mission's prize as one centred line, "EARN [coin] 50 COINS" (+ any gems),
+// in big display type (2026-10-18). Shared with the Home missions teaser.
+export function EarnPrize({ r, size = 30, fontSize = 26 }) {
+  if (!r) return null;
+  const rows = [['kwacha', 'coins'], ...GEMS.map(g => [g, g])].filter(([k]) => r[k]);
+  if (!rows.length) return null;
+  return (
+    <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap', gap: '4px 10px', fontFamily: CANDY.display, fontSize, lineHeight: 1, color: '#fff', textTransform: 'uppercase', textAlign: 'center' }}>
+      <span>Earn</span>
+      {rows.map(([k, unit]) => (
+        <span key={k} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: CANDY.gold }}>
+          <RewardIcon kind={unit} size={size} />{amountText(r[k], unit)}
+        </span>
+      ))}
+    </span>
+  );
+}
+
 function MissionRow({ s, i = 0, loggedIn, onOpen, onClaim }) {
   const m = s.mission;
   const d = MISSION_DIFF[m.difficulty] || MISSION_DIFF.easy;
@@ -180,10 +199,8 @@ function MissionRow({ s, i = 0, loggedIn, onOpen, onClaim }) {
               <Badge bg={d.c} color="#130f1f">{d.label}</Badge>
             </div>
             <div style={{ fontFamily: CANDY.display, fontSize: 18, lineHeight: 1.15, letterSpacing: '.01em', color: '#fff', margin: '2px 0 6px' }}>{missionTerms(m)}</div>
-            <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', columnGap: 10, rowGap: 4 }}>
-              <CurrencyAmounts r={m.reward} size={28} fontSize={24} gap={8} style={{ fontFamily: CANDY.display, fontWeight: 400, lineHeight: 1 }} />
-              {m.xp ? <XpChip xp={m.xp} /> : null}
-            </div>
+            <div style={{ margin: '4px 0 2px' }}><EarnPrize r={m.reward} size={26} fontSize={22} /></div>
+            {m.xp ? <div style={{ display: 'flex', justifyContent: 'center', marginTop: 4 }}><XpChip xp={m.xp} /></div> : null}
             <div style={{ marginTop: 7 }}>
               <Progress value={pct} color={s.claimed || s.reached ? C.green : undefined} height={12} />
             </div>
