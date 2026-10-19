@@ -12,6 +12,9 @@ import {
 
 // Redesign (v2) screens
 import Overview from './redesign/Overview';
+import { useExtras } from './extras/useExtras';
+import { useWheel } from './extras/useWheel';
+import { ComebackModal } from './extras/ExtrasViews';
 import EarnView from './redesign/EarnView';
 import StoreView from './redesign/StoreView';
 import LevelUpModal from './redesign/LevelUpModal';
@@ -981,6 +984,11 @@ export default function GamificationPlatform() {
     // missionsComplete above belong to the parked pre-2026-10-07 missions and
     // are kept untouched so saved history survives.
     casinoMissionClaims: { day: null, ids: [] },
+    // Extras (2026-10-19, components/extras/useExtras.js): bet-slip mission
+    // claims { day, ids, weekend, weekendIds }; souvenir album: cards already
+    // announced (albumSeen, unset = first run) + set bonuses paid (albumClaims).
+    sportsMissionClaims: { day: null, ids: [], weekend: null, weekendIds: [] },
+    albumClaims: [],
     // XP sources (lib/xp/sources.mjs, 2026-10-08): today's XP per capped
     // source, and the casino rounds (Lusaka day) already converted to XP.
     xpToday: { day: null, daily: 0, games: 0, missions: 0, casino: 0 },
@@ -1553,6 +1561,33 @@ export default function GamificationPlatform() {
     friendlies: activeFriendlies, coins: user.kwacha, onAcceptFriendly, onDeclineFriendly,
     heroName: heroName(user.displayName, playerId) }; // the story hero = the player's name, else their ID
 
+  // === Extras (2026-10-19): bet-slip missions, souvenir album, predictions,
+  // weekly league table, comeback bonus + the Wheel of Fortune inside the
+  // Bonus Center. `credit` pays coins (+ mission XP); `patch(u)` records the
+  // claim and returns null when it is already recorded (pays once).
+  const creditExtra = ({ coins = 0, xp = 0 }, el, label, patch = null) => {
+    let paid = false;
+    setUser(u => {
+      const p = patch ? patch(u) : {};
+      if (p === null) return u;
+      paid = true;
+      let n = { ...u, ...p, kwacha: u.kwacha + coins };
+      if (xp) { const t = addMissionXp(u.xpToday, xp, today).xpToday; n = { ...n, xpToday: t, xpDays: recordXpDay(u.xpDays, t) }; }
+      return n;
+    });
+    const won = [coins ? rewardParts({ kwacha: coins }).join(' + ') : null, xp ? amountText(xp, 'xp') : null].filter(Boolean);
+    showNotif(`${label}${won.length ? ` +${won.join(' + ')}` : ''}`);
+    triggerReward('medium', el || null, { coins });
+    if (xp) xpFx.collect({ from: el || null, amount: xp, delay: 250 });
+    return paid;
+  };
+  const extras = useExtras({
+    session, loggedIn, hydrated: hydratedRef.current, tab, user, setUser, seasonRows: seasonFeed.rows, today,
+    stage: getLevel(user.xp).level, league, worldCup, hustle, credit: creditExtra, showNotif,
+    blocked: anyModalOpen || (dailyPopup !== 'done' && canClaimDaily && !user.dailyClaimed),
+  });
+  const wheel = useWheel({ enabled: loggedIn, getToken: session.getToken });
+
   // Bonus claims (once each; state keys in user.season) + the hustle collect.
   const seasonBusyRef = useRef(new Set());
   const claimSeasonBonus = (kind, id, el) => {
@@ -1982,7 +2017,7 @@ export default function GamificationPlatform() {
     navBadges: {
       home: canClaimDaily && !user.dailyClaimed ? 1 : null,
       // + season win bonuses waiting (league / World Cup)
-      missions: (claimableCount + (loggedIn ? league.matches.filter(m => m.claimable).length + worldCup.rounds.filter(r => r.claimable).length : 0)) || null,
+      missions: (claimableCount + (loggedIn ? league.matches.filter(m => m.claimable).length + worldCup.rounds.filter(r => r.claimable).length + extras.badge : 0)) || null,
       store: null, // store is empty until the admin dashboard stocks it
     },
     games: activeGames,
@@ -2003,6 +2038,9 @@ export default function GamificationPlatform() {
     onStoryOpen: openStory,
     onStoryClose: closeStory,
     intro: { open: introOpen, onToggle: setIntroOpen },
+    // Extras (2026-10-19) + the Wheel of Fortune card (shown while today's spin is available)
+    extras,
+    wheel: wheel.available ? { onOpen: wheel.open } : null,
   };
 
   // Claim a daily casino mission. Re-reads today's rounds from the server
@@ -2107,6 +2145,8 @@ export default function GamificationPlatform() {
       <DailyRewardPopup open={dailyPopup === 'open' || dailyPopup === 'closing'} closing={dailyPopup === 'closing'}
         onClose={() => setDailyPopup('closing')} onClaim={(el) => claimDailyReward(el, { popup: true })}
         dailyDay={user.dailyDay} dailyClaimed={user.dailyClaimed} rewards={cfg.dailyRewards} loggedIn={canClaimDaily} />
+      <ComebackModal comeback={extras.comeback} />
+      {wheel.layer}
       {xpFx.layer}
     </XpFxContext.Provider>
   );

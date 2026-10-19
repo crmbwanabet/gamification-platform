@@ -10,6 +10,7 @@
  *     uid: '123456'    -> player ID to display (normally read from the token cookie)
  *   (window.X100_WIDGET is still read, for older embeds.)
  * Page API: BwanaBetBonus.open(), BwanaBetBonus.close().
+ * A page URL with ?bonus=open opens the Bonus Center on load (SMS links).
  *
  * Renders a floating launcher bubble (bottom-right). Clicking it opens the
  * platform in a full-screen iframe popup. The popup closes via the red X
@@ -169,6 +170,9 @@
   function mount() {
     if (showLauncher) document.body.appendChild(launcher);
     document.body.appendChild(overlay);
+    // SMS / campaign links: https://bwanabet.co.zm/?bonus=open opens the
+    // Bonus Center straight away (the comeback bonus waits inside).
+    try { if (/[?&]bonus=open/.test(window.location.search)) openWidget(); } catch (e) { /* ignore */ }
   }
   if (document.body) mount();
   else document.addEventListener('DOMContentLoaded', mount);

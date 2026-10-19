@@ -10,7 +10,7 @@ import React, { createContext, useContext, useEffect, useState, useCallback, use
 // a `#token=...` URL hash (signed-URL embeds). All trust is enforced server-side
 // in /api/session — this component just relays the token.
 
-const SessionContext = createContext({ status: 'idle', profile: null, verified: false, error: null, saveState: async () => null, buyItem: async () => null, listPurchases: async () => null, getCasinoProgress: async () => ({ status: 401 }), getSeason: async () => ({ status: 401 }), claimSeasonPrize: async () => ({ status: 401 }) });
+const SessionContext = createContext({ status: 'idle', profile: null, verified: false, error: null, saveState: async () => null, buyItem: async () => null, listPurchases: async () => null, getCasinoProgress: async () => ({ status: 401 }), getSeason: async () => ({ status: 401 }), claimSeasonPrize: async () => ({ status: 401 }), api: async () => ({ status: 401, data: null }), getToken: () => null });
 export const useSession = () => useContext(SessionContext);
 
 // The live operator site is bwanabet.co.zm (Zambia); .com kept for any legacy
@@ -165,11 +165,29 @@ export default function SessionProvider({ children }) {
     } catch (e) { return { status: 0, data: null }; }
   }, []);
 
+  // Generic authed call for the 2026-10-19 extras (predictions, leaderboard,
+  // comeback): { status, data }. GET without body; POST with a JSON body.
+  const api = useCallback(async (path, body = undefined) => {
+    if (!tokenRef.current) return { status: 401, data: null };
+    try {
+      const res = await fetch(path, body === undefined
+        ? { headers: { Authorization: `Bearer ${tokenRef.current}` }, cache: 'no-store' }
+        : { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tokenRef.current}` }, body: JSON.stringify(body) });
+      let data = null;
+      try { data = await res.json(); } catch { /* non-JSON */ }
+      return { status: res.status, data };
+    } catch (e) { return { status: 0, data: null }; }
+  }, []);
+  // The raw bwanabet token, ONLY for handing it on to the Wheel of Fortune
+  // iframe by postMessage to the wheel's own origin (components/extras/useWheel).
+  // Never log it, store it or put it in a URL.
+  const getToken = useCallback(() => tokenRef.current, []);
+
   // claimVoucher (streak-voucher via /api/predictions/voucher) parked with the
   // predictions feature on 2026-07-15 — see parked/ + git history to restore.
 
   return (
-    <SessionContext.Provider value={{ ...state, tokenUid, saveState, buyItem, listPurchases, getCasinoProgress, getSeason, claimSeasonPrize }}>
+    <SessionContext.Provider value={{ ...state, tokenUid, saveState, buyItem, listPurchases, getCasinoProgress, getSeason, claimSeasonPrize, api, getToken }}>
       {children}
     </SessionContext.Provider>
   );

@@ -14,6 +14,7 @@ import { XP_LEVELS, LEVEL_REWARDS, getLevel } from '@/lib/data/platform';
 import { Check, Lock, LogIn, RefreshCw } from 'lucide-react';
 import { getStage, getNextStage, stageProgress, nextStageLabel, STAGE_COUNT } from '@/lib/vuma/stages.mjs';
 import { SeasonSection } from './SeasonCards';
+import { SportsMissions, Predictions, Leaderboard, Album } from '../extras/ExtrasViews';
 
 const LUSAKA_OFFSET_MS = 2 * 60 * 60 * 1000;
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -248,7 +249,7 @@ function VumaRoad({ xp = 0, levelRewards = null, seasonCfg = null, displayName =
  * bwanabet.com today (CRM feed, Lusaka day) — then the stage milestones.
  * The daily reward lives on Home.
  */
-export default function EarnView({ wallet = null, xp = 0, onNavigate, onOpenProfile, onOpenMission, onClaimMission, userId = null, displayName = null, onEditName, navBadges = {}, missions = null, missionStates = null, casinoStatus = 'anon', loggedIn = false, levelRewards = null, focusRewards = 0, isWidget = false, story = null, onStoryOpen, onStoryClose, intro = null, season = null, onClaimLeague, onClaimWc, onClaimPrize, prizeBusy = false }) {
+export default function EarnView({ wallet = null, xp = 0, onNavigate, onOpenProfile, onOpenMission, onClaimMission, userId = null, displayName = null, onEditName, navBadges = {}, missions = null, missionStates = null, casinoStatus = 'anon', loggedIn = false, levelRewards = null, focusRewards = 0, isWidget = false, story = null, onStoryOpen, onStoryClose, intro = null, season = null, onClaimLeague, onClaimWc, onClaimPrize, prizeBusy = false, extras = null }) {
   const states = missionStates || casinoMissionStates(missions || CASINO_MISSIONS, { rounds: 0, today: null });
   const rounds = states[0]?.rounds || 0;
   const resetLabel = useResetText();
@@ -273,11 +274,17 @@ export default function EarnView({ wallet = null, xp = 0, onNavigate, onOpenProf
               <MissionRow key={s.mission.id} i={i} s={s} loggedIn={loggedIn} onOpen={onOpenMission} onClaim={onClaimMission} />
             ))}
           </div>
+          {extras && <SportsMissions sports={extras.sports} />}
           {season && (
             <div id="missions-season" style={{ marginTop: 26, scrollMarginTop: 12 }}>
               <SeasonSection season={season} onClaimLeague={onClaimLeague} onClaimWc={onClaimWc} onClaimPrize={onClaimPrize} prizeBusy={prizeBusy} />
             </div>
           )}
+          {extras && <>
+            <div id="missions-predictions" style={{ scrollMarginTop: 12 }}><Predictions predictions={extras.predictions} /></div>
+            <Leaderboard board={extras.board} />
+            <Album album={extras.album} />
+          </>}
         </section>
         <VumaRoad xp={xp} levelRewards={levelRewards} seasonCfg={season?.cfg} displayName={displayName} userId={userId} onEditName={onEditName} />
       </div>

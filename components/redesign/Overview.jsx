@@ -13,6 +13,8 @@ import { CASINO_MISSIONS } from '@/lib/data/missions';
 import { casinoMissionStates, missionTerms } from '@/lib/missions/casino.mjs';
 import { STORE_ITEMS, MINIGAMES } from '@/lib/data/platform';
 import { splitCatalog } from '@/lib/store/catalog.mjs';
+import { WheelCard } from '../extras/useWheel';
+import { Predictions } from '../extras/ExtrasViews';
 
 // Home layout (design "A · Full candy"; missions moved to the top 2026-10-18,
 // when the daily reward became a popup on open): phones stack missions → store
@@ -21,14 +23,14 @@ import { splitCatalog } from '@/lib/store/catalog.mjs';
 // content), then the daily reward + this week on the left beside the games grid
 // (3 per row). With an empty store the games take the top-right slot.
 const OV_CSS = `
-  .ov-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 26px; grid-template-areas: "missions" "store" "daily" "season" "games"; }
-  .ov-daily { grid-area: daily; } .ov-store { grid-area: store; } .ov-season { grid-area: season; display: grid; gap: 12px; } .ov-games { grid-area: games; } .ov-missions { grid-area: missions; }
+  .ov-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 26px; grid-template-areas: "missions" "store" "daily" "season" "predict" "games"; }
+  .ov-daily { grid-area: daily; } .ov-store { grid-area: store; } .ov-season { grid-area: season; display: grid; gap: 12px; } .ov-games { grid-area: games; } .ov-missions { grid-area: missions; display: grid; gap: 12px; } .ov-predict { grid-area: predict; }
   .ov-grid > * { min-width: 0; align-self: start; }
-  .ov-grid--nostore { grid-template-areas: "missions" "daily" "season" "games"; }
+  .ov-grid--nostore { grid-template-areas: "missions" "daily" "season" "predict" "games"; }
   @media (min-width: 861px) {
-    .ov-grid { grid-template-columns: 400px minmax(0, 1fr); grid-template-rows: auto auto 1fr; column-gap: 28px; row-gap: 24px;
-      grid-template-areas: "missions store" "daily games" "season games"; }
-    .ov-grid--nostore { grid-template-rows: auto auto 1fr; grid-template-areas: "missions games" "daily games" "season games"; }
+    .ov-grid { grid-template-columns: 400px minmax(0, 1fr); grid-template-rows: auto auto auto 1fr; column-gap: 28px; row-gap: 24px;
+      grid-template-areas: "missions store" "daily games" "season games" "predict games"; }
+    .ov-grid--nostore { grid-template-rows: auto auto auto 1fr; grid-template-areas: "missions games" "daily games" "season games" "predict games"; }
   }
   .ov-link { all: unset; box-sizing: border-box; cursor: pointer; display: flex; align-items: center; justify-content: center; min-height: 44px; margin-top: 8px; width: 100%;
     font-size: 13px; font-weight: 900; color: ${CANDY.gold}; border-radius: 12px; }
@@ -72,7 +74,7 @@ function MissionTeaser({ s, onOpen }) {
  * through the same onBuy/busyId as the Store tab. `focusGames` is a nonce —
  * when it changes the view scrolls to the games (legacy "Go to Games" CTAs).
  */
-export default function Overview({ wallet = null, xp = 1200, activeTab = 'home', onNavigate, onOpenProfile, onOpenMission, missionStates = null, loggedIn = false, canClaimDaily = loggedIn, dailyDay = 1, dailyClaimed = false, onClaimDaily, userId = null, displayName = null, onEditName, navBadges = {}, games = null, storeItems = null, missions = null, dailyRewards = null, gamePlays = null, onPlay, focusGames = 0, isWidget = false, story = null, onStoryOpen, onStoryClose, intro = null, season = null, onCollectHustle, onClaimLeague, onBuy, busyId = null } = {}) {
+export default function Overview({ wallet = null, xp = 1200, activeTab = 'home', onNavigate, onOpenProfile, onOpenMission, missionStates = null, loggedIn = false, canClaimDaily = loggedIn, dailyDay = 1, dailyClaimed = false, onClaimDaily, userId = null, displayName = null, onEditName, navBadges = {}, games = null, storeItems = null, missions = null, dailyRewards = null, gamePlays = null, onPlay, focusGames = 0, isWidget = false, story = null, onStoryOpen, onStoryClose, intro = null, season = null, onCollectHustle, onClaimLeague, onBuy, busyId = null, extras = null, wheel = null } = {}) {
   const go = (t) => onNavigate && onNavigate(t);
   const states = missionStates || casinoMissionStates(missions || CASINO_MISSIONS, { rounds: 0, today: null });
   const top = pickTopMission(states);
@@ -113,12 +115,21 @@ export default function Overview({ wallet = null, xp = 1200, activeTab = 'home',
           <GamesGrid gamePlays={gamePlays} onPlay={onPlay} games={gameList} />
         </div>
 
-        {top && (
+        {(top || wheel) && (
           <section className="ov-missions" aria-labelledby="ov-missions-title">
+            {wheel && <WheelCard onOpen={wheel.onOpen} />}
+            {top && <>
             <SectionTitle id="ov-missions-title" right={<TitleNote>{resetLabel}</TitleNote>}>Missions</SectionTitle>
             <MissionTeaser s={top} onOpen={onOpenMission} />
             <button type="button" className="ov-link" onClick={() => go('missions')}>See all {states.length} missions ›</button>
+            </>}
           </section>
+        )}
+
+        {extras && (
+          <div className="ov-predict">
+            <Predictions predictions={extras.predictions} compact onSeeAll={() => go('missions')} />
+          </div>
         )}
       </div>
     </RedesignShell>
