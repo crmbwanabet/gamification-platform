@@ -1,8 +1,15 @@
-/* 100xBet Rewards — embeddable widget for bwanabet.com (desktop + mobile).
+/* BwanaBet Bonus Center — embeddable widget for bwanabet (desktop + mobile).
  *
- * Usage on the host page:
- *   <script>window.X100_WIDGET = { uid: 'BWANABET_USER_ID' };</script>   (optional)
+ * Usage on the host page (one line, every page, anywhere in <head> or <body>):
  *   <script src="https://100xbet-gamification.vercel.app/widget.js" defer></script>
+ *
+ * Optional settings, BEFORE that line:
+ *   <script>window.BWANABET_BONUS = { launcher: false };</script>
+ *     launcher: false  -> no floating bubble; open it from your own button:
+ *                         <button onclick="BwanaBetBonus.open()">Bonus Center</button>
+ *     uid: '123456'    -> player ID to display (normally read from the token cookie)
+ *   (window.X100_WIDGET is still read, for older embeds.)
+ * Page API: BwanaBetBonus.open(), BwanaBetBonus.close().
  *
  * Renders a floating launcher bubble (bottom-right). Clicking it opens the
  * platform in a full-screen iframe popup. The popup closes via the red X
@@ -22,7 +29,7 @@
     catch (e) { return 'https://100xbet-gamification.vercel.app'; }
   })();
   var HIDE_KEY = 'x100-widget-hidden';
-  var cfg = window.X100_WIDGET || {};
+  var cfg = window.BWANABET_BONUS || window.X100_WIDGET || {};
 
   // SSO: the player's bwanabet session lives in the host page's `token`
   // cookie (JS-readable JWT). Read it fresh each time (it refreshes on the
@@ -66,7 +73,9 @@
     if (navType === 'reload') sessionStorage.removeItem(HIDE_KEY);
   } catch (e) { /* very old browsers: keep sessionStorage behaviour */ }
 
-  if (sessionStorage.getItem(HIDE_KEY) === '1') return;
+  var hidden = false;
+  try { hidden = sessionStorage.getItem(HIDE_KEY) === '1'; } catch (e) { /* storage blocked */ }
+  var showLauncher = cfg.launcher !== false && !hidden;
 
   /* ---------- styles ---------- */
   var css = [
@@ -94,19 +103,19 @@
   var launcher = document.createElement('button');
   launcher.type = 'button';
   launcher.className = 'x100w-launcher';
-  launcher.setAttribute('aria-label', 'Open 100xBet Rewards');
+  launcher.setAttribute('aria-label', 'Open the BwanaBet Bonus Center');
+  launcher.title = 'Bonus Center';
   launcher.innerHTML = '<img src="' + APP_ORIGIN + '/ui/reward/coin-k.png" alt="">';
 
   var dismiss = document.createElement('span');
   dismiss.className = 'x100w-dismiss';
   dismiss.setAttribute('role', 'button');
-  dismiss.setAttribute('aria-label', 'Hide rewards widget');
+  dismiss.setAttribute('aria-label', 'Hide the Bonus Center button');
   dismiss.textContent = '✕';
   dismiss.addEventListener('click', function (e) {
     e.stopPropagation();
-    sessionStorage.setItem(HIDE_KEY, '1');
+    try { sessionStorage.setItem(HIDE_KEY, '1'); } catch (err) { /* storage blocked */ }
     launcher.remove();
-    overlay.remove();
   });
   launcher.appendChild(dismiss);
 
@@ -114,8 +123,14 @@
   var overlay = document.createElement('div');
   overlay.className = 'x100w-overlay';
   var frame = null;
+  var frameToken = null; // the token the current iframe was opened with
 
   function openWidget() {
+    // the player logged in, out or switched account since the iframe opened:
+    // start a fresh iframe so it never shows the previous session
+    var t = readToken();
+    if (frame && t !== frameToken) { frame.remove(); frame = null; }
+    frameToken = t;
     if (!frame) {
       frame = document.createElement('iframe');
       frame.className = 'x100w-frame';
@@ -127,7 +142,7 @@
     }
     sendToken();
     overlay.classList.add('open');
-    launcher.style.display = 'none';
+    if (launcher.parentNode) launcher.style.display = 'none';
     document.documentElement.style.overflow = 'hidden';
   }
   function closeWidget() {
@@ -143,6 +158,7 @@
   }
 
   launcher.addEventListener('click', openWidget);
+  window.BwanaBetBonus = { open: openWidget, close: closeWidget };
   window.addEventListener('message', function (e) {
     if (e.origin !== APP_ORIGIN) return;
     if (e.data && e.data.type === '100x-widget:close') closeWidget();
@@ -150,6 +166,10 @@
     if (e.data && e.data.type === 'gamification-ready') sendToken();
   });
 
-  document.body.appendChild(launcher);
-  document.body.appendChild(overlay);
+  function mount() {
+    if (showLauncher) document.body.appendChild(launcher);
+    document.body.appendChild(overlay);
+  }
+  if (document.body) mount();
+  else document.addEventListener('DOMContentLoaded', mount);
 })();
