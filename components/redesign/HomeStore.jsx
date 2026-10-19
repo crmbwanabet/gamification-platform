@@ -19,7 +19,7 @@ import { splitCatalog, nextPackGoal } from '@/lib/store/catalog.mjs';
 // confirm (PackBuyButton). Desktop (>=861px): a panel of at most 780px beside
 // the daily reward, 3 tiles a row (the 6th = "More rewards" -> Store tab),
 // tiles sized to their content (never stretched to the daily card). Phones:
-// one pack per row, Buy on the right.
+// one pack per row, Convert on the right.
 const MAX_ON_HOME = 5;
 
 const HS_CSS = `
@@ -53,7 +53,11 @@ const HS_CSS = `
   .hs-well img { width: 62px; height: 62px; display: block; }
   .hs-well img.hs-photo { width: 100%; height: 100%; object-fit: cover; }
   .hs-k { grid-area: k; align-self: end; font-size: 23px; text-shadow: 0 2px 0 #2A0A4F; }
-  .hs-name { grid-area: k; align-self: end; font-family: ${CANDY.display}; font-size: 16px; line-height: 1.1; color: #fff;
+  .hs-cost { grid-area: k; align-self: end; font-family: ${CANDY.display}; font-size: 17px; line-height: 1.05; color: #fff; text-transform: uppercase; text-shadow: 0 2px 0 #2A0A4F; white-space: nowrap; }
+  .hs-cost--item { font-family: inherit; text-transform: none; }
+  .hs-buys { grid-area: price; align-self: start; display: flex; align-items: baseline; gap: 6px; font-family: ${CANDY.display}; font-size: 12px; letter-spacing: .12em; color: #FFD21F; text-transform: uppercase; }
+  .hs-buys b { font-weight: 400; font-size: 23px; letter-spacing: 0; text-shadow: 0 2px 0 #2A0A4F; }
+  .hs-name { grid-area: price; align-self: start; font-family: ${CANDY.display}; font-size: 16px; line-height: 1.1; color: #fff;
     overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
   .hs-price { grid-area: price; align-self: start; font-size: 12px; font-weight: 800; color: #E4D8F7; }
   .hs-act { grid-area: act; min-width: 104px; min-height: 44px; border-radius: 12px; font-size: 14px; padding: 0 10px; }
@@ -89,7 +93,8 @@ const HS_CSS = `
     .hs-tile { grid-template-columns: 84px minmax(0, 1fr); grid-template-areas: "well k" "well price" "well act"; row-gap: 4px; padding: 10px; border-radius: 16px; }
     .hs-well { width: 84px; height: 84px; border-radius: 14px; }
     .hs-well img { width: 80px; height: 80px; }
-    .hs-k { font-size: 26px; }
+    .hs-buys b { font-size: 26px; }
+    .hs-cost { font-size: 18px; }
     .hs-act { min-width: 0; min-height: 36px; border-radius: 11px; }
     .hs-lock { font-size: 12px; }
     .hs-more { display: flex; align-self: stretch; }
@@ -113,8 +118,8 @@ function HomePackTile({ item, balances, onBuy, busy, top, i = 0 }) {
           <Sparkles variant={i} scale={0.75} />
         </ShineImg>
       </div>
-      <div className="bb-k hs-k">{k}</div>
-      <div className="hs-price">{formatNumber(coins)} coins</div>
+      <div className="hs-cost">{formatNumber(coins)} coins</div>
+      <div className="hs-buys"><span>buys</span><b className="bb-k">{k}</b></div>
       {ok || busy
         ? <PackBuyButton item={item} canBuy={ok} onBuy={onBuy} busy={busy} className="hs-act" />
         : <PackLock short={short} className="hs-act hs-lock" />}
@@ -129,11 +134,11 @@ function HomeItemTile({ item, balances, onBuy }) {
   return (
     <div className={`bb-tile hs-tile${ok ? ' bb-ready' : ''}`}>
       <div className="bb-well hs-well">{src ? <img src={src} alt={item.name} className="hs-photo" /> : <img src={STORE_ART.chest} alt="" />}</div>
-      <div className="hs-name">{item.name}</div>
-      <div className="hs-price">
-        {Object.keys(cleanReward(item.price)).length ? <CurrencyAmounts r={item.price} size={14} fontSize={12} gap={6} /> : <span style={{ color: C.green }}>Free</span>}
+      <div className="hs-cost hs-cost--item">
+        {Object.keys(cleanReward(item.price)).length ? <CurrencyAmounts r={item.price} size={14} fontSize={13} gap={6} /> : <span style={{ color: C.green }}>Free</span>}
       </div>
-      <button type="button" className="bb-buy hs-act" disabled={!ok} onClick={(e) => ok && onBuy && onBuy(item, e?.currentTarget)}>Buy</button>
+      <div className="hs-name">{item.name}</div>
+      <button type="button" className="bb-buy hs-act" disabled={!ok} onClick={(e) => ok && onBuy && onBuy(item, e?.currentTarget)}>Convert</button>
     </div>
   );
 }
@@ -177,8 +182,8 @@ export default function HomeStore({ storeItems, wallet, onBuy, busyId = null, on
       </div>
       {packs.length > 0 && (
         <p className="hs-foot">
-          <span className="hs-d">Tap Buy twice to confirm · credited to your bwanabet account · one pack a week</span>
-          <span className="hs-m">Tap Buy twice · credited to bwanabet · one pack a week</span>
+          <span className="hs-d">Tap Convert twice to confirm · credited to your bwanabet account · one pack a week</span>
+          <span className="hs-m">Tap Convert twice · credited to bwanabet · one pack a week</span>
         </p>
       )}
     </section>

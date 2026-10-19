@@ -24,11 +24,11 @@ export function StoreCard({ item, canBuy, onBuy }) {
         {item.featured && <span style={{ position: 'absolute', top: 6, left: 6, zIndex: 2 }}><Badge bg={C.gold}>Featured</Badge></span>}
         {item.isNew && <span style={{ position: 'absolute', top: 6, right: 6, zIndex: 2 }}><Badge bg={C.red} color="#fff">New</Badge></span>}
       </div>
-      <div className="st-item-name">{item.name}</div>
       <div className="st-item-foot">
         {Object.keys(cleanReward(item.price)).length ? <CurrencyAmounts r={item.price} size={16} fontSize={12.5} gap={8} /> : <span style={{ fontSize: 12.5, fontWeight: 800, color: C.green }}>Free</span>}
-        <button type="button" className="bb-buy st-item-buy" disabled={!canBuy} onClick={(e) => canBuy && onBuy && onBuy(item, e?.currentTarget)}>Buy</button>
       </div>
+      <div className="st-item-name">{item.name}</div>
+      <button type="button" className="bb-buy st-item-buy" disabled={!canBuy} onClick={(e) => canBuy && onBuy && onBuy(item, e?.currentTarget)}>Convert</button>
     </div>
   );
 }
@@ -54,13 +54,13 @@ export function PackBuyButton({ item, canBuy, onBuy, busy, className = '' }) {
   };
   return (
     <button type="button" onClick={onClick} disabled={disabled} data-pack={item.id} className={`bb-buy${armed && !disabled ? ' bb-armed' : ''} ${className}`}
-      aria-label={armed ? `Confirm: buy the ${formatKwacha(item.payoutKwacha)} pack` : `Buy the ${formatKwacha(item.payoutKwacha)} pack`}>
-      {busy ? 'Sending…' : armed ? `Confirm ${formatKwacha(item.payoutKwacha)}?` : 'Buy'}
+      aria-label={armed ? `Confirm: convert coins to ${formatKwacha(item.payoutKwacha)}` : `Convert coins to ${formatKwacha(item.payoutKwacha)}`}>
+      {busy ? 'Sending…' : armed ? `Confirm ${formatKwacha(item.payoutKwacha)}?` : 'Convert'}
     </button>
   );
 }
 
-/** Big Store-tab pack card: art, K amount, coin price, Buy or "N more". The top pack wears the gold frame. */
+/** Big Store-tab pack card: art, coin cost on top, "BUYS" + the K amount below, Convert or "N more". The top pack wears the gold frame. */
 function StorePackCard({ item, balances, onBuy, busy, top, i = 0 }) {
   const coins = item.price.kwacha;
   const ok = canAfford(item.price, balances);
@@ -72,8 +72,9 @@ function StorePackCard({ item, balances, onBuy, busy, top, i = 0 }) {
       <ShineImg src={packArtSrc(item)} alt={`${k} pack`} className="st-pack-art" imgClassName="bb-art" width={140} height={140} delay={0.6 + i * 0.85}>
         <Sparkles variant={i} />
       </ShineImg>
+      <div className="st-pack-cost"><RewardIcon kind="coins" size={20} />{formatNumber(coins)} coins</div>
+      <div className="st-pack-buys">buys</div>
       <div className="bb-k bb-title st-pack-k">{k}</div>
-      <div className="st-pack-price"><RewardIcon kind="coins" size={18} />{formatNumber(coins)}<span className="st-sr"> coins</span></div>
       {ok || busy
         ? <PackBuyButton item={item} canBuy={ok} onBuy={onBuy} busy={busy} className="st-pack-act" />
         : <PackLock short={short} className="st-pack-act st-pack-lock" />}
@@ -122,7 +123,8 @@ const ST_CSS = `
   .st-pack-art { display: block; width: min(140px, 100%); aspect-ratio: 1; }
   .st-pack-art > img { width: 100%; height: 100%; display: block; }
   .st-pack-k { font-size: 36px; }
-  .st-pack-price { display: inline-flex; align-items: center; gap: 5px; font-size: 13.5px; font-weight: 800; color: #E4D8F7; }
+  .st-pack-cost { display: inline-flex; align-items: center; gap: 6px; font-family: ${CANDY.display}; font-size: 19px; line-height: 1; color: #fff; text-transform: uppercase; text-shadow: 0 2px 0 #2A0A4F; white-space: nowrap; }
+  .st-pack-buys { font-family: ${CANDY.display}; font-size: 12px; letter-spacing: .14em; line-height: 1; color: #FFD21F; text-transform: uppercase; }
   .st-pack-act { width: 100%; min-height: 44px; margin-top: 6px; border-radius: 13px; font-size: 15px; padding: 0 6px; }
   .st-pack-lock { font-size: 12.5px; }
   .st-top { position: absolute; top: -12px; left: 50%; transform: translateX(-50%); padding: 3px 10px; border-radius: 999px; background: #E3261E;
@@ -133,8 +135,8 @@ const ST_CSS = `
   .st-item-art img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .st-item-art img.st-item-fallback { width: auto; height: 86%; object-fit: contain; }
   .st-item-name { font-family: ${CANDY.display}; font-size: 17px; line-height: 1.15; color: #fff; }
-  .st-item-foot { margin-top: auto; display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
-  .st-item-buy { min-height: 44px; padding: 0 18px; border-radius: 13px; font-size: 15px; }
+  .st-item-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+  .st-item-buy { margin-top: auto; align-self: stretch; min-height: 44px; padding: 0 18px; border-radius: 13px; font-size: 15px; }
   @media (max-width: 600px) {
     .st-wrap { gap: 22px; }
     .st-hero { min-height: 0; align-items: flex-end; background-position: 72% center; }
@@ -182,7 +184,7 @@ export default function StoreView({ wallet = null, xp = 0, onNavigate, onOpenPro
               <section aria-labelledby="st-packs-title">
                 <div className="st-head">
                   <h2 id="st-packs-title" className="bb-display st-h2">Kwacha packs</h2>
-                  <span className="st-note">Credited to your bwanabet account · tap Buy twice · one pack a week</span>
+                  <span className="st-note">Credited to your bwanabet account · tap Convert twice · one pack a week</span>
                 </div>
                 <div className="st-packs">
                   {coinPacks.map((it, i) => <StorePackCard key={it.id} i={i} item={it} balances={balances} onBuy={onBuy} busy={busyId === it.id} top={it.id === topId} />)}
