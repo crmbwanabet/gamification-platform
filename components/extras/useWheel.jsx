@@ -39,6 +39,7 @@ export function useWheel({ enabled, getToken, autoOpen = false, preview = false,
   const frameRef = React.useRef(null);
   const tokenRef = React.useRef(null);
   const autoDoneRef = React.useRef(false);
+  const spunRef = React.useRef(false); // the wheel can report one spin twice
   const evRef = React.useRef(onEvent);
   evRef.current = onEvent;
   const emit = (name) => { try { evRef.current && evRef.current(name); } catch { /* ignore */ } };
@@ -77,7 +78,7 @@ export function useWheel({ enabled, getToken, autoOpen = false, preview = false,
           emit('auto_open');
         }
       } else if (t === 'bwanabet-wheel-close') setOpen(false);
-      else if (t === 'bwanabet-wheel-spun') { emit('spun'); setTimeout(() => setAvailable(false), 2000); }
+      else if (t === 'bwanabet-wheel-spun') { if (!spunRef.current) { spunRef.current = true; emit('spun'); } setTimeout(() => setAvailable(false), 2000); }
     };
     window.addEventListener('message', onMsg);
     return () => window.removeEventListener('message', onMsg);
