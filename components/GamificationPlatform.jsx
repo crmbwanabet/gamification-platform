@@ -1027,7 +1027,9 @@ export default function GamificationPlatform() {
     let inIframe = false;
     try { inIframe = window.self !== window.top; } catch (e) { inIframe = true; }
     const params = new URLSearchParams(window.location.search);
-    setWidgetCtx({ isWidget: inIframe || params.get('widget') === '1', widgetUid: params.get('uid'), preview: params.get('preview') === '1' });
+    const ctx = { isWidget: inIframe || params.get('widget') === '1', widgetUid: params.get('uid'), preview: params.get('preview') === '1' };
+    setWidgetCtx(ctx);
+    track('session_start', { meta: { widget: ctx.isWidget, preview: ctx.preview } });
   }, []);
   // The player's ID shown under their name (header + profile).
   // Order: the SSO profile, else the token's id claim (display only, while
@@ -1041,7 +1043,6 @@ export default function GamificationPlatform() {
   // batch carries the token so the server knows the player; widget.js tells
   // us when the popup opens/closes; every tab change is a tab_view.
   useEffect(() => { setTrackToken(session.getToken); }, [session.getToken]);
-  useEffect(() => { track('session_start', { meta: { widget: isWidget } }); }, [isWidget]);
   useEffect(() => {
     const onVis = (e) => {
       if (e.source !== window.parent || !e.data || e.data.type !== '100x-widget:visibility') return;
