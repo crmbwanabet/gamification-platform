@@ -29,7 +29,7 @@ test('weekly matches from the unlock week: won / lost / live, record and points'
   const now = Date.parse(`${today}T12:00:00Z`);
   const L = leagueState({ season: s, today, now });
   assert.equal(L.unlocked, true);
-  assert.equal(L.unlockDay, addDays(W1, 9), 'stage 6 reached on Wednesday of week 2 (3,200 XP)');
+  assert.equal(L.unlockDay, addDays(W1, 9), 'stage 8 (first pro club, 3,000 XP) reached on Wednesday of week 2 (3,200 XP)');
   assert.deepEqual(L.matches.map(m => [m.weekStart, m.xp, m.status, m.bonus]), [
     [addDays(W1, 7), 2000, 'won', 150],
     [addDays(W1, 14), 400, 'lost', 0],
@@ -37,8 +37,8 @@ test('weekly matches from the unlock week: won / lost / live, record and points'
     [addDays(W1, 28), 300, 'live', 0],
   ]);
   assert.deepEqual(L.matches.map(m => m.opponent), ['Lusaka Dynamics', 'Emerald Buffaloes', 'Fish Eagles FC', 'Lusaka Dynamics'],
-    'week 5 would be Crimson Arrows FC, but Vuma plays FOR Crimson Arrows by then (stage 7): next name instead');
-  assert.deepEqual(L.matches.map(m => [m.homeStage, m.home]), [[6, 'Kafue Gaels FC'], [6, 'Kafue Gaels FC'], [6, 'Kafue Gaels FC'], [7, 'Crimson Arrows FC']]);
+    'week 5 would be Crimson Arrows FC, but Vuma plays FOR Crimson Arrows by then (stage 9): next name instead');
+  assert.deepEqual(L.matches.map(m => [m.homeStage, m.home]), [[8, 'Kafue Gaels FC'], [8, 'Kafue Gaels FC'], [8, 'Kafue Gaels FC'], [9, 'Crimson Arrows FC']]);
   assert.deepEqual(L.matches.map(m => m.slug), ['lusaka-dynamics', 'emerald-buffaloes', 'fish-eagles-fc', 'lusaka-dynamics']);
   assert.ok(L.matches.every(m => m.tier === 'zambia' && m.target === 1200));
   assert.deepEqual(L.record, { played: 3, won: 2, lost: 1, points: 6 });
@@ -89,15 +89,15 @@ test('bonus claimable once', () => {
 });
 
 test('tiers follow the story chapters; bonus per tier', () => {
-  assert.deepEqual([6, 7, 8, 9, 10, 11, 15, 16, 17].map(tierForStage), ['zambia', 'zambia', 'zambia', 'zambia', 'southAfrica', 'england', 'england', 'top', 'top']);
+  assert.deepEqual([8, 9, 10, 11, 12, 13, 17, 18, 19].map(tierForStage), ['zambia', 'zambia', 'zambia', 'zambia', 'southAfrica', 'england', 'england', 'top', 'top']);
   assert.equal(tierForStage(1), 'zambia');
-  // a long season: the week starting at stage 10+ plays a South African side for 250
+  // a long season: the week starting at stage 12+ plays a South African side for 250
   const rows = [];
   for (let d = 0; d < 7 * 9; d++) if (d % 7 < 5) rows.push(row(addDays(W1, d), 4000)); // 2,000 a week for 9 weeks
   const s = computeSeasonXp({ rows });
   const L = leagueState({ season: s, today: addDays(W1, 7 * 9 - 1) });
   const sa = L.matches.find(m => m.tier === 'southAfrica');
-  assert.ok(sa, 'reached stage 10 (12,600 XP) after week 7');
+  assert.ok(sa, 'reached stage 12 (12,600 XP) after week 7');
   assert.equal(sa.weekStart, addDays(W1, 49), 'week 8 starts at 14,000 XP');
   assert.equal(sa.bonus, 250);
   assert.ok(LEAGUE_TIERS.southAfrica.opponents.includes(sa.opponent));

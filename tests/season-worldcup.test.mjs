@@ -8,7 +8,7 @@ const D0 = '2026-01-05';
 // Weekly cap out of the way so the windows are easy to reason about; the
 // daily cap (400) still applies. One test below runs on the real defaults.
 const CFG = cleanSeasonConfig({ weeklyCap: 700000 });
-const U = addDays(D0, 97); // 98 days x 400 = 39,200 >= 39,000 (stage 16)
+const U = addDays(D0, 97); // 98 days x 400 = 39,200 >= 39,000 (stage 18)
 
 function grind() {
   return Array.from({ length: 98 }, (_, i) => ({ day: addDays(D0, i), casino_stake: 4000 }));
@@ -31,10 +31,10 @@ test('the bracket: Zambia vs real national teams, targets and bonuses', () => {
     ['sf', 'Argentina', 1900, 5000], ['final', 'Brazil', 2000, 0],
   ]);
   assert.equal(SEASON_DEFAULTS.worldCup.prizeKwacha, 10000);
-  assert.equal(SEASON_DEFAULTS.worldCup.unlockStage, 16);
+  assert.equal(SEASON_DEFAULTS.worldCup.unlockStage, 18);
 });
 
-test('locked before stage 16', () => {
+test('locked before stage 18', () => {
   const s = computeSeasonXp({ rows: grind().slice(0, 90), cfg: CFG });
   const w = worldCupState({ season: s, today: addDays(D0, 100), cfg: CFG });
   assert.equal(w.unlocked, false);
@@ -128,14 +128,14 @@ test('bonus claims: once per round', () => {
 });
 
 test('real defaults: the weekly cap applies inside a window that straddles two weeks', () => {
-  // 2,000 a week (Mon-Fri 400) until stage 16; then the World Cup.
+  // 2,000 a week (Mon-Fri 400) until stage 18; then the World Cup.
   const rows = [];
   let d = 0;
   for (; d < 7 * 20; d++) if (d % 7 < 5) rows.push({ day: addDays(D0, d), casino_stake: 4000 });
   const s = computeSeasonXp({ rows });
   const w = worldCupState({ season: s, today: addDays(D0, 7 * 20), cfg: SEASON_DEFAULTS });
   assert.equal(w.unlocked, true);
-  // stage 16 (39,000) on the Wednesday of week 20 (38,000 + 400 + 400 + 400)
+  // stage 18 (39,000) on the Wednesday of week 20 (38,000 + 400 + 400 + 400)
   assert.equal(w.unlockDay, addDays(D0, 7 * 19 + 2));
   const g1 = w.rounds[0]; // Thu..Tue; only Thu + Fri have rows so far
   assert.equal(g1.start, addDays(D0, 7 * 19 + 3));

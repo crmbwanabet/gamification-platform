@@ -1,5 +1,8 @@
 # Vuma Katongo: Grok art prompts, one per story stage
 
+> **2026-10-19: the story now has 19 stages.** The table below is the ORIGINAL 17-stage list;
+> for the new stages 2–11 use `docs/vuma/stages-19-art-prompts.md` (old 10–17 = new 12–19).
+
 Reference: `gamification avatar (Vuma Katongo).jpg` (stage 1 outfit). Attach it to EVERY
 Grok prompt as the reference image, so the character stays the same boy.
 

@@ -1259,7 +1259,7 @@ export default function GamificationPlatform() {
     return () => clearTimeout(t);
   }, [story, anyModalOpen]);
   // "HOW IT WORKS" panel (components/redesign/BonusIntro.jsx): null = its
-  // default (expanded below stage 6, the header from stage 6); X / GOT IT /
+  // default (expanded below stage 8, the header from stage 8); X / GOT IT /
   // the header set it for this widget open only, never saved.
   const [introOpen, setIntroOpen] = useState(null);
   const openStory = useCallback(() => setStory('open'), []);
@@ -1620,7 +1620,7 @@ export default function GamificationPlatform() {
   const seasonEvents = useMemo(() => {
     if (seasonFeed.status !== 'ok' || !seasonFeed.rows || !seasonFeed.rows.length) return [];
     const recent = addDays(today, -14);
-    const club = getLevel(seasonCalc.xp).club || XP_LEVELS[5].club;
+    const club = getLevel(seasonCalc.xp).club || XP_LEVELS[seasonCfg.league.unlockStage - 1].club;
     const ev = [];
     for (const m of league.matches) {
       if (m.weekEnd < recent) continue;

@@ -153,7 +153,7 @@ test('cleanFriendlies: hydration of old / junk state', () => {
 // ---- World Cup fixture (as tests/season-worldcup.test.mjs) ------------------
 const D0 = '2026-01-05';
 const CFG = cleanSeasonConfig({ weeklyCap: 700000 });
-const U = addDays(D0, 97); // stage 16 day
+const U = addDays(D0, 97); // stage 18 day
 const grind = () => Array.from({ length: 98 }, (_, i) => row(addDays(D0, i)));
 /** windows: 'W' (2,000) / 'L' (400) / '-' per window; extra = additional rows. */
 function cupRows(windows, extra = [], shiftAfter = null) {
