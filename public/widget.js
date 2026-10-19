@@ -8,6 +8,7 @@
  *     launcher: false  -> no floating bubble; open it from your own button:
  *                         <button onclick="BwanaBetBonus.open()">Bonus Center</button>
  *     uid: '123456'    -> player ID to display (normally read from the token cookie)
+ *     preview: true    -> the preview page: the wheel in its TEST mode (never pays)
  *   (window.X100_WIDGET is still read, for older embeds.)
  * Page API: BwanaBetBonus.open(), BwanaBetBonus.close().
  * A page URL with ?bonus=open opens the Bonus Center on load (SMS links).
@@ -126,7 +127,9 @@
   var frame = null;
   var frameToken = null; // the token the current iframe was opened with
 
-  function openWidget() {
+  // The iframe is created on the first open, or straight away (hidden) for a
+  // logged-in player so the Bonus Center can check the Wheel of Fortune.
+  function ensureFrame() {
     // the player logged in, out or switched account since the iframe opened:
     // start a fresh iframe so it never shows the previous session
     var t = readToken();
@@ -135,21 +138,44 @@
     if (!frame) {
       frame = document.createElement('iframe');
       frame.className = 'x100w-frame';
-      frame.allow = 'clipboard-write';
+      frame.allow = 'clipboard-write; autoplay';
       var uid = currentUid();
-      frame.src = APP_ORIGIN + '/?widget=1' + (uid ? '&uid=' + encodeURIComponent(uid) : '');
+      frame.src = APP_ORIGIN + '/?widget=1' + (uid ? '&uid=' + encodeURIComponent(uid) : '') + (cfg.preview ? '&preview=1' : '');
       frame.addEventListener('load', sendToken);
       overlay.appendChild(frame);
     }
     sendToken();
+  }
+  var isOpen = false;
+  function tellApp(open) {
+    try { if (frame && frame.contentWindow) frame.contentWindow.postMessage({ type: '100x-widget:visibility', open: open }, APP_ORIGIN); } catch (e) { /* ignore */ }
+  }
+  function openWidget() {
+    ensureFrame();
     overlay.classList.add('open');
     if (launcher.parentNode) launcher.style.display = 'none';
     document.documentElement.style.overflow = 'hidden';
+    if (!isOpen) { isOpen = true; tellApp(true); }
   }
   function closeWidget() {
     overlay.classList.remove('open');
     launcher.style.display = '';
     document.documentElement.style.overflow = '';
+    if (isOpen) { isOpen = false; tellApp(false); }
+  }
+
+  // "Wheel first, then the Bonus Center" (2026-10-19): while today's free
+  // spin is unused, the app opens the Wheel of Fortune by itself and asks us
+  // to show the popup ('100x-widget:open'); closing the wheel leaves the Bonus
+  // Center on screen, and its red X closes everything. At most once per day
+  // per browser tab session, so it never re-opens on every page the player visits.
+  var AUTO_KEY = 'x100-widget-auto';
+  function autoOpen() {
+    var day = new Date().toISOString().slice(0, 10);
+    if (!cfg.preview) {
+      try { if (sessionStorage.getItem(AUTO_KEY) === day) return; sessionStorage.setItem(AUTO_KEY, day); } catch (e) { /* storage blocked */ }
+    }
+    openWidget();
   }
 
   function sendToken() {
@@ -163,6 +189,7 @@
   window.addEventListener('message', function (e) {
     if (e.origin !== APP_ORIGIN) return;
     if (e.data && e.data.type === '100x-widget:close') closeWidget();
+    if (e.data && e.data.type === '100x-widget:open' && frame && e.source === frame.contentWindow && !isOpen) autoOpen();
     // the app says it is mounted and listening: hand it the session token
     if (e.data && e.data.type === 'gamification-ready') sendToken();
   });
@@ -173,6 +200,9 @@
     // SMS / campaign links: https://bwanabet.co.zm/?bonus=open opens the
     // Bonus Center straight away (the comeback bonus waits inside).
     try { if (/[?&]bonus=open/.test(window.location.search)) openWidget(); } catch (e) { /* ignore */ }
+    // Logged in (or the preview page): load the Bonus Center hidden now, so it
+    // can open by itself with the Wheel of Fortune while a free spin is unused.
+    if (!frame && (readToken() || cfg.preview)) ensureFrame();
   }
   if (document.body) mount();
   else document.addEventListener('DOMContentLoaded', mount);

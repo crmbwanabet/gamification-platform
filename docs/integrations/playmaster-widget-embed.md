@@ -16,6 +16,24 @@ login). The token is handed to our app by `postMessage`, never put in a URL, log
 by us. If Playmaster can share the JWT signing key (or public key), we will also verify the
 token's signature on our server.
 
+### The Wheel of Fortune is now INSIDE the Bonus Center (2026-10-19)
+
+This one line also runs the Wheel of Fortune. **Remove the wheel's own script**
+(`https://wheel-of-fortune-roan.vercel.app/embed.js`) from the site, otherwise a player sees
+two wheels. What players see:
+
+1. A logged-in player whose free spin for today is unused gets the Wheel of Fortune
+   automatically, once per day per browser tab (not on every page).
+2. They spin and see whether they won or lost.
+3. When they close the wheel (its button, its red X, or a click outside the box), the Bonus
+   Center is already open behind it.
+4. The red X at the top right closes the Bonus Center. The gold coin button opens it again.
+
+A player who already used the spin today just sees the coin button, as before.
+
+Preview of the whole flow (test wheel, spins never pay):
+https://100xbet-gamification.vercel.app/preview.html
+
 ## 2. Optional: open it from your own menu button instead of the floating coin
 
 ```html

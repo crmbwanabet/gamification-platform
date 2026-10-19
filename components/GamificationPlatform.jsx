@@ -32,7 +32,7 @@ import { paidFromPurchase, refundTotals } from '@/lib/store/catalog.mjs';
 import { DEFAULT_DAILY_PLAYS } from '@/lib/config/defaults';
 import { playsFromConfig } from '@/lib/config/plays.mjs';
 import { applyMissionOverrides } from '@/lib/config/missions.mjs';
-import { track, setTrackUid } from '@/lib/track';
+import { track, setTrackUid, setTrackToken, flushTrack } from '@/lib/track';
 
 // Data imports
 import { IMG_BASE, CURRENCY_ICONS, IMAGES, WHEEL_IMAGES } from '../lib/data/images';
@@ -1022,12 +1022,12 @@ export default function GamificationPlatform() {
   // Widget mode: the platform runs as a popup (iframe) on bwanabet.com.
   // Detected via iframe embedding or ?widget=1; the host passes ?uid=.
   // Resolved after mount so the first client render matches SSR (hydration).
-  const [{ isWidget, widgetUid }, setWidgetCtx] = useState({ isWidget: false, widgetUid: null });
+  const [{ isWidget, widgetUid, preview }, setWidgetCtx] = useState({ isWidget: false, widgetUid: null, preview: false });
   useEffect(() => {
     let inIframe = false;
     try { inIframe = window.self !== window.top; } catch (e) { inIframe = true; }
     const params = new URLSearchParams(window.location.search);
-    setWidgetCtx({ isWidget: inIframe || params.get('widget') === '1', widgetUid: params.get('uid') });
+    setWidgetCtx({ isWidget: inIframe || params.get('widget') === '1', widgetUid: params.get('uid'), preview: params.get('preview') === '1' });
   }, []);
   // The player's ID shown under their name (header + profile).
   // Order: the SSO profile, else the token's id claim (display only, while
@@ -1037,7 +1037,20 @@ export default function GamificationPlatform() {
     const id = session?.profile?.bwanabet_user_id || session?.profile?.username || widgetUid;
     if (id) setTrackUid(id);
   }, [session?.profile, widgetUid]);
-  useEffect(() => { track('session_start'); }, []);
+  // Activity tracking (2026-10-19, lib/track.js + lib/trackTypes.mjs): every
+  // batch carries the token so the server knows the player; widget.js tells
+  // us when the popup opens/closes; every tab change is a tab_view.
+  useEffect(() => { setTrackToken(session.getToken); }, [session.getToken]);
+  useEffect(() => { track('session_start', { meta: { widget: isWidget } }); }, [isWidget]);
+  useEffect(() => {
+    const onVis = (e) => {
+      if (e.source !== window.parent || !e.data || e.data.type !== '100x-widget:visibility') return;
+      track(e.data.open ? 'widget_open' : 'widget_close');
+      if (!e.data.open) flushTrack();
+    };
+    window.addEventListener('message', onVis);
+    return () => window.removeEventListener('message', onVis);
+  }, []);
   const hydratedRef = useRef(false);
   const hydratedXpRef = useRef(0); // saved xp: the floor until the season feed answers
   const saveTimer = useRef(null);
@@ -1045,7 +1058,7 @@ export default function GamificationPlatform() {
   const [levelUp, setLevelUp] = useState(null);
   const [showProfile, setShowProfile] = useState(false);
   const [profileEdit, setProfileEdit] = useState(false); // open the profile straight into the name form
-  const openProfile = (edit = false) => { setProfileEdit(!!edit); setShowProfile(true); };
+  const openProfile = (edit = false) => { track('profile_open', { meta: { edit: !!edit } }); setProfileEdit(!!edit); setShowProfile(true); };
   // Save the player's name (first name any time, then once per stage-up).
   const savePlayerName = (name) => {
     const v = validateName(name);
@@ -1053,6 +1066,7 @@ export default function GamificationPlatform() {
     const stage = getLevel(userRef.current.xp).level;
     if (!setPlayerName(userRef.current, v.name, stage)) return { ok: false, reason: `You can change your name again at Stage ${stage + 1}` };
     setUser(u => setPlayerName(u, v.name, getLevel(u.xp).level) || u);
+    track('name_set', { meta: { stage } });
     return { ok: true, name: v.name };
   };
   useEffect(() => {
@@ -1270,7 +1284,7 @@ export default function GamificationPlatform() {
   // default (expanded below stage 8, the header from stage 8); X / GOT IT /
   // the header set it for this widget open only, never saved.
   const [introOpen, setIntroOpen] = useState(null);
-  const openStory = useCallback(() => setStory('open'), []);
+  const openStory = useCallback(() => { track('story_open'); setStory('open'); }, []);
   const closeStory = useCallback(() => setStory('done'), []);
 
   // Daily reward READY (logged in, unclaimed) on Home: one paper-confetti
@@ -1543,6 +1557,7 @@ export default function GamificationPlatform() {
       return { ...u, kwacha: u.kwacha - f.cost, season: { ...s, friendlies: { ...cur, [key]: next[key] } } };
     });
     setNowTick(now);
+    track('friendly_accepted', { amount: f.cost, meta: { key } });
     showNotif(`🤝 Friendly vs ${f.opponent}: reach ${f.target.toLocaleString('en-US')} XP in ${seasonCfg.friendly?.windowHours ?? 24}h`);
     return true;
   };
@@ -1550,6 +1565,7 @@ export default function GamificationPlatform() {
     const f = activeFriendlies.find(x => x.key === key);
     const next = f ? declineFriendly(friendlyMap, f, Date.now()) : null;
     if (!next) return;
+    track('friendly_declined', { meta: { key } });
     setUser(u => {
       const s = u.season || {};
       const cur = cleanFriendlies(s.friendlies);
@@ -1581,12 +1597,23 @@ export default function GamificationPlatform() {
     if (xp) xpFx.collect({ from: el || null, amount: xp, delay: 250 });
     return paid;
   };
+  const openMission = (m) => { track('mission_open', { meta: { missionId: m?.id || null } }); setSelectedMission(m); };
+  // The wheel opens by itself the first time a spin is available in widget
+  // mode ("wheel first, then the Bonus Center"): it asks widget.js to show the
+  // popup; closing the wheel leaves the Bonus Center underneath.
+  const wheel = useWheel({
+    enabled: loggedIn, getToken: session.getToken, preview, autoOpen: isWidget || preview,
+    onEvent: (name) => {
+      track(`wheel_${name}`);
+      if (name === 'auto_open') { try { window.parent.postMessage({ type: '100x-widget:open', reason: 'wheel' }, '*'); } catch { /* not embedded */ } }
+      if (name === 'spun' || name === 'closed') flushTrack();
+    },
+  });
   const extras = useExtras({
     session, loggedIn, hydrated: hydratedRef.current, tab, user, setUser, seasonRows: seasonFeed.rows, today,
     stage: getLevel(user.xp).level, league, worldCup, hustle, credit: creditExtra, showNotif,
-    blocked: anyModalOpen || (dailyPopup !== 'done' && canClaimDaily && !user.dailyClaimed),
+    blocked: anyModalOpen || wheel.isOpen || (dailyPopup !== 'done' && canClaimDaily && !user.dailyClaimed),
   });
-  const wheel = useWheel({ enabled: loggedIn, getToken: session.getToken });
 
   // Bonus claims (once each; state keys in user.season) + the hustle collect.
   const seasonBusyRef = useRef(new Set());
@@ -1605,6 +1632,7 @@ export default function GamificationPlatform() {
       if (list.includes(id)) return u;
       return { ...u, kwacha: u.kwacha + m.bonus, season: { ...s, [listKey]: [...list, id] } };
     });
+    track(isLeague ? 'league_bonus_claimed' : 'wc_bonus_claimed', { amount: m.bonus, meta: { id } }); flushTrack();
     showNotif(`⚽ Win bonus: +${rewardParts({ kwacha: m.bonus }).join(' + ')}`);
     triggerReward('medium', el || null, { coins: m.bonus });
   };
@@ -1617,6 +1645,7 @@ export default function GamificationPlatform() {
     if (!c || seasonBusyRef.current.has(guard)) return;
     seasonBusyRef.current.add(guard);
     setUser(u => (u.hustle?.lastCollectDay === today ? u : { ...u, kwacha: u.kwacha + c.coins, hustle: c.hustle }));
+    track('hustle_collected', { amount: c.coins, meta: { level: hustle.level.level } }); flushTrack();
     showNotif(`🧽 ${heroText(hustle.level.name, user.displayName, playerId)}: +${rewardParts({ kwacha: c.coins }).join(' + ')}`);
     triggerReward('medium', el || null, { coins: c.coins });
   };
@@ -1636,6 +1665,7 @@ export default function GamificationPlatform() {
         const p = { status: data.status || 'pending', at: new Date().toISOString() };
         setUser(u => ({ ...u, season: { ...(u.season || {}), prize: p } }));
         setSeasonFeed(f => ({ ...f, prize: p }));
+        track('prize_claimed', { meta: { status: p.status } });
         showNotif('🏆 Prize claimed — being verified');
       } else if (status === 403) {
         showNotif('We could not confirm the win yet. Try again once your play has synced.', 'error');
@@ -1703,6 +1733,7 @@ export default function GamificationPlatform() {
   // trackQuest + claimQuest parked — see parked/components/GamificationPlatform.removed-wiring.jsx
 
   const playGame = (gameId) => {
+    track('game_open', { gameId });
     // Disabled games can still be reached via mission modals — block them.
     if (!activeGames.some(g => g.id === gameId)) { showNotif('This game is unavailable right now', 'error'); return; }
     // Stake-per-round games (njuka, coinflip, penalty, chicken, chicken2, minibus, bottle, scratch, numbers): entry is free — no daily play consumed,
@@ -1778,6 +1809,7 @@ export default function GamificationPlatform() {
   const GAME_ROUTES = new Set(['minigames', 'play', 'play.minigames', 'predict', 'predictions', 'play.predictions', 'play.daily']);
   const navigateTab = (id) => {
     const target = LEGACY_TAB_MAP[id] || (String(id).startsWith('me.') ? 'home' : id);
+    if (target !== tab) track('tab_view', { meta: { tab: target } });
     if (GAME_ROUTES.has(id)) setFocus(f => ({ ...f, games: f.games + 1 }));
     if (id === 'earn.rewards') setFocus(f => ({ ...f, rewards: f.rewards + 1 }));
     setTab(target);
@@ -2037,7 +2069,7 @@ export default function GamificationPlatform() {
     story: anyModalOpen || story === 'done' ? null : story,
     onStoryOpen: openStory,
     onStoryClose: closeStory,
-    intro: { open: introOpen, onToggle: setIntroOpen },
+    intro: { open: introOpen, onToggle: (v) => { track('intro_toggle', { meta: { open: !!v } }); setIntroOpen(v); } },
     // Extras (2026-10-19) + the Wheel of Fortune card (shown while today's spin is available)
     extras,
     wheel: wheel.available ? { onOpen: wheel.open } : null,
@@ -2078,7 +2110,7 @@ export default function GamificationPlatform() {
           ...(m.xp ? (() => { const t = addMissionXp(u.xpToday, m.xp, src.day).xpToday; return { xpToday: t, xpDays: recordXpDay(u.xpDays, t) }; })() : null),
         };
       });
-      track('mission_completed', { amount: r.kwacha || 0, meta: { missionId: m.id, day: src.day } });
+      track('mission_completed', { amount: r.kwacha || 0, meta: { missionId: m.id, day: src.day } }); flushTrack();
       const won = [...rewardParts(r), m.xp ? amountText(m.xp, 'xp') : null].filter(Boolean);
       showNotif(`✅ ${m.name} claimed!${won.length ? ` +${won.join(' + ')}` : ''}`);
       triggerReward('medium', el || null, { coins: r.kwacha || 0, emeralds: r.emeralds, rubies: r.rubies, diamonds: r.diamonds });
@@ -2104,7 +2136,7 @@ export default function GamificationPlatform() {
     // 7-day rollover assumes the rewards table has 7 entries (admin dashboard validates at write time)
     setUser(u => ({ ...u, dailyClaimed: true, lastDailyClaim: today, dailyDay: u.dailyDay >= 7 ? 1 : u.dailyDay + 1, streak: newStreak, dailyTasksDone: [...new Set([...u.dailyTasksDone, 'claim'])] }));
     trackMission('dailyClaimed');
-    track('daily_claimed', { amount: r.kwacha || 0 });
+    track('daily_claimed', { amount: r.kwacha || 0, meta: { day: user.dailyDay } }); flushTrack();
     showNotif(`🎉 +${rewardParts(r).join(' + ')} claimed!`);
     if (popup) {
       // Popup claim: a stream of K coins pours from the CLAIM button into the
@@ -2155,7 +2187,7 @@ export default function GamificationPlatform() {
   if (tab === 'missions') {
     return withXp(<>
       <EarnView {...v2Stats} focusRewards={focus.rewards}
-        onOpenMission={setSelectedMission} onClaimMission={claimCasinoMission} />
+        onOpenMission={openMission} onClaimMission={claimCasinoMission} />
       {gameOverlays}
     </>);
   }
@@ -2212,7 +2244,7 @@ export default function GamificationPlatform() {
   // 2026-07-15 — see parked/components/legacy/GamificationPlatform.legacy-return.jsx
   return withXp(<>
     <Overview {...v2Stats} activeTab="home"
-      onOpenMission={setSelectedMission}
+      onOpenMission={openMission}
       dailyDay={user.dailyDay} dailyClaimed={user.dailyClaimed} onClaimDaily={claimDailyReward}
       gamePlays={user.gamePlays} onPlay={playGame} focusGames={focus.games}
       onBuy={buyStoreItem} busyId={storeBusy} />

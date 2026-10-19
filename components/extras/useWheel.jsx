@@ -24,14 +24,35 @@ const CSS = `
   .wh-ov iframe { border: 0; border-radius: 16px; width: 95vw; max-width: 420px; height: 90vh; max-height: 750px; background: transparent; }
 `;
 
-/** { available, open(), layer } — `layer` must stay mounted on every tab. */
-export function useWheel({ enabled, getToken }) {
+/**
+ * { available, open(), layer } — `layer` must stay mounted on every tab.
+ * autoOpen: open the wheel by itself the first time this load learns a spin
+ *   is available (the "wheel first, then the Bonus Center" flow, 2026-10-19);
+ *   onEvent('auto_open') lets the caller ask widget.js to show the popup.
+ * preview: the wheel's public TEST mode (no login, test spins never pay),
+ *   for /preview.html only.
+ * onEvent(name): 'available' | 'auto_open' | 'opened' | 'closed' | 'spun' (activity tracking).
+ */
+export function useWheel({ enabled, getToken, autoOpen = false, preview = false, onEvent }) {
   const [available, setAvailable] = React.useState(false);
-  const [isOpen, setOpen] = React.useState(false);
+  const [isOpen, setOpenState] = React.useState(false);
   const frameRef = React.useRef(null);
   const tokenRef = React.useRef(null);
-  const token = enabled ? getToken() : null;
+  const autoDoneRef = React.useRef(false);
+  const evRef = React.useRef(onEvent);
+  evRef.current = onEvent;
+  const emit = (name) => { try { evRef.current && evRef.current(name); } catch { /* ignore */ } };
+  const on = enabled || preview;
+  const token = enabled && !preview ? getToken() : null;
   if (token !== tokenRef.current) tokenRef.current = token;
+  const src = preview ? `${WHEEL_URL}/?test=1&closeAfter=1` : WHEEL_URL;
+
+  const setOpen = setOpenState;
+  const firstRef = React.useRef(true);
+  React.useEffect(() => {
+    if (firstRef.current) { firstRef.current = false; return; }
+    emit(isOpen ? 'opened' : 'closed');
+  }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const sendAuth = React.useCallback(() => {
     const w = frameRef.current?.contentWindow;
@@ -40,32 +61,40 @@ export function useWheel({ enabled, getToken }) {
   }, []);
 
   React.useEffect(() => {
-    if (!enabled || !WHEEL_ORIGIN) return undefined;
+    if (!on || !WHEEL_ORIGIN) return undefined;
     const onMsg = (e) => {
       if (e.origin !== WHEEL_ORIGIN || !e.data || typeof e.data.type !== 'string') return;
       if (e.source !== frameRef.current?.contentWindow) return;
       const t = e.data.type;
       if (t === 'bwanabet-wheel-ready') sendAuth();
-      else if (t === 'bwanabet-wheel-available') setAvailable(!!e.data.available);
-      else if (t === 'bwanabet-wheel-close') setOpen(false);
-      else if (t === 'bwanabet-wheel-spun') setTimeout(() => setAvailable(false), 2000);
+      else if (t === 'bwanabet-wheel-available') {
+        const ok = !!e.data.available;
+        setAvailable(ok);
+        if (ok) emit('available');
+        if (ok && autoOpen && !autoDoneRef.current) {
+          autoDoneRef.current = true;
+          setOpen(true);
+          emit('auto_open');
+        }
+      } else if (t === 'bwanabet-wheel-close') setOpen(false);
+      else if (t === 'bwanabet-wheel-spun') { emit('spun'); setTimeout(() => setAvailable(false), 2000); }
     };
     window.addEventListener('message', onMsg);
     return () => window.removeEventListener('message', onMsg);
-  }, [enabled, sendAuth]);
+  }, [on, autoOpen, sendAuth, setOpen]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // A new account (or log-out) re-keys the iframe so it re-checks availability.
-  const frameKey = token ? token.slice(-16) : 'none';
-  React.useEffect(() => { setAvailable(false); setOpen(false); }, [frameKey]);
+  const frameKey = preview ? 'preview' : token ? token.slice(-16) : 'none';
+  React.useEffect(() => { setAvailable(false); setOpenState(false); }, [frameKey]);
 
-  const layer = enabled && token && WHEEL_ORIGIN ? (
-    <div className={`wh-ov${isOpen ? ' open' : ''}`} onClick={(e) => { if (e.target === e.currentTarget) setOpen(false); }}>
+  const layer = on && (token || preview) && WHEEL_ORIGIN ? (
+    <div className={`wh-ov${isOpen ? ' open' : ''}`} data-wheel-overlay onClick={(e) => { if (e.target === e.currentTarget) setOpen(false); }}>
       <style dangerouslySetInnerHTML={{ __html: CSS }} />
-      <iframe key={frameKey} ref={frameRef} src={WHEEL_URL} title="Wheel of Fortune" allow="autoplay" onLoad={sendAuth} />
+      <iframe key={frameKey} ref={frameRef} src={src} title="Wheel of Fortune" allow="autoplay" onLoad={sendAuth} />
     </div>
   ) : null;
 
-  return { available: enabled && available, open: () => setOpen(true), layer };
+  return { available: on && available, isOpen, open: () => setOpen(true), layer };
 }
 
 /** Home card: shown only while today's free spin is available. */

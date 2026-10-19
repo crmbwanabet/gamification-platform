@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { SPORTS_MISSIONS, sportsMissionStates, recordSportsClaim } from '@/lib/missions/sports.mjs';
 import { albumCards, albumSets, earnedCount } from '@/lib/album/cards.mjs';
+import { track, flushTrack } from '@/lib/track';
 
 // The 2026-10-19 extras in one place, so GamificationPlatform only wires it:
 // bet-slip missions, souvenir album, match-day predictions, the weekly
@@ -29,6 +30,7 @@ export function useExtras({ session, loggedIn, hydrated, tab, user, setUser, sea
     const guard = `sports:${today}:${missionId}`;
     if (!s || !s.claimable || busy.current.has(guard)) return;
     busy.current.add(guard);
+    track('sports_mission_claimed', { amount: s.mission.reward.kwacha || 0, meta: { missionId, day: today } }); flushTrack();
     credit({ coins: s.mission.reward.kwacha || 0, xp: s.mission.xp || 0 }, el, `✅ ${s.mission.name} claimed!`, (u) => {
       const next = recordSportsClaim(u.sportsMissionClaims, missionId, today, sportsMissionStates(SPORTS_MISSIONS, { rows: seasonRows || [], today, claims: u.sportsMissionClaims }));
       return next ? { sportsMissionClaims: next } : null;
@@ -53,6 +55,7 @@ export function useExtras({ session, loggedIn, hydrated, tab, user, setUser, sea
     const s = sets.find(x => x.id === setId);
     if (!s || !s.claimable || busy.current.has(`set:${setId}`)) return;
     busy.current.add(`set:${setId}`);
+    track('album_set_claimed', { amount: s.bonus, meta: { setId } }); flushTrack();
     credit({ coins: s.bonus }, el, `🃏 ${s.name} set complete!`, (u) => {
       const paid = Array.isArray(u.albumClaims) ? u.albumClaims : [];
       return paid.includes(setId) ? null : { albumClaims: [...paid, setId] };
@@ -83,7 +86,7 @@ export function useExtras({ session, loggedIn, hydrated, tab, user, setUser, sea
     setPickBusy(eventId);
     try {
       const { status, data } = await api('/api/predictions', { eventId, pick });
-      if (status === 200 && data?.ok) { showNotif('⚽ Prediction saved — good luck!'); await loadPredictions(); return; }
+      if (status === 200 && data?.ok) { track('prediction_made', { meta: { eventId, pick } }); showNotif('⚽ Prediction saved — good luck!'); await loadPredictions(); return; }
       const msg = data?.error === 'daily_limit' ? `You can make ${data.max} predictions a day`
         : data?.error === 'closed' ? 'Kick-off is too close — predictions are closed'
         : data?.error === 'already_picked' ? 'You already predicted this match'
@@ -96,6 +99,7 @@ export function useExtras({ session, loggedIn, hydrated, tab, user, setUser, sea
     busy.current.add(`pred:${eventId}`);
     const { status, data } = await api('/api/predictions/claim', { eventId });
     if (status === 200 && data?.ok) {
+      track('prediction_claimed', { amount: data.coins, meta: { eventId } }); flushTrack();
       credit({ coins: data.coins }, el, '⚽ Correct prediction!');
       setPred(p => ({ ...p, mine: p.mine.map(m => (m.eventId === eventId ? { ...m, claimed: true, claimable: false } : m)) }));
     } else {
@@ -122,6 +126,7 @@ export function useExtras({ session, loggedIn, hydrated, tab, user, setUser, sea
     const { status, data } = await api('/api/leaderboard/claim', {});
     busy.current.delete('board');
     if (status === 200 && data?.ok) {
+      track('leaderboard_claimed', { amount: data.coins, meta: { rank: data.rank, band: data.band } }); flushTrack();
       credit({ coins: data.coins }, el, `🏆 Weekly league: #${data.rank}!`);
       setBoard(b => (b.lastWeek ? { ...b, lastWeek: { ...b.lastWeek, claimed: true } } : b));
     } else {
@@ -137,7 +142,7 @@ export function useExtras({ session, loggedIn, hydrated, tab, user, setUser, sea
     checkedRef.current = true;
     (async () => {
       const { status, data } = await api('/api/comeback');
-      if (status === 200 && data?.eligible) setComeback({ coins: data.coins, daysAway: data.daysAway });
+      if (status === 200 && data?.eligible) { track('comeback_shown', { meta: { daysAway: data.daysAway } }); setComeback({ coins: data.coins, daysAway: data.daysAway }); }
     })();
   }, [loggedIn, hydrated, api]);
   const claimComeback = async (el) => {
@@ -145,7 +150,7 @@ export function useExtras({ session, loggedIn, hydrated, tab, user, setUser, sea
     busy.current.add('comeback');
     const { status, data } = await api('/api/comeback', {});
     setComeback(null);
-    if (status === 200 && data?.ok) credit({ coins: data.coins }, el, '👋 Welcome back!');
+    if (status === 200 && data?.ok) { track('comeback_claimed', { amount: data.coins }); flushTrack(); credit({ coins: data.coins }, el, '👋 Welcome back!'); }
     else if (data?.error !== 'already_claimed') showNotif('Claim failed — try again later', 'error');
   };
 
