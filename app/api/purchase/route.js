@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { verifyBwanabetToken } from '@/lib/auth/bwanabetToken';
 import { purchaseMessage } from '@/lib/telegram/format.mjs';
-import { parsePurchaseBody } from '@/lib/store/catalog.mjs';
+import { parsePurchaseBody, STORE_UNLOCK_XP } from '@/lib/store/catalog.mjs';
 import { sendPurchase } from '@/lib/telegram/client';
 import { rateLimit } from '@/lib/rateLimit';
 
@@ -37,6 +37,11 @@ export async function POST(req) {
   const parsed = parsePurchaseBody(body);
   if (parsed.error) return NextResponse.json({ error: parsed.error }, { status: 400 });
   const { itemId } = parsed;
+
+  // Coin Shop opens at stage 5 (the saved profile XP; lib/store/catalog.mjs).
+  const { data: prof } = await supabaseAdmin.from('profiles').select('xp').eq('bwanabet_user_id', uid).maybeSingle();
+  if (!prof) return NextResponse.json({ error: 'profile_required' }, { status: 403 });
+  if (!(Number(prof.xp) >= STORE_UNLOCK_XP)) return NextResponse.json({ error: 'store_locked' }, { status: 403 });
 
   const { data, error } = await supabaseAdmin.rpc('purchase_item', { p_uid: uid, p_item_id: itemId });
   if (error) {

@@ -4,7 +4,7 @@ import React from 'react';
 import { C, CANDY } from './tokens';
 import { RewardIcon, CurrencyAmounts } from './RedesignShell';
 import { PackBuyButton, balancesOf } from './StoreView';
-import { BB_CSS, STORE_ART, packArtSrc, CoinMeter, PackLock, goalText } from './storeKit';
+import { BB_CSS, STORE_ART, packArtSrc, CoinMeter, PackLock, goalText, ShopLockPlate, ShopLockWrap } from './storeKit';
 import { ShineImg, Sparkles } from './Shine';
 import { IMAGES } from '@/lib/data/images';
 import { canAfford, cleanReward, coinsToKwacha, formatKwacha, formatNumber } from '@/lib/economy/currency.mjs';
@@ -144,7 +144,7 @@ function HomeItemTile({ item, balances, onBuy }) {
 }
 
 /** Store selection for Home: kwacha packs first, then ordinary items, up to 5. Renders nothing when the store is empty. */
-export default function HomeStore({ storeItems, wallet, onBuy, busyId = null, onSeeAll, className = '' }) {
+export default function HomeStore({ storeItems, wallet, onBuy, busyId = null, onSeeAll, className = '', locked = false, xp = 0 }) {
   const { coinPacks, items } = splitCatalog(storeItems);
   if (!(coinPacks.length + items.length)) return null;
   const packs = coinPacks.slice(0, MAX_ON_HOME);
@@ -153,8 +153,10 @@ export default function HomeStore({ storeItems, wallet, onBuy, busyId = null, on
   const balances = balancesOf(wallet);
   const rate = Number(wallet?.economy?.coinsPerKwacha) || 10000;
   return (
-    <section className={`hs-panel ${className}`} aria-labelledby="hs-title">
+    <section className={`hs-panel bb-lockhost ${className}`} aria-labelledby="hs-title">
       <style dangerouslySetInnerHTML={{ __html: BB_CSS + HS_CSS }} />
+      {locked && <ShopLockPlate xp={xp} className="bb-shoplock--high" />}
+      <ShopLockWrap locked={locked}>
       <div className="hs-banner">
         <div className="hs-shade" aria-hidden />
         <div className="hs-rate"><b>{formatNumber(rate)} COINS</b><i>BUYS</i><strong>K1.00</strong></div>
@@ -186,6 +188,7 @@ export default function HomeStore({ storeItems, wallet, onBuy, busyId = null, on
           <span className="hs-m">Tap Convert twice · credited to bwanabet · one pack a week</span>
         </p>
       )}
+      </ShopLockWrap>
     </section>
   );
 }

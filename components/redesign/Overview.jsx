@@ -11,25 +11,27 @@ import { useResetText, EarnPrize } from './EarnView';
 import { amountText } from '@/lib/rewardText.mjs';
 import { CASINO_MISSIONS } from '@/lib/data/missions';
 import { casinoMissionStates, missionTerms } from '@/lib/missions/casino.mjs';
-import { STORE_ITEMS, MINIGAMES } from '@/lib/data/platform';
-import { splitCatalog } from '@/lib/store/catalog.mjs';
+import { STORE_ITEMS, MINIGAMES, getLevel } from '@/lib/data/platform';
+import { splitCatalog, storeLocked } from '@/lib/store/catalog.mjs';
 import { WheelCard } from '../extras/useWheel';
 import { Predictions } from '../extras/ExtrasViews';
 
 // Home layout (design "A · Full candy"; missions moved to the top 2026-10-18,
-// when the daily reward became a popup on open): phones stack missions → store
-// → daily reward → this week → bonus games; desktop (≥861px) opens with ONE row,
-// missions (400px) left + the store panel right (max 780px, sized to its own
-// content), then the daily reward + this week on the left beside the games grid
-// (3 per row). With an empty store the games take the top-right slot.
+// when the daily reward became a popup on open; daily reward and Coin Shop
+// swapped 2026-10-20): phones stack missions → daily reward → Coin Shop → this
+// week → bonus games; desktop (≥861px) opens with missions (400px) left + the
+// daily reward right (max 560px), then the Coin Shop + this week on the left
+// beside the games grid (3 per row). With an empty store the games take the
+// top-right slot. Below stage 5 the Coin Shop is greyed with a lock plate.
 const OV_CSS = `
-  .ov-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 26px; grid-template-areas: "missions" "store" "daily" "season" "predict" "games"; }
+  .ov-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 26px; grid-template-areas: "missions" "daily" "store" "season" "predict" "games"; }
   .ov-daily { grid-area: daily; } .ov-store { grid-area: store; } .ov-season { grid-area: season; display: grid; gap: 12px; } .ov-games { grid-area: games; } .ov-missions { grid-area: missions; display: grid; gap: 12px; } .ov-predict { grid-area: predict; }
   .ov-grid > * { min-width: 0; align-self: start; }
   .ov-grid--nostore { grid-template-areas: "missions" "daily" "season" "predict" "games"; }
   @media (min-width: 861px) {
     .ov-grid { grid-template-columns: 400px minmax(0, 1fr); grid-template-rows: auto auto auto 1fr; column-gap: 28px; row-gap: 24px;
-      grid-template-areas: "missions store" "daily games" "season games" "predict games"; }
+      grid-template-areas: "missions daily" "store games" "season games" "predict games"; }
+    .ov-grid:not(.ov-grid--nostore) > .ov-daily { max-width: 560px; }
     .ov-grid--nostore { grid-template-rows: auto auto auto 1fr; grid-template-areas: "missions games" "daily games" "season games" "predict games"; }
   }
   .ov-link { all: unset; box-sizing: border-box; cursor: pointer; display: flex; align-items: center; justify-content: center; min-height: 44px; margin-top: 8px; width: 100%;
@@ -100,7 +102,7 @@ export default function Overview({ wallet = null, xp = 1200, activeTab = 'home',
         </div>
 
         {hasStore && (
-          <HomeStore className="ov-store" storeItems={items} wallet={wallet} onBuy={onBuy} busyId={busyId} onSeeAll={() => go('store')} />
+          <HomeStore className="ov-store" storeItems={items} wallet={wallet} onBuy={onBuy} busyId={busyId} onSeeAll={() => go('store')} locked={storeLocked(getLevel(xp).level)} xp={xp} />
         )}
 
         {season && (

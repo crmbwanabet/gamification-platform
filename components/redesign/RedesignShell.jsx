@@ -1,5 +1,6 @@
 'use client';
 
+import { storeLocked, STORE_UNLOCK_STAGE } from '@/lib/store/catalog.mjs';
 import { RoundAvatar } from './AvatarPicture';
 import React from 'react';
 import { X, Pencil } from 'lucide-react';
@@ -258,15 +259,20 @@ const NavBadge = ({ n }) => (n != null && n > 0 ? (
 ) : null);
 
 /** Tabs: raised violet candy button when active. `place` = 'top' (desktop header) | 'bottom' (phone nav). */
-function NavTabs({ active, onNavigate, navBadges = {}, place }) {
+// Tabs still locked at this stage: { store: 5 } below the Coin Shop stage.
+const navLocks = (lvl) => (storeLocked(lvl?.level) ? { store: STORE_UNLOCK_STAGE } : {});
+
+function NavTabs({ active, onNavigate, navBadges = {}, place, locked = {} }) {
   return NAV.map((it) => {
     const isActive = it.tab === active;
+    const lock = locked[it.tab];
     return (
       <button key={it.tab} type="button" aria-current={isActive ? 'page' : undefined} onClick={() => onNavigate && onNavigate(it.tab)}
-        className={`rs-tab rs-tab-${place}${isActive ? ' rs-tab-on' : ''}`}>
+        aria-label={lock ? `${it.label}, opens at stage ${lock}` : undefined} title={lock ? `Opens at stage ${lock}` : undefined}
+        className={`rs-tab rs-tab-${place}${isActive ? ' rs-tab-on' : ''}${lock ? ' rs-tab-locked' : ''}`}>
         <NavIcon name={it.icon} size={place === 'top' ? 22 : 24} />
         <span>{it.label}</span>
-        <NavBadge n={navBadges[it.tab]} />
+        {lock ? <span className="rs-tab-lock" aria-hidden>🔒</span> : <NavBadge n={navBadges[it.tab]} />}
       </button>
     );
   });
@@ -302,7 +308,7 @@ function TopBar({ lvl, nextLvl, xpPct, xpFx, activeTab, onNavigate, onOpenProfil
         <StoryBubble mode={story} onOpen={onStoryOpen} onClose={onStoryClose} level={lvl} />
       </div>
       <nav className="rs-topnav" aria-label="Main">
-        <NavTabs active={activeTab} onNavigate={onNavigate} navBadges={navBadges} place="top" />
+        <NavTabs active={activeTab} onNavigate={onNavigate} navBadges={navBadges} place="top" locked={navLocks(lvl)} />
       </nav>
       <WalletButton wallet={wallet} onOpen={onOpenWallet} />
     </header>
@@ -343,6 +349,8 @@ const SHELL_CSS = `
     color: rgba(255,255,255,.72); font-family: ${CANDY.display}; letter-spacing: .3px; -webkit-tap-highlight-color: transparent;
     border: 2.5px solid transparent; border-radius: 16px; transition: transform .08s ease-out;
   }
+  .rs-tab-locked { filter: grayscale(1); opacity: .5; }
+  .rs-tab-lock { position: absolute; top: -6px; right: -4px; font-size: 13px; line-height: 1; filter: none; }
   .rs-tab-on { color: #fff; background: linear-gradient(180deg, ${CANDY.violet.light}, ${CANDY.violet.fill} 45%); border-color: ${CANDY.violet.light}; box-shadow: 0 5px 0 ${CANDY.violet.dark}; text-shadow: 0 2px 0 rgba(0,0,0,.25); }
   .rs-tab:active { transform: translateY(3px); }
   .rs-tab-bottom { flex-direction: column; gap: 2px; width: 96px; min-height: 56px; font-size: 14px; }
@@ -396,7 +404,7 @@ export default function RedesignShell({
         story={walletOpen ? null : story} onStoryOpen={onStoryOpen} onStoryClose={onStoryClose} />
       <main className="rs-main"><BonusCenterTitle />{intro && <BonusIntro stage={lvl.level} {...intro} />}{children}</main>
       <nav className="rs-bottomnav" aria-label="Main">
-        <NavTabs active={activeTab} onNavigate={onNavigate} navBadges={navBadges} place="bottom" />
+        <NavTabs active={activeTab} onNavigate={onNavigate} navBadges={navBadges} place="bottom" locked={navLocks(lvl)} />
       </nav>
       <WalletSheet open={walletOpen} onClose={() => setWalletOpen(false)} wallet={wallet} onNavigate={activeTab === 'store' ? null : onNavigate} />
     </div>

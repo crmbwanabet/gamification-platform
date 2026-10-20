@@ -2280,6 +2280,7 @@ export default function GamificationPlatform() {
           : d && d.error === 'item_unavailable' ? 'That item is no longer available.'
           : d && d.error === 'slow_down' ? 'Too many attempts — wait a minute.'
           : d && d.error === 'invalid_token' ? 'Session expired — reload the page.'
+          : d && d.error === 'store_locked' ? 'The Coin Shop opens at stage 5. If you just reached it, try again in a moment.'
           // Server-held balance was short: recent winnings may not have
           // synced yet (saves are debounced ~1.5s) — a retry usually works.
           : d && d.error === 'insufficient_funds' ? 'Balance not synced yet — try again in a moment.'

@@ -4,7 +4,7 @@ import React from 'react';
 import { CANDY } from './tokens';
 import { amountText } from '@/lib/rewardText.mjs';
 import { formatKwacha, formatNumber } from '@/lib/economy/currency.mjs';
-import { packArtAmount } from '@/lib/store/catalog.mjs';
+import { packArtAmount, STORE_UNLOCK_STAGE, STORE_UNLOCK_XP } from '@/lib/store/catalog.mjs';
 
 // Coins & Store redesign (2026-10-14, design "Coins & Store"): shared art and
 // the texture/depth system (`bb-*` classes) used by the Home store panel and
@@ -25,6 +25,16 @@ export const STORE_ART = {
 export const packArtSrc = (item) => `${ART}/pack-k${packArtAmount(item?.payoutKwacha || 0)}.png`;
 
 export const BB_CSS = `
+  .bb-lockhost { position: relative; }
+  .bb-locked { filter: grayscale(1) brightness(.75); opacity: .5; pointer-events: none; user-select: none; }
+  .bb-shoplock { position: absolute; z-index: 5; left: 50%; top: 50%; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; gap: 4px;
+    padding: 16px 22px; border-radius: 20px; text-align: center; background: rgba(20,6,44,.92); border: 2.5px solid #FFD21F;
+    box-shadow: 0 0 0 2px #2A0A4F, 0 14px 34px rgba(0,0,0,.55); color: #fff; white-space: nowrap; }
+  .bb-shoplock img { width: 56px; height: 56px; display: block; }
+  .bb-shoplock b { font-family: ${CANDY.display}; font-weight: 400; font-size: 22px; line-height: 1.05; color: #FFD21F; text-transform: uppercase; text-shadow: 0 2px 0 #2A0A4F; }
+  .bb-shoplock span { font-size: 13px; font-weight: 800; color: #E4D8F7; }
+  .bb-shoplock--high { top: 120px; transform: translateX(-50%); }
+  .bb-shoplock--static { position: static; transform: none; margin: 0 auto; }
   .bb-velvet { background: url(${STORE_ART.quilt}), radial-gradient(120% 90% at 50% 0%, #3C1586 0%, #26094F 100%);
     box-shadow: inset 0 1px 0 rgba(255,255,255,.14), inset 0 -2px 0 rgba(0,0,0,.35), 0 14px 30px rgba(6,0,20,.55); }
   .bb-tile { border: 2px solid transparent;
@@ -95,3 +105,24 @@ export function PackLock({ short, className = '', style }) {
 export const goalText = (goal, long = false) => (goal
   ? (long ? `${formatNumber(goal.short)} more for the ${formatKwacha(goal.pack.payoutKwacha)} pack` : `${formatNumber(goal.short)} to ${formatKwacha(goal.pack.payoutKwacha)}`)
   : 'You can buy every pack');
+
+/**
+ * Coin Shop lock (stage 5, lib/store/catalog.mjs): the plate laid over the
+ * greyed shop on Home and in the Store tab. `xp` = the player's XP.
+ */
+export function ShopLockPlate({ xp = 0, className = '' }) {
+  const left = Math.max(0, STORE_UNLOCK_XP - (Number(xp) || 0));
+  return (
+    <div className={`bb-shoplock ${className}`} role="note" data-shop-locked>
+      <img src="/ui/reward/lock.png" alt="" width={56} height={56} />
+      <b>Opens at stage {STORE_UNLOCK_STAGE}</b>
+      <span>{left > 0 ? `${formatNumber(left)} XP to go` : 'Almost there'}</span>
+    </div>
+  );
+}
+
+/** Wraps the shop: greyed out and not clickable (inert) while locked. */
+export function ShopLockWrap({ locked, children, className = '' }) {
+  const ref = React.useCallback((el) => { if (el) { if (locked) el.setAttribute('inert', ''); else el.removeAttribute('inert'); } }, [locked]);
+  return <div ref={ref} className={`${locked ? 'bb-locked ' : ''}${className}`} aria-hidden={locked || undefined}>{children}</div>;
+}
