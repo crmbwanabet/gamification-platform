@@ -31,11 +31,15 @@ const CSS = `
  *   onEvent('auto_open') lets the caller ask widget.js to show the popup.
  * preview: the wheel's public TEST mode (no login, test spins never pay),
  *   for /preview.html only.
+ * settled: true once the wheel answered (or 8s passed, or no wheel) — see checked.
  * onEvent(name): 'available' | 'auto_open' | 'opened' | 'closed' | 'spun' (activity tracking).
  */
 export function useWheel({ enabled, getToken, autoOpen = false, preview = false, onEvent }) {
   const [available, setAvailable] = React.useState(false);
   const [isOpen, setOpenState] = React.useState(false);
+  // settled = the wheel has said whether a spin is available (or 8s passed):
+  // the pop-ups that follow the wheel wait for it, so the wheel never opens on top of them.
+  const [checked, setChecked] = React.useState(false);
   const frameRef = React.useRef(null);
   const tokenRef = React.useRef(null);
   const autoDoneRef = React.useRef(false);
@@ -71,6 +75,7 @@ export function useWheel({ enabled, getToken, autoOpen = false, preview = false,
       else if (t === 'bwanabet-wheel-available') {
         const ok = !!e.data.available;
         setAvailable(ok);
+        setChecked(true);
         if (ok) emit('available');
         if (ok && autoOpen && !autoDoneRef.current) {
           autoDoneRef.current = true;
@@ -86,7 +91,12 @@ export function useWheel({ enabled, getToken, autoOpen = false, preview = false,
 
   // A new account (or log-out) re-keys the iframe so it re-checks availability.
   const frameKey = preview ? 'preview' : token ? token.slice(-16) : 'none';
-  React.useEffect(() => { setAvailable(false); setOpenState(false); }, [frameKey]);
+  React.useEffect(() => { setAvailable(false); setOpenState(false); setChecked(false); }, [frameKey]);
+  React.useEffect(() => {
+    if (!on || checked) return undefined;
+    const t = setTimeout(() => setChecked(true), 8000);
+    return () => clearTimeout(t);
+  }, [on, checked, frameKey]);
 
   const layer = on && (token || preview) && WHEEL_ORIGIN ? (
     <div className={`wh-ov${isOpen ? ' open' : ''}`} data-wheel-overlay onClick={(e) => { if (e.target === e.currentTarget) setOpen(false); }}>
@@ -95,7 +105,7 @@ export function useWheel({ enabled, getToken, autoOpen = false, preview = false,
     </div>
   ) : null;
 
-  return { available: on && available, isOpen, open: () => setOpen(true), layer };
+  return { available: on && available, isOpen, settled: !on || !(token || preview) || !WHEEL_ORIGIN || checked, open: () => setOpen(true), layer };
 }
 
 /** Home card: shown only while today's free spin is available. */

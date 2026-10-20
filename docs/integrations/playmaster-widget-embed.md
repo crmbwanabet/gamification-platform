@@ -27,7 +27,9 @@ two wheels. What players see:
 2. They spin and see whether they won or lost.
 3. When they close the wheel (its button, its red X, or a click outside the box), the Bonus
    Center is already open behind it.
-4. The red X at the top right closes the Bonus Center. The gold coin button opens it again.
+4. On the first visit of the day a "New bonuses unlocked!" pop-up follows. Its button leads to
+   the daily reward pop-up.
+5. The red X at the top right closes the Bonus Center. The gold coin button opens it again.
 
 A player who already used the spin today just sees the coin button, as before.
 

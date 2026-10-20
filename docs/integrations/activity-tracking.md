@@ -35,7 +35,7 @@ discarded: it is never stored or logged.
 | Visits | `session_start`, `widget_open`, `widget_close`, `tab_view`, `profile_open`, `story_open`, `intro_toggle`, `mission_open` |
 | Rewards claimed | `daily_claimed`, `mission_completed` (casino), `sports_mission_claimed`, `prediction_claimed`, `leaderboard_claimed`, `comeback_claimed`, `album_set_claimed`, `hustle_collected`, `league_bonus_claimed`, `wc_bonus_claimed`, `first_login` |
 | Progress | `level_up` |
-| Actions | `game_open`, `game_played`, `prediction_made`, `friendly_accepted`, `friendly_declined`, `prize_claimed` (World Cup), `name_set`, `purchase`, `comeback_shown` |
+| Actions | `game_open`, `game_played`, `prediction_made`, `friendly_accepted`, `friendly_declined`, `prize_claimed` (World Cup), `name_set`, `purchase`, `comeback_shown`, `bonus_unlock_seen` (the "New bonuses unlocked" pop-up), `avatar_item_bought` / `_worn` / `_removed` |
 | Wheel of Fortune | `wheel_available`, `wheel_auto_open`, `wheel_opened`, `wheel_spun`, `wheel_closed` |
 
 The allowed list lives in `lib/trackTypes.mjs`. Anything else is dropped.

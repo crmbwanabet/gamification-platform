@@ -70,6 +70,7 @@ import ScratchGame from './games/scratch/ScratchGame';
 import NumbersGame from './games/numbers/NumbersGame';
 import { amountText, rewardParts } from '@/lib/rewardText.mjs';
 import { AvatarLookContext } from './redesign/AvatarPicture';
+import BonusUnlockedPopup from './redesign/BonusUnlockedPopup';
 import { shopAvatarItems, buyAvatarItem, setWorn, normalizeAvatarItems } from '@/lib/avatar/items.mjs';
 // trivia games parked — see parked/components/games/
 
@@ -1278,8 +1279,12 @@ export default function GamificationPlatform() {
   const [seasonResult, setSeasonResult] = useState(null); // result-moment modal event
   // Daily reward popup (2026-10-18): idle | open | closing | done (once per widget open)
   const [dailyPopup, setDailyPopup] = useState('idle');
+  // "New bonuses unlocked" pop-up (2026-10-20): idle | open | closing | done.
+  // First visit of the Lusaka day (user.bonusUnlockDay), after the wheel and
+  // before the daily reward pop-up; opened further down, next to the wheel.
+  const [unlockPopup, setUnlockPopup] = useState('idle');
   const otherModalOpen = !!activeGame || !!selectedMission || showProfile || !!levelUp || !!seasonResult;
-  const anyModalOpen = otherModalOpen || dailyPopup === 'open' || dailyPopup === 'closing';
+  const anyModalOpen = otherModalOpen || dailyPopup === 'open' || dailyPopup === 'closing' || unlockPopup === 'open' || unlockPopup === 'closing';
   useEffect(() => {
     if (story !== 'hint' || anyModalOpen) return undefined;
     const t = setTimeout(() => setStory(s => (s === 'hint' ? null : s)), 10000);
@@ -1325,13 +1330,7 @@ export default function GamificationPlatform() {
   // already claimed never sees it); still resolving the session → waits; anonymous
   // (allowed while REQUIRE_LOGIN_TO_CLAIM is off) → opens after the delay. Waits
   // for any other modal and the open story bubble.
-  useEffect(() => {
-    if (dailyPopup !== 'idle' || !pageVisible || !canClaimDaily || user.dailyClaimed) return undefined;
-    if (session.status === 'loading' || (loggedIn && !hydratedRef.current)) return undefined;
-    if (otherModalOpen || story === 'open') return undefined;
-    const t = setTimeout(() => setDailyPopup(p => (p === 'idle' ? 'open' : p)), 900);
-    return () => clearTimeout(t);
-  }, [dailyPopup, pageVisible, canClaimDaily, user.dailyClaimed, session.status, loggedIn, otherModalOpen, story]);
+  // (the open effect sits below the wheel: it waits for the wheel and the unlocked pop-up)
   // Claimed elsewhere (Home card, or hydration says already claimed) → close it.
   // (A claim made IN the popup closes it itself, after the coins leave.)
   const popupClaimRef = useRef(false);
@@ -1641,10 +1640,42 @@ export default function GamificationPlatform() {
       if (name === 'spun' || name === 'closed') flushTrack();
     },
   });
+  // Opening order (2026-10-20): Wheel of Fortune → its result → "New bonuses
+  // unlocked" (first visit of the Lusaka day, logged in or the preview) →
+  // daily reward pop-up. Each waits for the one before; the wheel's `settled`
+  // says it has answered whether a spin is available, so it never opens on top.
+  const unlockDue = (loggedIn || preview) && user.bonusUnlockDay !== today;
+  const unlockPending = unlockDue && unlockPopup !== 'done';
+  useEffect(() => {
+    if (unlockPopup !== 'idle' || !unlockDue || !pageVisible || !wheel.settled || wheel.isOpen) return undefined;
+    if (session.status === 'loading' || (loggedIn && !hydratedRef.current)) return undefined;
+    if (otherModalOpen || story === 'open') return undefined;
+    const t = setTimeout(() => setUnlockPopup(p => (p === 'idle' ? 'open' : p)), 700);
+    return () => clearTimeout(t);
+  }, [unlockPopup, unlockDue, pageVisible, wheel.settled, wheel.isOpen, session.status, loggedIn, otherModalOpen, story]);
+  useEffect(() => {
+    if (unlockPopup !== 'closing') return undefined;
+    const t = setTimeout(() => setUnlockPopup('done'), 420);
+    return () => clearTimeout(t);
+  }, [unlockPopup]);
+  const continueFromUnlock = () => {
+    if (unlockPopup !== 'open') return;
+    track('bonus_unlock_seen');
+    setUser(u => ({ ...u, bonusUnlockDay: today }));
+    setUnlockPopup('closing');
+  };
+  useEffect(() => {
+    if (dailyPopup !== 'idle' || !pageVisible || !canClaimDaily || user.dailyClaimed) return undefined;
+    if (session.status === 'loading' || (loggedIn && !hydratedRef.current)) return undefined;
+    if (otherModalOpen || story === 'open' || wheel.isOpen || !wheel.settled || unlockPending) return undefined;
+    const t = setTimeout(() => setDailyPopup(p => (p === 'idle' ? 'open' : p)), 900);
+    return () => clearTimeout(t);
+  }, [dailyPopup, pageVisible, canClaimDaily, user.dailyClaimed, session.status, loggedIn, otherModalOpen, story, wheel.isOpen, wheel.settled, unlockPending]);
+
   const extras = useExtras({
     session, loggedIn, hydrated: hydratedRef.current, tab, user, setUser, seasonRows: seasonFeed.rows, today,
     stage: getLevel(user.xp).level, league, worldCup, hustle, credit: creditExtra, showNotif,
-    blocked: anyModalOpen || wheel.isOpen || (dailyPopup !== 'done' && canClaimDaily && !user.dailyClaimed),
+    blocked: anyModalOpen || wheel.isOpen || unlockPending || (dailyPopup !== 'done' && canClaimDaily && !user.dailyClaimed),
   });
 
   // Bonus claims (once each; state keys in user.season) + the hustle collect.
@@ -2204,6 +2235,13 @@ export default function GamificationPlatform() {
 
   // Every view renders inside the XP collect context (the header bar reads it)
   // with the star layer and the "XP from your bets" card on top.
+  // What the "New bonuses unlocked" pop-up lists for today.
+  const unlockItems = [
+    canClaimDaily && !user.dailyClaimed && { icon: '🎁', text: "Today's daily reward is ready" },
+    claimableCount > 0 && { icon: '🎯', text: `${claimableCount} mission${claimableCount === 1 ? '' : 's'} ready to collect` },
+    { icon: '⚽', text: 'Match predictions and football matches' },
+    { icon: '🛍️', text: 'Prizes in the Coin Shop' },
+  ].filter(Boolean);
   const withXp = (node) => (
     <XpFxContext.Provider value={xpFx}><AvatarLookContext.Provider value={avatarLook}>
       {node}
@@ -2211,6 +2249,8 @@ export default function GamificationPlatform() {
       <DailyRewardPopup open={dailyPopup === 'open' || dailyPopup === 'closing'} closing={dailyPopup === 'closing'}
         onClose={() => setDailyPopup('closing')} onClaim={(el) => claimDailyReward(el, { popup: true })}
         dailyDay={user.dailyDay} dailyClaimed={user.dailyClaimed} rewards={cfg.dailyRewards} loggedIn={canClaimDaily} />
+      <BonusUnlockedPopup open={unlockPopup === 'open' || unlockPopup === 'closing'} closing={unlockPopup === 'closing'}
+        items={unlockItems} onContinue={continueFromUnlock} />
       <ComebackModal comeback={extras.comeback} />
       {wheel.layer}
       {xpFx.layer}
