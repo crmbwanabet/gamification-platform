@@ -7,10 +7,10 @@ import DailyReward from './DailyReward';
 import GamesGrid from './GamesGrid';
 import HomeStore from './HomeStore';
 import { MatchCard, HustleCard } from './SeasonCards';
-import { EarnPrize } from './EarnView';
+import { EarnPrize, MissionTerms } from './EarnView';
 import { amountText } from '@/lib/rewardText.mjs';
 import { MISSIONS } from '@/lib/data/missions';
-import { missionStates as buildMissionStates, missionTerms, missionBoard, progressUnit } from '@/lib/missions/ladder.mjs';
+import { missionStates as buildMissionStates, missionBoard, progressUnit } from '@/lib/missions/ladder.mjs';
 import { STORE_ITEMS, MINIGAMES, getLevel } from '@/lib/data/platform';
 import { splitCatalog, storeLocked } from '@/lib/store/catalog.mjs';
 import { WheelCard } from '../extras/useWheel';
@@ -53,7 +53,7 @@ function MissionTeaser({ s, onOpen }) {
       <button type="button" className="ov-mission" onClick={() => onOpen && onOpen(m)} aria-label={`${m.name}: ${done ? m.target : s.progress} of ${m.target} ${unit}`}>
         <span data-mission-name style={{ alignSelf: 'center', textAlign: 'center', fontFamily: CANDY.display, fontSize: 21, lineHeight: 1.1, color: CANDY.gold, textTransform: 'uppercase', textShadow: '0 2px 0 #2A0A4F' }}>{m.name}</span>
         <span style={{ padding: '4px 0' }}><EarnPrize r={m.reward} size={36} fontSize={32} /></span>
-        <span style={{ fontFamily: CANDY.display, fontSize: 21, lineHeight: 1.15, letterSpacing: '.01em', color: '#fff' }}>{missionTerms(m)}</span>
+        <span style={{ fontFamily: CANDY.display, fontSize: 21, lineHeight: 1.15, letterSpacing: '.01em', color: '#fff' }}><MissionTerms m={m} /></span>
         {(done || s.claimable) && (
           <span>{done ? <Badge bg={C.green} color="#fff">Collected</Badge> : <Badge bg={CANDY.gold}>Ready to claim</Badge>}</span>
         )}

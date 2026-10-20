@@ -135,6 +135,12 @@ function MissionsSummary({ status, done = 0, total = 0 }) {
 
 // A mission's prize as one centred line, "EARN [coin] 50 COINS" (+ any gems),
 // in big display type (2026-10-18). Shared with the Home missions teaser.
+/** The mission's terms with the action word (PLAY, PLACE, DEPOSIT, MAKE, CLAIM) in the platform gold (owner 2026-10-20). */
+export function MissionTerms({ m }) {
+  const [verb, ...rest] = missionTerms(m).split(' ');
+  return <><span style={{ color: CANDY.gold }}>{verb}</span> {rest.join(' ')}</>;
+}
+
 export function EarnPrize({ r, size = 30, fontSize = 26 }) {
   if (!r) return null;
   const rows = [['kwacha', 'coins'], ...GEMS.map(g => [g, g])].filter(([k]) => r[k]);
@@ -168,7 +174,7 @@ function MissionRow({ s, i = 0, loggedIn, onOpen, onClaim }) {
               <span style={{ fontFamily: CANDY.display, fontSize: 17, lineHeight: 1.15, color: C.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textTransform: 'uppercase' }}>{m.name}</span>
               <Badge bg={d.c} color="#130f1f">{d.label}</Badge>
             </div>
-            <div style={{ fontFamily: CANDY.display, fontSize: 18, lineHeight: 1.15, letterSpacing: '.01em', color: '#fff', margin: '2px 0 6px' }}>{missionTerms(m)}</div>
+            <div style={{ fontFamily: CANDY.display, fontSize: 18, lineHeight: 1.15, letterSpacing: '.01em', color: '#fff', margin: '2px 0 6px' }}><MissionTerms m={m} /></div>
             <div style={{ margin: '4px 0 2px' }}><EarnPrize r={m.reward} size={26} fontSize={22} /></div>
             {m.xp ? <div style={{ display: 'flex', justifyContent: 'center', marginTop: 4 }}><XpChip xp={m.xp} /></div> : null}
             <div style={{ marginTop: 7 }}>

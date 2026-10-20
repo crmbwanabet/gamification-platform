@@ -6,9 +6,9 @@ import { C } from '../redesign/tokens';
 import { Badge, Progress, GreenBtn, CurrencyAmounts } from '../redesign/RedesignShell';
 import { amountText, rewardParts } from '@/lib/rewardText.mjs';
 import { IMAGES } from '../../lib/data/images';
-import { missionTerms, progressUnit } from '@/lib/missions/ladder.mjs';
+import { progressUnit } from '@/lib/missions/ladder.mjs';
 
-import { MISSION_DIFF as DIFF, trackingNote } from '../redesign/EarnView';
+import { MISSION_DIFF as DIFF, trackingNote, MissionTerms } from '../redesign/EarnView';
 
 // One-time BwanaBet missions (lib/missions/ladder.mjs): progress = the ladder's
 // count since the first login, capped at the target; `claimable` shows the
@@ -80,7 +80,7 @@ export default function MissionDetailModal({ mission, progress, done, claimable 
         <div style={{ padding: '16px 18px 18px' }}>
           {/* Title */}
           <h2 style={{ margin: '0 0 3px', fontSize: 20, fontWeight: 800, color: C.text, letterSpacing: '-.01em', textTransform: 'uppercase' }}>{mission.name}</h2>
-          <p style={{ margin: '0 0 14px', fontSize: 14, fontWeight: 900, color: C.text }}>{missionTerms(mission)}</p>
+          <p style={{ margin: '0 0 14px', fontSize: 14, fontWeight: 900, color: C.text }}><MissionTerms m={mission} /></p>
 
           {/* Progress */}
           <div style={{ marginBottom: 14 }}>
