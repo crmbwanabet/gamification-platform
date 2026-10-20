@@ -5,7 +5,7 @@ import {
   gameXp, addGameXp, refundGameXp, casinoXp, xpTodayFor, xpSourceLines,
   addDailyXp, addMissionXp, recordXpDay, platformXpOf,
 } from '../lib/xp/sources.mjs';
-import { CASINO_MISSIONS } from '../lib/missions/casino.mjs';
+import { CASINO_MISSIONS } from '../lib/missions/ladder.mjs';
 import { applyMissionOverrides } from '../lib/config/missions.mjs';
 
 const D1 = '2026-10-08';
@@ -128,7 +128,7 @@ test('recordXpDay: copies the tally into the history, keeps the latest 400 days'
 });
 
 test('mission XP: Starter 10, Regular 15, Pro 20, Legend 30', () => {
-  assert.deepEqual(CASINO_MISSIONS.map(m => [m.id, m.xp]), [
+  assert.deepEqual(CASINO_MISSIONS.slice(0, 4).map(m => [m.id, m.xp]), [
     ['casino_starter', 10], ['casino_regular', 15], ['casino_pro', 20], ['casino_legend', 30],
   ]);
   for (const m of CASINO_MISSIONS) assert.equal(m.xp, MISSION_XP[m.id]);
@@ -155,7 +155,7 @@ test('xpSourceLines reflect the constants and the season config', () => {
     '1 XP per K10 staked',
     '1 XP per K4 on settled slips (odds 1.5+)',
     '30 XP',
-    'daily reward 20 XP, games 1 XP per coin, missions 10 to 30 XP (up to 60 a day)',
+    'daily reward 20 XP, games 1 XP per coin, missions 10 to 60 XP (up to 60 a day)',
     "400 XP a day, 2,000 a week; extra XP stocks your side quest",
   ]);
 });

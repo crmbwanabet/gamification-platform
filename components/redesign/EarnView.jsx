@@ -6,15 +6,15 @@ import RedesignShell, { GreenBtn, SectionTitle, TitleNote, Card, Thumb, Badge, P
 import { IMAGES } from '@/lib/data/images';
 import { amountText } from '@/lib/rewardText.mjs';
 import { GEMS } from '@/lib/economy/currency.mjs';
-import { CASINO_MISSIONS } from '@/lib/data/missions';
-import { casinoMissionStates, missionTerms } from '@/lib/missions/casino.mjs';
+import { MISSIONS } from '@/lib/data/missions';
+import { missionStates as buildMissionStates, missionTerms, missionBoard, progressUnit } from '@/lib/missions/ladder.mjs';
 import { xpSourceLines } from '@/lib/xp/sources.mjs';
 import { heroName, heroText, playerName } from '@/lib/profile/name.mjs';
 import { XP_LEVELS, LEVEL_REWARDS, getLevel } from '@/lib/data/platform';
 import { Check, Lock, LogIn, RefreshCw } from 'lucide-react';
 import { getStage, getNextStage, stageProgress, nextStageLabel, STAGE_COUNT } from '@/lib/vuma/stages.mjs';
 import { SeasonSection } from './SeasonCards';
-import { SportsMissions, Predictions, Leaderboard, Album } from '../extras/ExtrasViews';
+import { Predictions, Leaderboard, Album } from '../extras/ExtrasViews';
 
 const LUSAKA_OFFSET_MS = 2 * 60 * 60 * 1000;
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -105,19 +105,19 @@ function RewardsSection({ seasonCfg = null, displayName = null, userId = null })
   );
 }
 
-// Today's single counter that drives all four missions.
-function RoundsSummary({ status, rounds, nextIn = null }) {
+// The BwanaBet missions summary: how many of the one-time missions are collected.
+function MissionsSummary({ status, done = 0, total = 0 }) {
   const note = trackingNote(status);
   const showCount = status !== 'anon';
   return (
     <Card style={{ padding: '12px 14px', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 12 }}>
       <div style={{ width: 44, height: 44, flex: 'none', borderRadius: 12, background: C.track, display: 'grid', placeItems: 'center' }}>
-        {status === 'anon' ? <LogIn size={20} color={C.gold} /> : <span style={{ fontSize: 22 }}>🎰</span>}
+        {status === 'anon' ? <LogIn size={20} color={C.gold} /> : <span style={{ fontSize: 22 }}>🏆</span>}
       </div>
       <div style={{ flex: 1, minWidth: 0, lineHeight: 1.3 }}>
         {showCount && (
           <div style={{ fontFamily: CANDY.display, fontSize: 18, color: C.text }}>
-            <span style={{ fontVariantNumeric: 'tabular-nums', color: CANDY.gold }}>{rounds}</span> casino {rounds === 1 ? 'round' : 'rounds'} today
+            <span style={{ fontVariantNumeric: 'tabular-nums', color: CANDY.gold }}>{done}</span> of {total} missions collected
           </div>
         )}
         {note ? (
@@ -126,14 +126,9 @@ function RoundsSummary({ status, rounds, nextIn = null }) {
             <span>{note.text}</span>
           </div>
         ) : (
-          <div style={{ fontSize: 11.5, color: C.muted }}>Progress updates every few minutes</div>
+          <div style={{ fontSize: 11.5, color: C.muted }}>Each mission pays once. No daily reset: progress counts from your first login.</div>
         )}
       </div>
-      {showCount && nextIn != null && (
-        <div style={{ flex: 'none', fontSize: 11.5, fontWeight: 600, color: C.muted, textAlign: 'right' }}>
-          Next prize in <b style={{ color: C.text, fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}>{nextIn}</b>
-        </div>
-      )}
     </Card>
   );
 }
@@ -187,11 +182,23 @@ function MissionRow({ s, i = 0, loggedIn, onOpen, onClaim }) {
           ) : ready ? (
             <GreenBtn onClick={(e) => onClaim && onClaim(m, e.currentTarget)}>Claim</GreenBtn>
           ) : (
-            <span style={{ fontFamily: CANDY.display, fontSize: 15, color: 'rgba(255,255,255,.8)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{s.progress} / {m.target}</span>
+            <span style={{ fontFamily: CANDY.display, fontSize: 15, color: 'rgba(255,255,255,.8)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', textAlign: 'center' }}>{s.progress.toLocaleString('en-US')} / {m.target.toLocaleString('en-US')}<br /><span style={{ fontFamily: CANDY.body, fontSize: 10.5, fontWeight: 700, color: C.muted }}>{progressUnit(m)}</span></span>
           )}
         </div>
       </div>
     </Card>
+  );
+}
+
+// A collected mission as a thin bar: name · prize · COLLECTED (2026-10-20).
+function CollectedBar({ s }) {
+  const m = s.mission;
+  return (
+    <div data-mission-collected={m.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 12px', borderRadius: 12, background: 'rgba(20,4,48,.55)', border: `1.5px solid ${CANDY.violet.fill}` }}>
+      <span style={{ flex: 1, minWidth: 0, fontFamily: CANDY.display, fontSize: 14, color: '#fff', textTransform: 'uppercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.name}</span>
+      <span style={{ flex: 'none' }}><CurrencyAmounts r={m.reward} size={15} fontSize={12.5} gap={6} /></span>
+      <span style={{ flex: 'none', display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11.5, fontWeight: 900, color: C.green, textTransform: 'uppercase', letterSpacing: '.04em' }}><Check size={13} strokeWidth={3} /> Collected</span>
+    </div>
   );
 }
 
@@ -245,16 +252,14 @@ function VumaRoad({ xp = 0, levelRewards = null, seasonCfg = null, displayName =
 
 /**
  * The Missions tab (internal component name kept from the old Earn tab).
- * Four DAILY casino missions driven by ONE counter — casino rounds played on
- * bwanabet.com today (CRM feed, Lusaka day) — then the stage milestones.
+ * BWANABET MISSIONS (2026-10-20): one-time missions in four ladders (casino,
+ * sports, deposits, loyalty; lib/missions/ladder.mjs) — the current mission of
+ * each ladder as a card, collected ones as thin bars — then the season.
  * The daily reward lives on Home.
  */
 export default function EarnView({ wallet = null, xp = 0, onNavigate, onOpenProfile, onOpenMission, onClaimMission, userId = null, displayName = null, onEditName, navBadges = {}, missions = null, missionStates = null, casinoStatus = 'anon', loggedIn = false, levelRewards = null, focusRewards = 0, isWidget = false, story = null, onStoryOpen, onStoryClose, intro = null, season = null, onClaimLeague, onClaimWc, onClaimPrize, prizeBusy = false, extras = null }) {
-  const states = missionStates || casinoMissionStates(missions || CASINO_MISSIONS, { rounds: 0, today: null });
-  const rounds = states[0]?.rounds || 0;
-  const resetLabel = useResetText();
-  const gaps = states.filter(s => !s.claimed && !s.reached).map(s => s.mission.target - rounds).filter(n => n > 0);
-  const nextIn = gaps.length ? Math.min(...gaps) : null;
+  const states = missionStates || buildMissionStates(missions || MISSIONS, {}, []);
+  const board = missionBoard(states);
   React.useEffect(() => {
     if (!focusRewards) return;
     const el = typeof document !== 'undefined' && document.getElementById('missions-rewards');
@@ -267,14 +272,18 @@ export default function EarnView({ wallet = null, xp = 0, onNavigate, onOpenProf
       <style>{EV_CSS}</style>
       <div className="ev-cols">
         <section style={{ maxWidth: 720, minWidth: 0 }}>
-          <SectionTitle right={<TitleNote>{resetLabel}</TitleNote>}>Daily missions</SectionTitle>
-          <RoundsSummary status={casinoStatus} rounds={rounds} nextIn={nextIn} />
+          <SectionTitle right={<TitleNote>{board.done} / {board.total}</TitleNote>}>BwanaBet missions</SectionTitle>
+          <MissionsSummary status={casinoStatus} done={board.done} total={board.total} />
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {states.map((s, i) => (
+            {board.current.map((s, i) => (
               <MissionRow key={s.mission.id} i={i} s={s} loggedIn={loggedIn} onOpen={onOpenMission} onClaim={onClaimMission} />
             ))}
           </div>
-          {extras && <SportsMissions sports={extras.sports} />}
+          {board.collected.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 14 }} aria-label="Collected missions">
+              {board.collected.map((s) => <CollectedBar key={s.mission.id} s={s} />)}
+            </div>
+          )}
           {season && (
             <div id="missions-season" style={{ marginTop: 26, scrollMarginTop: 12 }}>
               <SeasonSection season={season} onClaimLeague={onClaimLeague} onClaimWc={onClaimWc} onClaimPrize={onClaimPrize} prizeBusy={prizeBusy} />

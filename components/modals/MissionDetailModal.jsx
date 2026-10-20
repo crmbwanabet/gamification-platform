@@ -6,13 +6,13 @@ import { C } from '../redesign/tokens';
 import { Badge, Progress, GreenBtn, CurrencyAmounts } from '../redesign/RedesignShell';
 import { amountText, rewardParts } from '@/lib/rewardText.mjs';
 import { IMAGES } from '../../lib/data/images';
-import { missionTerms } from '@/lib/missions/casino.mjs';
+import { missionTerms, progressUnit } from '@/lib/missions/ladder.mjs';
 
 import { MISSION_DIFF as DIFF, trackingNote } from '../redesign/EarnView';
 
-// Daily casino missions: progress = today's casino rounds (CRM feed), capped
-// at the target; `claimable` shows the Claim button (credit + animation run in
-// GamificationPlatform.claimCasinoMission). Legacy gameId/cta missions still
+// One-time BwanaBet missions (lib/missions/ladder.mjs): progress = the ladder's
+// count since the first login, capped at the target; `claimable` shows the
+// Claim button (credit + animation run in GamificationPlatform.claimCasinoMission). Legacy gameId/cta missions still
 // get their Play/Go button if one is ever restored.
 export default function MissionDetailModal({ mission, progress, done, claimable = false, trackingStatus = null, onClaim, onClose, onNavigate, onPlayGame, closing }) {
   const unit = mission.unit ? ` ${mission.unit}` : '';
@@ -87,7 +87,7 @@ export default function MissionDetailModal({ mission, progress, done, claimable 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 7 }}>
               <span style={{ fontSize: 12, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '.05em' }}>Progress</span>
               <span style={{ fontSize: 13, fontWeight: 800, color: done ? C.green : C.teal, fontVariantNumeric: 'tabular-nums' }}>
-                {done ? 'Claimed today' : `${Math.min(progress || 0, mission.target)} / ${mission.target}${unit}`}
+                {done ? 'Collected' : `${Math.min(progress || 0, mission.target).toLocaleString('en-US')} / ${mission.target.toLocaleString('en-US')}${unit}`}
               </span>
             </div>
             <Progress value={pct} color={done ? C.green : C.teal} />
@@ -126,13 +126,13 @@ export default function MissionDetailModal({ mission, progress, done, claimable 
             <div style={{ fontSize: 12.5, color: C.sub, textAlign: 'center', margin: '2px 0 12px' }}>{note.text}</div>
           )}
 
-          {/* Claim (daily casino missions) */}
+          {/* Claim (one-time missions) */}
           {!done && claimable && onClaim && (
             <GreenBtn full onClick={(e) => onClaim(e.currentTarget)}>Claim {rewardParts(mission.reward).join(' + ')}</GreenBtn>
           )}
-          {!done && !claimable && mission.type === 'casinoRounds' && !note && (
+          {!done && !claimable && mission.track && !note && (
             <div style={{ fontSize: 12.5, color: C.muted, textAlign: 'center', margin: '2px 0 4px' }}>
-              Play {Math.max(0, mission.target - (progress || 0))} more casino rounds on bwanabet.com today to claim
+              {Math.max(0, mission.target - (progress || 0)).toLocaleString('en-US')} more {progressUnit(mission)} to collect it. It doesn't reset: it stays until you finish.
             </div>
           )}
 
@@ -144,7 +144,7 @@ export default function MissionDetailModal({ mission, progress, done, claimable 
           )}
           {done && (
             <div style={{ textAlign: 'center', padding: '8px 0 2px', color: C.green, fontWeight: 800, fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-              <Check size={16} /> Claimed — back tomorrow
+              <Check size={16} /> Collected
             </div>
           )}
         </div>

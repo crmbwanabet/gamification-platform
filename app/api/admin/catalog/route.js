@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { MINIGAMES, GAME_ECONOMY } from '@/lib/data/platform';
-import { CASINO_MISSIONS } from '@/lib/data/missions';
+import { MISSIONS } from '@/lib/data/missions';
 import { DEFAULT_CONFIG } from '@/lib/config/defaults';
 import { RTP_MIN, RTP_MAX } from '@/lib/rtp.mjs';
 import { DEFAULT_COINS_PER_KWACHA, DEFAULT_GEM_VALUES, MAX_COINS_PER_KWACHA, MAX_GEM_VALUE, REWARD_KEYS } from '@/lib/economy/currency.mjs';
@@ -21,9 +21,9 @@ export async function GET() {
     // Every candy game carries an editable RTP: the dashboard saves it into the
     // `games` platform_config row as { <id>: { rtp } } (clamped to 97–99%).
     games: MINIGAMES.map(g => ({ id: g.id, name: g.name, ...(DEFAULT_CONFIG.games[g.id]?.rtp != null && { rtp: { default: DEFAULT_CONFIG.games[g.id].rtp, min: RTP_MIN, max: RTP_MAX } }) })),
-    // The 4 daily casino-round missions (2026-10-07; the old daily/weekly/
-    // permanent pools are parked). mission_overrides keys = these ids.
-    missions: CASINO_MISSIONS.map(m => mission(m, 'daily')),
+    // The one-time BwanaBet missions (2026-10-20, four ladders; the daily ones
+    // are parked). mission_overrides keys = these ids.
+    missions: MISSIONS.map(m => mission(m, 'once')),
     defaults: DEFAULT_CONFIG,
     // Pay tables are hand-scaled to this hardcoded cap — remote overrides do
     // nothing until the games derive tables from config. Dashboard: read-only.

@@ -44,8 +44,8 @@ import {
 } from '../lib/data/platform';
 // Missions = the 4 daily casino-round missions (CRM feed); the old pools are
 // parked in parked/lib/data/missions.legacy.js
-import { CASINO_MISSIONS } from '../lib/data/missions';
-import { casinoMissionStates, countClaimable, recordClaim } from '@/lib/missions/casino.mjs';
+import { MISSIONS } from '../lib/data/missions';
+import { missionStates as buildMissionStates, missionCounts, countClaimable, recordMissionClaim } from '@/lib/missions/ladder.mjs';
 import { lusakaDay } from '@/lib/casino/feed.mjs';
 import { DAILY_LOGIN_XP, addGameXp, refundGameXp, casinoXp, addDailyXp, addMissionXp, recordXpDay } from '@/lib/xp/sources.mjs';
 // Season (2026-10-09): XP from real play (CRM feed), side hustle, league, World Cup
@@ -113,7 +113,7 @@ export default function GamificationPlatform() {
   // Games list the UI shows: enabled games only, extra-play cost from config.
   const activeGames = useMemo(() => MINIGAMES.filter(g => cfg.games[g.id]?.enabled !== false).map(g => ({ ...g, cost: cfg.economy.extraPlayCost })), [cfg]);
   const activeMissions = useMemo(
-    () => applyMissionOverrides(CASINO_MISSIONS, cfg.missionOverrides),
+    () => applyMissionOverrides(MISSIONS, cfg.missionOverrides),
     [cfg]
   );
   const cfgRef = useRef(cfg);
@@ -986,7 +986,8 @@ export default function GamificationPlatform() {
     // Daily casino missions claimed on `day` (Lusaka). missionProgress /
     // missionsComplete above belong to the parked pre-2026-10-07 missions and
     // are kept untouched so saved history survives.
-    casinoMissionClaims: { day: null, ids: [] },
+    // one-time BwanaBet missions collected (ids, lib/missions/ladder.mjs)
+    missionClaims: [],
     // Extras (2026-10-19, components/extras/useExtras.js): bet-slip mission
     // claims { day, ids, weekend, weekendIds }; souvenir album: cards already
     // announced (albumSeen, unset = first run) + set bonuses paid (albumClaims).
@@ -1343,9 +1344,9 @@ export default function GamificationPlatform() {
     return () => clearTimeout(t);
   }, [dailyPopup]);
   // status: idle (not fetched) | ok | unavailable (feed/table down) | anon
-  const [casino, setCasino] = useState({ status: 'idle', day: null, rounds: 0, updatedAt: null });
+  const [casino, setCasino] = useState({ status: 'idle', day: null, rounds: 0, total: 0, since: null, updatedAt: null });
   const casinoBusyRef = useRef(false);
-  const casinoClaimedRef = useRef(new Set()); // `${day}:${id}` — same-tick double-claim guard
+  const casinoClaimedRef = useRef(new Set()); // mission ids — same-tick double-claim guard
   const getCasinoProgress = session.getCasinoProgress;
   // Casino rounds -> XP: only rounds not yet converted earn (the feed count is
   // an absolute daily total), so re-fetching never re-awards. One small float
@@ -1376,7 +1377,7 @@ export default function GamificationPlatform() {
     if (!loggedIn) return null;
     const { status, data } = await getCasinoProgress();
     if (status === 200 && data && data.day) {
-      const next = { status: 'ok', day: data.day, rounds: Math.max(0, Number(data.rounds) || 0), updatedAt: data.updatedAt || null };
+      const next = { status: 'ok', day: data.day, rounds: Math.max(0, Number(data.rounds) || 0), total: Math.max(0, Number(data.total) || 0), since: data.since || null, updatedAt: data.updatedAt || null };
       setCasino(next);
       awardCasinoXp(next);
       return next;
@@ -1397,12 +1398,6 @@ export default function GamificationPlatform() {
     }, 60000);
     return () => clearInterval(iv);
   }, [loggedIn, tab, fetchCasino]);
-  const casinoToday = casino.day || lusakaDay();
-  const missionStates = useMemo(
-    () => casinoMissionStates(activeMissions, { rounds: casino.rounds, progressDay: casino.day, today: casinoToday, claims: user.casinoMissionClaims }),
-    [activeMissions, casino.rounds, casino.day, casinoToday, user.casinoMissionClaims]
-  );
-  const claimableCount = loggedIn ? countClaimable(missionStates) : 0;
   // What the Missions UI says about tracking: 'anon' (log in), 'loading',
   // 'nodata' (feed hasn't reported today yet), 'unavailable', or 'ok'.
   const casinoStatus = !loggedIn
@@ -1426,6 +1421,18 @@ export default function GamificationPlatform() {
   }, []);
   // status: idle | ok | unavailable (table missing / feed down) | anon
   const [seasonFeed, setSeasonFeed] = useState({ status: 'idle', rows: null, prize: null });
+  // BwanaBet missions (lib/missions/ladder.mjs, 2026-10-20): one-time, four
+  // ladders counted since the first login (casino total from the server, sports
+  // + deposit days from the season rows, daily-reward days from xpDays).
+  const missionCountsNow = useMemo(
+    () => missionCounts({ casinoTotal: casino.total, rows: seasonFeed.rows || [], since: casino.since, xpDays: user.xpDays, xpToday: user.xpToday }),
+    [casino.total, casino.since, seasonFeed.rows, user.xpDays, user.xpToday]
+  );
+  const missionStates = useMemo(
+    () => buildMissionStates(activeMissions, missionCountsNow, user.missionClaims),
+    [activeMissions, missionCountsNow, user.missionClaims]
+  );
+  const claimableCount = loggedIn ? countClaimable(missionStates) : 0;
   const seasonRowsRef = useRef(null);
   seasonRowsRef.current = seasonFeed.rows;
   const getSeasonFeed = session.getSeason;
@@ -2030,7 +2037,6 @@ export default function GamificationPlatform() {
           <MissionDetailModal
             mission={ms?.mission || selectedMission}
             progress={ms?.progress || 0}
-            rounds={ms?.rounds || 0}
             done={!!ms?.claimed}
             claimable={loggedIn && !!ms?.claimable}
             trackingStatus={casinoStatus}
@@ -2140,30 +2146,34 @@ export default function GamificationPlatform() {
     wheel: wheel.available ? { onOpen: wheel.open } : null,
   };
 
-  // Claim a daily casino mission. Re-reads today's rounds from the server
-  // first (the CRM feed is the only source of progress), then credits the
-  // reward client-side like every other reward and records the claim for
-  // today's Lusaka day so it can't be claimed twice.
+  // Claim a one-time BwanaBet mission. A casino mission re-reads the casino
+  // total from the server first (the CRM feed is its only source); the other
+  // ladders count from data already on the client. Credits client-side like
+  // every other reward and records the id in user.missionClaims for good.
   const claimCasinoMission = async (mission, el) => {
     if (!loggedIn) { showNotif('Log in on bwanabet.com to claim', 'error'); return; }
     if (casinoBusyRef.current) return;
     casinoBusyRef.current = true;
     try {
-      const src = (await fetchCasino()) || (casino.status === 'ok' ? casino : null);
-      if (!src || !src.day) { showNotif('Mission progress is unavailable — try again soon', 'error'); return; }
-      const st = casinoMissionStates(activeMissions, { rounds: src.rounds, progressDay: src.day, today: src.day, claims: user.casinoMissionClaims });
+      let counts = missionCountsNow;
+      if (mission.track === 'casino') {
+        const src = (await fetchCasino()) || (casino.status === 'ok' ? casino : null);
+        if (!src) { showNotif('Mission progress is unavailable — try again soon', 'error'); return; }
+        counts = { ...counts, casino: src.total };
+      }
+      const st = buildMissionStates(activeMissions, counts, user.missionClaims);
       const s = st.find(x => x.mission.id === mission.id);
-      const guardKey = `${src.day}:${mission.id}`;
-      const next = recordClaim(user.casinoMissionClaims, mission.id, src.day, st);
-      if (!s || !next || casinoClaimedRef.current.has(guardKey)) {
-        showNotif(s && !s.reached ? `Play ${s.mission.target - s.rounds} more casino rounds to claim` : 'Already claimed today', 'error');
+      const next = recordMissionClaim(user.missionClaims, mission.id, st);
+      if (!s || !next || casinoClaimedRef.current.has(mission.id)) {
+        showNotif(s && !s.reached ? `${(s.mission.target - s.count).toLocaleString('en-US')} more to go` : 'Already collected', 'error');
         return;
       }
-      casinoClaimedRef.current.add(guardKey);
+      casinoClaimedRef.current.add(mission.id);
       const m = s.mission;
       const r = cleanReward(m.reward);
+      const day = lusakaDay();
       setUser(u => {
-        const ids = u.casinoMissionClaims?.day === src.day && Array.isArray(u.casinoMissionClaims.ids) ? u.casinoMissionClaims.ids : [];
+        const ids = Array.isArray(u.missionClaims) ? u.missionClaims : [];
         if (ids.includes(m.id)) return u;
         return {
           ...u,
@@ -2171,13 +2181,13 @@ export default function GamificationPlatform() {
           emeralds: (u.emeralds || 0) + (r.emeralds || 0),
           rubies: (u.rubies || 0) + (r.rubies || 0),
           diamonds: (u.diamonds || 0) + (r.diamonds || 0),
-          casinoMissionClaims: { day: src.day, ids: [...ids, m.id] },
-          ...(m.xp ? (() => { const t = addMissionXp(u.xpToday, m.xp, src.day).xpToday; return { xpToday: t, xpDays: recordXpDay(u.xpDays, t) }; })() : null),
+          missionClaims: [...ids, m.id],
+          ...(m.xp ? (() => { const t = addMissionXp(u.xpToday, m.xp, day).xpToday; return { xpToday: t, xpDays: recordXpDay(u.xpDays, t) }; })() : null),
         };
       });
-      track('mission_completed', { amount: r.kwacha || 0, meta: { missionId: m.id, day: src.day } }); flushTrack();
+      track('mission_completed', { amount: r.kwacha || 0, meta: { missionId: m.id, track: m.track } }); flushTrack();
       const won = [...rewardParts(r), m.xp ? amountText(m.xp, 'xp') : null].filter(Boolean);
-      showNotif(`✅ ${m.name} claimed!${won.length ? ` +${won.join(' + ')}` : ''}`);
+      showNotif(`✅ ${m.name} collected!${won.length ? ` +${won.join(' + ')}` : ''}`);
       triggerReward('medium', el || null, { coins: r.kwacha || 0, emeralds: r.emeralds, rubies: r.rubies, diamonds: r.diamonds });
       if (m.xp) xpFx.collect({ from: el || null, amount: m.xp, delay: 250 });
     } finally {

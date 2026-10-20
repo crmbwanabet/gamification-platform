@@ -7,10 +7,10 @@ import DailyReward from './DailyReward';
 import GamesGrid from './GamesGrid';
 import HomeStore from './HomeStore';
 import { MatchCard, HustleCard } from './SeasonCards';
-import { useResetText, EarnPrize } from './EarnView';
+import { EarnPrize } from './EarnView';
 import { amountText } from '@/lib/rewardText.mjs';
-import { CASINO_MISSIONS } from '@/lib/data/missions';
-import { casinoMissionStates, missionTerms } from '@/lib/missions/casino.mjs';
+import { MISSIONS } from '@/lib/data/missions';
+import { missionStates as buildMissionStates, missionTerms, missionBoard, progressUnit } from '@/lib/missions/ladder.mjs';
 import { STORE_ITEMS, MINIGAMES, getLevel } from '@/lib/data/platform';
 import { splitCatalog, storeLocked } from '@/lib/store/catalog.mjs';
 import { WheelCard } from '../extras/useWheel';
@@ -40,29 +40,27 @@ const OV_CSS = `
   .ov-mission { all: unset; box-sizing: border-box; cursor: pointer; display: flex; flex-direction: column; gap: 10px; width: 100%; padding: 14px; }
 `;
 
-// The teaser shows the most relevant daily casino mission: ready-to-claim
-// first, then in progress, then not started, then claimed.
-function pickTopMission(states) {
-  const rank = (x) => (x.claimable ? 0 : x.claimed ? 3 : x.progress > 0 ? 1 : 2);
-  return [...states].sort((a, b) => rank(a) - rank(b))[0] || null;
-}
+// The teaser shows the most relevant current mission (missionBoard: the next
+// mission of each ladder, ready-to-claim first, then in progress).
+const pickTopMission = (states) => missionBoard(states).current[0] || null;
 
 function MissionTeaser({ s, onOpen }) {
   const m = s.mission;
   const done = s.claimed;
   const pct = done ? 100 : Math.min(100, Math.round((s.progress / m.target) * 100));
+  const unit = progressUnit(m);
   return (
     <Card style={{ overflow: 'hidden' }}>
-      <button type="button" className="ov-mission" onClick={() => onOpen && onOpen(m)} aria-label={`${m.name}: ${done ? m.target : s.progress} of ${m.target} casino rounds`}>
-        <span style={{ fontFamily: CANDY.display, fontSize: 19, lineHeight: 1.1, color: '#fff', textTransform: 'uppercase' }}>{m.name}</span>
+      <button type="button" className="ov-mission" onClick={() => onOpen && onOpen(m)} aria-label={`${m.name}: ${done ? m.target : s.progress} of ${m.target} ${unit}`}>
+        <span data-mission-name style={{ alignSelf: 'center', textAlign: 'center', fontFamily: CANDY.display, fontSize: 21, lineHeight: 1.1, color: CANDY.gold, textTransform: 'uppercase', textShadow: '0 2px 0 #2A0A4F' }}>{m.name}</span>
         <span style={{ padding: '4px 0' }}><EarnPrize r={m.reward} size={36} fontSize={32} /></span>
         <span style={{ fontFamily: CANDY.display, fontSize: 21, lineHeight: 1.15, letterSpacing: '.01em', color: '#fff' }}>{missionTerms(m)}</span>
         {(done || s.claimable) && (
-          <span>{done ? <Badge bg={C.green} color="#fff">Claimed today</Badge> : <Badge bg={CANDY.gold}>Ready to claim</Badge>}</span>
+          <span>{done ? <Badge bg={C.green} color="#fff">Collected</Badge> : <Badge bg={CANDY.gold}>Ready to claim</Badge>}</span>
         )}
         <Progress value={pct} height={16} color={done ? C.green : undefined} />
         <span style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5, fontWeight: 800, color: 'rgba(255,255,255,.78)' }}>
-          <span>{done ? m.target : s.progress} / {m.target} casino rounds</span>
+          <span>{(done ? m.target : s.progress).toLocaleString('en-US')} / {m.target.toLocaleString('en-US')} {unit}</span>
           {m.xp ? <span style={{ color: CANDY.gold }}>+{amountText(m.xp, 'xp')}</span> : null}
         </span>
       </button>
@@ -78,9 +76,8 @@ function MissionTeaser({ s, onOpen }) {
  */
 export default function Overview({ wallet = null, xp = 1200, activeTab = 'home', onNavigate, onOpenProfile, onOpenMission, missionStates = null, loggedIn = false, canClaimDaily = loggedIn, dailyDay = 1, dailyClaimed = false, onClaimDaily, userId = null, displayName = null, onEditName, navBadges = {}, games = null, storeItems = null, missions = null, dailyRewards = null, gamePlays = null, onPlay, focusGames = 0, isWidget = false, story = null, onStoryOpen, onStoryClose, intro = null, season = null, onCollectHustle, onClaimLeague, onBuy, busyId = null, extras = null, wheel = null } = {}) {
   const go = (t) => onNavigate && onNavigate(t);
-  const states = missionStates || casinoMissionStates(missions || CASINO_MISSIONS, { rounds: 0, today: null });
+  const states = missionStates || buildMissionStates(missions || MISSIONS, {}, []);
   const top = pickTopMission(states);
-  const resetLabel = useResetText();
   // Store may be empty until the admin dashboard populates it
   const items = storeItems || STORE_ITEMS;
   const gameList = games || MINIGAMES;
@@ -121,9 +118,9 @@ export default function Overview({ wallet = null, xp = 1200, activeTab = 'home',
           <section className="ov-missions" aria-labelledby="ov-missions-title">
             {wheel && <WheelCard onOpen={wheel.onOpen} />}
             {top && <>
-            <SectionTitle id="ov-missions-title" right={<TitleNote>{resetLabel}</TitleNote>}>Missions</SectionTitle>
+            <SectionTitle id="ov-missions-title" right={<TitleNote>{states.filter(x => x.claimed).length} / {states.length} collected</TitleNote>}>BwanaBet missions</SectionTitle>
             <MissionTeaser s={top} onOpen={onOpenMission} />
-            <button type="button" className="ov-link" onClick={() => go('missions')}>See all {states.length} missions ›</button>
+            <button type="button" className="ov-link" onClick={() => go('missions')}>See all missions ›</button>
             </>}
           </section>
         )}

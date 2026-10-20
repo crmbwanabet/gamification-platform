@@ -1,7 +1,6 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { SPORTS_MISSIONS, sportsMissionStates, recordSportsClaim } from '@/lib/missions/sports.mjs';
 import { albumCards, albumSets, earnedCount } from '@/lib/album/cards.mjs';
 import { track, flushTrack } from '@/lib/track';
 
@@ -12,30 +11,14 @@ import { track, flushTrack } from '@/lib/track';
 // returns null when it is already recorded, so a double tap pays once).
 //
 // Server-checked claims (predictions, leaderboard, comeback) call the API
-// first and credit only after an ok; the client-side ones (sports missions,
-// album sets) are checked against the CRM rows / derived cards here.
+// first and credit only after an ok; the client-side ones (album sets) are checked against the CRM rows / derived cards here.
 
 export function useExtras({ session, loggedIn, hydrated, tab, user, setUser, seasonRows, today, stage, league, worldCup, hustle, credit, showNotif, blocked }) {
   const api = session.api;
 
-  // --- bet-slip missions (CRM sports_slips, already in the season rows) ---
-  const sportsStates = useMemo(
-    () => sportsMissionStates(SPORTS_MISSIONS, { rows: seasonRows || [], today, claims: user.sportsMissionClaims }),
-    [seasonRows, today, user.sportsMissionClaims]
-  );
   const busy = useRef(new Set());
-  const claimSports = (missionId, el) => {
-    if (!loggedIn) { showNotif('Log in on bwanabet.com to claim', 'error'); return; }
-    const s = sportsStates.find(x => x.mission.id === missionId);
-    const guard = `sports:${today}:${missionId}`;
-    if (!s || !s.claimable || busy.current.has(guard)) return;
-    busy.current.add(guard);
-    track('sports_mission_claimed', { amount: s.mission.reward.kwacha || 0, meta: { missionId, day: today } }); flushTrack();
-    credit({ coins: s.mission.reward.kwacha || 0, xp: s.mission.xp || 0 }, el, `✅ ${s.mission.name} claimed!`, (u) => {
-      const next = recordSportsClaim(u.sportsMissionClaims, missionId, today, sportsMissionStates(SPORTS_MISSIONS, { rows: seasonRows || [], today, claims: u.sportsMissionClaims }));
-      return next ? { sportsMissionClaims: next } : null;
-    });
-  };
+  // (the daily/weekend bet-slip missions became the one-time Sports ladder in
+  // lib/missions/ladder.mjs, 2026-10-20)
 
   // --- souvenir album (derived cards; set bonuses once) ---
   const cards = useMemo(() => albumCards({ stage, league, worldCup, hustle }), [stage, league, worldCup, hustle]);
@@ -155,13 +138,12 @@ export function useExtras({ session, loggedIn, hydrated, tab, user, setUser, sea
   };
 
   return {
-    sports: { states: sportsStates, onClaim: claimSports, loggedIn },
     album: { cards, sets, have, total: cards.length, onClaimSet: claimSet },
     predictions: { ...pred, busyId: pickBusy, onPick: makePick, onClaim: claimPrediction, loggedIn },
     board: { ...board, onClaim: claimBoard, loggedIn },
     comeback: comeback && !blocked ? { ...comeback, onClaim: claimComeback, onClose: () => setComeback(null) } : null,
     comebackPending: !!comeback,
-    badge: sportsStates.filter(s => s.claimable).length + sets.filter(s => s.claimable).length
+    badge: sets.filter(s => s.claimable).length
       + (pred.mine || []).filter(m => m.claimable).length + (board.lastWeek && !board.lastWeek.claimed ? 1 : 0),
   };
 }

@@ -64,3 +64,12 @@ Still live but dormant: `WHEEL_SEGMENTS`/`DAILY_FREE_SPIN_ROTATION` in `lib/data
 - User state still carries `predictions` / `bets` / `wins` / quest keys so existing player history is preserved in Supabase.
 - `LEGACY_TAB_MAP` in `GamificationPlatform.jsx` remaps `predict`/`predictions`/`daily`/`quests` CTAs to live tabs — restore the original targets when un-parking.
 - `lib/data/tutorials.js` keeps only live-feature tutorials; the predictions entry is parked here.
+
+## Daily missions (parked 2026-10-20)
+
+The owner made missions ONE-TIME (no daily reset) and added longer ladders
+(`lib/missions/ladder.mjs`). Parked:
+- `parked/lib/missions/casino.daily.mjs`: the 4 daily casino-round missions (claims per Lusaka day).
+- `parked/lib/missions/sports.daily.mjs`: the daily + weekend bet-slip missions (`user.sportsMissionClaims`).
+- Their tests in `parked/tests/`.
+Restore = `git mv` back and re-wire `GamificationPlatform` / `useExtras`.

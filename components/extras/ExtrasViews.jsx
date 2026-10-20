@@ -4,8 +4,7 @@ import React from 'react';
 import { Check, Lock, Trophy } from 'lucide-react';
 import { C, CANDY, goldRim, innerGlow, goldTitle } from '../redesign/tokens';
 import { Card, SectionTitle, TitleNote, Progress, GreenBtn, Badge, RewardIcon } from '../redesign/RedesignShell';
-import { EarnPrize, useResetText } from '../redesign/EarnView';
-import { sportsTerms } from '@/lib/missions/sports.mjs';
+import { EarnPrize } from '../redesign/EarnView';
 import { amountText } from '@/lib/rewardText.mjs';
 
 // UI for the 2026-10-19 extras (state + handlers: components/extras/useExtras.js).
@@ -21,44 +20,6 @@ const kickoffText = (iso) => {
 // ---------------------------------------------------------------------------
 // Bet-slip missions
 // ---------------------------------------------------------------------------
-export function SportsMissions({ sports }) {
-  const reset = useResetText();
-  if (!sports) return null;
-  return (
-    <section style={{ marginTop: 26 }} aria-labelledby="sports-missions-title">
-      <SectionTitle id="sports-missions-title" right={<TitleNote>{reset}</TitleNote>}>Sports missions</SectionTitle>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {sports.states.map((s) => {
-          const m = s.mission;
-          const pct = s.claimed ? 100 : Math.min(100, Math.round((s.progress / m.target) * 100));
-          const ready = sports.loggedIn && s.claimable;
-          return (
-            <Card key={m.id} style={{ padding: '12px 14px', opacity: s.claimed ? 0.7 : 1, ...(ready ? { borderColor: CANDY.gold } : null) }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div style={{ flex: 1, minWidth: 0, display: 'grid', gap: 6 }}>
-                  <span style={title(17)}>{m.name}{m.kind === 'weekend' && <span style={{ marginLeft: 8 }}><Badge bg="#b48cf2" color="#130f1f">Weekend</Badge></span>}</span>
-                  <span style={{ fontFamily: CANDY.display, fontSize: 17, lineHeight: 1.15, color: '#fff' }}>{sportsTerms(m)}</span>
-                  <EarnPrize r={m.reward} size={24} fontSize={20} />
-                  <Progress value={pct} height={12} color={s.claimed || s.reached ? C.green : undefined} />
-                  <span style={{ fontSize: 12, fontWeight: 800, color: 'rgba(255,255,255,.75)' }}>
-                    {s.claimed ? m.target : s.progress} / {m.target} bets{m.xp ? <span style={{ color: CANDY.gold }}> · +{amountText(m.xp, 'xp')}</span> : null}
-                    {m.kind === 'weekend' && !s.open ? <span style={{ color: C.muted }}> · opens Saturday</span> : null}
-                  </span>
-                </div>
-                <div style={{ flex: 'none', minWidth: 64, display: 'grid', placeItems: 'center' }}>
-                  {s.claimed ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, fontWeight: 800, color: C.green }}><Check size={14} /> Claimed</span>
-                    : ready ? <GreenBtn onClick={(e) => sports.onClaim(m.id, e.currentTarget)}>Claim</GreenBtn>
-                    : null}
-                </div>
-              </div>
-            </Card>
-          );
-        })}
-      </div>
-      <div style={{ fontSize: 11.5, color: C.muted, marginTop: 8 }}>Settled real-money sports bets on bwanabet.com at total odds 1.5 or more. Updates every few minutes.</div>
-    </section>
-  );
-}
 
 // ---------------------------------------------------------------------------
 // Match-day predictions
