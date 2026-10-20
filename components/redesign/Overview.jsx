@@ -20,7 +20,7 @@ import { Predictions } from '../extras/ExtrasViews';
 // when the daily reward became a popup on open; daily reward and Coin Shop
 // swapped 2026-10-20): phones stack missions → daily reward → Coin Shop → this
 // week → bonus games; desktop (≥861px) opens with missions (400px) left + the
-// daily reward right (max 560px), then the Coin Shop + this week on the left
+// daily reward right (full column width, lined up with the games), then the Coin Shop + this week on the left
 // beside the games grid (3 per row). With an empty store the games take the
 // top-right slot. Below stage 5 the Coin Shop is greyed with a lock plate.
 const OV_CSS = `
@@ -31,7 +31,6 @@ const OV_CSS = `
   @media (min-width: 861px) {
     .ov-grid { grid-template-columns: 400px minmax(0, 1fr); grid-template-rows: auto auto auto 1fr; column-gap: 28px; row-gap: 24px;
       grid-template-areas: "missions daily" "store games" "season games" "predict games"; }
-    .ov-grid:not(.ov-grid--nostore) > .ov-daily { max-width: 560px; }
     .ov-grid--nostore { grid-template-rows: auto auto auto 1fr; grid-template-areas: "missions games" "daily games" "season games" "predict games"; }
   }
   .ov-link { all: unset; box-sizing: border-box; cursor: pointer; display: flex; align-items: center; justify-content: center; min-height: 44px; margin-top: 8px; width: 100%;
