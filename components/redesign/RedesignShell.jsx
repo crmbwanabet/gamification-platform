@@ -278,7 +278,7 @@ function NavTabs({ active, onNavigate, navBadges = {}, place, locked = {} }) {
   });
 }
 
-function TopBar({ lvl, nextLvl, xpPct, xpFx, activeTab, onNavigate, onOpenProfile, userId, displayName, onEditName, wallet, onOpenWallet, navBadges, story, onStoryOpen, onStoryClose }) {
+function TopBar({ lvl, nextLvl, xpPct, xpFx, activeTab, onNavigate, onOpenProfile, userId, displayName, onEditName, wallet, onOpenWallet, navBadges, story, onStoryOpen, onStoryClose, onStoryGo, storyPrize }) {
   const stageTitle = `Stage ${lvl.level}: ${lvl.name}${nextLvl ? ` · next: ${nextLvl.name}` : ' · final stage'}`;
   // The PLAYER's identity (2026-10-09): their name over "ID x", else the ID
   // itself, else "Player". Vuma stays in the avatar art (the story character).
@@ -305,7 +305,7 @@ function TopBar({ lvl, nextLvl, xpPct, xpFx, activeTab, onNavigate, onOpenProfil
             <span className="rs-addname-face"><Pencil size={12} strokeWidth={3} aria-hidden /><span className="rs-addname-t">Add name</span></span>
           </button>
         )}
-        <StoryBubble mode={story} onOpen={onStoryOpen} onClose={onStoryClose} level={lvl} />
+        <StoryBubble mode={story} onOpen={onStoryOpen} onClose={onStoryClose} onGo={onStoryGo} prize={storyPrize} level={lvl} />
       </div>
       <nav className="rs-topnav" aria-label="Main">
         <NavTabs active={activeTab} onNavigate={onNavigate} navBadges={navBadges} place="top" locked={navLocks(lvl)} />
@@ -389,7 +389,7 @@ const SHELL_CSS = `
 export default function RedesignShell({
   xp = 0, activeTab = 'home', onNavigate, onOpenProfile, children,
   userId = null, displayName = null, onEditName, navBadges = {}, wallet = null, isWidget = false,
-  story = null, onStoryOpen, onStoryClose, intro = null,
+  story = null, onStoryOpen, onStoryClose, onStoryGo, storyPrize = null, intro = null,
 }) {
   const [walletOpen, setWalletOpen] = React.useState(false);
   // The header bar follows the XP collect animation when the platform provides it.
@@ -401,7 +401,7 @@ export default function RedesignShell({
       <style dangerouslySetInnerHTML={{ __html: SHELL_CSS + CANDY_BTN_CSS + STORY_CSS }} />
       <TopBar lvl={lvl} nextLvl={nextLvl} xpPct={xpPct} xpFx={xpFx} activeTab={activeTab} onNavigate={onNavigate} onOpenProfile={onOpenProfile}
         userId={userId} displayName={displayName} onEditName={onEditName} wallet={wallet || { kwacha: 0 }} onOpenWallet={() => setWalletOpen(true)} navBadges={navBadges}
-        story={walletOpen ? null : story} onStoryOpen={onStoryOpen} onStoryClose={onStoryClose} />
+        story={walletOpen ? null : story} onStoryOpen={onStoryOpen} onStoryClose={onStoryClose} onStoryGo={onStoryGo} storyPrize={storyPrize} />
       <main className="rs-main"><BonusCenterTitle />{intro && <BonusIntro stage={lvl.level} {...intro} />}{children}</main>
       <nav className="rs-bottomnav" aria-label="Main">
         <NavTabs active={activeTab} onNavigate={onNavigate} navBadges={navBadges} place="bottom" locked={navLocks(lvl)} />

@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   LEAGUE_BANDS, bandForStage, bandForXp, maskId, weeklyXpByUser, rankBoard, prizeForRank, lastWeek, thisWeek,
-  comebackOffer, inactivePlayers, isActiveRow, pickOpen, settlePick, PICK_CLOSE_MS,
+  comebackOffer, inactivePlayers, isActiveRow, pickOpen, settlePick, PICK_CLOSE_MS, weekSlip, SLIP_SIZE, PREDICTION_COINS, STORY_PRIZE,
 } from '../lib/extras/rules.mjs';
 
 test('bands cover stages 1..19 without gaps', () => {
@@ -82,4 +82,28 @@ test('predictions: picks close 5 minutes before kick-off; settle 1X2', () => {
   assert.equal(settlePick('home', { outcome: 'home' }), 'won');
   assert.equal(settlePick('draw', { outcome: 'away' }), 'lost');
   assert.equal(settlePick('home', null), null);
+});
+
+test('weekly prediction slip: 5 picks, all right to win, once', () => {
+  assert.equal(SLIP_SIZE, 5);
+  assert.equal(PREDICTION_COINS, 200);
+  const row = (i, pick, outcome, extra = {}) => ({ pick, outcome: outcome || null, settled_at: outcome ? 'x' : null, claimed_at: null,
+    pick_day: '2026-10-2' + Math.min(i, 5), kickoff: `2026-10-2${Math.min(i, 5)}T1${i}:00:00Z`, ...extra });
+  const wk = '2026-10-19'; // Monday
+  const four = [1, 2, 3, 4].map(i => row(i, 'home', 'home'));
+  assert.equal(weekSlip(four, wk).status, 'open');
+  const five = [...four, row(5, 'away')];
+  assert.equal(weekSlip(five, wk).status, 'pending');
+  const won = [...four, row(5, 'away', 'away')];
+  assert.deepEqual([weekSlip(won, wk).status, weekSlip(won, wk).right, weekSlip(won, wk).claimable], ['won', 5, true]);
+  assert.equal(weekSlip([...four, row(5, 'away', 'draw')], wk).status, 'lost');
+  assert.equal(weekSlip([row(1, 'home', 'draw')], wk).status, 'lost', 'one wrong loses the week early');
+  const claimed = won.map(r => ({ ...r, claimed_at: 'y' }));
+  assert.equal(weekSlip(claimed, wk).claimable, false);
+  // picks from another week never count
+  assert.equal(weekSlip([...four, row(5, 'away', 'away', { pick_day: '2026-10-26' })], wk).status, 'open');
+});
+
+test('story prize is 100 coins + 10 XP', () => {
+  assert.deepEqual(STORY_PRIZE, { coins: 100, xp: 10 });
 });

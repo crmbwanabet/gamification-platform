@@ -37,20 +37,82 @@ function PickBtn({ label, sub, active, disabled, onClick }) {
   );
 }
 
+const SLOT = {
+  won: { bg: CANDY.green.fill, border: CANDY.green.dark, mark: '✓' },
+  lost: { bg: CANDY.red.fill, border: CANDY.red.dark, mark: '✗' },
+  pending: { bg: C.track, border: CANDY.gold, mark: '•' },
+};
+const weekLabel = (w) => {
+  const d = new Date(`${w}T12:00:00Z`);
+  return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' });
+};
+
+/** The week's slots: ✓ right, ✗ wrong, • waiting for the result, a number = not picked yet. */
+function SlipSlots({ slip, size }) {
+  const picks = slip?.picks || [];
+  return (
+    <div style={{ display: 'flex', gap: 6 }} aria-label={`${picks.length} of ${size} picks made`}>
+      {Array.from({ length: size }, (_, i) => {
+        const r = picks[i];
+        const st = r ? SLOT[r.status] || SLOT.pending : null;
+        return (
+          <div key={i} title={r ? `${r.home} v ${r.away}` : 'Not picked yet'}
+            style={{ flex: 1, height: 34, borderRadius: 10, display: 'grid', placeItems: 'center', fontFamily: CANDY.display, fontSize: 18, color: st ? '#fff' : C.muted,
+              background: st ? st.bg : 'transparent', border: `2px ${st ? 'solid' : 'dashed'} ${st ? st.border : CANDY.violet.fill}` }}>
+            {st ? st.mark : i + 1}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function slipLine(slip, size, coins) {
+  const n = slip.picks?.length || 0;
+  if (slip.status === 'lost') return 'One pick missed. A new slip starts on Monday.';
+  if (slip.status === 'won') return slip.claimed ? `${size} out of ${size}! ${fmt(coins)} coins collected.` : `${size} out of ${size}! Collect your ${fmt(coins)} coins.`;
+  if (slip.status === 'pending') return `All ${size} picked · ${slip.right} right so far. Waiting for the results.`;
+  return `Pick ${size - n} more ${size - n === 1 ? 'match' : 'matches'} this week.`;
+}
+
+// Weekly predictions (owner 2026-10-20): 5 picks a Lusaka week, all 5 right =
+// the coins, once per week (POST /api/predictions/claim { week }).
 export function Predictions({ predictions: p, compact = false, onSeeAll }) {
   if (!p) return null;
+  const size = p.week?.max || 5;
+  const slips = p.slips || [];
+  const cur = slips[0] || { picks: [], status: 'open', right: 0 };
+  const earlier = slips.slice(1).filter(x => x.claimable);
+  const left = Math.max(0, size - (p.week?.picks || 0));
   const open = (p.matches || []).filter(m => m.open);
-  const list = compact ? open.slice(0, 2) : open.slice(0, 8);
-  const toClaim = (p.mine || []).filter(m => m.claimable);
-  const results = compact ? toClaim : (p.mine || []).slice(0, 8);
-  const left = Math.max(0, (p.today?.max || 5) - (p.today?.picks || 0));
+  const canPick = !p.loggedIn || (left > 0 && cur.status !== 'lost');
+  const list = !canPick ? [] : compact ? open.slice(0, 2) : open.slice(0, 8);
+  const titleId = compact ? 'pred-title-home' : 'pred-title';
   return (
-    <section aria-labelledby={compact ? 'pred-title-home' : 'pred-title'} style={compact ? null : { marginTop: 26 }}>
-      <SectionTitle id={compact ? 'pred-title-home' : 'pred-title'} right={p.loggedIn ? <TitleNote>{left} of {p.today?.max || 5} picks left today</TitleNote> : null}>Match predictions</SectionTitle>
+    <section aria-labelledby={titleId} style={compact ? null : { marginTop: 26 }}>
+      <SectionTitle id={titleId} right={p.loggedIn ? <TitleNote>{size - left} of {size} picked this week</TitleNote> : null}>Weekly predictions</SectionTitle>
       <Card style={{ padding: 14, display: 'grid', gap: 12 }}>
-        <div style={{ fontSize: 13, fontWeight: 700, color: C.sub }}>Free to play. Pick the winner of a real match: right = <b style={{ color: CANDY.gold }}>{fmt(p.coins)} coins</b>.</div>
-        {p.status === 'idle' && <div style={{ fontSize: 13, color: C.muted }}>Loading matches…</div>}
-        {p.status !== 'idle' && !list.length && <div style={{ fontSize: 13, color: C.muted }}>No matches open right now. Check back on match day.</div>}
+        <div style={{ fontSize: 13, fontWeight: 700, color: C.sub }}>
+          Free to play. Pick the winners of <b style={{ color: C.text }}>{size} real matches</b> this week. Get <b style={{ color: C.text }}>all {size} right</b> = <b style={{ color: CANDY.gold }}>{fmt(p.coins)} coins</b>.
+        </div>
+        {p.loggedIn && (
+          <div style={{ display: 'grid', gap: 8 }}>
+            <SlipSlots slip={cur} size={size} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ flex: 1, fontSize: 13, fontWeight: 800, color: cur.status === 'won' ? C.green : cur.status === 'lost' ? C.muted : C.text }}>{slipLine(cur, size, p.coins)}</div>
+              {cur.claimable && <GreenBtn onClick={(e) => p.onClaim(cur.week, e.currentTarget)}>Claim</GreenBtn>}
+            </div>
+          </div>
+        )}
+        {earlier.map(x => (
+          <div key={x.week} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: 10, borderRadius: 12, border: `2px solid ${CANDY.gold}` }}>
+            <Trophy size={22} color={CANDY.gold} style={{ flex: 'none' }} />
+            <div style={{ flex: 1, fontSize: 13, fontWeight: 800, color: C.text }}>Week of {weekLabel(x.week)}: {size} out of {size}! {fmt(p.coins)} coins</div>
+            <GreenBtn onClick={(e) => p.onClaim(x.week, e.currentTarget)}>Claim</GreenBtn>
+          </div>
+        ))}
+        {canPick && p.status === 'idle' && <div style={{ fontSize: 13, color: C.muted }}>Loading matches…</div>}
+        {canPick && p.status !== 'idle' && !list.length && <div style={{ fontSize: 13, color: C.muted }}>No matches open right now. Check back on match day.</div>}
         {list.map(m => (
           <div key={m.id} style={{ display: 'grid', gap: 6 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, fontSize: 11.5, fontWeight: 800, color: C.muted }}>
@@ -60,24 +122,23 @@ export function Predictions({ predictions: p, compact = false, onSeeAll }) {
             <div style={{ display: 'flex', gap: 6 }}>
               {['home', 'draw', 'away'].map(k => (
                 <PickBtn key={k} label={PICK_LABEL[k]} sub={k === 'home' ? m.home : k === 'away' ? m.away : 'Draw'}
-                  active={m.myPick === k} disabled={!!m.myPick || p.busyId === m.id || (p.loggedIn && left === 0)}
+                  active={m.myPick === k} disabled={!!m.myPick || p.busyId === m.id}
                   onClick={() => p.onPick(m.id, k)} />
               ))}
             </div>
           </div>
         ))}
-        {results.length > 0 && (
+        {!compact && cur.picks?.length > 0 && (
           <div style={{ display: 'grid', gap: 8, borderTop: `1px solid ${CANDY.violet.dark}`, paddingTop: 10 }}>
-            <div style={{ fontSize: 12, fontWeight: 900, color: CANDY.gold, textTransform: 'uppercase' }}>Your predictions</div>
-            {results.map(r => (
+            <div style={{ fontSize: 12, fontWeight: 900, color: CANDY.gold, textTransform: 'uppercase' }}>This week&apos;s picks</div>
+            {cur.picks.map(r => (
               <div key={r.eventId} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <div style={{ flex: 1, minWidth: 0, fontSize: 13, fontWeight: 700, color: C.text }}>
                   {r.home} v {r.away} <span style={{ color: C.muted }}>· you: {PICK_LABEL[r.pick]}{r.score ? ` · ${r.score}` : ''}</span>
                 </div>
-                {r.claimable ? <GreenBtn onClick={(e) => p.onClaim(r.eventId, e.currentTarget)}>Claim</GreenBtn>
-                  : <span style={{ flex: 'none', fontSize: 12, fontWeight: 900, color: r.status === 'won' ? C.green : r.status === 'lost' ? C.muted : CANDY.gold }}>
-                      {r.status === 'won' ? 'Won ✓' : r.status === 'lost' ? 'Missed' : 'Waiting'}
-                    </span>}
+                <span style={{ flex: 'none', fontSize: 12, fontWeight: 900, color: r.status === 'won' ? C.green : r.status === 'lost' ? C.muted : CANDY.gold }}>
+                  {r.status === 'won' ? 'Right ✓' : r.status === 'lost' ? 'Missed' : 'Waiting'}
+                </span>
               </div>
             ))}
           </div>

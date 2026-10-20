@@ -45,6 +45,7 @@ import {
 // Missions = the 4 daily casino-round missions (CRM feed); the old pools are
 // parked in parked/lib/data/missions.legacy.js
 import { MISSIONS } from '../lib/data/missions';
+import { STORY_PRIZE } from '@/lib/extras/rules.mjs';
 import { missionStates as buildMissionStates, missionCounts, countClaimable, recordMissionClaim } from '@/lib/missions/ladder.mjs';
 import { lusakaDay } from '@/lib/casino/feed.mjs';
 import { DAILY_LOGIN_XP, addGameXp, refundGameXp, casinoXp, addDailyXp, addMissionXp, recordXpDay } from '@/lib/xp/sources.mjs';
@@ -988,6 +989,8 @@ export default function GamificationPlatform() {
     // are kept untouched so saved history survives.
     // one-time BwanaBet missions collected (ids, lib/missions/ladder.mjs)
     missionClaims: [],
+    // the story's one-time "Let's go" prize (STORY_PRIZE) was paid
+    storyPrizeClaimed: false,
     // Extras (2026-10-19, components/extras/useExtras.js): bet-slip mission
     // claims { day, ids, weekend, weekendIds }; souvenir album: cards already
     // announced (albumSeen, unset = first run) + set bonuses paid (albumClaims).
@@ -1635,6 +1638,14 @@ export default function GamificationPlatform() {
     if (xp) xpFx.collect({ from: el || null, amount: xp, delay: 250 });
     return paid;
   };
+  // The story bubble's "LET'S GO!" pays STORY_PRIZE once, ever (owner 2026-10-20).
+  const storyPrizeDue = (loggedIn || preview) && !user.storyPrizeClaimed;
+  const letsGoStory = (el) => {
+    setStory('done');
+    if (!storyPrizeDue) return;
+    creditExtra(STORY_PRIZE, el, '⚽ Your story begins!', u => (u.storyPrizeClaimed ? null : { storyPrizeClaimed: true }));
+    track('story_prize_claimed', { amount: STORY_PRIZE.coins }); flushTrack();
+  };
   const openMission = (m) => { track('mission_open', { meta: { missionId: m?.id || null } }); setSelectedMission(m); };
   // The wheel opens by itself the first time a spin is available in widget
   // mode ("wheel first, then the Bonus Center"): it asks widget.js to show the
@@ -2140,6 +2151,8 @@ export default function GamificationPlatform() {
     story: anyModalOpen || story === 'done' ? null : story,
     onStoryOpen: openStory,
     onStoryClose: closeStory,
+    onStoryGo: letsGoStory,
+    storyPrize: storyPrizeDue ? STORY_PRIZE : null,
     intro: { open: introOpen, onToggle: (v) => { track('intro_toggle', { meta: { open: !!v } }); setIntroOpen(v); } },
     // Extras (2026-10-19) + the Wheel of Fortune card (shown while today's spin is available)
     extras,
@@ -2249,7 +2262,7 @@ export default function GamificationPlatform() {
   const unlockItems = [
     canClaimDaily && !user.dailyClaimed && { icon: '🎁', text: "Today's daily reward is ready" },
     claimableCount > 0 && { icon: '🎯', text: `${claimableCount} mission${claimableCount === 1 ? '' : 's'} ready to collect` },
-    { icon: '⚽', text: 'Match predictions and football matches' },
+    { icon: '⚽', text: 'Weekly predictions and football matches' },
     { icon: '🛍️', text: 'Prizes in the Coin Shop' },
   ].filter(Boolean);
   const withXp = (node) => (

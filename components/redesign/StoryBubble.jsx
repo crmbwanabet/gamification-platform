@@ -4,6 +4,8 @@ import React from 'react';
 import { X } from 'lucide-react';
 import { CANDY } from './tokens';
 import CandyButton from '../games/candy/CandyButton';
+import { COIN_ICON } from '../games/candy/tokens';
+import { amountText } from '@/lib/rewardText.mjs';
 
 // "My story" comic speech bubbles anchored under the header avatar.
 // mode 'hint' = the small "My story" bubble (tap to open); 'open' = the big
@@ -62,7 +64,7 @@ const tail = (left) => ({
   borderTop: `3px solid ${INK}`, borderLeft: `3px solid ${INK}`, transform: 'rotate(45deg)', borderTopLeftRadius: 4,
 });
 
-export default function StoryBubble({ mode, onOpen, onClose, level = null }) {
+export default function StoryBubble({ mode, onOpen, onClose, onGo, prize = null, level = null }) {
   const closeRef = React.useRef(null);
   React.useEffect(() => {
     if (mode !== 'open') return undefined;
@@ -113,7 +115,13 @@ export default function StoryBubble({ mode, onOpen, onClose, level = null }) {
           </button>
         </div>
         <div className="rs-sb-story" style={{ position: 'relative', margin: '8px 0 14px', fontFamily: CANDY.body, fontSize: 15, lineHeight: 1.45, color: '#3B2559' }}><StoryBody level={level} /></div>
-        <CandyButton color="green" onClick={onClose} style={{ width: '100%', fontSize: 22, minHeight: 52 }}>LET&apos;S GO!</CandyButton>
+        {prize && (
+          <div data-story-prize style={{ margin: '0 0 8px', textAlign: 'center', fontFamily: CANDY.display, fontSize: 18, lineHeight: 1.25, color: INK, textTransform: 'uppercase' }}>
+            Start now and earn<br />
+            <img src={COIN_ICON} alt="" width={22} height={22} style={{ display: 'inline-block', verticalAlign: '-4px', marginRight: 4 }} />{amountText(prize.coins, 'coins')} + {amountText(prize.xp, 'xp')}
+          </div>
+        )}
+        <CandyButton color="green" onClick={(e) => (onGo ? onGo(e.currentTarget) : onClose())} style={{ width: '100%', fontSize: 22, minHeight: 52 }}>LET&apos;S GO!</CandyButton>
       </div>
     </>
   );

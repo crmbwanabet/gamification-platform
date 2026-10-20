@@ -205,7 +205,7 @@ const ST_CSS = `
   }
 `;
 
-export default function StoreView({ wallet = null, xp = 0, onNavigate, onOpenProfile, onBuy, userId = null, displayName = null, onEditName, navBadges = {}, storeItems = null, busyId = null, isWidget = false, story = null, onStoryOpen, onStoryClose, intro = null, avatarShop = null }) {
+export default function StoreView({ wallet = null, xp = 0, onNavigate, onOpenProfile, onBuy, userId = null, displayName = null, onEditName, navBadges = {}, storeItems = null, busyId = null, isWidget = false, story = null, onStoryOpen, onStoryClose, onStoryGo, storyPrize = null, intro = null, avatarShop = null }) {
   // Coins -> kwacha only through the kwacha packs (gem redemptions were
   // removed 2026-10-12; any still served are ignored).
   const { coinPacks, items } = splitCatalog(storeItems || STORE_ITEMS);
@@ -216,7 +216,7 @@ export default function StoreView({ wallet = null, xp = 0, onNavigate, onOpenPro
   const topId = coinPacks.length > 1 ? coinPacks[coinPacks.length - 1].id : null;
   return (
     <RedesignShell wallet={wallet} xp={xp} userId={userId} displayName={displayName} onEditName={onEditName} navBadges={navBadges} activeTab="store" onNavigate={onNavigate} onOpenProfile={onOpenProfile}
-      isWidget={isWidget} story={story} onStoryOpen={onStoryOpen} onStoryClose={onStoryClose} intro={intro}>
+      isWidget={isWidget} story={story} onStoryOpen={onStoryOpen} onStoryClose={onStoryClose} onStoryGo={onStoryGo} storyPrize={storyPrize} intro={intro}>
       <style dangerouslySetInnerHTML={{ __html: BB_CSS + ST_CSS }} />
       <div className="st-wrap">
         <ShopLockWrap locked={locked}><StoreHero balances={balances} economy={wallet?.economy} coinPacks={coinPacks} /></ShopLockWrap>

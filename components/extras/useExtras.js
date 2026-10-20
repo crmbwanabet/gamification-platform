@@ -46,7 +46,7 @@ export function useExtras({ session, loggedIn, hydrated, tab, user, setUser, sea
   };
 
   // --- predictions ---
-  const [pred, setPred] = useState({ status: 'idle', matches: [], mine: [], today: { picks: 0, max: 5 }, coins: 200 });
+  const [pred, setPred] = useState({ status: 'idle', matches: [], slips: [], week: { start: null, picks: 0, max: 5 }, coins: 200 });
   const loadPredictions = useCallback(async () => {
     let status, data;
     if (loggedIn) ({ status, data } = await api('/api/predictions'));
@@ -70,23 +70,23 @@ export function useExtras({ session, loggedIn, hydrated, tab, user, setUser, sea
     try {
       const { status, data } = await api('/api/predictions', { eventId, pick });
       if (status === 200 && data?.ok) { track('prediction_made', { meta: { eventId, pick } }); showNotif('⚽ Prediction saved — good luck!'); await loadPredictions(); return; }
-      const msg = data?.error === 'daily_limit' ? `You can make ${data.max} predictions a day`
+      const msg = data?.error === 'weekly_limit' ? `Your ${data.max} picks for this week are in`
         : data?.error === 'closed' ? 'Kick-off is too close — predictions are closed'
         : data?.error === 'already_picked' ? 'You already predicted this match'
         : 'Prediction failed — try again';
       showNotif(msg, 'error');
     } finally { setPickBusy(null); }
   };
-  const claimPrediction = async (eventId, el) => {
-    if (busy.current.has(`pred:${eventId}`)) return;
-    busy.current.add(`pred:${eventId}`);
-    const { status, data } = await api('/api/predictions/claim', { eventId });
+  const claimPrediction = async (week, el) => {
+    if (busy.current.has(`pred:${week}`)) return;
+    busy.current.add(`pred:${week}`);
+    const { status, data } = await api('/api/predictions/claim', { week });
     if (status === 200 && data?.ok) {
-      track('prediction_claimed', { amount: data.coins, meta: { eventId } }); flushTrack();
-      credit({ coins: data.coins }, el, '⚽ Correct prediction!');
-      setPred(p => ({ ...p, mine: p.mine.map(m => (m.eventId === eventId ? { ...m, claimed: true, claimable: false } : m)) }));
+      track('prediction_claimed', { amount: data.coins, meta: { week } }); flushTrack();
+      credit({ coins: data.coins }, el, '⚽ 5 out of 5!');
+      setPred(p => ({ ...p, slips: p.slips.map(x => (x.week === week ? { ...x, claimed: true, claimable: false } : x)) }));
     } else {
-      busy.current.delete(`pred:${eventId}`);
+      busy.current.delete(`pred:${week}`);
       showNotif(data?.error === 'already_claimed' ? 'Already claimed' : 'Claim failed — try again', 'error');
     }
   };
@@ -144,6 +144,6 @@ export function useExtras({ session, loggedIn, hydrated, tab, user, setUser, sea
     comeback: comeback && !blocked ? { ...comeback, onClaim: claimComeback, onClose: () => setComeback(null) } : null,
     comebackPending: !!comeback,
     badge: sets.filter(s => s.claimable).length
-      + (pred.mine || []).filter(m => m.claimable).length + (board.lastWeek && !board.lastWeek.claimed ? 1 : 0),
+      + (pred.slips || []).filter(x => x.claimable).length + (board.lastWeek && !board.lastWeek.claimed ? 1 : 0),
   };
 }

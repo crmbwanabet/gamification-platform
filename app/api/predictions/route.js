@@ -4,7 +4,8 @@ import { rateLimit } from '@/lib/rateLimit';
 import { authedUid, bearer } from '@/lib/auth/ssoUid';
 import { lusakaDay } from '@/lib/casino/feed.mjs';
 import { getFootballMatches, getFootballResults } from '@/lib/altenar/client';
-import { PICKS, PREDICTION_COINS, MAX_PICKS_PER_DAY, pickOpen, settlePick } from '@/lib/extras/rules.mjs';
+import { PICKS, PREDICTION_COINS, SLIP_SIZE, pickOpen, settlePick, weekSlip } from '@/lib/extras/rules.mjs';
+import { weekStart, addDays } from '@/lib/season/xp.mjs';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -66,11 +67,12 @@ async function settle(uid, rows) {
 
 const view = (r) => {
   const status = r.settled_at ? settlePick(r.pick, { outcome: r.outcome }) : 'pending';
-  return { eventId: r.event_id, home: r.home, away: r.away, league: r.league, kickoff: r.kickoff, pick: r.pick, score: r.score || null, status,
-    claimed: !!r.claimed_at, claimable: status === 'won' && !r.claimed_at };
+  return { eventId: r.event_id, home: r.home, away: r.away, league: r.league, kickoff: r.kickoff, pick: r.pick, score: r.score || null, status };
 };
+const slipView = (s) => ({ week: s.week, size: s.size, right: s.right, status: s.status, claimed: s.claimed, claimable: s.claimable, picks: s.picks.map(view) });
 
-// GET /api/predictions -> { matches, mine, today: {picks, max}, coins }
+// GET /api/predictions -> { matches, week: {start, picks, max}, slips, coins }
+// slips = this week's slip first, then up to 2 earlier weeks the player played.
 // Fixtures are public; `mine` needs the SSO token. Finished picks settle here.
 export async function GET(req) {
   const uid = authedUid(bearer(req));
@@ -83,17 +85,20 @@ export async function GET(req) {
     const { data, error } = await supabaseAdmin.from('predictions').select('*').eq('user_id', uid).order('kickoff', { ascending: false }).limit(30);
     if (!error) mine = await settle(uid, data || []);
   }
-  const day = lusakaDay();
+  const week = weekStart(lusakaDay());
   const picked = Object.fromEntries(mine.map(r => [r.event_id, r.pick]));
+  const earlier = [...new Set(mine.map(r => r.pick_day && weekStart(r.pick_day)).filter(w => w && w < week))].sort().reverse().slice(0, 2);
+  const current = weekSlip(mine, week);
   return json({
     matches: matches.map(m => ({ id: m.eventId, league: m.league, home: m.home, away: m.away, time: m.time, open: pickOpen(m.time), myPick: picked[m.eventId] || null })),
-    mine: mine.map(view),
-    today: { picks: mine.filter(r => r.pick_day === day).length, max: MAX_PICKS_PER_DAY },
+    week: { start: week, picks: current.picks.length, max: SLIP_SIZE },
+    slips: [current, ...earlier.map(w => weekSlip(mine, w))].map(slipView),
     coins: PREDICTION_COINS,
   });
 }
 
-// POST /api/predictions { eventId, pick } -> { ok } — one free pick per fixture.
+// POST /api/predictions { eventId, pick } -> { ok } — one free pick per fixture,
+// SLIP_SIZE picks per Lusaka week.
 // The fixture (teams, kick-off) comes from the server's own list, never the client.
 export async function POST(req) {
   const uid = authedUid(bearer(req));
@@ -112,9 +117,11 @@ export async function POST(req) {
   if (!pickOpen(match.time)) return json({ error: 'closed' }, 409);
 
   const day = lusakaDay();
-  const { count, error: cErr } = await supabaseAdmin.from('predictions').select('event_id', { count: 'exact', head: true }).eq('user_id', uid).eq('pick_day', day);
+  const week = weekStart(day);
+  const { count, error: cErr } = await supabaseAdmin.from('predictions').select('event_id', { count: 'exact', head: true })
+    .eq('user_id', uid).gte('pick_day', week).lte('pick_day', addDays(week, 6));
   if (cErr) return json({ error: 'unavailable' }, 503);
-  if ((count || 0) >= MAX_PICKS_PER_DAY) return json({ error: 'daily_limit', max: MAX_PICKS_PER_DAY }, 429);
+  if ((count || 0) >= SLIP_SIZE) return json({ error: 'weekly_limit', max: SLIP_SIZE }, 429);
 
   const { error } = await supabaseAdmin.from('predictions').insert({
     user_id: uid, event_id: eventId, pick, home: match.home, away: match.away, league: match.league, kickoff: match.time, pick_day: day,

@@ -74,7 +74,7 @@ function MissionTeaser({ s, onOpen }) {
  * through the same onBuy/busyId as the Store tab. `focusGames` is a nonce —
  * when it changes the view scrolls to the games (legacy "Go to Games" CTAs).
  */
-export default function Overview({ wallet = null, xp = 1200, activeTab = 'home', onNavigate, onOpenProfile, onOpenMission, missionStates = null, loggedIn = false, canClaimDaily = loggedIn, dailyDay = 1, dailyClaimed = false, onClaimDaily, userId = null, displayName = null, onEditName, navBadges = {}, games = null, storeItems = null, missions = null, dailyRewards = null, gamePlays = null, onPlay, focusGames = 0, isWidget = false, story = null, onStoryOpen, onStoryClose, intro = null, season = null, onCollectHustle, onClaimLeague, onBuy, busyId = null, extras = null, wheel = null } = {}) {
+export default function Overview({ wallet = null, xp = 1200, activeTab = 'home', onNavigate, onOpenProfile, onOpenMission, missionStates = null, loggedIn = false, canClaimDaily = loggedIn, dailyDay = 1, dailyClaimed = false, onClaimDaily, userId = null, displayName = null, onEditName, navBadges = {}, games = null, storeItems = null, missions = null, dailyRewards = null, gamePlays = null, onPlay, focusGames = 0, isWidget = false, story = null, onStoryOpen, onStoryClose, onStoryGo, storyPrize = null, intro = null, season = null, onCollectHustle, onClaimLeague, onBuy, busyId = null, extras = null, wheel = null } = {}) {
   const go = (t) => onNavigate && onNavigate(t);
   const states = missionStates || buildMissionStates(missions || MISSIONS, {}, []);
   const top = pickTopMission(states);
@@ -91,7 +91,7 @@ export default function Overview({ wallet = null, xp = 1200, activeTab = 'home',
   }, [focusGames]);
   return (
     <RedesignShell wallet={wallet} xp={xp} userId={userId} displayName={displayName} onEditName={onEditName} navBadges={navBadges} activeTab={activeTab} onNavigate={onNavigate} onOpenProfile={onOpenProfile}
-      isWidget={isWidget} story={story} onStoryOpen={onStoryOpen} onStoryClose={onStoryClose} intro={intro}>
+      isWidget={isWidget} story={story} onStoryOpen={onStoryOpen} onStoryClose={onStoryClose} onStoryGo={onStoryGo} storyPrize={storyPrize} intro={intro}>
       <style dangerouslySetInnerHTML={{ __html: OV_CSS }} />
       <div className={`ov-grid${hasStore ? '' : ' ov-grid--nostore'}`} style={{ maxWidth: 1240, margin: '0 auto' }}>
         <div className="ov-daily">

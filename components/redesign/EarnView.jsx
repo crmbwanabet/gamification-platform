@@ -257,7 +257,7 @@ function VumaRoad({ xp = 0, levelRewards = null, seasonCfg = null, displayName =
  * each ladder as a card, collected ones as thin bars — then the season.
  * The daily reward lives on Home.
  */
-export default function EarnView({ wallet = null, xp = 0, onNavigate, onOpenProfile, onOpenMission, onClaimMission, userId = null, displayName = null, onEditName, navBadges = {}, missions = null, missionStates = null, casinoStatus = 'anon', loggedIn = false, levelRewards = null, focusRewards = 0, isWidget = false, story = null, onStoryOpen, onStoryClose, intro = null, season = null, onClaimLeague, onClaimWc, onClaimPrize, prizeBusy = false, extras = null }) {
+export default function EarnView({ wallet = null, xp = 0, onNavigate, onOpenProfile, onOpenMission, onClaimMission, userId = null, displayName = null, onEditName, navBadges = {}, missions = null, missionStates = null, casinoStatus = 'anon', loggedIn = false, levelRewards = null, focusRewards = 0, isWidget = false, story = null, onStoryOpen, onStoryClose, onStoryGo, storyPrize = null, intro = null, season = null, onClaimLeague, onClaimWc, onClaimPrize, prizeBusy = false, extras = null }) {
   const states = missionStates || buildMissionStates(missions || MISSIONS, {}, []);
   const board = missionBoard(states);
   React.useEffect(() => {
@@ -267,7 +267,7 @@ export default function EarnView({ wallet = null, xp = 0, onNavigate, onOpenProf
   }, [focusRewards]);
   return (
     <RedesignShell wallet={wallet} xp={xp} userId={userId} displayName={displayName} onEditName={onEditName} navBadges={navBadges} activeTab="missions" onNavigate={onNavigate} onOpenProfile={onOpenProfile}
-      isWidget={isWidget} story={story} onStoryOpen={onStoryOpen} onStoryClose={onStoryClose} intro={intro}>
+      isWidget={isWidget} story={story} onStoryOpen={onStoryOpen} onStoryClose={onStoryClose} onStoryGo={onStoryGo} storyPrize={storyPrize} intro={intro}>
       {/* Quests parked — see parked/components/redesign/EarnView.QuestCard.parked.jsx */}
       <style>{EV_CSS}</style>
       <div className="ev-cols">
