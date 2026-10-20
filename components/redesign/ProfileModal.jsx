@@ -9,6 +9,8 @@ import { XP_LEVELS } from '@/lib/data/platform';
 import { textStroke } from '../games/candy/tokens';
 import CandyButton from '../games/candy/CandyButton';
 import { validateName, canRename, nextRenameStage, playerLabel, playerName, NAME_MAX } from '@/lib/profile/name.mjs';
+import { HeroPicture } from './AvatarPicture';
+import { itemById, normalizeAvatarItems } from '@/lib/avatar/items.mjs';
 
 const tile = { background: `linear-gradient(180deg, ${C.panelHi}, ${C.panelLo})`, border: `2px solid ${CANDY.violet.dark}`, borderRadius: 14 };
 
@@ -22,7 +24,7 @@ const tile = { background: `linear-gradient(180deg, ${C.panelHi}, ${C.panelLo})`
  * opens it straight into the name form (header "Add name", level-up modal).
  * Rename rules live in lib/profile/name.mjs.
  */
-export default function ProfileModal({ open, onClose, level, nextLevel, xpPct = 0, vip, user, userId = null, onSaveName, startEditing = false }) {
+export default function ProfileModal({ open, onClose, level, nextLevel, xpPct = 0, vip, user, userId = null, onSaveName, startEditing = false, onWearItem, onOpenShop, shopItemCount = 0 }) {
   const u = user || {};
   const stage = level?.level || 1;
   const current = playerName(u);
@@ -47,6 +49,9 @@ export default function ProfileModal({ open, onClose, level, nextLevel, xpPct = 
   }, [editing]);
   if (!open) return null;
   const who = playerLabel(u, userId);
+  const look = normalizeAvatarItems(u.avatarItems);
+  const owned = look.owned.map(itemById);
+  const worn = look.worn;
   const lockedUntil = nextRenameStage(u, stage);
   const startEdit = () => { setDraft(current || ''); setError(null); setEditing(true); };
   const save = (e) => {
@@ -89,7 +94,7 @@ export default function ProfileModal({ open, onClose, level, nextLevel, xpPct = 
           {/* Top: the current Vuma stage's full scene, name + chips on a bottom fade. */}
           <div style={{ position: 'relative', overflow: 'hidden', borderRadius: '18px 18px 0 0' }}>
             {level?.hero
-              ? <img src={level.hero} alt={`Stage ${level.level}: ${level.title || level.name}`} width={600} height={540} style={{ width: '100%', aspectRatio: '10 / 9', height: 'auto', objectFit: 'cover', display: 'block' }} />
+              ? <HeroPicture stage={level.level} alt={`Stage ${level.level}: ${level.title || level.name}`} style={{ aspectRatio: '10 / 9' }} />
               : <div style={{ width: '100%', aspectRatio: '10 / 9' }} />}
             <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, padding: '60px 18px 12px', textAlign: 'center', background: `linear-gradient(180deg, rgba(43,15,94,0) 0%, rgba(43,15,94,.8) 55%, ${CANDY.bgTop} 100%)` }}>
               <div data-profile-name style={{ fontFamily: CANDY.display, fontSize: 28, lineHeight: 1.05, color: '#fff', overflowWrap: 'anywhere', textShadow: `${textStroke(2.5, CANDY.outline)}, 0 4px 0 ${CANDY.outline}` }}>{who.title}</div>
@@ -131,6 +136,32 @@ export default function ProfileModal({ open, onClose, level, nextLevel, xpPct = 
               </div>
             )}
           </div>
+
+          {/* Avatar items (lib/avatar/items.mjs): bought in the Coin Shop, worn by the hero above. */}
+          {(owned.length > 0 || (shopItemCount > 0 && onOpenShop)) && (
+            <div data-my-items style={{ padding: '14px 18px 0' }}>
+              <h3 style={{ ...goldTitle(20), marginBottom: 10 }}>My items</h3>
+              {owned.length > 0 ? (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: 8 }}>
+                  {owned.map((it) => {
+                    const on = worn.includes(it.id);
+                    return (
+                      <div key={it.id} style={{ ...tile, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '8px 8px 8px 12px' }}>
+                        <span style={{ fontFamily: CANDY.display, fontSize: 15, lineHeight: 1.1 }}>{it.name}</span>
+                        <button type="button" aria-pressed={on} onClick={() => onWearItem && onWearItem(it.id, !on)}
+                          style={{ minHeight: 40, minWidth: 76, padding: '0 10px', borderRadius: 11, font: 'inherit', fontWeight: 900, fontSize: 13, cursor: 'pointer',
+                            ...(on ? { background: 'linear-gradient(180deg, #ffd96a, #f0a800)', color: CANDY.outline, border: '2px solid #8a5a00' } : { background: 'linear-gradient(180deg, #5BE37A, #1E9E44)', color: '#fff', border: '2px solid #0f5a25' }) }}>
+                          {on ? 'Take off' : 'Wear'}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <CandyButton color="violet" onClick={onOpenShop} style={{ width: '100%', fontSize: 17, minHeight: 46, borderRadius: 14 }}>Dress up in the Coin Shop</CandyButton>
+              )}
+            </div>
+          )}
 
           <div style={{ padding: '14px 18px 16px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: C.sub, marginBottom: 7 }}>

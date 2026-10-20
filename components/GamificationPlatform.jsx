@@ -69,6 +69,8 @@ import BottleGame from './games/bottle/BottleGame';
 import ScratchGame from './games/scratch/ScratchGame';
 import NumbersGame from './games/numbers/NumbersGame';
 import { amountText, rewardParts } from '@/lib/rewardText.mjs';
+import { AvatarLookContext } from './redesign/AvatarPicture';
+import { shopAvatarItems, buyAvatarItem, setWorn, normalizeAvatarItems } from '@/lib/avatar/items.mjs';
 // trivia games parked — see parked/components/games/
 
 // Respect the user's OS-level motion preference.
@@ -989,6 +991,8 @@ export default function GamificationPlatform() {
     // announced (albumSeen, unset = first run) + set bonuses paid (albumClaims).
     sportsMissionClaims: { day: null, ids: [], weekend: null, weekendIds: [] },
     albumClaims: [],
+    // avatar items bought in the Coin Shop and worn by the hero (lib/avatar/items.mjs)
+    avatarItems: { owned: [], worn: [] },
     // XP sources (lib/xp/sources.mjs, 2026-10-08): today's XP per capped
     // source, and the casino rounds (Lusaka day) already converted to XP.
     xpToday: { day: null, daily: 0, games: 0, missions: 0, casino: 0 },
@@ -1562,6 +1566,33 @@ export default function GamificationPlatform() {
     showNotif(`🤝 Friendly vs ${f.opponent}: reach ${f.target.toLocaleString('en-US')} XP in ${seasonCfg.friendly?.windowHours ?? 24}h`);
     return true;
   };
+  // AVATAR ITEMS (lib/avatar/items.mjs): a coin spend like the friendly fee
+  // (one setUser on kwacha); the item is worn straight away.
+  const avatarShopItems = shopAvatarItems(cfg.avatarItems);
+  const avatarLook = normalizeAvatarItems(user.avatarItems);
+  const onBuyAvatarItem = (id) => {
+    if (!loggedIn) { showNotif('Log in on bwanabet.com to shop', 'error'); return; }
+    const it = avatarShopItems.find(x => x.id === id);
+    if (!it) return;
+    const check = buyAvatarItem(user.avatarItems, id, it.price, user.kwacha);
+    if (!check.ok) {
+      if (check.reason === 'coins') showNotif(`Not enough coins: ${check.short.toLocaleString('en-US')} more needed`, 'error');
+      return;
+    }
+    setUser(u => {
+      const r = buyAvatarItem(u.avatarItems, id, it.price, u.kwacha);
+      return r.ok ? { ...u, kwacha: r.coins, avatarItems: r.items } : u;
+    });
+    track('avatar_item_bought', { amount: it.price, meta: { item: id } });
+    flushTrack();
+    showNotif(`🎽 ${it.name} is yours: your player is wearing it`);
+  };
+  const onWearAvatarItem = (id, on) => {
+    setUser(u => ({ ...u, avatarItems: setWorn(u.avatarItems, id, on) }));
+    track(on ? 'avatar_item_worn' : 'avatar_item_removed', { meta: { item: id } });
+  };
+  const avatarShop = { items: avatarShopItems, look: avatarLook, stage: level.level, onBuy: onBuyAvatarItem, onWear: onWearAvatarItem };
+
   const onDeclineFriendly = (key) => {
     const f = activeFriendlies.find(x => x.key === key);
     const next = f ? declineFriendly(friendlyMap, f, Date.now()) : null;
@@ -2022,6 +2053,8 @@ export default function GamificationPlatform() {
       <ProfileModal
         open={showProfile} onClose={() => { setShowProfile(false); setProfileEdit(false); }}
         startEditing={profileEdit} userId={playerId} onSaveName={savePlayerName}
+        onWearItem={onWearAvatarItem} shopItemCount={avatarShopItems.length}
+        onOpenShop={() => { setShowProfile(false); setProfileEdit(false); navigateTab('store'); }}
         level={level} nextLevel={nextLevel} xpPct={xpProgress} vip={vip} user={user}
       />
     </>
@@ -2172,7 +2205,7 @@ export default function GamificationPlatform() {
   // Every view renders inside the XP collect context (the header bar reads it)
   // with the star layer and the "XP from your bets" card on top.
   const withXp = (node) => (
-    <XpFxContext.Provider value={xpFx}>
+    <XpFxContext.Provider value={xpFx}><AvatarLookContext.Provider value={avatarLook}>
       {node}
       <XpFeedCard card={xpCard} collect={xpFx.collect} onDone={() => setXpCard(null)} />
       <DailyRewardPopup open={dailyPopup === 'open' || dailyPopup === 'closing'} closing={dailyPopup === 'closing'}
@@ -2181,7 +2214,7 @@ export default function GamificationPlatform() {
       <ComebackModal comeback={extras.comeback} />
       {wheel.layer}
       {xpFx.layer}
-    </XpFxContext.Provider>
+    </AvatarLookContext.Provider></XpFxContext.Provider>
   );
 
   // === Missions tab (was Earn; navigateTab maps earn/earn.* here) ===
@@ -2234,7 +2267,7 @@ export default function GamificationPlatform() {
   // === v2 redesigned Store ===
   if (tab === 'store') {
     return withXp(<>
-      <StoreView {...v2Stats} onBuy={buyStoreItem} busyId={storeBusy} />
+      <StoreView {...v2Stats} onBuy={buyStoreItem} busyId={storeBusy} avatarShop={avatarShop} />
       {gameOverlays}
     </>);
   }

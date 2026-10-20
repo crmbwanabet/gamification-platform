@@ -1,5 +1,6 @@
 'use client';
 
+import { RoundAvatar } from './AvatarPicture';
 import React from 'react';
 import { C, CANDY, goldRim, dotRow, goldTitle, innerGlow } from './tokens';
 import { GreenBtn, CurrencyAmounts } from './RedesignShell';
@@ -27,7 +28,7 @@ export default function LevelUpModal({ levelUp, onClose, onRename, hero = HERO_D
           <h2 style={{ ...goldTitle(30), textAlign: 'center' }}>New stage!</h2>
           {levelUp.avatar
             ? <span style={{ display: 'block', width: 112, height: 112, margin: '14px auto 10px', borderRadius: '50%', padding: 4, boxSizing: 'border-box', background: 'linear-gradient(180deg, #FFE27A, #E0A300)', boxShadow: '0 4px 0 #8a5a00, 0 10px 24px rgba(0,0,0,.45)' }}>
-                <img src={levelUp.avatar} alt={`${hero} at ${levelUp.name}`} width={104} height={104} style={{ display: 'block', width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+                <RoundAvatar stage={levelUp.level} avatar={levelUp.avatar} alt={`${hero} at ${levelUp.name}`} size={104} />
               </span>
             : <div style={{ fontSize: 64, margin: '10px 0 2px', lineHeight: 1 }}>{levelUp.icon}</div>}
           <div style={{ fontFamily: CANDY.display, textTransform: 'uppercase', fontSize: 26, lineHeight: 1.1 }}>{levelUp.name}</div>

@@ -10,6 +10,8 @@ import { canAfford, cleanReward, coinsToKwacha, economyRates, formatKwacha, form
 import { splitCatalog, nextPackGoal } from '@/lib/store/catalog.mjs';
 import { BB_CSS, STORE_ART, packArtSrc, CoinMeter, PackLock, goalText } from './storeKit';
 import { ShineImg, Sparkles } from './Shine';
+import { HeroPicture } from './AvatarPicture';
+import { layerSrc } from '@/lib/avatar/items.mjs';
 
 // Balances the store compares prices against ({ kwacha, emeralds, rubies, diamonds }).
 export const balancesOf = (w) => ({ kwacha: w?.kwacha || 0, emeralds: w?.emeralds || 0, rubies: w?.rubies || 0, diamonds: w?.diamonds || 0 });
@@ -82,6 +84,49 @@ function StorePackCard({ item, balances, onBuy, busy, top, i = 0 }) {
   );
 }
 
+/**
+ * Avatar item card (lib/avatar/items.mjs): the hero at the player's stage
+ * trying the item on, the coin cost on top, "BUYS" + the item below, then
+ * Convert (two taps: "Confirm Cap?"), "N more" when short, or Wear / Take off
+ * once owned.
+ */
+function AvatarItemCard({ item, stage, coins, owned, worn, onBuy, onWear }) {
+  const [armed, setArmed] = React.useState(false);
+  React.useEffect(() => {
+    if (!armed) return undefined;
+    const t = setTimeout(() => setArmed(false), 4000);
+    return () => clearTimeout(t);
+  }, [armed]);
+  const src = layerSrc(item.id, stage);
+  const short = Math.max(0, item.price - coins);
+  const buy = (e) => {
+    if (!armed) { setArmed(true); return; }
+    setArmed(false);
+    if (onBuy) onBuy(item.id, e?.currentTarget);
+  };
+  return (
+    <div className={`bb-tile st-av${!owned && !short ? ' bb-ready' : ''}`} data-avatar-shop={item.id}>
+      <div className="bb-well st-av-art">
+        <HeroPicture stage={stage} alt={`You wearing the ${item.name}`} layers={src ? [{ id: item.id, src }] : []} />
+        {owned && <span style={{ position: 'absolute', top: 6, left: 6, zIndex: 2 }}><Badge bg={C.gold}>Yours</Badge></span>}
+      </div>
+      <div className="st-pack-cost"><RewardIcon kind="coins" size={20} />{formatNumber(item.price)} coins</div>
+      <div className="st-pack-buys">buys</div>
+      <div className="bb-title st-av-name">{item.name}</div>
+      {owned ? (
+        <button type="button" aria-pressed={worn} onClick={() => onWear && onWear(item.id, !worn)} className={`bb-buy st-pack-act${worn ? ' bb-armed' : ''}`}>{worn ? 'Take off' : 'Wear'}</button>
+      ) : short ? (
+        <PackLock short={short} className="st-pack-act st-pack-lock" />
+      ) : (
+        <button type="button" onClick={buy} className={`bb-buy st-pack-act${armed ? ' bb-armed' : ''}`}
+          aria-label={armed ? `Confirm: convert ${formatNumber(item.price)} coins to the ${item.name}` : `Convert ${formatNumber(item.price)} coins to the ${item.name}`}>
+          {armed ? `Confirm ${item.name}?` : 'Convert'}
+        </button>
+      )}
+    </div>
+  );
+}
+
 /** Store hero: BwanaBet banner, title and the rate guide ("10,000 COINS BUYS K1.00").
  * The balance + next-pack meter were removed 2026-10-18 (they confused players). */
 function StoreHero({ economy }) {
@@ -129,6 +174,9 @@ const ST_CSS = `
   .st-pack-lock { font-size: 12.5px; }
   .st-top { position: absolute; top: -12px; left: 50%; transform: translateX(-50%); padding: 3px 10px; border-radius: 999px; background: #E3261E;
     font-size: 11px; font-weight: 900; letter-spacing: .05em; color: #fff; white-space: nowrap; box-shadow: 0 2px 0 #991510; }
+  .st-av { position: relative; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 12px; border-radius: 22px; min-width: 0; }
+  .st-av-art { position: relative; width: 100%; border-radius: 16px; overflow: hidden; margin-bottom: 4px; }
+  .st-av-name { font-size: 26px; line-height: 1.05; text-align: center; }
   .st-items { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 16px; }
   .st-item { display: flex; flex-direction: column; gap: 10px; padding: 12px; border-radius: 22px; min-width: 0; }
   .st-item-art { position: relative; height: 120px; border-radius: 16px; overflow: hidden; display: flex; align-items: center; justify-content: center; }
@@ -156,12 +204,13 @@ const ST_CSS = `
   }
 `;
 
-export default function StoreView({ wallet = null, xp = 0, onNavigate, onOpenProfile, onBuy, userId = null, displayName = null, onEditName, navBadges = {}, storeItems = null, busyId = null, isWidget = false, story = null, onStoryOpen, onStoryClose, intro = null }) {
+export default function StoreView({ wallet = null, xp = 0, onNavigate, onOpenProfile, onBuy, userId = null, displayName = null, onEditName, navBadges = {}, storeItems = null, busyId = null, isWidget = false, story = null, onStoryOpen, onStoryClose, intro = null, avatarShop = null }) {
   // Coins -> kwacha only through the kwacha packs (gem redemptions were
   // removed 2026-10-12; any still served are ignored).
   const { coinPacks, items } = splitCatalog(storeItems || STORE_ITEMS);
   const balances = balancesOf(wallet);
-  const empty = coinPacks.length + items.length === 0;
+  const avItems = avatarShop?.items || [];
+  const empty = coinPacks.length + items.length + avItems.length === 0;
   const topId = coinPacks.length > 1 ? coinPacks[coinPacks.length - 1].id : null;
   return (
     <RedesignShell wallet={wallet} xp={xp} userId={userId} displayName={displayName} onEditName={onEditName} navBadges={navBadges} activeTab="store" onNavigate={onNavigate} onOpenProfile={onOpenProfile}
@@ -188,6 +237,21 @@ export default function StoreView({ wallet = null, xp = 0, onNavigate, onOpenPro
                 </div>
                 <div className="st-packs">
                   {coinPacks.map((it, i) => <StorePackCard key={it.id} i={i} item={it} balances={balances} onBuy={onBuy} busy={busyId === it.id} top={it.id === topId} />)}
+                </div>
+              </section>
+            )}
+            {avItems.length > 0 && (
+              <section aria-labelledby="st-av-title" id="avatar-shop">
+                <div className="st-head">
+                  <h2 id="st-av-title" className="bb-display st-h2">Avatar shop</h2>
+                  <span className="st-note">Your player wears them in every picture · tap Convert twice</span>
+                </div>
+                <div className="st-packs">
+                  {avItems.map(it => (
+                    <AvatarItemCard key={it.id} item={it} stage={avatarShop.stage} coins={balances.kwacha}
+                      owned={avatarShop.look.owned.includes(it.id)} worn={avatarShop.look.worn.includes(it.id)}
+                      onBuy={avatarShop.onBuy} onWear={avatarShop.onWear} />
+                  ))}
                 </div>
               </section>
             )}

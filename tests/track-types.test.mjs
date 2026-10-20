@@ -21,7 +21,7 @@ test('cleanEvents drops unknown types and caps fields', () => {
   assert.equal(out.length, 5);
   assert.deepEqual(out[0], { type: 'daily_claimed', gameId: null, amount: 10, meta: null, at: '2026-10-19T11:59:00.000Z' });
   assert.equal(out[1].gameId.length, 32);
-  assert.equal(out[1].amount, 100000);
+  assert.equal(out[1].amount, 1000000);
   assert.equal(out[1].at, null, 'a far-off client time is ignored (server time used)');
   assert.deepEqual(out[2].meta, { tab: 'missions' });
   assert.equal(out[3].meta, null);

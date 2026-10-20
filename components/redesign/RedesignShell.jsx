@@ -1,5 +1,6 @@
 'use client';
 
+import { RoundAvatar } from './AvatarPicture';
 import React from 'react';
 import { X, Pencil } from 'lucide-react';
 import { C, CANDY, COIN_ICON, APP_BG, VIOLET_EDGE, VIOLET_BASE, goldTitle, violetCard, goldRim, dotRow } from './tokens';
@@ -281,7 +282,7 @@ function TopBar({ lvl, nextLvl, xpPct, xpFx, activeTab, onNavigate, onOpenProfil
       <div className="rs-who-wrap" style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', gap: 4 }}>
         <button type="button" onClick={() => (onOpenProfile ? onOpenProfile() : onNavigate && onNavigate('me.profile'))} title="Your profile" aria-label={`Your profile: ${who.title}${who.sub ? `, ${who.sub}` : ''}, ${stageTitle}`} className="rs-profile">
           <span className="rs-ava" style={{ borderRadius: '50%', padding: 3, boxSizing: 'border-box', background: 'linear-gradient(180deg, #FFE27A, #E0A300)', boxShadow: '0 3px 0 #8a5a00', flex: 'none', display: 'block' }}>
-            <img src={lvl.avatar} alt="" width={50} height={50} style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover', display: 'block' }} />
+            <RoundAvatar stage={lvl.level} avatar={lvl.avatar} size={50} />
           </span>
           <span className="rs-who" style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, textAlign: 'left' }}>
             <span className="rs-name" data-player-name style={{ fontFamily: CANDY.display, lineHeight: 1.05, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{who.title}</span>
