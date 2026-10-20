@@ -24,10 +24,10 @@ import { Predictions } from '../extras/ExtrasViews';
 // beside the games grid (3 per row). With an empty store the games take the
 // top-right slot. Below stage 5 the Coin Shop is greyed with a lock plate.
 const OV_CSS = `
-  .ov-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 26px; grid-template-areas: "missions" "daily" "store" "season" "predict" "games"; }
+  .ov-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 26px; grid-template-areas: "missions" "daily" "games" "predict" "store" "season"; }
   .ov-daily { grid-area: daily; } .ov-store { grid-area: store; } .ov-season { grid-area: season; display: grid; gap: 12px; } .ov-games { grid-area: games; } .ov-missions { grid-area: missions; display: grid; gap: 12px; } .ov-predict { grid-area: predict; }
   .ov-grid > * { min-width: 0; align-self: start; }
-  .ov-grid--nostore { grid-template-areas: "missions" "daily" "season" "predict" "games"; }
+  .ov-grid--nostore { grid-template-areas: "missions" "daily" "games" "predict" "season"; }
   @media (min-width: 861px) {
     .ov-grid { grid-template-columns: 400px minmax(0, 1fr); grid-template-rows: auto auto auto 1fr; column-gap: 28px; row-gap: 24px;
       grid-template-areas: "missions daily" "store games" "season games" "predict games"; }
