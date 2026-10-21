@@ -165,13 +165,13 @@ function MissionRow({ s, i = 0, loggedIn, onOpen, onClaim }) {
   return (
     <Card className="card-enter" style={{ animationDelay: `${i * 40}ms`, opacity: s.claimed ? 0.7 : 1, ...(ready ? { borderColor: CANDY.gold, boxShadow: `0 5px 0 ${CANDY.violet.dark}, 0 0 0 2px rgba(255,210,31,.35), 0 0 22px rgba(255,210,31,.35)` } : null) }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '10px 12px' }}>
-        <button onClick={() => onOpen && onOpen(m)} aria-label={`${m.name} details`} style={{ all: 'unset', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 11, flex: 1, minWidth: 0 }}>
+        <button onClick={() => onOpen && onOpen(m)} aria-label={`${missionTerms(m)} — details`} style={{ all: 'unset', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 11, flex: 1, minWidth: 0 }}>
           <div style={{ width: 46, flex: 'none' }}>
             <Thumb src={IMAGES[m.image]} alt="" h={46} radius={10} />
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
+            {/* no mission NAME (owner 2026-10-21): what to do, the prize, progress */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3, minWidth: 0 }}>
-              <span style={{ fontFamily: CANDY.display, fontSize: 17, lineHeight: 1.15, color: C.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textTransform: 'uppercase' }}>{m.name}</span>
               <Badge bg={d.c} color="#130f1f">{d.label}</Badge>
             </div>
             <div style={{ fontFamily: CANDY.display, fontSize: 18, lineHeight: 1.15, letterSpacing: '.01em', color: '#fff', margin: '2px 0 6px' }}><MissionTerms m={m} /></div>
@@ -196,12 +196,13 @@ function MissionRow({ s, i = 0, loggedIn, onOpen, onClaim }) {
   );
 }
 
-// A collected mission as a thin bar: name · prize · COLLECTED (2026-10-20).
+// A collected mission as a thin bar: terms · prize · COLLECTED (2026-10-20;
+// the mission name was dropped 2026-10-21).
 function CollectedBar({ s }) {
   const m = s.mission;
   return (
     <div data-mission-collected={m.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 12px', borderRadius: 12, background: 'rgba(20,4,48,.55)', border: `1.5px solid ${CANDY.violet.fill}` }}>
-      <span style={{ flex: 1, minWidth: 0, fontFamily: CANDY.display, fontSize: 14, color: '#fff', textTransform: 'uppercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.name}</span>
+      <span style={{ flex: 1, minWidth: 0, fontFamily: CANDY.display, fontSize: 13, lineHeight: 1.2, color: '#fff', textTransform: 'uppercase' }}><MissionTerms m={m} /></span>
       <span style={{ flex: 'none' }}><CurrencyAmounts r={m.reward} size={15} fontSize={12.5} gap={6} /></span>
       <span style={{ flex: 'none', display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11.5, fontWeight: 900, color: C.green, textTransform: 'uppercase', letterSpacing: '.04em' }}><Check size={13} strokeWidth={3} /> Collected</span>
     </div>

@@ -60,5 +60,14 @@ export async function POST(req) {
   }
   if (error) return NextResponse.json({ error: 'db_error', detail: error.message }, { status: 500 });
 
+  // Reward anchor fallback (lib/season/anchor.mjs): POST /api/track stamps
+  // first_daily_at from the 'daily_claimed' beacon; if that beacon was lost,
+  // the first save that shows a daily claim stamps it now (never backdated).
+  if (data && !data.first_daily_at && patch.state?.lastDailyClaim) {
+    const { data: stamped } = await supabaseAdmin.from('profiles').update({ first_daily_at: new Date().toISOString() })
+      .eq('bwanabet_user_id', uid).is('first_daily_at', null).select('*');
+    if (stamped && stamped[0]) data = stamped[0];
+  }
+
   return NextResponse.json({ ok: true, profile: data });
 }

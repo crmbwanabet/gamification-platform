@@ -16,7 +16,8 @@ const MAX_EVENTS = 25;
 // which is only kept as `claimed_uid` in meta for anonymous rows). The token is
 // used for this check only: never stored, never logged.
 // First login = the player's FIRST reward claim in the Bonus Center: stamped
-// once on profiles.first_login_at (+ a 'first_login' event). Every verified
+// once on profiles.first_login_at (+ a 'first_login' event). The first
+// 'daily_claimed' sets profiles.first_daily_at (the reward anchor). Every verified
 // batch also moves profiles.last_seen_at.
 export async function POST(req) {
   try {
@@ -45,6 +46,12 @@ export async function POST(req) {
       const id = Number(uid);
       const now = new Date().toISOString();
       await supabaseAdmin.from('profiles').update({ last_seen_at: now }).eq('bwanabet_user_id', id);
+      // Reward anchor (lib/season/anchor.mjs): the first DAILY reward claim, once.
+      const daily = rows.find(r => r.type === 'daily_claimed');
+      if (daily) {
+        await supabaseAdmin.from('profiles').update({ first_daily_at: daily.created_at || now })
+          .eq('bwanabet_user_id', id).is('first_daily_at', null);
+      }
       const reward = rows.find(r => REWARD_TYPES.has(r.type));
       if (reward) {
         const { data: first } = await supabaseAdmin.from('profiles')

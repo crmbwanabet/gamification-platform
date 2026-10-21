@@ -79,8 +79,8 @@ export default function MissionDetailModal({ mission, progress, done, claimable 
 
         <div style={{ padding: '16px 18px 18px' }}>
           {/* Title */}
-          <h2 style={{ margin: '0 0 3px', fontSize: 20, fontWeight: 800, color: C.text, letterSpacing: '-.01em', textTransform: 'uppercase' }}>{mission.name}</h2>
-          <p style={{ margin: '0 0 14px', fontSize: 14, fontWeight: 900, color: C.text }}><MissionTerms m={mission} /></p>
+          {/* what to do is the title; the mission name is not shown (2026-10-21) */}
+          <h2 style={{ margin: '0 0 14px', fontSize: 19, fontWeight: 900, lineHeight: 1.2, color: C.text, letterSpacing: '-.01em', textTransform: 'uppercase' }}><MissionTerms m={mission} /></h2>
 
           {/* Progress */}
           <div style={{ marginBottom: 14 }}>

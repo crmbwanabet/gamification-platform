@@ -62,8 +62,12 @@ const DR_CSS = `
     background: radial-gradient(120% 60% at 50% 0%, #6a33c4 0%, #3a1680 40%, #22094d 100%); }
   .dr-inner::before { content: ''; position: absolute; inset: 0; background: url('/ui/store/grain.png'); opacity: .22; mix-blend-mode: overlay; pointer-events: none; }
   .dr-inner > * { position: relative; }
-  .dr-head { display: flex; align-items: center; gap: 10px; }
-  .dr-head h2 { font-size: 23px !important; white-space: nowrap; }
+  /* header: gift | title + subtitle | DAY N/7 pill. The title block takes the
+     free width and never runs under the pill; when the three can't share a
+     row (narrow phones, ~360px and below) the pill wraps to its own line. */
+  .dr-head { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 10px; }
+  .dr-htxt { flex: 1 1 auto; min-width: 0; }
+  .dr-head h2 { font-size: min(23px, 8.4cqi) !important; white-space: nowrap; }
   .dr-gift { position: relative; flex: none; width: 50px; height: 50px; }
   .dr-gift > img.dr-g { width: 50px; height: 50px; object-fit: contain; display: block; filter: drop-shadow(0 5px 8px rgba(0,0,0,.45)); }
   .dr-gift > img.dr-chk { position: absolute; right: -5px; bottom: -3px; width: 24px; height: 24px; object-fit: contain; }
@@ -311,7 +315,7 @@ export default function DailyReward({ id = 'daily-reward-card', todayOnly = fals
             <img src={`${IC}/gift-red.png`} alt="" width={50} height={50} className={`dr-g${dailyClaimed || !loggedIn ? '' : ' anim-wiggle'}`} />
             {dailyClaimed && <img src={`${IC}/check.png`} alt="" width={24} height={24} className="dr-chk" />}
           </span>
-          <div style={{ minWidth: 0 }}>
+          <div className="dr-htxt">
             <h2 style={goldTitle(26)}>Daily reward</h2>
             <div className="dr-sub">
               {dailyClaimed ? 'Claimed today' : isBonusDay && loggedIn ? `${total} days in a row!` : `Log in ${total} days in a row`}

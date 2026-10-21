@@ -4,6 +4,7 @@ import { rateLimit } from '@/lib/rateLimit';
 import { authedUid, bearer } from '@/lib/auth/ssoUid';
 import { lusakaDay } from '@/lib/casino/feed.mjs';
 import { loadSeasonConfig, prizeKey } from '@/lib/season/serverConfig';
+import { loadAnchor } from '@/lib/season/anchorServer';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -19,6 +20,10 @@ const MAX_ROWS = 400;
 // client derives Season XP, the league and the World Cup (lib/season/*).
 // Identity from the SSO token exactly like /api/missions/progress: there is
 // no uid parameter. 503 while the table is missing.
+// Only days from the player's first daily reward claim on are served (the
+// reward anchor, lib/season/anchor.mjs); no claim yet = no days, so season XP,
+// the side quest, league, World Cup and the sports/deposit missions all start
+// from that day.
 export async function GET(req) {
   const uid = authedUid(bearer(req));
   if (!uid) return json({ error: 'not_logged_in' }, 401);
@@ -31,9 +36,16 @@ export async function GET(req) {
   const day = lusakaDay();
   if (!supabaseAdmin) return json({ error: 'unavailable', day, days: [], prize: null }, 503);
 
-  const { data, error } = await supabaseAdmin
-    .from('player_activity').select(COLS)
-    .eq('user_id', uid).order('day', { ascending: false }).limit(MAX_ROWS);
+  let anchor;
+  try { anchor = await loadAnchor(uid); } catch (e) {
+    console.error('[season] anchor failed:', e.message);
+    return json({ error: 'unavailable', day, days: [], prize: null }, 503);
+  }
+  const { data, error } = anchor
+    ? await supabaseAdmin
+      .from('player_activity').select(COLS)
+      .eq('user_id', uid).gte('day', anchor).order('day', { ascending: false }).limit(MAX_ROWS)
+    : { data: [], error: null };
   if (error) {
     console.error('[season] select failed:', error.message);
     return json({ error: 'unavailable', day, days: [], prize: null }, 503);

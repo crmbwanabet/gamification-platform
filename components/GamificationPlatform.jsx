@@ -2205,7 +2205,7 @@ export default function GamificationPlatform() {
       });
       track('mission_completed', { amount: r.kwacha || 0, meta: { missionId: m.id, track: m.track } }); flushTrack();
       const won = [...rewardParts(r), m.xp ? amountText(m.xp, 'xp') : null].filter(Boolean);
-      showNotif(`✅ ${m.name} collected!${won.length ? ` +${won.join(' + ')}` : ''}`);
+      showNotif(`✅ Mission collected!${won.length ? ` +${won.join(' + ')}` : ''}`);
       triggerReward('medium', el || null, { coins: r.kwacha || 0, emeralds: r.emeralds, rubies: r.rubies, diamonds: r.diamonds });
       if (m.xp) xpFx.collect({ from: el || null, amount: m.xp, delay: 250 });
     } finally {

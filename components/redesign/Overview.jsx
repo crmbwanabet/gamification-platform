@@ -10,7 +10,7 @@ import { MatchCard, HustleCard } from './SeasonCards';
 import { EarnPrize, MissionTerms } from './EarnView';
 import { amountText } from '@/lib/rewardText.mjs';
 import { MISSIONS } from '@/lib/data/missions';
-import { missionStates as buildMissionStates, missionBoard, progressUnit } from '@/lib/missions/ladder.mjs';
+import { missionStates as buildMissionStates, missionBoard, progressUnit, missionTerms } from '@/lib/missions/ladder.mjs';
 import { STORE_ITEMS, MINIGAMES, getLevel } from '@/lib/data/platform';
 import { splitCatalog, storeLockReason } from '@/lib/store/catalog.mjs';
 import { WheelCard } from '../extras/useWheel';
@@ -50,8 +50,9 @@ function MissionTeaser({ s, onOpen }) {
   const unit = progressUnit(m);
   return (
     <Card style={{ overflow: 'hidden' }}>
-      <button type="button" className="ov-mission" onClick={() => onOpen && onOpen(m)} aria-label={`${m.name}: ${done ? m.target : s.progress} of ${m.target} ${unit}`}>
-        <span data-mission-name style={{ alignSelf: 'center', textAlign: 'center', fontFamily: CANDY.display, fontSize: 21, lineHeight: 1.1, color: CANDY.gold, textTransform: 'uppercase', textShadow: '0 2px 0 #2A0A4F' }}>{m.name}</span>
+      <button type="button" className="ov-mission" onClick={() => onOpen && onOpen(m)} aria-label={`BwanaBet missions: ${missionTerms(m)}, ${done ? m.target : s.progress} of ${m.target} ${unit}`}>
+        {/* the card's own title (2026-10-21: replaces the mission name and the section header above it) */}
+        <span data-mission-title style={{ alignSelf: 'center', textAlign: 'center', fontFamily: CANDY.display, fontSize: 21, lineHeight: 1.1, color: CANDY.gold, textTransform: 'uppercase', textShadow: '0 2px 0 #2A0A4F' }}>BwanaBet missions</span>
         <span style={{ padding: '4px 0' }}><EarnPrize r={m.reward} size={36} fontSize={32} /></span>
         <span style={{ fontFamily: CANDY.display, fontSize: 21, lineHeight: 1.15, letterSpacing: '.01em', color: '#fff' }}><MissionTerms m={m} /></span>
         {(done || s.claimable) && (
@@ -114,10 +115,9 @@ export default function Overview({ wallet = null, xp = 1200, activeTab = 'home',
         </div>
 
         {(top || wheel) && (
-          <section className="ov-missions" aria-labelledby="ov-missions-title">
+          <section className="ov-missions" aria-label="BwanaBet missions">
             {wheel && <WheelCard onOpen={wheel.onOpen} />}
             {top && <>
-            <SectionTitle id="ov-missions-title" right={<TitleNote>{states.filter(x => x.claimed).length} / {states.length} collected</TitleNote>}>BwanaBet missions</SectionTitle>
             <MissionTeaser s={top} onOpen={onOpenMission} />
             <button type="button" className="ov-link" onClick={() => go('missions')}>See all missions ›</button>
             </>}

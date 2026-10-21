@@ -5,6 +5,7 @@ import { authedUid, bearer } from '@/lib/auth/ssoUid';
 import { lusakaDay } from '@/lib/casino/feed.mjs';
 import { loadSeasonConfig, prizeKey } from '@/lib/season/serverConfig';
 import { verifyWorldCupPrize } from '@/lib/season/verify.mjs';
+import { loadAnchor } from '@/lib/season/anchorServer';
 import { purchaseMessage } from '@/lib/telegram/format.mjs';
 import { sendPurchase } from '@/lib/telegram/client';
 
@@ -43,6 +44,12 @@ export async function POST(req) {
   }
   if (existing) return json({ ok: true, already: true, status: existing.status });
 
+  // Same cut as GET /api/season: nothing before the first daily reward claim.
+  let anchor;
+  try { anchor = await loadAnchor(uid); } catch (e) {
+    console.error('[claim-prize] anchor failed:', e.message);
+    return json({ error: 'unavailable' }, 503);
+  }
   const { data: rows, error } = await supabaseAdmin
     .from('player_activity').select('day,deposits_amount,deposits_count,withdrawals_amount,casino_stake,casino_rounds,sports_stake,sports_slips')
     .eq('user_id', uid).order('day', { ascending: false }).limit(1000);
@@ -55,7 +62,7 @@ export async function POST(req) {
   // friendly counts only when accepted inside its 24h offer window, and its
   // result is recomputed from the rows (lib/season/verify.mjs).
   const now = Date.now();
-  const v = verifyWorldCupPrize({ rows: rows || [], clientPlatform: body.platformXp, friendlies: body.friendlies, cfg, today: lusakaDay(now), now });
+  const v = verifyWorldCupPrize({ rows: rows || [], clientPlatform: body.platformXp, friendlies: body.friendlies, cfg, today: lusakaDay(now), now, anchor });
   if (!v.won) return json({ error: 'not_verified', reason: v.reason }, 403);
 
   const { data: ins, error: insErr } = await supabaseAdmin.from('purchases').insert({
