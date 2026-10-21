@@ -40,7 +40,7 @@ test('terms in plain capitals', () => {
   assert.equal(missionTerms(byId.sports_starter), 'PLACE 3 SPORTS BETS AT ODDS 1.5+');
   assert.equal(missionTerms(byId.deposit_first), 'MAKE A DEPOSIT ON BWANABET');
   assert.equal(missionTerms(byId.deposit_pro), 'DEPOSIT ON 7 DIFFERENT DAYS');
-  assert.equal(missionTerms(byId.loyal_fan), 'CLAIM THE DAILY REWARD ON 3 DAYS');
+  assert.equal(missionTerms(byId.loyal_fan), 'LOG IN ON 3 DAYS');
 });
 
 test('counts start at the first-login day', () => {

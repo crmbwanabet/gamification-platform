@@ -137,8 +137,9 @@ function MissionsSummary({ status, done = 0, total = 0 }) {
 // in big display type (2026-10-18). Shared with the Home missions teaser.
 /** The mission's terms with the action word (PLAY, PLACE, DEPOSIT, MAKE, CLAIM) in the platform gold (owner 2026-10-20). */
 export function MissionTerms({ m }) {
-  const [verb, ...rest] = missionTerms(m).split(' ');
-  return <><span style={{ color: CANDY.gold }}>{verb}</span> {rest.join(' ')}</>;
+  const terms = missionTerms(m);
+  const verb = terms.startsWith('LOG IN ') ? 'LOG IN' : terms.split(' ')[0];
+  return <><span style={{ color: CANDY.gold }}>{verb}</span> {terms.slice(verb.length + 1)}</>;
 }
 
 export function EarnPrize({ r, size = 30, fontSize = 26 }) {
