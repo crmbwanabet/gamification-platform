@@ -32,7 +32,8 @@ import { paidFromPurchase, refundTotals } from '@/lib/store/catalog.mjs';
 import { DEFAULT_DAILY_PLAYS } from '@/lib/config/defaults';
 import { playsFromConfig } from '@/lib/config/plays.mjs';
 import { applyMissionOverrides } from '@/lib/config/missions.mjs';
-import { track, setTrackUid, setTrackToken, flushTrack } from '@/lib/track';
+import { track, setTrackUid, setTrackToken, flushTrack, sendPing } from '@/lib/track';
+import { createHeartbeat } from '@/lib/heartbeat.mjs';
 
 // Data imports
 import { IMG_BASE, CURRENCY_ICONS, IMAGES, WHEEL_IMAGES } from '../lib/data/images';
@@ -1080,6 +1081,32 @@ export default function GamificationPlatform() {
     };
     window.addEventListener('message', onVis);
     return () => window.removeEventListener('message', onVis);
+  }, []);
+  // Heartbeat (2026-10-21, lib/heartbeat.mjs): a ping every 30 s while the
+  // Bonus Center is shown AND its tab is visible, one final ping when either
+  // stops or the page goes. Embedded, it counts as shown only after widget.js
+  // says so ('100x-widget:visibility'; the app may be loaded hidden); a
+  // standalone page is shown from the start.
+  useEffect(() => {
+    let embedded = false;
+    try { embedded = window.self !== window.top; } catch (e) { embedded = true; }
+    const hb = createHeartbeat({ send: sendPing });
+    const onMsg = (e) => {
+      if (e.source !== window.parent || !e.data || e.data.type !== '100x-widget:visibility') return;
+      hb.update({ open: !!e.data.open });
+    };
+    const onVisible = () => hb.update({ visible: document.visibilityState === 'visible' });
+    const onLeave = () => hb.stop();
+    window.addEventListener('message', onMsg);
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('pagehide', onLeave);
+    hb.update({ open: !embedded, visible: document.visibilityState === 'visible' });
+    return () => {
+      window.removeEventListener('message', onMsg);
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('pagehide', onLeave);
+      hb.stop();
+    };
   }, []);
   const hydratedRef = useRef(false);
   const hydratedXpRef = useRef(0); // saved xp: the floor until the season feed answers

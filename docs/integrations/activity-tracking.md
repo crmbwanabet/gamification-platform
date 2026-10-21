@@ -61,3 +61,39 @@ where type like 'wheel_%' and created_at > date_trunc('day', now()) group by typ
 
 The wheel's prizes and payouts are still recorded by the wheel app in its own database. These
 events only show what the player did in the Bonus Center.
+
+## Heartbeat: visit length and who is online now (2026-10-21)
+
+While the Bonus Center is open (the widget is shown) and its browser tab is visible, the app sends
+a small ping to `POST /api/track/ping` every 30 seconds. When the tab is hidden, the widget is
+closed or the page goes away, it sends one last ping and stops. A standalone page counts as open
+from the start; inside the widget, the app waits for `widget.js` to say it is shown.
+
+- One row per visit in **`play_sessions`** (`sid` = the same session id as `activity_events.session_id`):
+  `uid` (null = not logged in), `verified`, `started_at`, `last_ping_at`, `pings`,
+  `active_seconds` (time open and visible, accurate to about 30 s, even if the browser dies),
+  `ended_at` (set by the last ping; cleared if the player comes back in the same visit).
+- The player id comes only from the bwanabet token, checked on the server. The token is never stored or logged.
+- At most one regular ping per visit every 20 seconds is recorded (checked in the route and in the
+  `ping_session()` database function); each ping also moves `profiles.last_seen_at`.
+- Migration: `lib/supabase/migrations/2026-10-21-play-sessions.sql` (applied). Service-role only.
+
+```sql
+-- who is in the Bonus Center right now (a ping in the last 90 seconds)
+select * from online_now order by started_at;
+select count(*) as online, count(*) filter (where verified) as logged_in from online_now;
+
+-- visits and minutes per player per day (Lusaka days)
+select * from session_lengths where day = (now() at time zone 'Africa/Lusaka')::date order by minutes desc;
+
+-- one player's visits, newest first (minutes open and visible)
+select started_at, last_ping_at, round(active_seconds / 60.0, 1) as minutes, pings, ended_at
+from play_sessions where uid = '123456' order by started_at desc limit 50;
+
+-- average visit length per day, logged-in players
+select day, sum(visits) as visits, round(sum(minutes) / nullif(sum(visits), 0), 1) as avg_minutes
+from session_lengths where uid <> 'anon' group by day order by day desc limit 30;
+```
+
+`minutes` = time the Bonus Center was open and visible. `span_minutes` = last ping minus start,
+which also counts time the tab was hidden.
