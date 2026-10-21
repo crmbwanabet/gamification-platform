@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { CANDY, COIN_ICON } from './tokens';
+import { XP_STAR_SRC, XP_BLUE } from './XpStar';
 import { GEMS } from '@/lib/economy/currency.mjs';
 import { amountText } from '@/lib/rewardText.mjs';
 import { actionWord } from '@/lib/welcome/summary.mjs';
@@ -52,7 +53,7 @@ const WB_CSS = `
   .wb-rws { display: grid; gap: 3px; justify-items: end; }
   .wb-rw { display: flex; align-items: center; gap: 5px; font-family: ${CANDY.display}; font-size: 17px; line-height: 1; white-space: nowrap; text-transform: uppercase; font-variant-numeric: tabular-nums; }
   .wb-rw img { width: 22px; height: 22px; display: block; flex: none; }
-  .wb-rw.x { font-size: 15px; color: ${CANDY.gold}; }
+  .wb-rw.x { font-size: 15px; color: ${XP_BLUE}; }
   .wb-rw.g { font-size: 14px; }
   .wb-it.done .wb-rws { opacity: .45; transition: opacity .4s .3s; }
   /* phones: the prize sits under the task, so the task keeps the row's width */
@@ -68,7 +69,7 @@ const WB_CSS = `
   .wb-total { display: flex; justify-content: center; align-items: center; gap: 6px 12px; flex-wrap: wrap; margin-bottom: 9px; font-family: ${CANDY.display}; font-size: 18px; text-transform: uppercase; }
   .wb-total span { display: inline-flex; align-items: center; gap: 5px; }
   .wb-total img { width: 21px; height: 21px; }
-  .wb-total .x { color: ${CANDY.gold}; }
+  .wb-total .x { color: ${XP_BLUE}; }
   .wb-total .lbl { font-family: ${CANDY.body}; font-weight: 900; font-size: 13px; color: #D7C6F2; text-transform: none; }
   .wb-go { all: unset; box-sizing: border-box; display: block; width: 100%; text-align: center; cursor: pointer; border-radius: 14px; padding: 13px 8px;
     font-family: ${CANDY.display}; font-size: 18px; line-height: 1.1; text-transform: uppercase; color: #fff; background: linear-gradient(180deg, #5BE37A, #1E9E44);
@@ -111,7 +112,7 @@ function Prize({ row }) {
   return (
     <span className="wb-rws">
       {r.kwacha > 0 && <span className="wb-rw" data-c><img src={COIN_ICON} alt="" />{amountText(r.kwacha, 'coins')}</span>}
-      {row.xp > 0 && <span className="wb-rw x" data-x>+{fmt(row.xp)} XP</span>}
+      {row.xp > 0 && <span className="wb-rw x" data-x><img src={XP_STAR_SRC} alt="" />+{fmt(row.xp)} XP</span>}
       {GEMS.filter(g => r[g] > 0).map(g => <span key={g} className="wb-rw g" data-gem={g}><img src={GEM_ICON[g]} alt="" />{amountText(r[g], g)}</span>)}
     </span>
   );
@@ -257,7 +258,7 @@ export default function WelcomeBackPopup({ open = false, closing = false, plan =
             <div className="wb-total">
               <span className="lbl">Total</span>
               {t.kwacha > 0 && <span><img src={COIN_ICON} alt="" />{amountText(t.kwacha, 'coins')}</span>}
-              {t.xp > 0 && <span className="x">+{fmt(t.xp)} XP</span>}
+              {t.xp > 0 && <span className="x"><img src={XP_STAR_SRC} alt="" />+{fmt(t.xp)} XP</span>}
               {GEMS.filter(g => t[g] > 0).map(g => <span key={g}><img src={GEM_ICON[g]} alt="" />{amountText(t[g], g)}</span>)}
             </div>
             <button ref={btnRef} type="button" className="wb-go" disabled={!ready} onClick={onClose}>{ready ? plan.goal : 'Collecting…'}</button>

@@ -5,6 +5,7 @@ import { X, ChevronRight, Check } from 'lucide-react';
 import { C } from '../redesign/tokens';
 import { Badge, Progress, GreenBtn, CurrencyAmounts } from '../redesign/RedesignShell';
 import { amountText, rewardParts } from '@/lib/rewardText.mjs';
+import { XpAmount } from '../redesign/XpStar';
 import { IMAGES } from '../../lib/data/images';
 import { progressUnit } from '@/lib/missions/ladder.mjs';
 
@@ -99,9 +100,9 @@ export default function MissionDetailModal({ mission, progress, done, claimable 
             <div style={{ display: 'flex', alignItems: 'center', gap: 18, flexWrap: 'wrap' }}>
               <CurrencyAmounts r={mission.reward} size={18} fontSize={16} gap={18} />
               {mission.xp ? (
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 16, fontWeight: 800, color: '#b9a5e8' }}>
-                  ⚡ {amountText(mission.xp, 'xp')}
-                </span>
+                <XpAmount size={20} gap={6} style={{ fontSize: 16, fontWeight: 800 }}>
+                  {amountText(mission.xp, 'xp')}
+                </XpAmount>
               ) : null}
             </div>
           </div>

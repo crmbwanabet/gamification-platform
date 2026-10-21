@@ -32,7 +32,8 @@ import { paidFromPurchase, refundTotals } from '@/lib/store/catalog.mjs';
 import { DEFAULT_DAILY_PLAYS } from '@/lib/config/defaults';
 import { playsFromConfig } from '@/lib/config/plays.mjs';
 import { applyMissionOverrides } from '@/lib/config/missions.mjs';
-import { track, setTrackUid, setTrackToken, flushTrack } from '@/lib/track';
+import { track, setTrackUid, setTrackToken, flushTrack, sendPing } from '@/lib/track';
+import { createHeartbeat } from '@/lib/heartbeat.mjs';
 
 // Data imports
 import { IMG_BASE, CURRENCY_ICONS, IMAGES, WHEEL_IMAGES } from '../lib/data/images';
@@ -71,10 +72,20 @@ import BottleGame from './games/bottle/BottleGame';
 import ScratchGame from './games/scratch/ScratchGame';
 import NumbersGame from './games/numbers/NumbersGame';
 import { amountText, rewardParts } from '@/lib/rewardText.mjs';
+import { XP_STAR_SRC, XP_BLUE } from './redesign/XpStar';
+
 import { AvatarLookContext } from './redesign/AvatarPicture';
 import WelcomeBackPopup from './redesign/WelcomeBackPopup';
 import { welcomeSummary, welcomeSubtitle, awayMissionIds } from '@/lib/welcome/summary.mjs';
 import { shopAvatarItems, buyAvatarItem, setWorn, normalizeAvatarItems } from '@/lib/avatar/items.mjs';
+
+// The XP star as a canvas image for the reward particles (created once, client only).
+let xpStarImg = null;
+const xpStarImage = () => {
+  if (typeof Image === 'undefined') return null;
+  if (!xpStarImg) { xpStarImg = new Image(); xpStarImg.src = XP_STAR_SRC; }
+  return xpStarImg;
+};
 // trivia games parked — see parked/components/games/
 
 // Respect the user's OS-level motion preference.
@@ -157,8 +168,9 @@ export default function GamificationPlatform() {
   // Particle engine — renders themed particles on canvas
   const spawnParticles = useCallback((x, y, count, config = {}) => {
     const { type = 'coin', spread = 120, speed = 4, gravity = 0.12, life = 80, size = 8 } = config;
-    const emojis = { coin: '🪙', gem: '💚', diamond: '💎', star: '⭐', fire: '🔥', sparkle: '✨' };
-    const colors = { coin: '#EAB308', gem: '#10B981', diamond: '#3B82F6', star: '#FBBF24', fire: '#F97316', sparkle: '#E0E7FF' };
+    // 'star' = the XP star (XpStar art drawn on the canvas), never an emoji
+    const emojis = { coin: '🪙', gem: '💚', diamond: '💎', fire: '🔥', sparkle: '✨' };
+    const colors = { coin: '#EAB308', gem: '#10B981', diamond: '#3B82F6', star: XP_BLUE, fire: '#F97316', sparkle: '#E0E7FF' };
     for (let i = 0; i < count; i++) {
       const angle = (Math.random() - 0.5) * (spread * Math.PI / 180);
       const vel = speed * (0.5 + Math.random() * 0.8);
@@ -172,6 +184,7 @@ export default function GamificationPlatform() {
         rotation: Math.random() * 360,
         rotSpeed: (Math.random() - 0.5) * 12,
         emoji: emojis[type] || '✨',
+        img: type === 'star' ? xpStarImage() : null,
         color: colors[type] || '#FBBF24',
         gravity,
         type,
@@ -216,6 +229,9 @@ export default function GamificationPlatform() {
           ctx.scale(1, Math.cos((p.rotation * 3 * Math.PI) / 180) * 0.8 + 0.2);
           ctx.fillStyle = p.color;
           ctx.fillRect(-p.size / 2, -p.size / 4, p.size, p.size / 2);
+        } else if (p.img) {
+          // XP star art; skipped until the image has loaded
+          if (p.img.complete && p.img.naturalWidth) ctx.drawImage(p.img, -p.size / 2, -p.size / 2, p.size, p.size);
         } else {
           ctx.font = `${p.size}px sans-serif`;
           ctx.textAlign = 'center';
@@ -286,9 +302,9 @@ export default function GamificationPlatform() {
   }, []);
 
   // Floating number pop-up from a point
-  const spawnFloatingNumber = useCallback((text, x, y, color = '#EAB308') => {
+  const spawnFloatingNumber = useCallback((text, x, y, color = '#EAB308', icon = null) => {
     const id = ++rollIdRef.current;
-    setRollingNumbers(prev => [...prev, { id, text, x, y, color }]);
+    setRollingNumbers(prev => [...prev, { id, text, x, y, color, icon }]);
     setTimeout(() => setRollingNumbers(prev => prev.filter(r => r.id !== id)), 900);
   }, []);
 
@@ -350,7 +366,7 @@ export default function GamificationPlatform() {
     if (prefersReducedMotion) {
       if (rewards.coins) spawnFloatingNumber(`+${amountText(rewards.coins, 'coins')}`, cx, cy - 20, '#EAB308');
       spawnGemFloats(rewards, cx, cy - 46);
-      if (rewards.xp) spawnFloatingNumber(`+${rewards.xp} XP`, cx, cy - 124, '#c026d3');
+      if (rewards.xp) spawnFloatingNumber(`+${rewards.xp} XP`, cx, cy - 124, XP_BLUE, XP_STAR_SRC);
       return;
     }
 
@@ -358,14 +374,14 @@ export default function GamificationPlatform() {
       // 1 layer: float number(s) only. No shake, no flash, no particles.
       if (rewards.coins) spawnFloatingNumber(`+${amountText(rewards.coins, 'coins')}`, cx, cy - 20, '#EAB308');
       spawnGemFloats(rewards, cx, cy - 46);
-      if (rewards.xp) spawnFloatingNumber(`+${rewards.xp} XP`, cx, cy - 124, '#c026d3');
+      if (rewards.xp) spawnFloatingNumber(`+${rewards.xp} XP`, cx, cy - 124, XP_BLUE, XP_STAR_SRC);
     }
     else if (tier === 'medium') {
       // 2 layers: float number(s) + brief amber screen flash (~180ms via triggerFlash).
       triggerFlash('gold');
       if (rewards.coins) spawnFloatingNumber(`+${amountText(rewards.coins, 'coins')}`, cx, cy - 30, '#EAB308');
       spawnGemFloats(rewards, cx, cy - 56);
-      if (rewards.xp) spawnFloatingNumber(`+${rewards.xp} XP`, cx, cy - 134, '#c026d3');
+      if (rewards.xp) spawnFloatingNumber(`+${rewards.xp} XP`, cx, cy - 134, XP_BLUE, XP_STAR_SRC);
     }
     else if (tier === 'big') {
       // 2 layers: fly-to-header currency trail + confetti burst. No shake, no flash, no shimmer.
@@ -377,7 +393,7 @@ export default function GamificationPlatform() {
         if (rewards[g]) setTimeout(() => spawnFlyingCoin(cx, cy, GEM_FLY[g]), 250 + gi * 200);
       });
       spawnGemFloats(rewards, cx, cy - 56);
-      if (rewards.xp) spawnFloatingNumber(`+${rewards.xp} XP`, cx, cy - 134, '#c026d3');
+      if (rewards.xp) spawnFloatingNumber(`+${rewards.xp} XP`, cx, cy - 134, XP_BLUE, XP_STAR_SRC);
       // Confetti burst (second layer) — single downpour, lighter than before.
       for (let i = 0; i < 20; i++) {
         setTimeout(() => {
@@ -1072,6 +1088,32 @@ export default function GamificationPlatform() {
     };
     window.addEventListener('message', onVis);
     return () => window.removeEventListener('message', onVis);
+  }, []);
+  // Heartbeat (2026-10-21, lib/heartbeat.mjs): a ping every 30 s while the
+  // Bonus Center is shown AND its tab is visible, one final ping when either
+  // stops or the page goes. Embedded, it counts as shown only after widget.js
+  // says so ('100x-widget:visibility'; the app may be loaded hidden); a
+  // standalone page is shown from the start.
+  useEffect(() => {
+    let embedded = false;
+    try { embedded = window.self !== window.top; } catch (e) { embedded = true; }
+    const hb = createHeartbeat({ send: sendPing });
+    const onMsg = (e) => {
+      if (e.source !== window.parent || !e.data || e.data.type !== '100x-widget:visibility') return;
+      hb.update({ open: !!e.data.open });
+    };
+    const onVisible = () => hb.update({ visible: document.visibilityState === 'visible' });
+    const onLeave = () => hb.stop();
+    window.addEventListener('message', onMsg);
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('pagehide', onLeave);
+    hb.update({ open: !embedded, visible: document.visibilityState === 'visible' });
+    return () => {
+      window.removeEventListener('message', onMsg);
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('pagehide', onLeave);
+      hb.stop();
+    };
   }, []);
   const hydratedRef = useRef(false);
   const hydratedXpRef = useRef(0); // saved xp: the floor until the season feed answers
@@ -2172,7 +2214,7 @@ export default function GamificationPlatform() {
       <canvas ref={rewardCanvasRef} className="fixed inset-0 pointer-events-none" style={{ zIndex: 9998 }} />
       {screenFlash && <div className={`reward-screen-flash reward-screen-flash-${screenFlash}`} />}
       {rollingNumbers.map(n => (
-        <div key={n.id} className="reward-float-number" style={{ left: n.x, top: n.y, color: n.color }}>{n.text}</div>
+        <div key={n.id} className="reward-float-number" style={{ left: n.x, top: n.y, color: n.color }}>{n.icon && <img src={n.icon} alt="" width={22} height={22} style={{ display: 'inline-block', verticalAlign: 'middle', marginRight: 4 }} />}{n.text}</div>
       ))}
       {flyingCoins.map(c => (
         <div key={c.id} className="reward-flying-coin" style={{ left: c.fromX, top: c.fromY, '--fly-dx': `${c.toX - c.fromX}px`, '--fly-dy': `${c.toY - c.fromY}px`, '--fly-dx-half': `${(c.toX - c.fromX) * 0.3}px`, '--fly-dy-half': `${(c.toY - c.fromY) * 0.5 - 60}px` }}>{c.icon ? <img src={c.icon} alt="" width={22} height={22} style={{ display: 'block' }} /> : c.emoji}</div>

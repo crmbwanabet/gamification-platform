@@ -175,6 +175,8 @@
       var uid = currentUid();
       frame.src = APP_ORIGIN + '/?widget=1' + (uid ? '&uid=' + encodeURIComponent(uid) : '') + (cfg.preview ? '&preview=1' : '') + '&strip=1';
       frame.addEventListener('load', sendToken);
+      // the app's heartbeat needs the open state even when the iframe loaded after openWidget() told it
+      frame.addEventListener('load', function () { tellApp(isOpen); });
       overlay.appendChild(frame);
     }
     sendToken();

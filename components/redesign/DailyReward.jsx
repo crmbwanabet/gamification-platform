@@ -6,6 +6,7 @@ import { CANDY, dotRow, goldTitle } from './tokens';
 import { textStroke, COIN_ICON } from '../games/candy/tokens';
 import { DAILY_REWARDS } from '@/lib/data/platform';
 import { DAILY_LOGIN_XP } from '@/lib/xp/sources.mjs';
+import XpStar, { XP_BLUE } from './XpStar';
 import { RewardIcon } from './RedesignShell';
 import { Sparkles } from './Shine';
 import { rewardParts, amountText } from '@/lib/rewardText.mjs';
@@ -167,7 +168,7 @@ const DR_CSS = `
   .dr-prize-lbl.done { color: ${CANDY.green.light}; }
   .dr-pz { display: inline-flex; align-items: center; gap: 10px; font-family: ${CANDY.display}; font-size: 44px; line-height: 1; color: #fff; text-shadow: ${textStroke(1.5, OUT)}, 0 3px 0 ${OUT}; white-space: nowrap; }
   .dr-pz small { font-family: ${CANDY.body}; font-size: 20px; font-weight: 900; text-shadow: none; color: rgba(255,255,255,.85); }
-  .dr-pz.xp, .dr-pz.xp small { color: ${CANDY.gold}; }
+  .dr-pz.xp, .dr-pz.xp small { color: ${XP_BLUE}; }
   .dr-pz img, .dr-pz svg { width: 52px !important; height: 52px !important; }
   .dr-plus { font-family: ${CANDY.display}; font-size: 32px; color: rgba(255,255,255,.6); }
   .dr-btn-lbl .dr-plus { font-size: inherit; color: inherit; }
@@ -181,20 +182,6 @@ const DR_CSS = `
     .dr-tile { transition: none; }
   }
 `;
-
-/** Gold XP star (inline SVG, so it needs no asset). */
-function XpStar({ size = 26 }) {
-  const uid = React.useId().replace(/:/g, '');
-  return (
-    <svg viewBox="0 0 24 24" width={size} height={size} aria-hidden="true" style={{ flex: 'none', filter: 'drop-shadow(0 2px 3px rgba(0,0,0,.4))' }}>
-      <defs>
-        <radialGradient id={`xs-${uid}`} cx=".4" cy=".35" r=".75"><stop offset="0" stopColor="#FFF7C8" /><stop offset=".5" stopColor={CANDY.gold} /><stop offset="1" stopColor="#C07E00" /></radialGradient>
-      </defs>
-      <path d="M12 1.6l3.1 6.6 7.2.9-5.3 5 1.4 7.1L12 17.7l-6.4 3.5L7 14.1l-5.3-5 7.2-.9z" fill={`url(#xs-${uid})`} stroke={OUT} strokeWidth="1.6" strokeLinejoin="round" />
-      <path d="M9.4 7.6l2-4.2" stroke="#fff" strokeWidth="1.2" strokeLinecap="round" opacity=".7" />
-    </svg>
-  );
-}
 
 /** Streak flame for the "DAY 3/7" pill. */
 const Flame = () => (
