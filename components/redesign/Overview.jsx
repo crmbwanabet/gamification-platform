@@ -9,6 +9,7 @@ import HomeStore from './HomeStore';
 import { MatchCard, HustleCard } from './SeasonCards';
 import { EarnPrize, MissionTerms } from './EarnView';
 import { amountText } from '@/lib/rewardText.mjs';
+import { XpAmount } from './XpStar';
 import { MISSIONS } from '@/lib/data/missions';
 import { missionStates as buildMissionStates, missionBoard, progressUnit, missionTerms } from '@/lib/missions/ladder.mjs';
 import { STORE_ITEMS, MINIGAMES, getLevel } from '@/lib/data/platform';
@@ -61,7 +62,7 @@ function MissionTeaser({ s, onOpen }) {
         <Progress value={pct} height={16} color={done ? C.green : undefined} />
         <span style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5, fontWeight: 800, color: 'rgba(255,255,255,.78)' }}>
           <span>{(done ? m.target : s.progress).toLocaleString('en-US')} / {m.target.toLocaleString('en-US')} {unit}</span>
-          {m.xp ? <span style={{ color: CANDY.gold }}>+{amountText(m.xp, 'xp')}</span> : null}
+          {m.xp ? <XpAmount size={18}>+{amountText(m.xp, 'xp')}</XpAmount> : null}
         </span>
       </button>
     </Card>

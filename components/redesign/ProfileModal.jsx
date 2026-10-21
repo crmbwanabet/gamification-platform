@@ -10,6 +10,7 @@ import { textStroke } from '../games/candy/tokens';
 import CandyButton from '../games/candy/CandyButton';
 import { validateName, canRename, nextRenameStage, playerLabel, playerName, NAME_MAX } from '@/lib/profile/name.mjs';
 import { HeroPicture } from './AvatarPicture';
+import { XP_BAR } from './XpStar';
 import { itemById, normalizeAvatarItems } from '@/lib/avatar/items.mjs';
 
 const tile = { background: `linear-gradient(180deg, ${C.panelHi}, ${C.panelLo})`, border: `2px solid ${CANDY.violet.dark}`, borderRadius: 14 };
@@ -168,7 +169,7 @@ export default function ProfileModal({ open, onClose, level, nextLevel, xpPct = 
               <span>Stage {level?.level} of {XP_LEVELS.length}</span>
               <span>{nextLevel ? `Next: ${nextLevel.title && nextLevel.title !== level?.title ? nextLevel.title : `Stage ${nextLevel.level}`}` : 'Final stage'}</span>
             </div>
-            <Progress value={xpPct} height={14} />
+            <Progress value={xpPct} height={14} color={XP_BAR} />
           </div>
 
           <div style={{ padding: '0 18px 16px', display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 8 }}>

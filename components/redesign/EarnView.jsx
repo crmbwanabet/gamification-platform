@@ -5,6 +5,7 @@ import { C, CANDY } from './tokens';
 import RedesignShell, { GreenBtn, SectionTitle, TitleNote, Card, Thumb, Badge, Progress, CurrencyAmounts, RewardIcon } from './RedesignShell';
 import { IMAGES } from '@/lib/data/images';
 import { amountText } from '@/lib/rewardText.mjs';
+import XpStar, { XpAmount, XP_BLUE, XP_BAR } from './XpStar';
 import { GEMS } from '@/lib/economy/currency.mjs';
 import { MISSIONS } from '@/lib/data/missions';
 import { missionStates as buildMissionStates, missionTerms, missionBoard, progressUnit } from '@/lib/missions/ladder.mjs';
@@ -70,10 +71,10 @@ function RewardChips({ r }) {
 }
 
 
-export const XP_COLOR = '#b9a5e8';
+export const XP_COLOR = XP_BLUE;
 
-function XpChip({ xp, fontSize = 12 }) {
-  return <span style={{ fontSize, fontWeight: 800, color: XP_COLOR, whiteSpace: 'nowrap' }}>⚡ {amountText(xp, 'xp')}</span>;
+function XpChip({ xp, fontSize = 13 }) {
+  return <XpAmount size={18} style={{ fontSize, fontWeight: 900 }}>+{amountText(xp, 'xp')}</XpAmount>;
 }
 
 // "How to earn XP" — the lines come from lib/xp/sources.mjs, so retuning a
@@ -84,8 +85,8 @@ function XpSources({ cfg = null, displayName = null, userId = null }) {
       <div style={{ fontFamily: CANDY.display, textTransform: 'uppercase', fontSize: 16, color: CANDY.gold, letterSpacing: '.03em', marginBottom: 7 }}>How to earn XP</div>
       <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 5 }}>
         {xpSourceLines(cfg || undefined).map(l => (
-          <li key={l.id} style={{ display: 'flex', alignItems: 'baseline', gap: 6, fontSize: 12, lineHeight: 1.35 }}>
-            <span style={{ color: XP_COLOR, flex: 'none' }}>⚡</span>
+          <li key={l.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 6, fontSize: 12, lineHeight: 1.35 }}>
+            <XpStar size={15} style={{ marginTop: 1 }} />
             <span><b style={{ color: C.text, fontWeight: 800 }}>{l.title}</b><span style={{ color: C.sub }}> — {heroText(l.text, displayName, userId)}</span></span>
           </li>
         ))}
@@ -240,7 +241,7 @@ function VumaRoad({ xp = 0, levelRewards = null, seasonCfg = null, displayName =
                 <span style={{ background: 'rgba(0,0,0,.25)', padding: '2px 9px', borderRadius: 999, color: C.text, fontVariantNumeric: 'tabular-nums' }}>{x.toLocaleString()} / {next.xp.toLocaleString()} XP</span>
                 <span style={{ color: C.muted, fontWeight: 600 }}>{(next.xp - x).toLocaleString()} XP to {nextStageLabel(cur, next)}</span>
               </div>
-              <Progress value={stageProgress(x)} height={14} />
+              <Progress value={stageProgress(x)} height={14} color={XP_BAR} />
             </>
           ) : (
             <div style={{ fontSize: 13, fontWeight: 900, color: CANDY.gold }}>Final stage reached</div>

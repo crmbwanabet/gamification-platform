@@ -14,6 +14,7 @@ import { GEMS, GEM_LABEL, gemCoins, gemKwacha, coinsToKwacha, economyRates, form
 import { amountText } from '@/lib/rewardText.mjs';
 import { playerLabel } from '@/lib/profile/name.mjs';
 import { XpFxContext, XpChip } from './XpCollect';
+import { XP_BAR } from './XpStar';
 
 /* ---------------- shared UI primitives (used by all redesign views) ------- */
 // 2026-10-09: candy reskin (design "A · Full candy") — the primitives carry
@@ -300,7 +301,7 @@ function TopBar({ lvl, nextLvl, xpPct, xpFx, activeTab, onNavigate, onOpenProfil
             {who.sub && <span title={`Your bwanabet user ID: ${userId}`} style={{ fontSize: 11.5, color: 'rgba(255,255,255,.62)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{who.sub}</span>}
             <span title={stageTitle} style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
               <span key={lvl.level} className={xpFx?.shine ? 'xpfx-bump' : undefined} style={{ fontSize: 10.5, fontWeight: 900, color: CANDY.outline, background: CANDY.gold, borderRadius: 999, padding: '2px 8px', whiteSpace: 'nowrap', flex: 'none' }}>STAGE {lvl.level}</span>
-              <span data-xp-bar style={{ flex: 1, minWidth: 36 }}><Progress value={xpPct} height={7} color="linear-gradient(90deg, #FFE27A, #FFD21F)" ghost={xpFx?.ghostPct ?? null} shineKey={xpFx?.shine || 0} fast={!!xpFx} /></span>
+              <span data-xp-bar style={{ flex: 1, minWidth: 36 }}><Progress value={xpPct} height={7} color={XP_BAR} ghost={xpFx?.ghostPct ?? null} shineKey={xpFx?.shine || 0} fast={!!xpFx} /></span>
               <XpChip chip={xpFx?.chip} />
             </span>
           </span>

@@ -1,7 +1,8 @@
 'use client';
 
 import React from 'react';
-import { X, ChevronDown, Gift, Gamepad2, Star } from 'lucide-react';
+import { X, ChevronDown, Gift, Gamepad2 } from 'lucide-react';
+import XpStar from './XpStar';
 import { C, CANDY, COIN_ICON, goldRim, GOLD_TITLE_SHADOW } from './tokens';
 import CandyButton from '../games/candy/CandyButton';
 import { INTRO_COLLAPSE_STAGE } from '@/lib/vuma/stages.mjs';
@@ -18,7 +19,7 @@ const LINES = [
   { icon: <Gift size={20} strokeWidth={2.6} />, text: <>Log in every day to earn <b>coins</b> and <b>XP points</b>!</> },
   { icon: <img src={COIN_ICON} alt="" width={22} height={22} style={{ display: 'block' }} />, text: <>Convert <b>COINS</b> to <b>CASH</b> or <b>PRIZES</b>!</> },
   { icon: <Gamepad2 size={20} strokeWidth={2.6} />, text: <>Play free bonus mini-games and earn more coins!</> },
-  { icon: <Star size={20} strokeWidth={2.6} />, text: <>Get <b>XP POINTS</b> with every real bet to <b>LEVEL UP</b> – get even bigger <b>BONUSES</b> and exclusive <b>VIP STATUS</b>!</> },
+  { icon: <XpStar size={26} />, text: <>Get <b>XP POINTS</b> with every real bet to <b>LEVEL UP</b> – get even bigger <b>BONUSES</b> and exclusive <b>VIP STATUS</b>!</> },
 ];
 
 const CSS = `

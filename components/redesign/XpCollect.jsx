@@ -1,10 +1,10 @@
 'use client';
 
 // XP collect moments (2026-10-13, design artifact WyNRmfbsYjBfeGSSo8UX2c):
-// gold stars fly from where XP was earned into the header stage bar, the bar
+// XP stars (XpStar, the light-blue lettered star) fly from where XP was earned into the header stage bar, the bar
 // fills star by star behind a white "incoming" segment, then a chip under it
 // says "+20 XP · today 160 / 400". XP over the daily/weekly max flies on as
-// green stars into the side hustle stock.
+// XP stars with a green glow into the side hustle stock.
 //
 // How the bar is held: the header shows `shown`, not user.xp. While any
 // collect is pending (`hold`), shown stays put, so the real xp can update
@@ -17,6 +17,7 @@ import React from 'react';
 import { getLevel, getXPProgress } from '@/lib/data/platform';
 import { starCount } from '@/lib/xp/collect.mjs';
 import { CANDY } from './tokens';
+import XpStar, { XP_STAR_SRC, XP_BLUE } from './XpStar';
 
 export const XpFxContext = React.createContext(null);
 
@@ -113,7 +114,7 @@ export function useXpCollect(xp, reduced, getNote) {
         sc = 1.2 - 0.5 * e;
         if (k >= 1) { o.remove(); spark(end, green); res(); return; }
       }
-      o.style.transform = `translate(${x}px, ${y}px) scale(${sc}) rotate(${t * 0.4}deg)`;
+      o.style.transform = `translate(${x}px, ${y}px) scale(${sc}) rotate(${Math.sin(t / 90) * 14}deg)`; // a wobble, so the XP letters stay readable
       requestAnimationFrame(step);
     };
     requestAnimationFrame(step);
@@ -219,6 +220,7 @@ export function XpChip({ chip }) {
   if (!chip) return null;
   return (
     <span key={chip.id} className="xpfx-chip" role="status">
+      <XpStar size={18} style={{ alignSelf: 'center' }} />
       <b>{chip.amount > 0 ? `+${fmt(chip.amount)} XP` : 'XP full today'}</b>
       {chip.note && <small>{chip.note}</small>}
     </span>
@@ -269,7 +271,7 @@ export function XpFeedCard({ card, collect, onDone }) {
       {card.rows.map(r => (
         <div key={r.key} className="xpfx-row">
           <span className="xpfx-row-l">{r.label}{r.sub && <small>{r.sub}</small>}</span>
-          <span ref={el => { chipRefs.current[r.key] = el; }} className={`xpfx-tag${r.bar ? '' : ' xpfx-tag-green'}${sent[r.key] === 'done' ? ' xpfx-sent' : ''}`}>+{fmt(r.bar + r.hustle)} XP</span>
+          <span ref={el => { chipRefs.current[r.key] = el; }} className={`xpfx-tag${r.bar ? '' : ' xpfx-tag-green'}${sent[r.key] === 'done' ? ' xpfx-sent' : ''}`}><XpStar size={16} />+{fmt(r.bar + r.hustle)} XP</span>
         </div>
       ))}
       <div className="xpfx-card-tap">Tap to close</div>
@@ -280,12 +282,11 @@ export function XpFeedCard({ card, collect, onDone }) {
 const O = CANDY.outline;
 export const XP_FX_CSS = `
   .xpfx-layer { position: fixed; inset: 0; z-index: 250; pointer-events: none; overflow: hidden; }
-  .xpfx-star { position: absolute; left: 0; top: 0; width: 18px; height: 18px; margin: -9px 0 0 -9px; will-change: transform;
-    background: radial-gradient(circle, #fff 0 18%, #FFE27A 34%, ${CANDY.gold} 55%, transparent 56%);
-    clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%);
-    filter: drop-shadow(0 0 4px rgba(255,226,122,.9)); }
-  .xpfx-star.xpfx-green { background: radial-gradient(circle, #fff 0 18%, ${CANDY.green.light} 40%, ${CANDY.green.fill} 56%, transparent 57%); filter: drop-shadow(0 0 4px rgba(123,227,79,.9)); }
-  .xpfx-spark { position: absolute; width: 22px; height: 22px; margin: -11px 0 0 -11px; border-radius: 50%; border: 2px solid #FFE27A; animation: xpfx-spark .35s ease-out forwards; }
+  .xpfx-star { position: absolute; left: 0; top: 0; width: 22px; height: 22px; margin: -11px 0 0 -11px; will-change: transform;
+    background: url(${XP_STAR_SRC}) center / contain no-repeat;
+    filter: drop-shadow(0 0 4px rgba(127,216,255,.9)); }
+  .xpfx-star.xpfx-green { filter: drop-shadow(0 0 5px rgba(123,227,79,.95)); }
+  .xpfx-spark { position: absolute; width: 22px; height: 22px; margin: -11px 0 0 -11px; border-radius: 50%; border: 2px solid ${XP_BLUE}; animation: xpfx-spark .35s ease-out forwards; }
   .xpfx-spark.xpfx-green { border-color: ${CANDY.green.light}; }
   @keyframes xpfx-spark { from { transform: scale(.3); opacity: 1; } to { transform: scale(1.6); opacity: 0; } }
   .xpfx-ring { position: absolute; width: 56px; height: 56px; margin: -28px 0 0 -28px; border-radius: 50%; border: 3px solid ${CANDY.gold}; animation: xpfx-ring .7s ease-out forwards; }
@@ -293,9 +294,9 @@ export const XP_FX_CSS = `
 
   /* right-aligned under the bar: the "My story" bubble sits under the avatar on the left */
   .xpfx-chip { position: absolute; right: 0; top: calc(100% + 5px); z-index: 20; display: inline-flex; align-items: baseline; gap: 6px; padding: 3px 9px 4px; border-radius: 10px;
-    background: ${O}; border: 2px solid ${CANDY.gold}; box-shadow: 0 3px 0 #16042F; white-space: nowrap; pointer-events: none;
+    background: ${O}; border: 2px solid ${XP_BLUE}; box-shadow: 0 3px 0 #16042F; white-space: nowrap; pointer-events: none;
     transform-origin: calc(100% - 20px) 0; animation: xpfx-chip-in .32s cubic-bezier(.3,1.5,.5,1) both, xpfx-chip-out .3s ease-in ${CHIP_MS - 300}ms forwards; }
-  .xpfx-chip b { font-family: ${CANDY.display}; font-weight: 400; font-size: 16px; color: ${CANDY.gold}; }
+  .xpfx-chip b { font-family: ${CANDY.display}; font-weight: 400; font-size: 16px; color: ${XP_BLUE}; }
   .xpfx-chip small { font-size: 10.5px; font-weight: 800; color: rgba(255,255,255,.75); }
   @keyframes xpfx-chip-in { from { transform: scale(.4) translateY(-8px); opacity: 0; } }
   @keyframes xpfx-chip-out { to { transform: translateY(-6px); opacity: 0; } }
@@ -317,7 +318,7 @@ export const XP_FX_CSS = `
   .xpfx-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-top: 1px solid rgba(255,255,255,.12); font-size: 13px; font-weight: 800; }
   .xpfx-row-l { flex: 1; min-width: 0; }
   .xpfx-row-l small { display: block; font-size: 11px; font-weight: 700; color: rgba(255,255,255,.58); }
-  .xpfx-tag { flex: none; font-family: ${CANDY.display}; font-size: 15px; color: ${CANDY.gold}; padding: 2px 8px; border-radius: 8px; background: ${O}; border: 1.5px solid ${CANDY.goldDeep}; font-variant-numeric: tabular-nums; transition: opacity .25s, transform .25s; }
+  .xpfx-tag { flex: none; display: inline-flex; align-items: center; gap: 4px; font-family: ${CANDY.display}; font-size: 15px; color: ${XP_BLUE}; padding: 2px 8px; border-radius: 8px; background: ${O}; border: 1.5px solid ${XP_BLUE}; font-variant-numeric: tabular-nums; transition: opacity .25s, transform .25s; }
   .xpfx-tag-green { color: ${CANDY.green.light}; border-color: ${CANDY.green.fill}; }
   .xpfx-sent { opacity: .35; transform: scale(.9); }
   .xpfx-card-tap { text-align: center; font-size: 11px; font-weight: 700; color: rgba(255,255,255,.5); margin-top: 4px; }

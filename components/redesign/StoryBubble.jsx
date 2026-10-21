@@ -6,6 +6,7 @@ import { CANDY } from './tokens';
 import CandyButton from '../games/candy/CandyButton';
 import { COIN_ICON } from '../games/candy/tokens';
 import { amountText } from '@/lib/rewardText.mjs';
+import XpStar from './XpStar';
 
 // "My story" comic speech bubbles anchored under the header avatar.
 // mode 'hint' = the small "My story" bubble (tap to open); 'open' = the big
@@ -118,7 +119,7 @@ export default function StoryBubble({ mode, onOpen, onClose, onGo, prize = null,
         {prize && (
           <div data-story-prize style={{ margin: '0 0 8px', textAlign: 'center', fontFamily: CANDY.display, fontSize: 18, lineHeight: 1.25, color: INK, textTransform: 'uppercase' }}>
             Start now and earn<br />
-            <img src={COIN_ICON} alt="" width={22} height={22} style={{ display: 'inline-block', verticalAlign: '-4px', marginRight: 4 }} />{amountText(prize.coins, 'coins')} + {amountText(prize.xp, 'xp')}
+            <img src={COIN_ICON} alt="" width={22} height={22} style={{ display: 'inline-block', verticalAlign: '-4px', marginRight: 4 }} />{amountText(prize.coins, 'coins')} + <XpStar size={22} style={{ verticalAlign: '-4px', marginRight: 4 }} />{amountText(prize.xp, 'xp')}
           </div>
         )}
         <CandyButton color="green" onClick={(e) => (onGo ? onGo(e.currentTarget) : onClose())} style={{ width: '100%', fontSize: 22, minHeight: 52 }}>LET&apos;S GO!</CandyButton>
