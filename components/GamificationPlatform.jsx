@@ -1031,15 +1031,19 @@ export default function GamificationPlatform() {
   // Widget mode: the platform runs as a popup (iframe) on bwanabet.com.
   // Detected via iframe embedding or ?widget=1; the host passes ?uid=.
   // Resolved after mount so the first client render matches SSR (hydration).
-  const [{ isWidget, widgetUid, preview }, setWidgetCtx] = useState({ isWidget: false, widgetUid: null, preview: false });
+  // hostStrip (?strip=1, 2026-10-21): widget.js draws the big red close X in
+  // its own top strip ABOVE the iframe, so the app hides its floating X.
+  const [{ isWidget, widgetUid, preview, hostStrip }, setWidgetCtx] = useState({ isWidget: false, widgetUid: null, preview: false, hostStrip: false });
   useEffect(() => {
     let inIframe = false;
     try { inIframe = window.self !== window.top; } catch (e) { inIframe = true; }
     const params = new URLSearchParams(window.location.search);
-    const ctx = { isWidget: inIframe || params.get('widget') === '1', widgetUid: params.get('uid'), preview: params.get('preview') === '1' };
+    const ctx = { isWidget: inIframe || params.get('widget') === '1', widgetUid: params.get('uid'), preview: params.get('preview') === '1', hostStrip: params.get('strip') === '1' };
     setWidgetCtx(ctx);
     track('session_start', { meta: { widget: ctx.isWidget, preview: ctx.preview } });
   }, []);
+  // the app draws its own floating close X only when the host has no strip
+  const ownCloseX = isWidget && !hostStrip;
   // The player's ID shown under their name (header + profile).
   // Order: the SSO profile, else the token's id claim (display only, while
   // the session loads or if it failed), else the host's ?uid=.
@@ -1926,7 +1930,7 @@ export default function GamificationPlatform() {
   const gameOverlays = (
     <>
       {/* Widget mode: prominent red close button — tells the host page to hide the popup */}
-      {isWidget && (
+      {ownCloseX && (
         <button
           type="button"
           aria-label="Close 100xBet Rewards"
@@ -2059,7 +2063,7 @@ export default function GamificationPlatform() {
         );
       })()}
       {notif && (
-        <div className={`fixed top-4 z-[100] px-6 py-3 rounded-xl shadow-2xl ${notifLeaving ? 'anim-slide-out' : 'anim-slide-down'} ${notif.type === 'success' ? 'bg-gradient-to-r from-green-500 to-emerald-600 shadow-green-500/30' : 'bg-gradient-to-r from-red-500 to-rose-600 shadow-red-500/30'}`} style={{ right: isWidget ? 66 : 16 }}>
+        <div className={`fixed top-4 z-[100] px-6 py-3 rounded-xl shadow-2xl ${notifLeaving ? 'anim-slide-out' : 'anim-slide-down'} ${notif.type === 'success' ? 'bg-gradient-to-r from-green-500 to-emerald-600 shadow-green-500/30' : 'bg-gradient-to-r from-red-500 to-rose-600 shadow-red-500/30'}`} style={{ right: ownCloseX ? 66 : 16 }}>
           <div className="flex items-center gap-2">
             <Sparkles className="w-5 h-5" />
             <span className="font-bold">{notif.msg}</span>
@@ -2114,7 +2118,7 @@ export default function GamificationPlatform() {
   const v2Stats = {
     points: user.kwacha,
     // header wallet pill + wallet sheet + Store affordability
-    wallet: { kwacha: user.kwacha, emeralds: user.emeralds || 0, rubies: user.rubies || 0, diamonds: user.diamonds || 0, economy: cfg.economy },
+    wallet: { kwacha: user.kwacha, emeralds: user.emeralds || 0, rubies: user.rubies || 0, diamonds: user.diamonds || 0, economy: cfg.economy, store: cfg.store },
     missionsCount: openMissionsCount,
     badges: user.missionsComplete.length,
     xp: user.xp,
@@ -2147,7 +2151,8 @@ export default function GamificationPlatform() {
     season: seasonView,
     onClaimLeague, onClaimWc, onCollectHustle, onClaimPrize, prizeBusy,
     // candy shell: widget padding for the red X + the "My story" bubble
-    isWidget,
+    // the views only use it to leave room for the app's own floating X
+    isWidget: ownCloseX,
     story: anyModalOpen || story === 'done' ? null : story,
     onStoryOpen: openStory,
     onStoryClose: closeStory,
@@ -2303,6 +2308,7 @@ export default function GamificationPlatform() {
           : d && d.error === 'item_unavailable' ? 'That item is no longer available.'
           : d && d.error === 'slow_down' ? 'Too many attempts — wait a minute.'
           : d && d.error === 'invalid_token' ? 'Session expired — reload the page.'
+          : d && d.error === 'store_closed' ? 'The Coin Shop is coming soon.'
           : d && d.error === 'store_locked' ? 'The Coin Shop opens at stage 5. If you just reached it, try again in a moment.'
           // Server-held balance was short: recent winnings may not have
           // synced yet (saves are debounced ~1.5s) — a retry usually works.

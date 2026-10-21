@@ -7,7 +7,7 @@ import { IMAGES } from '@/lib/data/images';
 import { STORE_ITEMS } from '@/lib/data/platform';
 import { amountText } from '@/lib/rewardText.mjs';
 import { canAfford, cleanReward, coinsToKwacha, economyRates, formatKwacha, formatNumber } from '@/lib/economy/currency.mjs';
-import { splitCatalog, nextPackGoal, storeLocked } from '@/lib/store/catalog.mjs';
+import { splitCatalog, nextPackGoal, storeLockReason } from '@/lib/store/catalog.mjs';
 import { getLevel } from '@/lib/data/platform';
 import { BB_CSS, STORE_ART, packArtSrc, CoinMeter, PackLock, goalText, ShopLockPlate, ShopLockWrap } from './storeKit';
 import { ShineImg, Sparkles } from './Shine';
@@ -210,7 +210,8 @@ export default function StoreView({ wallet = null, xp = 0, onNavigate, onOpenPro
   // removed 2026-10-12; any still served are ignored).
   const { coinPacks, items } = splitCatalog(storeItems || STORE_ITEMS);
   const balances = balancesOf(wallet);
-  const locked = storeLocked(getLevel(xp).level);
+  const lockWhy = storeLockReason(getLevel(xp).level, wallet?.store);
+  const locked = !!lockWhy;
   const avItems = avatarShop?.items || [];
   const empty = coinPacks.length + items.length + avItems.length === 0;
   const topId = coinPacks.length > 1 ? coinPacks[coinPacks.length - 1].id : null;
@@ -220,7 +221,7 @@ export default function StoreView({ wallet = null, xp = 0, onNavigate, onOpenPro
       <style dangerouslySetInnerHTML={{ __html: BB_CSS + ST_CSS }} />
       <div className="st-wrap">
         <ShopLockWrap locked={locked}><StoreHero balances={balances} economy={wallet?.economy} coinPacks={coinPacks} /></ShopLockWrap>
-        {locked && <ShopLockPlate xp={xp} className="bb-shoplock--static" />}
+        {locked && <ShopLockPlate xp={xp} reason={lockWhy} className="bb-shoplock--static" />}
         <ShopLockWrap locked={locked} className="st-wrap">
         {empty ? (
           <Card style={{ padding: '46px 24px', textAlign: 'center' }}>

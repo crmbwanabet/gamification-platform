@@ -155,8 +155,8 @@ export default function HomeStore({ storeItems, wallet, onBuy, busyId = null, on
   return (
     <section className={`hs-panel bb-lockhost ${className}`} aria-labelledby="hs-title">
       <style dangerouslySetInnerHTML={{ __html: BB_CSS + HS_CSS }} />
-      {locked && <ShopLockPlate xp={xp} className="bb-shoplock--high" />}
-      <ShopLockWrap locked={locked}>
+      {locked && <ShopLockPlate xp={xp} reason={locked} className="bb-shoplock--high" />}
+      <ShopLockWrap locked={!!locked}>
       <div className="hs-banner">
         <div className="hs-shade" aria-hidden />
         <div className="hs-rate"><b>{formatNumber(rate)} COINS</b><i>BUYS</i><strong>K1.00</strong></div>

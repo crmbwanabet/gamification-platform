@@ -14,8 +14,11 @@
  * A page URL with ?bonus=open opens the Bonus Center on load (SMS links).
  *
  * Renders a floating launcher bubble (bottom-right). Clicking it opens the
- * platform in a full-screen iframe popup. The popup closes via the red X
- * inside the app (postMessage '100x-widget:close'); the launcher itself can
+ * platform in a full-screen iframe popup under a top strip that holds the big
+ * red close X (2026-10-21): the iframe starts BELOW the strip, so nothing in
+ * the app (games, pop-ups, the wheel) can ever sit under the button. The app
+ * can still close the popup itself (postMessage '100x-widget:close'); it is
+ * opened with &strip=1 so it hides its own X. The launcher itself can
  * be dismissed via its own red X badge — it stays hidden while the visitor
  * browses between pages, but comes back on a page RELOAD.
  */
@@ -94,7 +97,22 @@
     'box-shadow:0 3px 8px rgba(0,0,0,.45);}',
     '.x100w-overlay{position:fixed;inset:0;z-index:2147483001;background:rgba(8,10,16,.6);display:none;}',
     '.x100w-overlay.open{display:block;}',
-    '.x100w-frame{position:absolute;inset:0;width:100%;height:100%;border:0;background:#191b27;}',
+    // top strip + big red X; the frame starts under it (--x100w-bar)
+    '.x100w-overlay{--x100w-bar:calc(60px + env(safe-area-inset-top,0px));}',
+    '.x100w-bar{position:absolute;top:0;left:0;right:0;height:var(--x100w-bar);box-sizing:border-box;',
+    'padding:env(safe-area-inset-top,0px) max(10px,env(safe-area-inset-right,0px)) 0 max(16px,env(safe-area-inset-left,0px));',
+    'display:flex;align-items:center;gap:12px;background:#120a24;border-bottom:1px solid rgba(255,255,255,.1);',
+    'box-shadow:0 2px 10px rgba(0,0,0,.35);}',
+    '.x100w-title{flex:1;min-width:0;color:#FEF200;font:900 15px/1.1 "Arial Black",Arial,sans-serif;letter-spacing:.04em;',
+    'text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}',
+    '.x100w-close{flex:none;width:48px;height:48px;border-radius:50%;border:2px solid rgba(255,255,255,.45);',
+    'background:linear-gradient(180deg,#ff5a40,#d4161b);color:#fff;font:900 24px/1 Arial,sans-serif;cursor:pointer;',
+    'display:grid;place-items:center;padding:0;box-shadow:0 4px 12px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.35);',
+    '-webkit-tap-highlight-color:transparent;transition:transform .12s ease;}',
+    '.x100w-close:hover{transform:scale(1.06);}',
+    '.x100w-close:active{transform:scale(.94);}',
+    '.x100w-close:focus-visible{outline:3px solid #FEF200;outline-offset:2px;}',
+    '.x100w-frame{position:absolute;top:var(--x100w-bar);left:0;width:100%;height:calc(100% - var(--x100w-bar));border:0;background:#191b27;}',
     '@media (prefers-reduced-motion:reduce){.x100w-launcher img{animation:none}}',
   ].join('');
   var style = document.createElement('style');
@@ -124,6 +142,21 @@
   /* ---------- full-screen popup ---------- */
   var overlay = document.createElement('div');
   overlay.className = 'x100w-overlay';
+  overlay.setAttribute('role', 'dialog');
+  overlay.setAttribute('aria-label', 'BwanaBet Bonus Center');
+  var bar = document.createElement('div');
+  bar.className = 'x100w-bar';
+  var title = document.createElement('span');
+  title.className = 'x100w-title';
+  title.textContent = 'BwanaBet Bonus Center';
+  var closeBtn = document.createElement('button');
+  closeBtn.type = 'button';
+  closeBtn.className = 'x100w-close';
+  closeBtn.setAttribute('aria-label', 'Close the Bonus Center');
+  closeBtn.textContent = '✕';
+  bar.appendChild(title);
+  bar.appendChild(closeBtn);
+  overlay.appendChild(bar);
   var frame = null;
   var frameToken = null; // the token the current iframe was opened with
 
@@ -140,7 +173,7 @@
       frame.className = 'x100w-frame';
       frame.allow = 'clipboard-write; autoplay';
       var uid = currentUid();
-      frame.src = APP_ORIGIN + '/?widget=1' + (uid ? '&uid=' + encodeURIComponent(uid) : '') + (cfg.preview ? '&preview=1' : '');
+      frame.src = APP_ORIGIN + '/?widget=1' + (uid ? '&uid=' + encodeURIComponent(uid) : '') + (cfg.preview ? '&preview=1' : '') + '&strip=1';
       frame.addEventListener('load', sendToken);
       overlay.appendChild(frame);
     }
@@ -185,6 +218,8 @@
   }
 
   launcher.addEventListener('click', openWidget);
+  closeBtn.addEventListener('click', closeWidget);
+  document.addEventListener('keydown', function (e) { if (isOpen && e.key === 'Escape') closeWidget(); });
   window.BwanaBetBonus = { open: openWidget, close: closeWidget };
   window.addEventListener('message', function (e) {
     if (e.origin !== APP_ORIGIN) return;

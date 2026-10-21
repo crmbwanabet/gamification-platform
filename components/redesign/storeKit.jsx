@@ -108,10 +108,20 @@ export const goalText = (goal, long = false) => (goal
 
 /**
  * Coin Shop lock (stage 5, lib/store/catalog.mjs): the plate laid over the
- * greyed shop on Home and in the Store tab. `xp` = the player's XP.
+ * greyed shop on Home and in the Store tab. `xp` = the player's XP;
+ * reason 'soon' = the shop is switched off for everyone (storeLockReason).
  */
-export function ShopLockPlate({ xp = 0, className = '' }) {
+export function ShopLockPlate({ xp = 0, reason = 'stage', className = '' }) {
   const left = Math.max(0, STORE_UNLOCK_XP - (Number(xp) || 0));
+  if (reason === 'soon') {
+    return (
+      <div className={`bb-shoplock ${className}`} role="note" data-shop-locked="soon">
+        <img src="/ui/reward/lock.png" alt="" width={56} height={56} />
+        <b>Coming soon</b>
+        <span>Keep collecting coins</span>
+      </div>
+    );
+  }
   return (
     <div className={`bb-shoplock ${className}`} role="note" data-shop-locked>
       <img src="/ui/reward/lock.png" alt="" width={56} height={56} />

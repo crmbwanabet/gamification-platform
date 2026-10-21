@@ -1,0 +1,36 @@
+{
+  "name": "wheel-bonus-center",
+  "version": 1,
+  "updated": "2026-10-21",
+  "about": "How the Wheel of Fortune (crmbwanabet/wheel-of-fortune) and the BwanaBet Bonus Center (crmbwanabet/gamification-platform) talk to each other. This file is copied BYTE FOR BYTE in both repos at docs/integrations/wheel-bonus-center-contract.json. Change it in both in the same sitting, bump version, and run the contract tests + `npm run contract:check` in each repo.",
+  "repos": {
+    "wheel": "crmbwanabet/wheel-of-fortune",
+    "bonusCenter": "crmbwanabet/gamification-platform"
+  },
+  "origins": {
+    "wheel": "https://wheel-of-fortune-roan.vercel.app",
+    "bonusCenter": "https://100xbet-gamification.vercel.app"
+  },
+  "wheelAllowsAuthFrom": ["https://100xbet-gamification.vercel.app"],
+  "messages": {
+    "wheelToHost": [
+      { "type": "bwanabet-wheel-ready", "fields": [], "meaning": "wheel mounted, send me the token" },
+      { "type": "bwanabet-wheel-available", "fields": ["available", "sticky?", "customerId?"], "meaning": "is today's spin still unused" },
+      { "type": "bwanabet-wheel-close", "fields": [], "meaning": "player closed the wheel / claimed the result" },
+      { "type": "bwanabet-wheel-spun", "fields": ["customerId?"], "meaning": "a spin happened (may arrive twice)" }
+    ],
+    "hostToWheel": [
+      { "type": "bwanabet-auth", "fields": ["token"], "meaning": "the bwanabet `token` JWT, posted ONLY to the wheel origin, never in a URL" }
+    ]
+  },
+  "urlParams": [
+    { "name": "test", "value": "1", "meaning": "public TEST mode: no login, simulated spins that never pay (Bonus Center /preview.html)" },
+    { "name": "closeAfter", "value": "1", "meaning": "with test=1: close after the result like real mode" }
+  ],
+  "rules": [
+    "The wheel stays its own app: prizes, odds, daily limit, kill switch and Telegram payouts live ONLY in the wheel repo and its CRM database.",
+    "The Bonus Center hosts the wheel in an iframe (components/extras/useWheel.jsx) and must accept messages only from origins.wheel and only from its own iframe.",
+    "A new Bonus Center domain must be added to the wheel's ALLOWED_AUTH_ORIGINS AND to wheelAllowsAuthFrom here before it goes live, or the wheel never gets the token.",
+    "When the wheel runs inside the Bonus Center, bwanabet.com must NOT also load the wheel's own embed.js (two wheels otherwise)."
+  ]
+}

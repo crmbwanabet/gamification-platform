@@ -12,7 +12,7 @@ import { amountText } from '@/lib/rewardText.mjs';
 import { MISSIONS } from '@/lib/data/missions';
 import { missionStates as buildMissionStates, missionBoard, progressUnit } from '@/lib/missions/ladder.mjs';
 import { STORE_ITEMS, MINIGAMES, getLevel } from '@/lib/data/platform';
-import { splitCatalog, storeLocked } from '@/lib/store/catalog.mjs';
+import { splitCatalog, storeLockReason } from '@/lib/store/catalog.mjs';
 import { WheelCard } from '../extras/useWheel';
 import { Predictions } from '../extras/ExtrasViews';
 
@@ -98,7 +98,7 @@ export default function Overview({ wallet = null, xp = 1200, activeTab = 'home',
         </div>
 
         {hasStore && (
-          <HomeStore className="ov-store" storeItems={items} wallet={wallet} onBuy={onBuy} busyId={busyId} onSeeAll={() => go('store')} locked={storeLocked(getLevel(xp).level)} xp={xp} />
+          <HomeStore className="ov-store" storeItems={items} wallet={wallet} onBuy={onBuy} busyId={busyId} onSeeAll={() => go('store')} locked={storeLockReason(getLevel(xp).level, wallet?.store)} xp={xp} />
         )}
 
         {season && (
