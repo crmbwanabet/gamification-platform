@@ -131,7 +131,7 @@ export function useXpCollect(xp, reduced, getNote) {
    *   from     — element the stars burst out of (null = screen centre)
    *   fromAt   — () => element, looked up when the collect starts (wins over `from`)
    *   amount   — XP for the bar; capped at run time by what the real xp actually gained
-   *   startXp  — bar start (default: what the bar shows now)
+   *   startXp  — bar start (default: what the bar shows now); a function (shown, xp) => start is read when it starts
    *   overflow — XP that flies on to the side hustle ([data-hustle-target]) as green stars
    *   delay    — ms before it starts (lets a coin float go first)
    *   onStart  — called when it starts playing
@@ -146,7 +146,8 @@ export function useXpCollect(xp, reduced, getNote) {
       try {
         if (opts.delay) await wait(reducedRef.current ? 0 : opts.delay);
         opts.onStart?.();
-        const start = opts.startXp ?? shownRef.current;
+        // startXp may be a function of (shown, real xp), read when the collect starts
+        const start = typeof opts.startXp === 'function' ? opts.startXp(shownRef.current, xpRef.current) : (opts.startXp ?? shownRef.current);
         const gained = Math.max(0, xpRef.current - start);
         const amount = Math.max(0, Math.min(Math.floor(opts.amount ?? gained), gained));
         const overflow = Math.max(0, Math.floor(opts.overflow || 0));
