@@ -123,3 +123,7 @@ Re-run it until `more` is false.
 
 To re-import from scratch: `delete from public.feed_cursors where name = 'crm_player_daily';`
 (the next run re-reads all 60 days and overwrites).
+
+## Live setup (2026-10-21)
+
+The schedule in use is **Vercel Cron** (`vercel.json`, `35 * * * *`). Do not also enable the pg_cron job below. `CRM_URL`, `GAMIFICATION_API_KEY` and `CRON_SECRET` are set on Vercel production.
