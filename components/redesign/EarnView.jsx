@@ -126,7 +126,7 @@ function MissionsSummary({ status, done = 0, total = 0 }) {
             <span>{note.text}</span>
           </div>
         ) : (
-          <div style={{ fontSize: 11.5, color: C.muted }}>Each mission pays once. No daily reset: progress counts from your first login.</div>
+          <div style={{ fontSize: 11.5, color: C.muted }}>Each mission pays once. A new mission counts from when you collected the one before.</div>
         )}
       </div>
     </Card>
