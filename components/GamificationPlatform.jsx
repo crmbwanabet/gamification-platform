@@ -46,7 +46,8 @@ import {
 // parked in parked/lib/data/missions.legacy.js
 import { MISSIONS } from '../lib/data/missions';
 import { STORY_PRIZE } from '@/lib/extras/rules.mjs';
-import { missionStates as buildMissionStates, missionCounts, countClaimable, recordMissionClaim } from '@/lib/missions/ladder.mjs';
+import { missionStates as buildMissionStates, missionCounts, countClaimable, recordMissionClaim, recordMissionBase, migrateMissionBases } from '@/lib/missions/ladder.mjs';
+import { initialStageRewarded, stageUpRewards } from '@/lib/xp/stageReward.mjs';
 import { lusakaDay } from '@/lib/casino/feed.mjs';
 import { DAILY_LOGIN_XP, addGameXp, refundGameXp, casinoXp, addDailyXp, addMissionXp, recordXpDay } from '@/lib/xp/sources.mjs';
 // Season (2026-10-09): XP from real play (CRM feed), side hustle, league, World Cup
@@ -990,6 +991,12 @@ export default function GamificationPlatform() {
     // are kept untouched so saved history survives.
     // one-time BwanaBet missions collected (ids, lib/missions/ladder.mjs)
     missionClaims: [],
+    // per ladder, its cumulative count when its last rung was collected:
+    // { casino: { count, at }, … } (no spill-over, 2026-10-21)
+    missionBase: {},
+    // highest stage whose stage-up coins were paid (lib/xp/stageReward.mjs);
+    // null = set silently to the current stage on first load
+    stageRewarded: null,
     // the story's one-time "Let's go" prize (STORY_PRIZE) was paid
     storyPrizeClaimed: false,
     // Extras (2026-10-19, components/extras/useExtras.js): bet-slip mission
@@ -1091,15 +1098,18 @@ export default function GamificationPlatform() {
       const saved = session.profile.state;
       if (saved && typeof saved === 'object' && Object.keys(saved).length) {
         // Saved blobs from before the gem economy reset gems/diamonds to 0.
+        // highest stage already paid: the saved marker, else (older saves) the saved XP's stage
+        const rewardedStage = initialStageRewarded(saved.stageRewarded, getLevel(saved.xp || 0).level);
         setUser(u => {
           const next = { ...u, ...migrateCurrencyState(saved), ...normalizeNameState(saved) };
           next.xpDays = recordXpDay(next.xpDays, next.xpToday);
+          next.stageRewarded = rewardedStage;
           return next;
         });
         hydratedXpRef.current = Math.max(0, Number(saved.xp) || 0);
         // a saved previous visit (WELCOME BACK never shows on a first visit)
         returningRef.current = !!(saved.lastVisitDay || saved.xpFeedSeen || saved.lastDailyClaim);
-        lastLevelRef.current = getLevel(saved.xp || 0).level; // don't award levels already earned
+        lastLevelRef.current = rewardedStage; // don't award (or celebrate) stages already paid
       }
       hydratedRef.current = true;
     }
@@ -1458,14 +1468,28 @@ export default function GamificationPlatform() {
   // BwanaBet missions (lib/missions/ladder.mjs, 2026-10-20): one-time, four
   // ladders counted since the first login (casino total from the server, sports
   // + deposit days from the season rows, daily-reward days from xpDays).
+  // NO SPILL-OVER (2026-10-21): only each ladder's current rung counts, from
+  // the ladder's count when the previous rung was collected (user.missionBase).
   const missionCountsNow = useMemo(
     () => missionCounts({ casinoTotal: casino.total, rows: seasonFeed.rows || [], since: casino.since, xpDays: user.xpDays, xpToday: user.xpToday }),
     [casino.total, casino.since, seasonFeed.rows, user.xpDays, user.xpToday]
   );
   const missionStates = useMemo(
-    () => buildMissionStates(activeMissions, missionCountsNow, user.missionClaims),
-    [activeMissions, missionCountsNow, user.missionClaims]
+    () => buildMissionStates(activeMissions, missionCountsNow, user.missionClaims, user.missionBase),
+    [activeMissions, missionCountsNow, user.missionClaims, user.missionBase]
   );
+  // Migration: a ladder with claims from before the rule gets base = its
+  // current count, silently, once that ladder's count is fresh (no retro spill).
+  useEffect(() => {
+    if (!loggedIn || !hydratedRef.current) return;
+    const ready = ['logins'];
+    if (casino.status === 'ok') ready.push('casino');
+    if (seasonFeed.status === 'ok') ready.push('sports', 'deposits');
+    setUser(u => {
+      const next = migrateMissionBases(u.missionBase, u.missionClaims, missionCountsNow, activeMissions, ready, new Date().toISOString());
+      return next ? { ...u, missionBase: next } : u;
+    });
+  }, [loggedIn, casino.status, seasonFeed.status, missionCountsNow, activeMissions, user.missionClaims]);
   const claimableCount = loggedIn ? countClaimable(missionStates) : 0;
   const seasonRowsRef = useRef(null);
   seasonRowsRef.current = seasonFeed.rows;
@@ -1949,17 +1973,23 @@ export default function GamificationPlatform() {
     setTab(target);
   };
 
-  // Stage-up (levels = Vuma stages): award cfg.levelRewards + celebrate when the player's stage increases.
+  // Stage-up (levels = Vuma stages): award cfg.levelRewards + celebrate when the
+  // player reaches a stage ABOVE the highest one already paid (user.stageRewarded,
+  // lib/xp/stageReward.mjs): XP derived from the CRM can drop and climb back,
+  // which never pays or celebrates the same stage twice.
   useEffect(() => {
     const curLevel = getLevel(user.xp).level;
-    if (lastLevelRef.current === null) { lastLevelRef.current = curLevel; return; }
-    if (curLevel > lastLevelRef.current) {
-      const total = { kwacha: 0, emeralds: 0, rubies: 0, diamonds: 0 };
-      for (let L = lastLevelRef.current + 1; L <= curLevel; L++) {
-        const r = cleanReward(cfg.levelRewards[L]);
-        for (const k of Object.keys(r)) total[k] += r[k];
-      }
-      lastLevelRef.current = curLevel;
+    if (lastLevelRef.current === null) {
+      lastLevelRef.current = initialStageRewarded(user.stageRewarded, curLevel);
+      const mark = lastLevelRef.current;
+      setUser(u => (u.stageRewarded === mark ? u : { ...u, stageRewarded: mark }));
+      return;
+    }
+    const up = stageUpRewards(lastLevelRef.current, curLevel, cfg.levelRewards, cleanReward);
+    if (up.levels.length) {
+      const total = up.total;
+      lastLevelRef.current = up.rewarded;
+      setUser(u => ({ ...u, stageRewarded: Math.max(Number(u.stageRewarded) || 0, up.rewarded) }));
       addCurrencies(total);
       const lvl = getLevel(user.xp);
       track('level_up', { meta: { level: lvl.level } });
@@ -2226,7 +2256,7 @@ export default function GamificationPlatform() {
   // tracks it. Returns { m, r } or null when it is not claimable / already paid.
   const payMission = (missionId, counts) => {
     const claims = userRef.current.missionClaims;
-    const st = buildMissionStates(activeMissions, counts, claims);
+    const st = buildMissionStates(activeMissions, counts, claims, userRef.current.missionBase);
     const s = st.find(x => x.mission.id === missionId);
     const next = recordMissionClaim(claims, missionId, st);
     if (!s || !next || casinoClaimedRef.current.has(missionId)) return null;
@@ -2234,6 +2264,7 @@ export default function GamificationPlatform() {
     const m = s.mission;
     const r = cleanReward(m.reward);
     const day = lusakaDay();
+    const at = new Date().toISOString();
     setUser(u => {
       const ids = Array.isArray(u.missionClaims) ? u.missionClaims : [];
       if (ids.includes(m.id)) return u;
@@ -2244,6 +2275,8 @@ export default function GamificationPlatform() {
         rubies: (u.rubies || 0) + (r.rubies || 0),
         diamonds: (u.diamonds || 0) + (r.diamonds || 0),
         missionClaims: [...ids, m.id],
+        // the next rung of this ladder counts from the count at this claim (no spill-over)
+        missionBase: recordMissionBase(u.missionBase, m.track, s.total, at),
         ...(m.xp ? (() => { const t = addMissionXp(u.xpToday, m.xp, day).xpToday; return { xpToday: t, xpDays: recordXpDay(u.xpDays, t) }; })() : null),
       };
     });
@@ -2263,8 +2296,8 @@ export default function GamificationPlatform() {
       }
       const paid = payMission(mission.id, counts);
       if (!paid) {
-        const s = buildMissionStates(activeMissions, counts, user.missionClaims).find(x => x.mission.id === mission.id);
-        showNotif(s && !s.reached ? `${(s.mission.target - s.count).toLocaleString('en-US')} more to go` : 'Already collected', 'error');
+        const s = buildMissionStates(activeMissions, counts, user.missionClaims, user.missionBase).find(x => x.mission.id === mission.id);
+        showNotif(s && !s.claimed && !s.current ? 'Finish the mission before it first' : s && !s.reached ? `${(s.mission.target - s.count).toLocaleString('en-US')} more to go` : 'Already collected', 'error');
         return;
       }
       flushTrack();
@@ -2349,7 +2382,7 @@ export default function GamificationPlatform() {
     const u = userRef.current;
     const src = fresh || (casino.status === 'ok' ? casino : null);
     const counts = missionCounts({ casinoTotal: src?.total || 0, rows: seasonRowsRef.current || [], since: src?.since || null, xpDays: u.xpDays, xpToday: u.xpToday });
-    const states = buildMissionStates(activeMissions, counts, u.missionClaims);
+    const states = buildMissionStates(activeMissions, counts, u.missionClaims, u.missionBase);
     const parts = { casino: 0, sports: 0, deposit: 0 };
     let bar = 0, hustle = 0;
     for (const r of welcomeXpRef.current.rows) {

@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   BWANABET_MISSIONS, CASINO_MISSIONS, MISSION_TRACKS, missionTerms, missionCounts, missionStates,
-  countClaimable, recordMissionClaim, missionBoard,
+  countClaimable, recordMissionClaim, missionBoard, recordMissionBase, migrateMissionBases, baseOf,
 } from '../lib/missions/ladder.mjs';
 import { MISSION_XP } from '../lib/xp/sources.mjs';
 import { applyMissionOverrides } from '../lib/config/missions.mjs';
@@ -60,17 +60,89 @@ test('each mission is collected once, ever (no daily reset)', () => {
   const counts = { casino: 120, sports: 0, deposits: 1, logins: 0 };
   let claims = [];
   let st = missionStates(BWANABET_MISSIONS, counts, claims);
-  assert.equal(countClaimable(st), 4, 'starter, regular, pro + first deposit');
+  assert.equal(countClaimable(st), 2, 'only the current rungs: casino starter + first deposit');
   claims = recordMissionClaim(claims, 'casino_starter', st);
   assert.deepEqual(claims, ['casino_starter']);
-  st = missionStates(BWANABET_MISSIONS, counts, claims);
+  st = missionStates(BWANABET_MISSIONS, counts, claims, { casino: { count: 120 } });
   assert.equal(recordMissionClaim(claims, 'casino_starter', st), null, 'never twice');
+  assert.equal(recordMissionClaim(claims, 'casino_regular', st), null, 'counts from zero after the claim');
   assert.equal(recordMissionClaim(claims, 'casino_legend', st), null, 'not reached');
   assert.equal(recordMissionClaim(claims, 'nope', st), null);
 });
 
+const get = (st, id) => st.find(s => s.mission.id === id);
+
+test('no spill-over: 200 rounds at once complete only the first rung', () => {
+  const st = missionStates(BWANABET_MISSIONS, { casino: 200 }, []);
+  assert.deepEqual(st.filter(s => s.claimable).map(s => s.mission.id), ['casino_starter']);
+  assert.equal(get(st, 'casino_starter').progress, 20);
+  for (const id of ['casino_regular', 'casino_pro', 'casino_legend']) {
+    const s = get(st, id);
+    assert.equal(s.reached, false, id);
+    assert.equal(s.progress, 0, id);
+    assert.equal(s.current, false, id);
+  }
+  assert.equal(get(st, 'casino_starter').total, 200);
+});
+
+test('after a claim the next rung counts from zero; the excess is discarded at the next claim', () => {
+  let claims = recordMissionClaim([], 'casino_starter', missionStates(BWANABET_MISSIONS, { casino: 200 }, []));
+  let bases = recordMissionBase(null, 'casino', 200, '2026-10-21T10:00:00Z');
+  assert.deepEqual(bases, { casino: { count: 200, at: '2026-10-21T10:00:00Z' } });
+  let st = missionStates(BWANABET_MISSIONS, { casino: 200 }, claims, bases);
+  assert.equal(get(st, 'casino_regular').progress, 0);
+  assert.equal(get(st, 'casino_regular').current, true);
+  assert.equal(countClaimable(st), 0);
+  // 60 new rounds: 50 / 50, claimable; the other rungs stay locked
+  st = missionStates(BWANABET_MISSIONS, { casino: 260 }, claims, bases);
+  assert.equal(get(st, 'casino_regular').count, 60);
+  assert.equal(get(st, 'casino_regular').progress, 50);
+  assert.equal(get(st, 'casino_regular').claimable, true);
+  assert.equal(get(st, 'casino_pro').progress, 0);
+  claims = recordMissionClaim(claims, 'casino_regular', st);
+  bases = recordMissionBase(bases, 'casino', 260);
+  st = missionStates(BWANABET_MISSIONS, { casino: 260 }, claims, bases);
+  assert.equal(get(st, 'casino_pro').progress, 0, 'the 10 extra rounds do not carry over');
+  // plain-number bases are read too
+  assert.equal(get(missionStates(BWANABET_MISSIONS, { casino: 300 }, claims, { casino: 260 }), 'casino_pro').progress, 40);
+});
+
+test('a CRM correction below the base reads 0, never negative', () => {
+  const st = missionStates(BWANABET_MISSIONS, { casino: 150 }, ['casino_starter'], { casino: { count: 200 } });
+  assert.equal(get(st, 'casino_regular').count, 0);
+  assert.equal(get(st, 'casino_regular').progress, 0);
+  assert.equal(get(st, 'casino_regular').claimable, false);
+});
+
+test('every ladder, login days included, follows the same rule', () => {
+  const st = missionStates(BWANABET_MISSIONS, { sports: 50, deposits: 9, logins: 20 }, ['loyal_fan'], { logins: { count: 10 } });
+  assert.deepEqual(st.filter(s => s.claimable).map(s => s.mission.id), ['sports_starter', 'deposit_first', 'loyal_regular']);
+  assert.equal(get(st, 'loyal_regular').progress, 7);
+  assert.equal(get(st, 'loyal_pro').progress, 0);
+});
+
+test('migration: claims without a base get base = the current count (no retro spill), only on fresh tracks', () => {
+  const counts = { casino: 700, sports: 40, deposits: 4, logins: 12 };
+  const claims = ['casino_starter', 'casino_regular', 'sports_starter'];
+  // before the base is recorded the claimed ladders already read 0 progress
+  const pre = missionStates(BWANABET_MISSIONS, counts, claims);
+  assert.equal(get(pre, 'casino_pro').progress, 0);
+  assert.equal(get(pre, 'sports_regular').progress, 0);
+  assert.equal(get(pre, 'deposit_first').claimable, true, 'no claim yet: counts from the anchor');
+  // sports feed not fresh yet: only casino (+ logins, which has no claim) are considered
+  const next = migrateMissionBases(null, claims, counts, BWANABET_MISSIONS, ['casino', 'logins'], 'T');
+  assert.deepEqual(next, { casino: { count: 700, at: 'T' } });
+  const all = migrateMissionBases(next, claims, counts, BWANABET_MISSIONS, ['casino', 'sports', 'deposits', 'logins'], 'T2');
+  assert.deepEqual(all, { casino: { count: 700, at: 'T' }, sports: { count: 40, at: 'T2' } });
+  assert.equal(migrateMissionBases(all, claims, counts, BWANABET_MISSIONS, ['casino', 'sports', 'deposits', 'logins']), null, 'nothing to do');
+  assert.equal(migrateMissionBases(null, [], counts, BWANABET_MISSIONS, ['casino']), null, 'no claims = keep counting from the anchor');
+  const after = missionStates(BWANABET_MISSIONS, { ...counts, casino: 760 }, claims, all);
+  assert.equal(get(after, 'casino_pro').progress, 60);
+  assert.equal(baseOf(all, 'deposits'), null);
+});
+
 test('the board: one current mission per ladder (claimable first), collected as bars', () => {
-  const st = missionStates(BWANABET_MISSIONS, { casino: 60, sports: 1, deposits: 0, logins: 0 }, ['casino_starter']);
+  const st = missionStates(BWANABET_MISSIONS, { casino: 60, sports: 1, deposits: 0, logins: 0 }, ['casino_starter'], { casino: { count: 10 } });
   const b = missionBoard(st);
   assert.deepEqual(b.current.map(s => s.mission.id), ['casino_regular', 'sports_starter', 'deposit_first', 'loyal_fan']);
   assert.equal(b.current[0].claimable, true);
