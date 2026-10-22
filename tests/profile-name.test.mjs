@@ -17,9 +17,9 @@ test('validateName rejects with a short reason', () => {
     ['', 'Enter a name'], ['   ', 'Enter a name'], [null, 'Enter a name'], [42, 'Enter a name'],
     ['A', 'Use at least 2 characters'],
     ['A'.repeat(17), 'Use at most 16 characters'],
-    ['bad<script>', 'Use letters, numbers, spaces, . _ or -'],
-    ['hi!', 'Use letters, numbers, spaces, . _ or -'],
-    ['emoji😀', 'Use letters, numbers, spaces, . _ or -'],
+    ['bad<script>', 'Use letters A–Z, numbers, spaces, . _ or -'],
+    ['hi!', 'Use letters A–Z, numbers, spaces, . _ or -'],
+    ['emoji😀', 'Use letters A–Z, numbers, spaces, . _ or -'],
     ['...', 'Include a letter or number'],
   ]) {
     const v = validateName(raw);
