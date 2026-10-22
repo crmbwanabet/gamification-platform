@@ -2141,6 +2141,7 @@ export default function GamificationPlatform() {
           balance={user.kwacha}
           onSpend={spendStake}
           onRefund={(n) => { refundStake(n); showNotif(`Round void — ${n} Coins returned`); }}
+          onLose={(stake) => trackMission('gamePlayed', { gameId: 'njuka', coinsWon: 0, stake, payout: 0, gamesSet: gamesPlayedToday })}
           onWin={(n, meta) => {
             addCoins(n);
             showNotif(`🎉 +${meta?.net ?? n} Coins!`);

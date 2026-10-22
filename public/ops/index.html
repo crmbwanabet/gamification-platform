@@ -160,6 +160,7 @@ dialog.small { max-width: 420px; }
   var TABS = [
     { id: 'report', label: 'Report', perm: 'see.report' },
     { id: 'coins', label: 'Coins & prizes', perm: 'see.coins' },
+    { id: 'games', label: 'Games', perm: 'see.games' },
     { id: 'transactions', label: 'Transactions', perm: 'see.txns' },
     { id: 'trends', label: 'Trends', perm: 'see.trends' },
     { id: 'players', label: 'Players', perm: 'see.players' },
@@ -283,7 +284,7 @@ dialog.small { max-width: 420px; }
     f.innerHTML = fields.map(function (x) {
       if (x.type === 'select') return '<div class="f"><label for="fd_' + x.id + '">' + esc(x.label) + '</label><select id="fd_' + x.id + '">' + x.options.map(function (o) { return '<option value="' + esc(o[0]) + '"' + (o[0] === x.value ? ' selected' : '') + '>' + esc(o[1]) + '</option>'; }).join('') + '</select></div>';
       if (x.type === 'ticks') return '<div class="f"><label>' + esc(x.label) + '</label><div class="ticks">' + x.options.map(function (o) { return '<label><input type="checkbox" name="fd_' + x.id + '" value="' + esc(o.id) + '"' + ((x.value || []).indexOf(o.id) >= 0 ? ' checked' : '') + '> ' + esc(o.label) + '</label>'; }).join('') + '</div></div>';
-      return '<div class="f"><label for="fd_' + x.id + '">' + esc(x.label) + '</label><input type="' + (x.type || 'text') + '" id="fd_' + x.id + '" autocomplete="' + (x.ac || 'off') + '" value="' + esc(x.value || '') + '"></div>';
+      return '<div class="f"><label for="fd_' + x.id + '">' + esc(x.label) + '</label><input type="' + (x.type || 'text') + '" id="fd_' + x.id + '" autocomplete="' + (x.ac || 'off') + '" spellcheck="false" data-lpignore="true" value="' + esc(x.value || '') + '"></div>';
     }).join('') + '<div class="err" id="fdErr" role="alert"></div><button class="btn" type="submit">' + esc(submitLabel) + '</button>';
     f.onsubmit = function (e) {
       e.preventDefault();
@@ -315,7 +316,7 @@ dialog.small { max-width: 420px; }
       var byId = {}; d.items.forEach(function (u) { byId[u.id] = u; });
       $('uNew').onclick = function () {
         formDialog('New login', 'Masters can do everything; limited logins only what you tick.', [
-          { id: 'username', label: 'Username' }, { id: 'password', label: 'Password (12+ characters)', type: 'password', ac: 'new-password' },
+          { id: 'username', label: 'Username' }, { id: 'password', label: 'Password (12+ characters, shown so you can pass it on)', type: 'text', ac: 'off' },
           { id: 'role', label: 'Role', type: 'select', value: 'limited', options: [['limited', 'Limited'], ['master', 'Master']] },
           { id: 'permissions', label: 'May see / do (limited only)', type: 'ticks', options: d.sections.concat(d.actions), value: ['see.report', 'see.players'] },
         ], 'Create login', function (v) { return api('users/create', v).then(function () { toast('Login created.'); openUsers(); }); });
@@ -324,7 +325,7 @@ dialog.small { max-width: 420px; }
         a.onclick = function () {
           var u = byId[a.getAttribute('data-id')], k = a.getAttribute('data-u');
           if (k === 'toggle') return api('users/update', { id: u.id, active: !u.active }).then(function () { toast(u.active ? 'Switched off.' : 'Switched on.'); openUsers(); }).catch(function (e) { toast(e.message); });
-          if (k === 'pw') return formDialog('Set password for ' + u.username, 'Signs that login out everywhere.', [{ id: 'password', label: 'New password (12+ characters)', type: 'password', ac: 'new-password' }], 'Set password', function (v) { return api('users/password', { id: u.id, password: v.password }).then(function () { toast('Password set.'); }); });
+          if (k === 'pw') return formDialog('Set password for ' + u.username, 'Signs that login out everywhere.', [{ id: 'password', label: 'New password (12+ characters, shown so you can pass it on)', type: 'text', ac: 'off' }], 'Set password', function (v) { return api('users/password', { id: u.id, password: v.password }).then(function () { toast('Password set.'); }); });
           formDialog('Edit ' + u.username, '', [
             { id: 'role', label: 'Role', type: 'select', value: u.role, options: [['limited', 'Limited'], ['master', 'Master']] },
             { id: 'permissions', label: 'May see / do (limited only)', type: 'ticks', options: d.sections.concat(d.actions), value: u.permissions },
@@ -435,6 +436,7 @@ dialog.small { max-width: 420px; }
     var f = filters(), tab = S.tab, path;
     if (tab === 'report') path = 'report?' + qs({ from: f.from, to: f.to, rows: f.rows, band: f.band, q: f.q });
     else if (tab === 'coins') path = 'coins?' + qs({ from: f.from, to: f.to });
+    else if (tab === 'games') path = 'games?' + qs({ from: f.from, to: f.to });
     else if (tab === 'transactions') path = 'transactions?' + qs({ from: f.from, to: f.to, status: f.status, q: f.q });
     else if (tab === 'trends') path = 'trends?' + qs({ from: f.from, to: f.to });
     else if (tab === 'players') path = 'players?' + qs({ q: f.q, band: f.band });
@@ -449,6 +451,7 @@ dialog.small { max-width: 420px; }
     var v = $('view');
     if (S.tab === 'report') v.innerHTML = viewReport(d);
     if (S.tab === 'coins') v.innerHTML = viewCoins(d);
+    if (S.tab === 'games') v.innerHTML = viewGames(d);
     if (S.tab === 'transactions') v.innerHTML = viewTx(d);
     if (S.tab === 'trends') v.innerHTML = viewTrends(d);
     if (S.tab === 'players') v.innerHTML = viewPlayers(d);
@@ -490,6 +493,8 @@ dialog.small { max-width: 420px; }
       { k: 'active_minutes', label: 'Minutes', n: 1, sum: 1, fmt: function (r) { return mins(r.active_minutes); }, fmtSum: mins },
       { k: 'daily_claims', label: 'Daily claims', n: 1, sum: 1, fmt: function (r) { return int(r.daily_claims); } },
       { k: 'missions', label: 'Missions', n: 1, sum: 1, fmt: function (r) { return int(r.missions); } },
+      { k: 'game_sessions', label: 'Game sessions', n: 1, sum: 1, fmt: function (r) { return int(r.game_sessions); } },
+      { k: 'games', label: 'Games', n: 1, fmt: function (r) { return int(r.games); } },
       { k: 'rounds', label: 'Game rounds', n: 1, sum: 1, fmt: function (r) { return int(r.rounds); } },
       { k: 'staked', label: 'Staked', n: 1, sum: 1, fmt: function (r) { return int(r.staked); } },
       { k: 'paid', label: 'Paid out', n: 1, sum: 1, fmt: function (r) { return int(r.paid); } },
@@ -534,6 +539,24 @@ dialog.small { max-width: 420px; }
       '<tr><td>Rejected (refunded in coins)</td><td class="n">' + kw(s.kwachaRejected) + '</td></tr>' +
       '<tr><td>World Cup prize claims</td><td class="n">' + int(s.prizes) + '</td></tr>' +
       '</tbody></table></div>';
+  }
+
+  function viewGames(d) {
+    var w = d.window;
+    var rows = d.items.map(function (r) { return Object.assign({ label: GAME_LABEL[r.game] || r.game, net: r.staked - r.paid, perSession: r.sessions ? r.rounds / r.sessions : 0 }, r); });
+    return '<h2 class="sec">Games played · ' + day(w.from) + (w.to !== w.from ? ' – ' + day(w.to) : '') + '</h2>' + table('games', [
+      { k: 'label', label: 'Game' },
+      { k: 'sessions', label: 'Sessions', n: 1, sum: 1, fmt: function (r) { return int(r.sessions); } },
+      { k: 'players', label: 'Players', n: 1, fmt: function (r) { return int(r.players); } },
+      { k: 'rounds', label: 'Rounds', n: 1, sum: 1, fmt: function (r) { return int(r.rounds); } },
+      { k: 'perSession', label: 'Rounds / session', n: 1, fmt: function (r) { return r.sessions ? (r.rounds / r.sessions).toFixed(1) : '—'; } },
+      { k: 'staked', label: 'Staked', n: 1, sum: 1, fmt: function (r) { return int(r.staked); } },
+      { k: 'paid', label: 'Paid out', n: 1, sum: 1, fmt: function (r) { return int(r.paid); } },
+      { k: 'net', label: 'Net to house', n: 1, sum: 1, fmt: function (r) { return signed(r.net); } },
+      { k: 'rtp', label: 'RTP', n: 1, nosort: 1, fmt: function (r) { return r.game === 'njuka' && r.staked < r.paid ? '<span class="mut" title="Njuka recorded only winning rounds before 22 Oct">n/a</span>' : rtpCell(r.staked, r.paid); } },
+      { k: 'last_played', label: 'Last played', fmt: function (r) { return dt(r.last_played); }, sortVal: function (r) { return r.last_played || ''; } },
+    ], rows, { sort: { k: 'sessions', dir: 'desc' }, totals: numTotals({ label: function (rs) { return 'TOTALS · ' + rs.length + ' games'; }, perSession: function (rs) { var s = sum(rs, 'sessions'); return s ? (sum(rs, 'rounds') / s).toFixed(1) : '—'; }, net: function (rs) { return signed(sum(rs, 'staked') - sum(rs, 'paid')); }, rtp: function (rs) { return rtpCell(sum(rs, 'staked'), sum(rs, 'paid')); } }), empty: 'No games played in this window.' }) +
+      '<p class="note">A session = a player opened the game. Players = distinct players who opened or played it. Coins only, never real money; target RTP 98%. Njuka Boss recorded only its winning rounds before 22 Oct 2026, so its older figures overstate RTP.</p>';
   }
 
   function txStatus(s) { return s === 'credited' ? '<span class="pill ok">Credited</span>' : s === 'rejected' ? '<span class="pill bad">Rejected</span>' : '<span class="pill warn">' + esc(s || 'pending') + '</span>'; }
@@ -620,6 +643,16 @@ dialog.small { max-width: 420px; }
         ['Mini-game rounds', int(p.gamesPlayed)], ['First seen', dt(p.firstSeen)], ['Reward start (first daily)', dt(p.firstDaily)], ['Last seen', dt(p.lastSeen)],
       ].map(function (k) { return '<div><small>' + esc(k[0]) + '</small><b>' + k[1] + '</b></div>'; }).join('') + '</div>' +
         (p.missions.length ? '<p class="note">Missions: ' + esc(p.missions.join(', ')) + '</p>' : '');
+      html += '<h2 class="sec">Mini-games (all time)</h2>' + table('pgames', [
+        { k: 'game', label: 'Game', fmt: function (r) { return esc(GAME_LABEL[r.game] || r.game); } },
+        { k: 'sessions', label: 'Sessions', n: 1, sum: 1, fmt: function (r) { return int(r.sessions); } },
+        { k: 'rounds', label: 'Rounds', n: 1, sum: 1, fmt: function (r) { return int(r.rounds); } },
+        { k: 'staked', label: 'Staked', n: 1, sum: 1, fmt: function (r) { return int(r.staked); } },
+        { k: 'paid', label: 'Paid out', n: 1, sum: 1, fmt: function (r) { return int(r.paid); } },
+        { k: 'rtp', label: 'RTP', n: 1, nosort: 1, fmt: function (r) { return rtpCell(r.staked, r.paid); } },
+        { k: 'won_net', label: 'Net won', n: 1, sum: 1, fmt: function (r) { return signed(r.won_net); } },
+        { k: 'last_played', label: 'Last played', fmt: function (r) { return dt(r.last_played); } },
+      ], d.games || [], { sort: { k: 'sessions', dir: 'desc' }, totals: numTotals({ game: function () { return 'TOTALS'; }, rtp: function (rows) { return rtpCell(sum(rows, 'staked'), sum(rows, 'paid')); } }), empty: 'Has not played a mini-game.' });
       html += '<h2 class="sec">Real bwanabet play (CRM, last 30 days)</h2>' + table('pbets', [
         { k: 'day', label: 'Day', fmt: function (r) { return day(r.day); } },
         { k: 'casino_stake', label: 'Casino stake', n: 1, sum: 1, fmt: function (r) { return kw(r.casino_stake); }, fmtSum: kw },

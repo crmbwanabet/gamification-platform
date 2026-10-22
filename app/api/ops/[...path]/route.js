@@ -86,6 +86,13 @@ async function coins(sp) {
   return { window: w, rows: (data || []).map(r => ({ ...r, coins: num(r.coins), staked: r.staked == null ? null : num(r.staked), paid: r.paid == null ? null : num(r.paid) })), shop };
 }
 
+async function games(sp) {
+  const w = windowOf(sp);
+  const { data, error } = await db.rpc('ops_games', { p_from: w.fromTs, p_to: w.toTs });
+  if (error) throw error;
+  return { window: w, items: (data || []).map(r => ({ ...r, staked: num(r.staked), paid: num(r.paid) })) };
+}
+
 async function transactions(sp) {
   const w = windowOf(sp);
   let qy = db.from('purchases').select('id, created_at, uid, item_name, status, price_kwacha, price_emeralds, price_rubies, price_diamonds, payout_kwacha, is_money, prize_key, handled_by, handled_at, telegram_error')
@@ -119,13 +126,14 @@ async function players(sp) {
 async function player(sp) {
   const uid = (sp.get('uid') || '').trim();
   if (!/^\d+$/.test(uid)) return null;
-  const [{ data: p }, { data: sessions }, { data: events }, { data: bets }, { data: buys }, { data: preds }] = await Promise.all([
+  const [{ data: p }, { data: sessions }, { data: events }, { data: bets }, { data: buys }, { data: preds }, { data: gameRows }] = await Promise.all([
     db.from('profiles').select('bwanabet_user_id, xp, kwacha, emeralds, rubies, diamonds, created_at, updated_at, last_seen_at, first_login_at, first_daily_at, state').eq('bwanabet_user_id', Number(uid)).maybeSingle(),
     db.from('play_sessions').select('started_at, last_ping_at, active_seconds, pings, ended_at, verified').eq('uid', uid).order('started_at', { ascending: false }).limit(20),
     db.from('activity_events').select('created_at, type, game_id, amount, meta').eq('uid', uid).order('created_at', { ascending: false }).limit(60),
     db.from('player_activity').select('day, casino_stake, casino_rounds, sports_stake, sports_slips, deposits_amount, deposits_count, withdrawals_amount, crm_synced_at').eq('user_id', uid).order('day', { ascending: false }).limit(30),
     db.from('purchases').select('created_at, item_name, status, price_kwacha, payout_kwacha, prize_key').eq('uid', uid).order('created_at', { ascending: false }).limit(20),
     db.from('predictions').select('created_at, home, away, pick, outcome, claimed_at').eq('user_id', uid).order('created_at', { ascending: false }).limit(20),
+    db.rpc('ops_player_games', { p_uid: uid }),
   ]);
   const s = (p && p.state && typeof p.state === 'object') ? p.state : {};
   return {
@@ -138,6 +146,7 @@ async function player(sp) {
       gamesPlayed: num(s.gamesPlayed), firstSeen: p.created_at, lastSeen: p.last_seen_at || p.updated_at, firstDaily: p.first_daily_at,
     } : null,
     sessions: sessions || [], events: events || [], bets: bets || [], purchases: buys || [], predictions: preds || [],
+    games: (gameRows || []).map(r => ({ ...r, staked: num(r.staked), paid: num(r.paid), won_net: num(r.won_net) })),
   };
 }
 
@@ -264,7 +273,7 @@ async function activeMasters() {
 
 // ---------------------------------------------------------------- router --
 
-const READS = { report, coins, transactions, trends, players, activity, health, users,
+const READS = { report, coins, games, transactions, trends, players, activity, health, users,
   player: async (sp) => (await player(sp)) || { error: 'bad_uid' },
   'activity/verify': verifyActivity,
   me: null,

@@ -52,7 +52,7 @@ const SEAT_LAYOUTS = {
 const SEAT_HUES = ['#8e6fd8', '#3f9a7b', '#c96f4a'];
 const GOLD_EDGE = 'rgba(230,173,74,.45)';
 
-export default function NjukaGame({ onClose, closing, onWin, onSpend, onRefund, balance = 0 }) {
+export default function NjukaGame({ onClose, closing, onWin, onSpend, onRefund, onLose, balance = 0 }) {
   const [screen, setScreen] = useState('stake');   // 'stake' | 'table'
   const [stake, setStakeState] = useState(10);
   const [seats, setSeatsState] = useState(4);
@@ -361,6 +361,7 @@ export default function NjukaGame({ onClose, closing, onWin, onSpend, onRefund, 
       setBanner({ title: 'NJUKA! You win 🎉', sub: `+${profit} coins — you ${how}`, cards, kind: 'win' });
     } else {
       setSessionNet(n => n - S.stake);
+      if (onLose) onLose(S.stake); // tracking only (ops console: staked / RTP)
       setBanner({ title: `${botName(seat)} wins`, sub: `${botName(seat)} ${how} — your ${S.stake} coin stake is gone`, cards, kind: 'lose' });
     }
     rerender();
