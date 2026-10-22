@@ -14,9 +14,10 @@ const SessionContext = createContext({ status: 'idle', profile: null, verified: 
 export const useSession = () => useContext(SessionContext);
 
 // The live operator site is bwanabet.co.zm (Zambia); .com kept for any legacy
-// embed. Override at build time with NEXT_PUBLIC_ALLOWED_PARENT_ORIGINS.
+// embed; Playmaster's dev + staging sites (owner 2026-10-22) so their testers
+// are logged in too. Override at build time with NEXT_PUBLIC_ALLOWED_PARENT_ORIGINS.
 const ALLOWED_ORIGINS = (process.env.NEXT_PUBLIC_ALLOWED_PARENT_ORIGINS ||
-  'https://bwanabet.co.zm,https://www.bwanabet.co.zm,https://bwanabet.com,https://www.bwanabet.com')
+  'https://bwanabet.co.zm,https://www.bwanabet.co.zm,https://bwanabet.com,https://www.bwanabet.com,https://dev-bwanabet.energaming.services,https://staging-bwanabet.energaming.services')
   .split(',').map((s) => s.trim()).filter(Boolean);
 
 export default function SessionProvider({ children }) {

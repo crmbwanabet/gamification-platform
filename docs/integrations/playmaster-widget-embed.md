@@ -67,8 +67,9 @@ Leave out `launcher: false` to have both the floating button and your own button
 - The `token` cookie must stay readable by page JavaScript on the page that loads the script
   (it is today).
 - The site must be served from one of the domains our app accepts the login from:
-  `bwanabet.co.zm`, `www.bwanabet.co.zm`, `bwanabet.com`, `www.bwanabet.com`. Another domain
-  (e.g. a staging site) must be added on our side first. Tell us the address.
+  `bwanabet.co.zm`, `www.bwanabet.co.zm`, `bwanabet.com`, `www.bwanabet.com`, and the test sites
+  `dev-bwanabet.energaming.services` and `staging-bwanabet.energaming.services`. Any other domain
+  must be added on our side first. Tell us the address.
 
 ## 4. How to check it works
 
