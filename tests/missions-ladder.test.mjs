@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   BWANABET_MISSIONS, CASINO_MISSIONS, MISSION_TRACKS, missionTerms, missionCounts, missionStates,
-  countClaimable, recordMissionClaim, missionBoard, recordMissionBase, migrateMissionBases, baseOf,
+  countClaimable, recordMissionClaim, missionBoard, recordMissionBase, migrateMissionBases, baseOf, loginStreak,
 } from '../lib/missions/ladder.mjs';
 import { MISSION_XP } from '../lib/xp/sources.mjs';
 import { applyMissionOverrides } from '../lib/config/missions.mjs';
@@ -40,7 +40,9 @@ test('terms in plain capitals', () => {
   assert.equal(missionTerms(byId.sports_starter), 'PLACE 3 SPORTS BETS AT ODDS 1.5+');
   assert.equal(missionTerms(byId.deposit_first), 'MAKE A DEPOSIT ON BWANABET');
   assert.equal(missionTerms(byId.deposit_pro), 'DEPOSIT ON 7 DIFFERENT DAYS');
-  assert.equal(missionTerms(byId.loyal_fan), 'LOG IN ON 3 DAYS');
+  assert.equal(missionTerms(byId.loyal_fan), 'LOG IN 3 DAYS IN A ROW');
+  assert.equal(missionTerms(byId.loyal_regular), 'LOG IN 7 DAYS IN A ROW');
+  assert.equal(missionTerms(byId.loyal_pro), 'LOG IN ON 14 DAYS');
 });
 
 test('counts start at the first-login day', () => {
@@ -52,8 +54,9 @@ test('counts start at the first-login day', () => {
   ];
   const xpDays = { '2026-10-19': { daily: 20 }, '2026-10-20': { daily: 20 }, '2026-10-21': { daily: 0, games: 5 } };
   const c = missionCounts({ casinoTotal: 512, rows, since: '2026-10-20', xpDays, xpToday: { day: '2026-10-22', daily: 20 } });
-  assert.deepEqual(c, { casino: 512, sports: 7, deposits: 2, logins: 2 });
-  assert.deepEqual(missionCounts(), { casino: 0, sports: 0, deposits: 0, logins: 0 });
+  assert.deepEqual(c, { casino: 512, sports: 7, deposits: 2, logins: 2, loginDays: ['2026-10-20', '2026-10-22'], today: c.today });
+  const empty = missionCounts({ today: '2026-10-22' });
+  assert.deepEqual(empty, { casino: 0, sports: 0, deposits: 0, logins: 0, loginDays: [], today: '2026-10-22' });
 });
 
 test('each mission is collected once, ever (no daily reset)', () => {
@@ -115,7 +118,9 @@ test('a CRM correction below the base reads 0, never negative', () => {
 });
 
 test('every ladder, login days included, follows the same rule', () => {
-  const st = missionStates(BWANABET_MISSIONS, { sports: 50, deposits: 9, logins: 20 }, ['loyal_fan'], { logins: { count: 10 } });
+  // loyal_regular (7 IN A ROW) counts the run after loyal_fan's collection day
+  const run = ['2026-10-10', '2026-10-11', '2026-10-12', '2026-10-13', '2026-10-14', '2026-10-15', '2026-10-16', '2026-10-17'];
+  const st = missionStates(BWANABET_MISSIONS, { sports: 50, deposits: 9, logins: 20, loginDays: run, today: '2026-10-17' }, ['loyal_fan'], { logins: { count: 10, at: '2026-10-10T08:00:00Z' } });
   assert.deepEqual(st.filter(s => s.claimable).map(s => s.mission.id), ['sports_starter', 'deposit_first', 'loyal_regular']);
   assert.equal(get(st, 'loyal_regular').progress, 7);
   assert.equal(get(st, 'loyal_pro').progress, 0);
@@ -160,4 +165,27 @@ test('dashboard overrides still apply per id', () => {
   const king = out.find(m => m.id === 'casino_king');
   assert.equal(king.target, 9000);
   assert.equal(king.reward.kwacha, 9000);
+});
+
+test('the first two loyalty rungs need the days IN A ROW', () => {
+  assert.equal(loginStreak(['2026-10-20', '2026-10-21', '2026-10-22'], '2026-10-22'), 3);
+  assert.equal(loginStreak(['2026-10-20', '2026-10-21'], '2026-10-22'), 2, 'today not claimed yet: the run still stands');
+  assert.equal(loginStreak(['2026-10-19', '2026-10-20'], '2026-10-22'), 0, 'a missed day resets');
+  assert.equal(loginStreak(['2026-10-18', '2026-10-20', '2026-10-21'], '2026-10-21'), 2, 'a gap breaks the run');
+  assert.equal(loginStreak(['2026-10-20', '2026-10-21', '2026-10-22'], '2026-10-22', '2026-10-20'), 2, 'only days after the last collection');
+  assert.equal(loginStreak(['2026-10-31', '2026-11-01'], '2026-11-01'), 2, 'across a month end');
+
+  const counts = (days, today) => missionCounts({ today, xpDays: Object.fromEntries(days.map(d => [d, { daily: 20 }])) });
+  const fan = (c, claims = [], bases = null) => missionStates(BWANABET_MISSIONS, c, claims, bases).find(s => s.mission.id === (claims.length ? 'loyal_regular' : 'loyal_fan'));
+  // 3 days but not in a row: not reached
+  assert.equal(fan(counts(['2026-10-15', '2026-10-17', '2026-10-19'], '2026-10-19')).progress, 1);
+  assert.equal(fan(counts(['2026-10-17', '2026-10-18', '2026-10-19'], '2026-10-19')).claimable, true);
+  // loyal_regular counts from the day after loyal_fan was collected (Lusaka day of `at`)
+  const days = ['2026-10-17', '2026-10-18', '2026-10-19', '2026-10-20', '2026-10-21'];
+  const reg = fan(counts(days, '2026-10-21'), ['loyal_fan'], { logins: { count: 3, at: '2026-10-19T10:00:00Z' } });
+  assert.equal(reg.progress, 2);
+  // from 14 days up, any days count (cumulative since the last collection)
+  const pro = missionStates(BWANABET_MISSIONS, { logins: 20, loginDays: [], today: '2026-10-22' }, ['loyal_fan', 'loyal_regular'], { logins: { count: 10, at: 'x' } })
+    .find(s => s.mission.id === 'loyal_pro');
+  assert.equal(pro.progress, 10);
 });

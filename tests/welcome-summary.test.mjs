@@ -19,7 +19,7 @@ test('away missions = claimable on the activity ladders, minus those already cla
 });
 
 test('YOU GOT: the away missions (one per ladder) then the XP from bets; never the daily reward', () => {
-  const st = states({ casino: 260, deposits: 1, logins: 3 }, ['casino_starter'], { casino: { count: 180 } });
+  const st = states({ casino: 260, deposits: 1, logins: 3, loginDays: ['2026-10-20', '2026-10-21', '2026-10-22'], today: '2026-10-22' }, ['casino_starter'], { casino: { count: 180 } });
   const s = summary(st, { bets: { parts: { casino: 80, sports: 40, deposit: 0 }, bar: 100, hustle: 20 } });
   assert.deepEqual(s.got.map(g => g.key), ['mission:casino_regular', 'mission:deposit_first', 'bets']);
   assert.ok(!s.got.some(g => g.kind === 'daily'));
