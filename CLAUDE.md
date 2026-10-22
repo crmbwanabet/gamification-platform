@@ -2,7 +2,7 @@
 
 ## Project
 - **Stack**: Next.js 14 (App Router), Tailwind CSS, Supabase, Lucide React, three.js + cannon-es (lazy-loaded, Lucky Dice physics)
-- **Deploy**: Vercel — https://100xbet-gamification.vercel.app
+- **Deploy**: Vercel — https://bonus.bwanabet.dev (since 2026-10-22; the old https://100xbet-gamification.vercel.app still serves the same deployment). The wheel lives at https://wheel.bwanabet.dev. DNS: Cloudflare zone bwanabet.dev, A records `bonus` + `wheel` → 76.76.21.21, DNS only (grey cloud)
 - **Vercel account**: crmbwanabet-2500
 - **GitHub**: crmbwanabet/gamification-platform
 

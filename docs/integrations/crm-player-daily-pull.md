@@ -84,7 +84,7 @@ select cron.schedule(
   '35 * * * *',
   $$
   select net.http_post(
-    url := 'https://100xbet-gamification.vercel.app/api/cron/crm-pull',
+    url := 'https://bonus.bwanabet.dev/api/cron/crm-pull',
     headers := jsonb_build_object(
       'Content-Type', 'application/json',
       'Authorization', 'Bearer ' || (select decrypted_secret from vault.decrypted_secrets where name = 'crm_pull_cron_secret')
@@ -118,7 +118,7 @@ days, ~20k rows for 3 days today, more later). Each run does up to ~240 s and
 resumes from the saved cursor, so a big backfill just takes a few runs. To
 start it by hand after the deploy (from a shell with the secret in an env var,
 not typed into chat):
-`curl -s -X POST -H "Authorization: Bearer $CRON_SECRET" https://100xbet-gamification.vercel.app/api/cron/crm-pull`.
+`curl -s -X POST -H "Authorization: Bearer $CRON_SECRET" https://bonus.bwanabet.dev/api/cron/crm-pull`.
 Re-run it until `more` is false.
 
 To re-import from scratch: `delete from public.feed_cursors where name = 'crm_player_daily';`

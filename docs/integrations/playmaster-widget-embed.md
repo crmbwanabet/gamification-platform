@@ -7,8 +7,14 @@ Bonus Center full screen (desktop and phone). The red X inside closes it.
 ## 1. Add this line to every page (once, in `<head>` or before `</body>`)
 
 ```html
-<script src="https://100xbet-gamification.vercel.app/widget.js" defer></script>
+<script src="https://bonus.bwanabet.dev/widget.js" defer></script>
 ```
+
+**New address (2026-10-22):** the Bonus Center moved to `bonus.bwanabet.dev` and the wheel to
+`wheel.bwanabet.dev` (some networks block `vercel.app`). If the site already has the old line
+`https://100xbet-gamification.vercel.app/widget.js`, replace it with the line above. The old
+line keeps working meanwhile (same app, same data), so there is no deadline, but only one of
+the two lines may be on a page.
 
 That is all that is required. The player's login is picked up automatically from the site's
 existing `token` cookie, so a logged-in player is logged in to the Bonus Center too (no second
@@ -34,13 +40,13 @@ two wheels. What players see:
 A player who already used the spin today just sees the coin button, as before.
 
 Preview of the whole flow (test wheel, spins never pay):
-https://100xbet-gamification.vercel.app/preview.html
+https://bonus.bwanabet.dev/preview.html
 
 ## 2. Optional: open it from your own menu button instead of the floating coin
 
 ```html
 <script>window.BWANABET_BONUS = { launcher: false };</script>
-<script src="https://100xbet-gamification.vercel.app/widget.js" defer></script>
+<script src="https://bonus.bwanabet.dev/widget.js" defer></script>
 
 <!-- anywhere in your menu / header -->
 <a href="#" onclick="BwanaBetBonus.open(); return false;">Bonus Center</a>
@@ -52,7 +58,7 @@ Leave out `launcher: false` to have both the floating coin and your own button.
 ## 3. Requirements on the bwanabet site
 
 - **Content-Security-Policy** (only if the site sends one): allow
-  `https://100xbet-gamification.vercel.app` in `script-src`, `frame-src` and `img-src`.
+  `https://bonus.bwanabet.dev` in `script-src`, `frame-src` and `img-src`.
 - The `token` cookie must stay readable by page JavaScript on the page that loads the script
   (it is today).
 - The site must be served from one of the domains our app accepts the login from:

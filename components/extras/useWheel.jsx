@@ -15,7 +15,7 @@ import { Card } from '../redesign/RedesignShell';
 // A hidden iframe asks "is today's spin available?"; the Home card shows only
 // when it is, and opens the same iframe full screen.
 
-export const WHEEL_URL = process.env.NEXT_PUBLIC_WHEEL_URL || 'https://wheel-of-fortune-roan.vercel.app';
+export const WHEEL_URL = process.env.NEXT_PUBLIC_WHEEL_URL || 'https://wheel.bwanabet.dev';
 const WHEEL_ORIGIN = (() => { try { return new URL(WHEEL_URL).origin; } catch { return null; } })();
 
 const CSS = `

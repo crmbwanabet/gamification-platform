@@ -5,7 +5,7 @@ This page is for the bwanabet CRM developers. It describes how to send each play
 ## Endpoint
 
 ```
-POST https://100xbet-gamification.vercel.app/api/activity/casino-rounds
+POST https://bonus.bwanabet.dev/api/activity/casino-rounds
 Content-Type: application/json
 Authorization: Bearer <CASINO_FEED_SECRET>
 ```
@@ -51,7 +51,7 @@ If you have more than 1,000 players to send, split them into several requests. T
 ## Example
 
 ```bash
-curl -X POST https://100xbet-gamification.vercel.app/api/activity/casino-rounds \
+curl -X POST https://bonus.bwanabet.dev/api/activity/casino-rounds \
   -H "Authorization: Bearer $CASINO_FEED_SECRET" \
   -H "Content-Type: application/json" \
   -d '[{"userId":"123456","date":"2026-10-07","rounds":37},{"userId":"789012","date":"2026-10-07","rounds":212}]'

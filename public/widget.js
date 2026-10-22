@@ -1,7 +1,7 @@
 /* BwanaBet Bonus Center — embeddable widget for bwanabet (desktop + mobile).
  *
  * Usage on the host page (one line, every page, anywhere in <head> or <body>):
- *   <script src="https://100xbet-gamification.vercel.app/widget.js" defer></script>
+ *   <script src="https://bonus.bwanabet.dev/widget.js" defer></script>
  *
  * Optional settings, BEFORE that line:
  *   <script>window.BWANABET_BONUS = { launcher: false };</script>
@@ -30,8 +30,8 @@
   var APP_ORIGIN = (function () {
     // serve the app from wherever this script was loaded
     var s = document.currentScript && document.currentScript.src;
-    try { return s ? new URL(s).origin : 'https://100xbet-gamification.vercel.app'; }
-    catch (e) { return 'https://100xbet-gamification.vercel.app'; }
+    try { return s ? new URL(s).origin : 'https://bonus.bwanabet.dev'; }
+    catch (e) { return 'https://bonus.bwanabet.dev'; }
   })();
   var HIDE_KEY = 'x100-widget-hidden';
   var cfg = window.BWANABET_BONUS || window.X100_WIDGET || {};

@@ -7,7 +7,7 @@ It sits next to the casino-rounds feed (`crm-casino-rounds-feed.md`). Both feeds
 ## Endpoint
 
 ```
-POST https://100xbet-gamification.vercel.app/api/activity/player-daily
+POST https://bonus.bwanabet.dev/api/activity/player-daily
 Content-Type: application/json
 Authorization: Bearer <PLAYER_FEED_SECRET>
 ```

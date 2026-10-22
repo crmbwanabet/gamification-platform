@@ -7,7 +7,7 @@ the Bonus Center. The CRM sends the SMS that brings them back; this endpoint giv
 ## Get the list
 
 ```
-GET https://100xbet-gamification.vercel.app/api/crm/inactive-players
+GET https://bonus.bwanabet.dev/api/crm/inactive-players
 Authorization: Bearer <PLAYER_FEED_SECRET>   (the same secret as the player-daily feed)
 ```
 
