@@ -228,7 +228,7 @@ function RegularMatchCard({ season, compact = false, onClaimLeague, link = null 
       <div className="pitch-plate is-dim" style={{ display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left' }}>
         <span style={{ width: 44, height: 44, borderRadius: 12, display: 'grid', placeItems: 'center', background: 'rgba(255,255,255,.08)', flex: 'none' }}><Lock size={22} /></span>
         <div style={{ minWidth: 0 }}>
-          <div style={{ fontFamily: CANDY.display, fontSize: 18, lineHeight: 1.15, textTransform: 'uppercase' }}>Matches open at stage {first.stage}</div>
+          <div style={{ fontFamily: CANDY.display, fontSize: 18, lineHeight: 1.15, textTransform: 'uppercase' }}>Matches open at level {first.stage}</div>
           <div style={{ fontSize: 12, color: C.sub }}>{fmt(first.xp - season.xp)} XP to go</div>
         </div>
       </div>
@@ -625,7 +625,7 @@ export function WorldCupPath({ worldCup, cfg, prize, onClaim, onClaimPrize, priz
           <span style={{ width: 46, height: 46, flex: 'none', borderRadius: 12, display: 'grid', placeItems: 'center', background: C.track }}><Lock size={20} color={CANDY.gold} /></span>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontFamily: CANDY.display, textTransform: 'uppercase', fontSize: 18, lineHeight: 1.15 }}>World Cup with Zambia</div>
-            <div data-wc-teaser style={{ fontSize: 12.5, color: C.sub, fontWeight: 700 }}>Reach stage {unlockStage.stage} to play for Zambia</div>
+            <div data-wc-teaser style={{ fontSize: 12.5, color: C.sub, fontWeight: 700 }}>Reach level {unlockStage.stage} to play for Zambia</div>
           </div>
         </div>
         <div style={{ display: 'flex', gap: 5, marginTop: 12, flexWrap: 'wrap' }}>
@@ -716,7 +716,7 @@ export function HustleCard({ hustle, onCollect, busy = false, hero = HERO_DEFAUL
         <span style={{ fontSize: 30 }}>🧽</span>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontFamily: CANDY.display, fontSize: 17, textTransform: 'uppercase' }}>Side quest</div>
-          <div style={{ fontSize: 12, color: C.sub }}>Opens at stage 2. Claim your daily reward to get there.</div>
+          <div style={{ fontSize: 12, color: C.sub }}>Opens at level 2. Claim your daily reward to get there.</div>
         </div>
       </Card>
     );

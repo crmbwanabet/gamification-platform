@@ -125,7 +125,7 @@ export function ShopLockPlate({ xp = 0, reason = 'stage', className = '' }) {
   return (
     <div className={`bb-shoplock ${className}`} role="note" data-shop-locked>
       <img src="/ui/reward/lock.png" alt="" width={56} height={56} />
-      <b>Opens at stage {STORE_UNLOCK_STAGE}</b>
+      <b>Opens at level {STORE_UNLOCK_STAGE}</b>
       <span>{left > 0 ? `${formatNumber(left)} XP to go` : 'Almost there'}</span>
     </div>
   );

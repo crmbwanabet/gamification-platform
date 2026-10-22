@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   LEAGUE_BANDS, bandForStage, bandForXp, maskId, weeklyXpByUser, rankBoard, prizeForRank, lastWeek, thisWeek,
-  comebackOffer, inactivePlayers, isActiveRow, pickOpen, settlePick, PICK_CLOSE_MS, weekSlip, SLIP_SIZE, PREDICTION_COINS, STORY_PRIZE,
+  comebackOffer, inactivePlayers, isActiveRow, pickOpen, settlePick, PICK_CLOSE_MS, weekSlip, SLIP_SIZE, PREDICTION_COINS, STORY_PRIZE, NAME_PRIZE,
 } from '../lib/extras/rules.mjs';
 
 test('bands cover stages 1..19 without gaps', () => {
@@ -106,4 +106,5 @@ test('weekly prediction slip: 5 picks, all right to win, once', () => {
 
 test('story prize is 100 coins + 10 XP', () => {
   assert.deepEqual(STORY_PRIZE, { coins: 100, xp: 10 });
+  assert.deepEqual(NAME_PRIZE, { coins: 0, xp: 20 });
 });

@@ -46,7 +46,7 @@ import {
 // Missions = the 4 daily casino-round missions (CRM feed); the old pools are
 // parked in parked/lib/data/missions.legacy.js
 import { MISSIONS } from '../lib/data/missions';
-import { STORY_PRIZE } from '@/lib/extras/rules.mjs';
+import { STORY_PRIZE, NAME_PRIZE } from '@/lib/extras/rules.mjs';
 import { missionStates as buildMissionStates, missionCounts, countClaimable, recordMissionClaim, recordMissionBase, migrateMissionBases } from '@/lib/missions/ladder.mjs';
 import { initialStageRewarded, stageUpRewards } from '@/lib/xp/stageReward.mjs';
 import { lusakaDay } from '@/lib/casino/feed.mjs';
@@ -1015,6 +1015,8 @@ export default function GamificationPlatform() {
     stageRewarded: null,
     // the story's one-time "Let's go" prize (STORY_PRIZE) was paid
     storyPrizeClaimed: false,
+    // the first-name XP (NAME_PRIZE) was paid
+    namePrizeClaimed: false,
     // Extras (2026-10-19, components/extras/useExtras.js): bet-slip mission
     // claims { day, ids, weekend, weekendIds }; souvenir album: cards already
     // announced (albumSeen, unset = first run) + set bonuses paid (albumClaims).
@@ -1129,9 +1131,12 @@ export default function GamificationPlatform() {
     const v = validateName(name);
     if (!v.ok) return v;
     const stage = getLevel(userRef.current.xp).level;
-    if (!setPlayerName(userRef.current, v.name, stage)) return { ok: false, reason: `You can change your name again at Stage ${stage + 1}` };
+    if (!setPlayerName(userRef.current, v.name, stage)) return { ok: false, reason: `You can change your name again at Level ${stage + 1}` };
+    const firstName = !userRef.current.displayName;
     setUser(u => setPlayerName(u, v.name, getLevel(u.xp).level) || u);
     track('name_set', { meta: { stage } });
+    // The first name pays NAME_PRIZE XP once, ever (owner 2026-10-22).
+    if (firstName && namePrizeDue) creditExtra(NAME_PRIZE, document.querySelector('[data-profile-name]'), '✏️ Name saved!', u => (u.namePrizeClaimed ? null : { namePrizeClaimed: true }));
     return { ok: true, name: v.name };
   };
   useEffect(() => {
@@ -1744,6 +1749,7 @@ export default function GamificationPlatform() {
   };
   // The story bubble's "LET'S GO!" pays STORY_PRIZE once, ever (owner 2026-10-20).
   const storyPrizeDue = (loggedIn || preview) && !user.storyPrizeClaimed;
+  const namePrizeDue = (loggedIn || preview) && !user.namePrizeClaimed;
   const letsGoStory = (el) => {
     setStory('done');
     if (!storyPrizeDue) return;
@@ -2043,7 +2049,7 @@ export default function GamificationPlatform() {
         setStagePending(false);
         xpFxRef.current.ring();
         setLevelUp({ level: lvl.level, name: lvl.name, title: lvl.title, place: lvl.place, avatar: lvl.avatar, icon: lvl.icon, reward: total });
-        showNotif(`🎉 New stage — ${lvl.name}!`);
+        showNotif(`🎉 New level — ${lvl.name}!`);
         triggerReward('big', null, { coins: total.kwacha || undefined, emeralds: total.emeralds || undefined, rubies: total.rubies || undefined, diamonds: total.diamonds || undefined });
       });
       if (welcomeBusyRef.current) welcomeAfterRef.current.push(celebrate); else celebrate();
@@ -2229,7 +2235,7 @@ export default function GamificationPlatform() {
         onRename={levelUp && canRename(user, levelUp.level) ? () => { setLevelUp(null); openProfile(true); } : undefined} />
       <ProfileModal
         open={showProfile} onClose={() => { setShowProfile(false); setProfileEdit(false); }}
-        startEditing={profileEdit} userId={playerId} onSaveName={savePlayerName}
+        startEditing={profileEdit} userId={playerId} onSaveName={savePlayerName} namePrizeXp={namePrizeDue ? NAME_PRIZE.xp : 0}
         onWearItem={onWearAvatarItem} shopItemCount={avatarShopItems.length}
         onOpenShop={() => { setShowProfile(false); setProfileEdit(false); navigateTab('store'); }}
         level={level} nextLevel={nextLevel} xpPct={xpProgress} vip={vip} user={user}
@@ -2520,7 +2526,7 @@ export default function GamificationPlatform() {
           : d && d.error === 'slow_down' ? 'Too many attempts — wait a minute.'
           : d && d.error === 'invalid_token' ? 'Session expired — reload the page.'
           : d && d.error === 'store_closed' ? 'The Coin Shop is coming soon.'
-          : d && d.error === 'store_locked' ? 'The Coin Shop opens at stage 5. If you just reached it, try again in a moment.'
+          : d && d.error === 'store_locked' ? 'The Coin Shop opens at level 5. If you just reached it, try again in a moment.'
           // Server-held balance was short: recent winnings may not have
           // synced yet (saves are debounced ~1.5s) — a retry usually works.
           : d && d.error === 'insufficient_funds' ? 'Balance not synced yet — try again in a moment.'

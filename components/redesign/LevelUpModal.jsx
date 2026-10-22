@@ -20,12 +20,12 @@ export default function LevelUpModal({ levelUp, onClose, onRename, hero = HERO_D
   const r = cleanReward(levelUp.reward);
   const hasReward = Object.keys(r).length > 0;
   return (
-    <div onClick={onClose} role="dialog" aria-modal="true" aria-label={`New stage: ${levelUp.name}`} style={{ position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(8,4,20,.78)', backdropFilter: 'blur(4px)', display: 'grid', placeItems: 'center', padding: 20, fontFamily: CANDY.body, color: '#fff' }}>
+    <div onClick={onClose} role="dialog" aria-modal="true" aria-label={`New level: ${levelUp.name}`} style={{ position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(8,4,20,.78)', backdropFilter: 'blur(4px)', display: 'grid', placeItems: 'center', padding: 20, fontFamily: CANDY.body, color: '#fff' }}>
       <div onClick={(e) => e.stopPropagation()} style={{ ...goldRim, boxShadow: `${goldRim.boxShadow}, 0 24px 70px rgba(0,0,0,.6)`, position: 'relative', width: 'min(380px, 100%)', boxSizing: 'border-box', padding: 9, borderRadius: 26 }}>
         <span aria-hidden style={{ ...dotRow(false), top: 0.5, left: 22, right: 22, height: 8 }} />
         <span aria-hidden style={{ ...dotRow(false), bottom: 0.5, left: 22, right: 22, height: 8 }} />
         <div style={{ borderRadius: 18, background: innerGlow, padding: '22px 18px 12px', textAlign: 'center' }}>
-          <h2 style={{ ...goldTitle(30), textAlign: 'center' }}>New stage!</h2>
+          <h2 style={{ ...goldTitle(30), textAlign: 'center' }}>New level!</h2>
           {levelUp.avatar
             ? <span style={{ display: 'block', width: 112, height: 112, margin: '14px auto 10px', borderRadius: '50%', padding: 4, boxSizing: 'border-box', background: 'linear-gradient(180deg, #FFE27A, #E0A300)', boxShadow: '0 4px 0 #8a5a00, 0 10px 24px rgba(0,0,0,.45)' }}>
                 <RoundAvatar stage={levelUp.level} avatar={levelUp.avatar} alt={`${hero} at ${levelUp.name}`} size={104} />
@@ -33,7 +33,7 @@ export default function LevelUpModal({ levelUp, onClose, onRename, hero = HERO_D
             : <div style={{ fontSize: 64, margin: '10px 0 2px', lineHeight: 1 }}>{levelUp.icon}</div>}
           <div style={{ fontFamily: CANDY.display, textTransform: 'uppercase', fontSize: 26, lineHeight: 1.1 }}>{levelUp.name}</div>
           {levelUp.place && <div style={{ fontSize: 13.5, marginTop: 4 }}>{hero} moves to {levelUp.place}</div>}
-          <div style={{ fontSize: 12, color: C.sub, margin: '2px 0 16px' }}>Stage {levelUp.level} of {XP_LEVELS.length}{levelUp.title ? <> · <b style={{ color: CANDY.gold }}>{levelUp.title}</b></> : null}</div>
+          <div style={{ fontSize: 12, color: C.sub, margin: '2px 0 16px' }}>Level {levelUp.level} of {XP_LEVELS.length}{levelUp.title ? <> · <b style={{ color: CANDY.gold }}>{levelUp.title}</b></> : null}</div>
           {hasReward ? (
             <div style={{ background: C.track, border: `2px solid ${CANDY.violet.dark}`, borderRadius: 14, padding: '10px 14px', marginBottom: 16 }}>
               <div style={{ fontSize: 11, color: C.muted, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '.08em' }}>Rewards</div>

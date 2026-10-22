@@ -266,7 +266,7 @@ const navLocks = (lvl, store) => {
   const why = storeLockReason(lvl?.level, store);
   return why ? { store: why === 'soon' ? 'soon' : STORE_UNLOCK_STAGE } : {};
 };
-const lockText = (lock) => (lock === 'soon' ? 'Coming soon' : `Opens at stage ${lock}`);
+const lockText = (lock) => (lock === 'soon' ? 'Coming soon' : `Opens at level ${lock}`);
 
 function NavTabs({ active, onNavigate, navBadges = {}, place, locked = {} }) {
   return NAV.map((it) => {
@@ -285,7 +285,7 @@ function NavTabs({ active, onNavigate, navBadges = {}, place, locked = {} }) {
 }
 
 function TopBar({ lvl, nextLvl, xpPct, xpFx, activeTab, onNavigate, onOpenProfile, userId, displayName, onEditName, wallet, onOpenWallet, navBadges, story, onStoryOpen, onStoryClose, onStoryGo, storyPrize }) {
-  const stageTitle = `Stage ${lvl.level}: ${lvl.name}${nextLvl ? ` · next: ${nextLvl.name}` : ' · final stage'}`;
+  const stageTitle = `Level ${lvl.level}: ${lvl.name}${nextLvl ? ` · next: ${nextLvl.name}` : ' · final level'}`;
   // The PLAYER's identity (2026-10-09): their name over "ID x", else the ID
   // itself, else "Player". Vuma stays in the avatar art (the story character).
   const who = playerLabel({ displayName }, userId);
@@ -300,7 +300,7 @@ function TopBar({ lvl, nextLvl, xpPct, xpFx, activeTab, onNavigate, onOpenProfil
             <span className="rs-name" data-player-name style={{ fontFamily: CANDY.display, lineHeight: 1.05, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{who.title}</span>
             {who.sub && <span title={`Your bwanabet user ID: ${userId}`} style={{ fontSize: 11.5, color: 'rgba(255,255,255,.62)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{who.sub}</span>}
             <span title={stageTitle} style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
-              <span key={lvl.level} className={xpFx?.shine ? 'xpfx-bump' : undefined} style={{ fontSize: 10.5, fontWeight: 900, color: CANDY.outline, background: CANDY.gold, borderRadius: 999, padding: '2px 8px', whiteSpace: 'nowrap', flex: 'none' }}>STAGE {lvl.level}</span>
+              <span key={lvl.level} className={xpFx?.shine ? 'xpfx-bump' : undefined} style={{ fontSize: 10.5, fontWeight: 900, color: CANDY.outline, background: CANDY.gold, borderRadius: 999, padding: '2px 8px', whiteSpace: 'nowrap', flex: 'none' }}>LEVEL {lvl.level}</span>
               <span data-xp-bar style={{ flex: 1, minWidth: 36 }}><Progress value={xpPct} height={7} color={XP_BAR} ghost={xpFx?.ghostPct ?? null} shineKey={xpFx?.shine || 0} fast={!!xpFx} /></span>
               <XpChip chip={xpFx?.chip} />
             </span>

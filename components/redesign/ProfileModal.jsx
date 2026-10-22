@@ -10,7 +10,7 @@ import { textStroke } from '../games/candy/tokens';
 import CandyButton from '../games/candy/CandyButton';
 import { validateName, canRename, nextRenameStage, playerLabel, playerName, NAME_MAX } from '@/lib/profile/name.mjs';
 import { HeroPicture } from './AvatarPicture';
-import { XP_BAR } from './XpStar';
+import { XP_BAR, XpAmount } from './XpStar';
 import { itemById, normalizeAvatarItems } from '@/lib/avatar/items.mjs';
 
 const tile = { background: `linear-gradient(180deg, ${C.panelHi}, ${C.panelLo})`, border: `2px solid ${CANDY.violet.dark}`, borderRadius: 14 };
@@ -18,14 +18,14 @@ const tile = { background: `linear-gradient(180deg, ${C.panelHi}, ${C.panelLo})`
 /**
  * Player stats popup in the candy look: gold-rimmed frame with marquee dots,
  * Vuma's current stage scene on top (the story character) with the PLAYER's
- * name (or bwanabet ID) over it, the name editor, then the stage bar,
+ * name (or bwanabet ID) over it, a "Level N · level name" chip and the place he lives, the name editor, then the stage bar,
  * balances and stats. Rendered as a fixed overlay (in the shared
  * gameOverlays, z 140: above the widget's fixed red X at 130, so the card's
  * own candy X is the only close button), opened from the header's profile button; `startEditing`
  * opens it straight into the name form (header "Add name", level-up modal).
  * Rename rules live in lib/profile/name.mjs.
  */
-export default function ProfileModal({ open, onClose, level, nextLevel, xpPct = 0, vip, user, userId = null, onSaveName, startEditing = false, onWearItem, onOpenShop, shopItemCount = 0 }) {
+export default function ProfileModal({ open, onClose, level, nextLevel, xpPct = 0, vip, user, userId = null, onSaveName, startEditing = false, onWearItem, onOpenShop, shopItemCount = 0, namePrizeXp = 0 }) {
   const u = user || {};
   const stage = level?.level || 1;
   const current = playerName(u);
@@ -95,14 +95,15 @@ export default function ProfileModal({ open, onClose, level, nextLevel, xpPct = 
           {/* Top: the current Vuma stage's full scene, name + chips on a bottom fade. */}
           <div style={{ position: 'relative', overflow: 'hidden', borderRadius: '18px 18px 0 0' }}>
             {level?.hero
-              ? <HeroPicture stage={level.level} alt={`Stage ${level.level}: ${level.title || level.name}`} style={{ aspectRatio: '10 / 9' }} />
+              ? <HeroPicture stage={level.level} alt={`Level ${level.level}: ${level.title || level.name}`} style={{ aspectRatio: '10 / 9' }} />
               : <div style={{ width: '100%', aspectRatio: '10 / 9' }} />}
             <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, padding: '60px 18px 12px', textAlign: 'center', background: `linear-gradient(180deg, rgba(43,15,94,0) 0%, rgba(43,15,94,.8) 55%, ${CANDY.bgTop} 100%)` }}>
               <div data-profile-name style={{ fontFamily: CANDY.display, fontSize: 28, lineHeight: 1.05, color: '#fff', overflowWrap: 'anywhere', textShadow: `${textStroke(2.5, CANDY.outline)}, 0 4px 0 ${CANDY.outline}` }}>{who.title}</div>
               {who.sub && <div style={{ fontSize: 12.5, fontWeight: 800, color: 'rgba(255,255,255,.75)', marginTop: 4 }}>{who.sub}</div>}
               <div style={{ display: 'flex', justifyContent: 'center', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
-                <span style={{ fontSize: 12, fontWeight: 900, color: '#fff', background: 'rgba(20,4,48,.8)', border: `1.5px solid ${CANDY.violet.fill}`, padding: '2px 11px', borderRadius: 999 }}>Stage {stage}{level?.title ? ` · ${level.title}` : ''}</span>
-                {vip?.name && <span style={{ fontSize: 12, fontWeight: 900, color: CANDY.outline, background: CANDY.gold, padding: '3px 11px', borderRadius: 999 }}>{vip.name} VIP</span>}
+                <span style={{ fontSize: 12, fontWeight: 900, color: '#fff', background: 'rgba(20,4,48,.8)', border: `1.5px solid ${CANDY.violet.fill}`, padding: '2px 11px', borderRadius: 999 }}>Level {stage}{level?.title ? ` · ${level.title}` : ''}</span>
+                {/* Where the hero lives now (owner 2026-10-22: replaced the "Standard VIP" chip). */}
+                {level?.place && <span data-profile-place style={{ fontSize: 12, fontWeight: 900, color: CANDY.outline, background: CANDY.gold, padding: '3px 11px', borderRadius: 999, textTransform: 'uppercase' }}>{level.place}</span>}
               </div>
             </div>
           </div>
@@ -111,12 +112,12 @@ export default function ProfileModal({ open, onClose, level, nextLevel, xpPct = 
           <div style={{ padding: '14px 18px 2px' }}>
             {editing ? (
               <form ref={formRef} onSubmit={save} noValidate style={{ ...tile, padding: '12px 12px 6px' }}>
-                <label htmlFor="rs-pm-name" style={{ display: 'block', fontFamily: CANDY.display, fontSize: 17, color: CANDY.gold, marginBottom: 8 }}>{current ? 'Change your name' : 'Add your name'}</label>
+                <label htmlFor="rs-pm-name" style={{ display: 'block', fontFamily: CANDY.display, fontSize: 17, color: CANDY.gold, marginBottom: 8 }}>{current ? 'Change your name' : 'Add your name'}{!current && namePrizeXp ? <span style={{ fontFamily: CANDY.body, fontSize: 13, fontWeight: 800, color: C.sub }}> · earn <XpAmount size={14} gap={3}>{namePrizeXp} XP</XpAmount></span> : null}</label>
                 <input id="rs-pm-name" ref={inputRef} type="text" value={draft} autoComplete="nickname" spellCheck={false} maxLength={NAME_MAX + 8}
                   onChange={(e) => { setDraft(e.target.value); if (error) setError(null); }}
                   aria-invalid={error ? 'true' : 'false'} aria-describedby="rs-pm-name-help rs-pm-name-err"
                   style={{ width: '100%', boxSizing: 'border-box', minHeight: 48, padding: '0 14px', borderRadius: 14, background: C.track, border: `2px solid ${error ? CANDY.red.light : CANDY.violet.fill}`, color: '#fff', fontFamily: CANDY.body, fontSize: 16, fontWeight: 800, outline: 'none' }} />
-                <div id="rs-pm-name-help" style={{ fontSize: 11.5, color: C.muted, margin: '6px 2px 0' }}>2–{NAME_MAX} letters, numbers, spaces, . _ or -. {current ? 'After this you can change it again at your next stage.' : 'After this you can change it once per new stage.'}</div>
+                <div id="rs-pm-name-help" style={{ fontSize: 11.5, color: C.muted, margin: '6px 2px 0' }}>2–{NAME_MAX} letters, numbers, spaces, . _ or -. {current ? 'After this you can change it again at your next level.' : 'After this you can change it once per new level.'}</div>
                 <div id="rs-pm-name-err" role="alert" style={{ minHeight: 18, fontSize: 12.5, fontWeight: 800, color: '#ff8f86', margin: '4px 2px 6px' }}>{error || ''}</div>
                 <div style={{ display: 'flex', gap: 10 }}>
                   <CandyButton type="submit" color="green" style={{ flex: 1, fontSize: 19, minHeight: 48, borderRadius: 14 }}>Save</CandyButton>
@@ -126,14 +127,14 @@ export default function ProfileModal({ open, onClose, level, nextLevel, xpPct = 
             ) : allowed ? (
               <CandyButton color={current ? 'violet' : 'green'} onClick={startEdit} aria-label={current ? 'Change your name' : 'Add your name'}
                 style={{ width: '100%', flexDirection: 'row', gap: 8, fontSize: 18, minHeight: 48, borderRadius: 14 }}>
-                <Pencil size={17} strokeWidth={3} aria-hidden />{current ? 'Change name' : 'Add your name'}
+                <Pencil size={17} strokeWidth={3} aria-hidden />{current ? 'Change name' : 'Add your name'}{!current && namePrizeXp ? <XpAmount size={18} style={{ marginLeft: 4 }}>+{namePrizeXp} XP</XpAmount> : null}
               </CandyButton>
             ) : (
               <div>
                 <CandyButton disabled aria-describedby="rs-pm-lock" style={{ width: '100%', flexDirection: 'row', gap: 8, fontSize: 18, minHeight: 48, borderRadius: 14 }}>
                   <Lock size={16} strokeWidth={3} aria-hidden />Change name
                 </CandyButton>
-                <div id="rs-pm-lock" data-rename-locked style={{ fontSize: 12.5, fontWeight: 800, color: C.sub, textAlign: 'center', margin: '2px 0 0' }}>You can change your name again at Stage {lockedUntil}</div>
+                <div id="rs-pm-lock" data-rename-locked style={{ fontSize: 12.5, fontWeight: 800, color: C.sub, textAlign: 'center', margin: '2px 0 0' }}>You can change your name again at Level {lockedUntil}</div>
               </div>
             )}
           </div>
@@ -166,8 +167,8 @@ export default function ProfileModal({ open, onClose, level, nextLevel, xpPct = 
 
           <div style={{ padding: '14px 18px 16px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: C.sub, marginBottom: 7 }}>
-              <span>Stage {level?.level} of {XP_LEVELS.length}</span>
-              <span>{nextLevel ? `Next: ${nextLevel.title && nextLevel.title !== level?.title ? nextLevel.title : `Stage ${nextLevel.level}`}` : 'Final stage'}</span>
+              <span>Level {level?.level} of {XP_LEVELS.length}</span>
+              <span>{nextLevel ? `Next: ${nextLevel.title && nextLevel.title !== level?.title ? nextLevel.title : `Level ${nextLevel.level}`}` : 'Final level'}</span>
             </div>
             <Progress value={xpPct} height={14} color={XP_BAR} />
           </div>

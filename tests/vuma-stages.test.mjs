@@ -115,6 +115,6 @@ test('every stage has a level name; stage 1 = Village Football, stage 2 = Street
   assert.equal(VUMA_STAGES[18].title, 'International League Legend');
   assert.equal(VUMA_STAGES[7].title, 'Professional League');
   assert.equal(nextStageLabel(VUMA_STAGES[0], VUMA_STAGES[1]), 'Street Hero');
-  assert.equal(nextStageLabel(VUMA_STAGES[11], VUMA_STAGES[12]), 'stage 13'); // name repeats
+  assert.equal(nextStageLabel(VUMA_STAGES[11], VUMA_STAGES[12]), 'level 13'); // name repeats
   assert.equal(nextStageLabel(VUMA_STAGES[18], null), '');
 });
