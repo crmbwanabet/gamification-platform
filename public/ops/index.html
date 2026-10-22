@@ -1,0 +1,706 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Bonus Center Ops Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">
+<style>
+/* Bonus Center OPS CONSOLE (2026-10-22). Same look as the USSD ops console:
+   white back-office report screen, one row of tabs, a filter bar over sortable
+   tables with a pinned TOTALS row, hand-drawn SVG charts. Light only. */
+:root {
+  color-scheme: light;
+  --text: #4a4a4a; --sub: #6b6b6b; --muted: #9a9a9a;
+  --line: #dadada; --line2: #ececec; --zebra: #f4f4f4; --totals: #dedbf3; --hover: #e3eefb;
+  --link: #3b8ed8; --btn: #2b8fdd; --btn-h: #1f7ccc; --teal: #1a9f8f; --neg: #c0392b; --pos: #1e8449; --warn: #b9770e;
+  --font: "Roboto", "Segoe UI", system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: #fff; color: var(--text); font: 14px/1.45 var(--font); }
+body { padding-right: 10px; }
+body::after { content: ""; position: fixed; top: 0; right: 0; bottom: 0; width: 10px; background: linear-gradient(180deg, var(--teal), #16867a); }
+a { color: var(--link); text-decoration: none; cursor: pointer; }
+a:hover { text-decoration: underline; }
+.top { display: flex; align-items: center; gap: 22px; flex-wrap: wrap; padding: 12px 22px 0; border-bottom: 1px solid var(--line); }
+.brand { font-weight: 700; font-size: 17px; letter-spacing: .01em; white-space: nowrap; padding-bottom: 10px; }
+.brand b { color: var(--teal); font-weight: 700; }
+.brand small { font-weight: 500; font-size: 12px; color: var(--muted); letter-spacing: .08em; margin-left: 6px; }
+.tabs { display: flex; gap: 2px; flex-wrap: wrap; flex: 1; }
+.tab { all: unset; cursor: pointer; padding: 8px 12px 10px; font-weight: 500; font-size: 13px; letter-spacing: .06em; text-transform: uppercase; color: var(--sub); border-bottom: 3px solid transparent; }
+.tab:hover { color: var(--text); }
+.tab[aria-selected="true"] { color: var(--text); border-bottom-color: var(--teal); }
+.tab:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--btn); outline-offset: 2px; }
+.badge { display: inline-block; min-width: 18px; padding: 0 5px; margin-left: 4px; border-radius: 9px; background: var(--line2); color: var(--sub); font-size: 11px; text-align: center; }
+.acct { all: unset; cursor: pointer; padding: 4px 10px 12px; font-size: 20px; color: var(--sub); }
+.menu { position: absolute; right: 22px; top: 48px; background: #fff; border: 1px solid var(--line); box-shadow: 0 6px 20px rgba(0,0,0,.12); min-width: 220px; z-index: 20; }
+.menu .who { padding: 10px 14px; border-bottom: 1px solid var(--line2); font-size: 12.5px; color: var(--sub); }
+.menu .who b { color: var(--text); display: block; font-size: 14px; }
+.menu button { all: unset; display: block; width: 100%; box-sizing: border-box; padding: 9px 14px; cursor: pointer; }
+.menu button:hover { background: var(--hover); }
+main { padding: 14px 22px 40px; }
+.filters { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 14px 18px; padding: 6px 0 14px; border-bottom: 1px solid var(--line2); margin-bottom: 14px; }
+.f { display: grid; gap: 2px; }
+.f label { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+input, select { font: inherit; color: var(--text); border: 0; border-bottom: 1px solid var(--line); padding: 4px 2px; background: transparent; min-width: 0; }
+input[type="text"], input[type="password"] { min-width: 170px; }
+.btn { all: unset; cursor: pointer; background: var(--btn); color: #fff; font-weight: 500; font-size: 12.5px; letter-spacing: .06em; text-transform: uppercase; padding: 8px 14px; border-radius: 2px; text-align: center; }
+.btn:hover { background: var(--btn-h); }
+.btn.ghost { background: transparent; color: var(--btn); border: 1px solid var(--btn); padding: 7px 13px; }
+.btn.ghost:hover { background: var(--hover); }
+.btn[disabled] { opacity: .45; pointer-events: none; }
+.live { margin-left: auto; font-size: 12.5px; color: var(--muted); align-self: center; }
+.live b { color: var(--pos); }
+h2.sec { font-size: 15px; font-weight: 700; margin: 22px 0 8px; }
+h2.sec:first-child { margin-top: 4px; }
+.note { color: var(--muted); font-size: 12.5px; margin: 6px 0 0; }
+.wrap { overflow-x: auto; border: 1px solid var(--line2); }
+table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+th, td { padding: 7px 10px; text-align: left; white-space: nowrap; border-bottom: 1px solid var(--line2); }
+th { font-size: 11.5px; font-weight: 500; letter-spacing: .05em; text-transform: uppercase; color: var(--sub); background: #fff; position: sticky; top: 0; cursor: default; user-select: none; }
+th.sort { cursor: pointer; }
+th.sort:hover { color: var(--text); }
+th .ar { color: var(--teal); }
+td.n, th.n { text-align: right; }
+tbody tr:nth-child(even) { background: var(--zebra); }
+tbody tr.click { cursor: pointer; }
+tbody tr.click:hover { background: var(--hover); }
+tr.totals td { background: var(--totals); font-weight: 700; }
+.neg { color: var(--neg); } .pos { color: var(--pos); } .mut { color: var(--muted); }
+.pill { display: inline-block; padding: 1px 9px; border-radius: 10px; font-size: 12px; font-weight: 500; }
+.pill.ok { background: #d5f0df; color: var(--pos); } .pill.bad { background: #f7d8d5; color: var(--neg); }
+.pill.warn { background: #fbecd0; color: var(--warn); } .pill.grey { background: var(--line2); color: var(--sub); }
+.pager { display: flex; gap: 12px; align-items: center; justify-content: flex-end; padding: 8px 0; color: var(--sub); font-size: 12.5px; }
+.empty { padding: 26px 10px; text-align: center; color: var(--muted); }
+.banner { padding: 12px 14px; margin-bottom: 12px; border-left: 4px solid var(--pos); background: #eef8f2; }
+.banner.bad { border-color: var(--neg); background: #fbeeec; } .banner.warn { border-color: var(--warn); background: #fdf5e6; }
+.kv { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px 18px; margin: 6px 0 4px; }
+.kv div { border-bottom: 1px solid var(--line2); padding: 4px 0; }
+.kv small { display: block; font-size: 11px; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
+.kv b { font-weight: 500; font-size: 15px; }
+.chart { border: 1px solid var(--line2); padding: 10px 12px 6px; margin-bottom: 16px; }
+.chart h3 { margin: 0 0 2px; font-size: 13.5px; font-weight: 700; }
+.chart .cap { font-size: 12px; color: var(--muted); margin: 0 0 6px; }
+.chart svg { display: block; width: 100%; height: auto; }
+.charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 0 16px; }
+dialog { border: 1px solid var(--line); padding: 0; max-width: min(980px, 96vw); width: 100%; box-shadow: 0 16px 50px rgba(0,0,0,.25); color: var(--text); }
+dialog::backdrop { background: rgba(30, 30, 40, .35); }
+.dh { display: flex; align-items: flex-start; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--line2); position: sticky; top: 0; background: #fff; z-index: 1; }
+.dh h2 { margin: 0; font-size: 17px; } .dh p { margin: 2px 0 0; color: var(--sub); font-size: 12.5px; }
+.dh .x { all: unset; cursor: pointer; margin-left: auto; font-size: 20px; color: var(--muted); padding: 0 4px; }
+.db { padding: 6px 18px 18px; max-height: 76vh; overflow: auto; }
+dialog.small { max-width: 420px; }
+.form { display: grid; gap: 12px; padding: 10px 0; }
+.form .f input, .form .f select { min-width: 0; width: 100%; }
+.err { color: var(--neg); font-size: 12.5px; min-height: 18px; }
+.ticks { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 14px; }
+.ticks label { display: flex; gap: 6px; align-items: center; font-size: 13px; }
+.toast { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); background: #333; color: #fff; padding: 9px 16px; border-radius: 3px; font-size: 13px; z-index: 50; }
+.warnbox { background: #fdf5e6; border-left: 4px solid var(--warn); padding: 8px 12px; font-size: 12.5px; }
+@media (max-width: 720px) { .top { padding: 10px 12px 0; } main { padding: 12px; } .charts { grid-template-columns: minmax(0, 1fr); } .live { margin-left: 0; } }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="brand">BwanaBet <b>BONUS CENTER</b><small>OPS CONSOLE</small></div>
+  <nav class="tabs" id="tabs" role="tablist" aria-label="Sections"></nav>
+  <button class="acct" id="acctBtn" aria-label="Account" title="Account" hidden>⋯</button>
+</header>
+<div class="menu" id="menu" hidden></div>
+<main>
+  <div class="filters" id="filters" hidden>
+    <div class="f"><label for="fFrom">From</label><input type="date" id="fFrom"></div>
+    <div class="f"><label for="fTo">To</label><input type="date" id="fTo"></div>
+    <div class="f" data-for="report players"><label for="fBand">Level band</label>
+      <select id="fBand"><option value="all">ALL</option><option value="street">Street (1–4)</option><option value="amateur">Amateur (5–7)</option><option value="pro">Pro (8–11)</option><option value="intl">International (12–19)</option></select></div>
+    <div class="f" data-for="report players transactions"><label for="fQ">Player ID or name</label><input type="text" id="fQ" placeholder="e.g. 67081"></div>
+    <div class="f" data-for="report"><label for="fRows">Rows</label><select id="fRows"><option value="players">Players</option><option value="days">Days</option></select></div>
+    <div class="f" data-for="transactions"><label for="fStatus">Status</label><select id="fStatus"><option value="all">ALL</option><option value="pending">Pending</option><option value="credited">Credited</option><option value="rejected">Rejected</option></select></div>
+    <button class="btn" id="fGo">Filter</button>
+    <button class="btn ghost" id="fClear">Clear filters</button>
+    <span class="live" id="liveNote"></span>
+  </div>
+  <section id="view"><p class="empty">Not connected.</p></section>
+</main>
+
+<dialog id="loginDlg" class="small" aria-labelledby="loginTitle">
+  <div class="dh"><div><h2 id="loginTitle">Connect</h2><p>The console holds no data of its own. Figures load from the Bonus Center server.</p></div></div>
+  <form class="db form" id="loginForm" autocomplete="on">
+    <div class="warnbox" id="setupNote" hidden>No logins exist yet. Enter the setup code to create the first administrator (master).</div>
+    <div class="f" id="setupRow" hidden><label for="lCode">Setup code</label><input type="password" id="lCode" autocomplete="off"></div>
+    <div class="f"><label for="lUser">Username</label><input type="text" id="lUser" autocomplete="username" required></div>
+    <div class="f"><label for="lPass">Password</label><input type="password" id="lPass" autocomplete="current-password" required></div>
+    <div class="err" id="lErr" role="alert"></div>
+    <button class="btn" id="lGo" type="submit">Sign in</button>
+  </form>
+</dialog>
+
+<dialog id="playerDlg" aria-labelledby="pTitle">
+  <div class="dh"><div><h2 id="pTitle">Player</h2><p id="pSub"></p></div><button class="x" data-close aria-label="Close">✕</button></div>
+  <div class="db" id="pBody"></div>
+</dialog>
+
+<dialog id="usersDlg" aria-labelledby="uTitle">
+  <div class="dh"><div><h2 id="uTitle">Logins</h2><p>Who can open this console, and what they may see.</p></div><button class="x" data-close aria-label="Close">✕</button></div>
+  <div class="db" id="uBody"></div>
+</dialog>
+
+<dialog id="formDlg" class="small" aria-labelledby="fdTitle">
+  <div class="dh"><div><h2 id="fdTitle"></h2><p id="fdSub"></p></div><button class="x" data-close aria-label="Close">✕</button></div>
+  <form class="db form" id="fdForm"></form>
+</dialog>
+
+<script>
+(function () {
+  'use strict';
+  var API = '/api/ops/';
+  var TABS = [
+    { id: 'report', label: 'Report', perm: 'see.report' },
+    { id: 'coins', label: 'Coins & prizes', perm: 'see.coins' },
+    { id: 'transactions', label: 'Transactions', perm: 'see.txns' },
+    { id: 'trends', label: 'Trends', perm: 'see.trends' },
+    { id: 'players', label: 'Players', perm: 'see.players' },
+    { id: 'activity', label: 'Activity', perm: 'see.activity' },
+    { id: 'health', label: 'System health', perm: 'see.health' },
+  ];
+  var EVENT_LABEL = {
+    daily_claimed: 'Daily reward', mission_completed: 'BwanaBet missions', sports_mission_claimed: 'Sports missions',
+    prediction_claimed: 'Weekly predictions', leaderboard_claimed: 'League table prizes', comeback_claimed: 'Comeback bonus',
+    album_set_claimed: 'Souvenir album sets', hustle_collected: 'Side quests', league_bonus_claimed: 'Football league bonuses',
+    wc_bonus_claimed: 'World Cup bonuses', story_prize_claimed: 'Story prize', level_up: 'Level-up rewards', streak_bonus: 'Streak bonus (old)',
+  };
+  var GAME_LABEL = { njuka: 'Njuka Boss', coinflip: 'Coin Flip', penalty: 'Penalty Crash', chicken: 'Chicken Catch', chicken2: 'Chicken Catch 2', minibus: 'Lucky Minibus', bottle: 'Bottle Spin', scratch: 'Scratch Card', numbers: 'Lucky Numbers' };
+  var BAND_LABEL = { street: 'Street', amateur: 'Amateur', pro: 'Pro', intl: 'International' };
+
+  // ---------------------------------------------------------------- state --
+  var S = { token: null, me: null, tab: 'report', data: {}, sort: {}, page: 0, timer: 0, menuOpen: false };
+  var $ = function (id) { return document.getElementById(id); };
+  var store = {
+    get: function (k) { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } },
+    set: function (k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* blocked */ } },
+    del: function (k) { try { localStorage.removeItem(k); } catch (e) { /* blocked */ } },
+  };
+
+  // --------------------------------------------------------------- format --
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function int(n) { return Math.round(Number(n) || 0).toLocaleString('en-US'); }
+  function kw(n) { var v = Number(n) || 0; var a = Math.abs(v); var s = a >= 1e6 ? (a / 1e6).toFixed(2) + 'm' : a.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); return (v < 0 ? '−K' : 'K') + s; }
+  function pct(a, b) { return b ? (100 * a / b).toFixed(1) + '%' : '—'; }
+  function mins(n) { return (Number(n) || 0).toLocaleString('en-US', { maximumFractionDigits: 1 }); }
+  function lusaka(ts) { var d = new Date(new Date(ts).getTime() + 2 * 3600e3); return d.toISOString(); }
+  function dt(ts) { if (!ts) return '—'; var s = lusaka(ts); return s.slice(8, 10) + '/' + s.slice(5, 7) + '/' + s.slice(0, 4) + ' ' + s.slice(11, 19); }
+  function day(d) { if (!d) return '—'; var s = String(d).slice(0, 10); return s.slice(8, 10) + '/' + s.slice(5, 7) + '/' + s.slice(0, 4); }
+  function ago(ts) { if (!ts) return '—'; var m = Math.round((Date.now() - new Date(ts).getTime()) / 60000); if (m < 1) return 'just now'; if (m < 60) return m + ' min ago'; var h = Math.round(m / 60); if (h < 48) return h + ' h ago'; return Math.round(h / 24) + ' days ago'; }
+  function todayL() { return lusaka(Date.now()).slice(0, 10); }
+  function signed(n, cls) { var v = Number(n) || 0; return '<span class="' + (v < 0 ? 'neg' : v > 0 ? (cls || 'pos') : '') + '">' + (v < 0 ? '−' : '') + int(Math.abs(v)) + '</span>'; }
+  function toast(msg) { var t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; document.body.appendChild(t); setTimeout(function () { t.remove(); }, 3200); }
+
+  // ------------------------------------------------------------------ api --
+  function api(path, body) {
+    var opts = { method: body ? 'POST' : 'GET', headers: { 'Content-Type': 'application/json' }, cache: 'no-store' };
+    if (S.token) opts.headers['X-Admin-Session'] = S.token;
+    if (body) opts.body = JSON.stringify(body);
+    return fetch(API + path, opts).then(function (r) {
+      return r.json().catch(function () { return {}; }).then(function (d) {
+        if (r.status === 401 && path.indexOf('auth/') !== 0) { signOut(true); throw new Error('signed_out'); }
+        if (r.status === 403) { toast('Not allowed for your login.'); throw new Error('not_allowed'); }
+        if (!r.ok) { var e = new Error(d.reason || d.error || ('HTTP ' + r.status)); e.code = d.error; e.status = r.status; throw e; }
+        return d;
+      });
+    });
+  }
+
+  // ----------------------------------------------------------------- auth --
+  function openLogin() {
+    $('lErr').textContent = '';
+    api('auth/status').then(function (st) {
+      var setup = !st.hasUsers;
+      $('setupNote').hidden = !setup; $('setupRow').hidden = !setup;
+      if (setup && !st.setupEnabled) { $('setupNote').textContent = 'No logins exist yet, and setup is switched off on the server (OPS_SETUP_CODE is not set).'; }
+      $('lGo').textContent = setup ? 'Create administrator' : 'Sign in';
+      $('loginForm').dataset.setup = setup ? '1' : '';
+      $('lPass').autocomplete = setup ? 'new-password' : 'current-password';
+    }).catch(function () { $('lErr').textContent = 'The server did not answer. Try again in a moment.'; });
+    if (!$('loginDlg').open) $('loginDlg').showModal();
+    setTimeout(function () { $('lUser').focus(); }, 50);
+  }
+  $('loginDlg').addEventListener('cancel', function (e) { e.preventDefault(); });
+  $('loginForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var setup = !!$('loginForm').dataset.setup;
+    var body = { username: $('lUser').value, password: $('lPass').value };
+    if (setup) body.setupCode = $('lCode').value;
+    $('lGo').disabled = true; $('lErr').textContent = '';
+    api(setup ? 'auth/bootstrap' : 'auth/login', body).then(function (d) {
+      S.token = d.token; store.set('bc-ops-auth', { token: d.token });
+      $('lPass').value = ''; $('lCode').value = '';
+      $('loginDlg').close();
+      boot();
+    }).catch(function (err) {
+      var c = err.code;
+      $('lErr').textContent = c === 'bad_login' ? 'Wrong username or password.' : c === 'too_many_attempts' ? 'Too many attempts. Wait 15 minutes.' : c === 'bad_setup_code' ? 'Wrong setup code.'
+        : c === 'bad_username' ? 'Username: 3–32 lowercase letters, digits, . _ or -.' : c === 'weak_password' ? (err.message || 'Use at least 12 characters.') : c === 'already_set_up' ? 'An administrator already exists. Sign in instead.' : 'Could not sign in: ' + err.message;
+      if (c === 'already_set_up') openLogin();
+    }).finally(function () { $('lGo').disabled = false; });
+  });
+  function signOut(expired) {
+    if (!expired && S.token) api('auth/logout', {}).catch(function () {});
+    S.token = null; S.me = null; store.del('bc-ops-auth'); clearInterval(S.timer);
+    $('acctBtn').hidden = true; $('filters').hidden = true; $('tabs').innerHTML = '';
+    $('view').innerHTML = '<p class="empty">Not connected.</p>';
+    closeMenu(); openLogin();
+  }
+
+  // ------------------------------------------------------------- account --
+  function closeMenu() { $('menu').hidden = true; S.menuOpen = false; }
+  $('acctBtn').addEventListener('click', function (e) {
+    e.stopPropagation();
+    if (S.menuOpen) return closeMenu();
+    var m = $('menu');
+    m.innerHTML = '<div class="who"><b>' + esc(S.me.username) + '</b>' + esc(S.me.role === 'master' ? 'Master (everything)' : 'Limited') + ' · ' + esc(location.host) + '</div>' +
+      (S.me.permissions.indexOf('can.users') >= 0 ? '<button data-act="users">Manage logins</button>' : '') +
+      '<button data-act="pw">Change my password</button><button data-act="out">Sign out</button>';
+    m.hidden = false; S.menuOpen = true;
+  });
+  document.addEventListener('click', function (e) { if (S.menuOpen && !$('menu').contains(e.target)) closeMenu(); });
+  $('menu').addEventListener('click', function (e) {
+    var a = e.target.getAttribute('data-act'); if (!a) return; closeMenu();
+    if (a === 'out') signOut(false);
+    if (a === 'pw') formDialog('Change my password', '', [
+      { id: 'current', label: 'Current password', type: 'password', ac: 'current-password' },
+      { id: 'password', label: 'New password (12+ characters)', type: 'password', ac: 'new-password' },
+    ], 'Change password', function (v) { return api('auth/password', v).then(function () { toast('Password changed. Other sessions were signed out.'); }); });
+    if (a === 'users') openUsers();
+  });
+  document.querySelectorAll('dialog [data-close]').forEach(function (b) { b.addEventListener('click', function () { b.closest('dialog').close(); }); });
+
+  function formDialog(title, sub, fields, submitLabel, onSubmit) {
+    $('fdTitle').textContent = title; $('fdSub').textContent = sub || '';
+    var f = $('fdForm');
+    f.innerHTML = fields.map(function (x) {
+      if (x.type === 'select') return '<div class="f"><label for="fd_' + x.id + '">' + esc(x.label) + '</label><select id="fd_' + x.id + '">' + x.options.map(function (o) { return '<option value="' + esc(o[0]) + '"' + (o[0] === x.value ? ' selected' : '') + '>' + esc(o[1]) + '</option>'; }).join('') + '</select></div>';
+      if (x.type === 'ticks') return '<div class="f"><label>' + esc(x.label) + '</label><div class="ticks">' + x.options.map(function (o) { return '<label><input type="checkbox" name="fd_' + x.id + '" value="' + esc(o.id) + '"' + ((x.value || []).indexOf(o.id) >= 0 ? ' checked' : '') + '> ' + esc(o.label) + '</label>'; }).join('') + '</div></div>';
+      return '<div class="f"><label for="fd_' + x.id + '">' + esc(x.label) + '</label><input type="' + (x.type || 'text') + '" id="fd_' + x.id + '" autocomplete="' + (x.ac || 'off') + '" value="' + esc(x.value || '') + '"></div>';
+    }).join('') + '<div class="err" id="fdErr" role="alert"></div><button class="btn" type="submit">' + esc(submitLabel) + '</button>';
+    f.onsubmit = function (e) {
+      e.preventDefault();
+      var v = {};
+      fields.forEach(function (x) {
+        if (x.type === 'ticks') v[x.id] = Array.prototype.map.call(f.querySelectorAll('input[name="fd_' + x.id + '"]:checked'), function (i) { return i.value; });
+        else v[x.id] = $('fd_' + x.id).value;
+      });
+      $('fdErr').textContent = '';
+      onSubmit(v).then(function () { $('formDlg').close(); }).catch(function (err) {
+        $('fdErr').textContent = err.code === 'bad_password' ? 'Current password is wrong.' : err.code === 'username_taken' ? 'That username is taken.' : err.code === 'bad_username' ? 'Username: 3–32 lowercase letters, digits, . _ or -.' : (err.message || 'Could not save.');
+      });
+    };
+    $('formDlg').showModal();
+  }
+
+  function openUsers() {
+    var dlg = $('usersDlg');
+    if (!dlg.open) dlg.showModal();
+    $('uBody').innerHTML = '<p class="empty">Loading…</p>';
+    api('users').then(function (d) {
+      var labels = {}; d.sections.concat(d.actions).forEach(function (p) { labels[p.id] = p.label; });
+      $('uBody').innerHTML = '<div style="margin:10px 0"><button class="btn" id="uNew">New login</button></div><div class="wrap"><table><thead><tr><th>Login</th><th>Access</th><th>Last signed in</th><th>Status</th><th></th></tr></thead><tbody>' +
+        d.items.map(function (u) {
+          var access = u.role === 'master' ? 'Master (everything)' : (u.permissions.length ? u.permissions.map(function (p) { return labels[p] || p; }).join(', ') : 'Nothing ticked');
+          return '<tr><td><b>' + esc(u.username) + '</b></td><td style="white-space:normal;max-width:360px">' + esc(access) + '</td><td>' + dt(u.last_login_at) + '</td><td>' + (u.active ? '<span class="pill ok">On</span>' : '<span class="pill grey">Off</span>') + '</td>' +
+            '<td><a data-u="edit" data-id="' + u.id + '">Edit</a> · <a data-u="pw" data-id="' + u.id + '">Set password</a> · <a data-u="toggle" data-id="' + u.id + '">' + (u.active ? 'Switch off' : 'Switch on') + '</a></td></tr>';
+        }).join('') + '</tbody></table></div>';
+      var byId = {}; d.items.forEach(function (u) { byId[u.id] = u; });
+      $('uNew').onclick = function () {
+        formDialog('New login', 'Masters can do everything; limited logins only what you tick.', [
+          { id: 'username', label: 'Username' }, { id: 'password', label: 'Password (12+ characters)', type: 'password', ac: 'new-password' },
+          { id: 'role', label: 'Role', type: 'select', value: 'limited', options: [['limited', 'Limited'], ['master', 'Master']] },
+          { id: 'permissions', label: 'May see / do (limited only)', type: 'ticks', options: d.sections.concat(d.actions), value: ['see.report', 'see.players'] },
+        ], 'Create login', function (v) { return api('users/create', v).then(function () { toast('Login created.'); openUsers(); }); });
+      };
+      $('uBody').querySelectorAll('a[data-u]').forEach(function (a) {
+        a.onclick = function () {
+          var u = byId[a.getAttribute('data-id')], k = a.getAttribute('data-u');
+          if (k === 'toggle') return api('users/update', { id: u.id, active: !u.active }).then(function () { toast(u.active ? 'Switched off.' : 'Switched on.'); openUsers(); }).catch(function (e) { toast(e.message); });
+          if (k === 'pw') return formDialog('Set password for ' + u.username, 'Signs that login out everywhere.', [{ id: 'password', label: 'New password (12+ characters)', type: 'password', ac: 'new-password' }], 'Set password', function (v) { return api('users/password', { id: u.id, password: v.password }).then(function () { toast('Password set.'); }); });
+          formDialog('Edit ' + u.username, '', [
+            { id: 'role', label: 'Role', type: 'select', value: u.role, options: [['limited', 'Limited'], ['master', 'Master']] },
+            { id: 'permissions', label: 'May see / do (limited only)', type: 'ticks', options: d.sections.concat(d.actions), value: u.permissions },
+          ], 'Save', function (v) { return api('users/update', { id: u.id, role: v.role, permissions: v.permissions }).then(function () { toast('Saved.'); openUsers(); }); });
+        };
+      });
+    }).catch(function (e) { $('uBody').innerHTML = '<p class="empty">' + esc(e.message) + '</p>'; });
+  }
+
+  // -------------------------------------------------------------- filters --
+  function filters() {
+    return { from: $('fFrom').value || todayL(), to: $('fTo').value || todayL(), band: $('fBand').value, q: $('fQ').value.trim(), rows: $('fRows').value, status: $('fStatus').value };
+  }
+  function qs(o) { return Object.keys(o).filter(function (k) { return o[k] != null && o[k] !== ''; }).map(function (k) { return encodeURIComponent(k) + '=' + encodeURIComponent(o[k]); }).join('&'); }
+  function saveFilters() { var f = filters(); store.set('bc-ops-filters', { band: f.band, q: f.q, rows: f.rows, status: f.status, tab: S.tab }); }
+  function restoreFilters() {
+    var f = store.get('bc-ops-filters') || {};
+    $('fFrom').value = todayL(); $('fTo').value = todayL();
+    if (f.band) $('fBand').value = f.band; if (f.q) $('fQ').value = f.q; if (f.rows) $('fRows').value = f.rows; if (f.status) $('fStatus').value = f.status;
+    if (f.tab) S.tab = f.tab;
+  }
+  $('fGo').onclick = function () { S.page = 0; saveFilters(); load(); };
+  $('fClear').onclick = function () { $('fFrom').value = todayL(); $('fTo').value = todayL(); $('fBand').value = 'all'; $('fQ').value = ''; $('fStatus').value = 'all'; S.page = 0; saveFilters(); load(); };
+  ['fQ'].forEach(function (id) { $(id).addEventListener('keydown', function (e) { if (e.key === 'Enter') $('fGo').click(); }); });
+  function filteredBy() {
+    var f = filters(), parts = [];
+    if (f.band !== 'all' && /report|players/.test(S.tab)) parts.push('level band ' + BAND_LABEL[f.band]);
+    if (f.q && /report|players|transactions/.test(S.tab)) parts.push('"' + f.q + '"');
+    if (f.status !== 'all' && S.tab === 'transactions') parts.push('status ' + f.status);
+    return parts.length ? ' Filtered by: ' + esc(parts.join(', ')) + '. Press CLEAR FILTERS to see everything.' : '';
+  }
+  function liveNote() {
+    var f = filters();
+    var live = S.tab === 'health' || S.tab === 'players' || f.to >= todayL();
+    $('liveNote').innerHTML = S.tab === 'activity' ? '' : live ? '<b>Live</b> · refreshes every 30 s' : 'Historical window';
+    return live;
+  }
+
+  // ----------------------------------------------------------------- tabs --
+  function renderTabs() {
+    var allowed = TABS.filter(function (t) { return S.me.permissions.indexOf(t.perm) >= 0; });
+    if (!allowed.some(function (t) { return t.id === S.tab; })) S.tab = allowed.length ? allowed[0].id : null;
+    $('tabs').innerHTML = allowed.map(function (t) { return '<button class="tab" role="tab" data-tab="' + t.id + '" aria-selected="' + (t.id === S.tab) + '">' + esc(t.label) + '<span class="badge" id="b_' + t.id + '" hidden></span></button>'; }).join('');
+    $('tabs').querySelectorAll('.tab').forEach(function (b) { b.onclick = function () { S.tab = b.getAttribute('data-tab'); S.page = 0; saveFilters(); renderTabs(); load(); }; });
+    var showF = S.tab && S.tab !== 'health' && S.tab !== 'activity';
+    $('filters').hidden = !showF;
+    document.querySelectorAll('#filters [data-for]').forEach(function (el) { el.hidden = el.getAttribute('data-for').split(' ').indexOf(S.tab) < 0; });
+    ['fFrom', 'fTo'].forEach(function (id) { $(id).parentNode.hidden = S.tab === 'players'; });
+    if (!S.tab) $('view').innerHTML = '<p class="empty">Your login has no sections ticked. Ask a master to give you access.</p>';
+  }
+  function badge(tab, n) { var b = $('b_' + tab); if (!b) return; b.hidden = !n; b.textContent = n > 999 ? '999+' : n; }
+
+  // ------------------------------------------------------------- tables --
+  // cols: [{ k, label, n (numeric), fmt(row) -> html, sum: true|fn }]
+  function table(id, cols, rows, opts) {
+    opts = opts || {};
+    var st = S.sort[id] || opts.sort || null;
+    var sorted = rows.slice();
+    if (st) {
+      var c = cols.find(function (x) { return x.k === st.k; });
+      var val = c && c.sortVal ? c.sortVal : function (r) { return r[st.k]; };
+      sorted.sort(function (a, b) { var x = val(a), y = val(b); if (x == null) return 1; if (y == null) return -1; return (x < y ? -1 : x > y ? 1 : 0) * (st.dir === 'asc' ? 1 : -1); });
+    }
+    var per = opts.perPage || 0, page = opts.paged ? S.page : 0;
+    var shown = per ? sorted.slice(page * per, page * per + per) : sorted;
+    var head = '<tr>' + cols.map(function (c) { var on = st && st.k === c.k; return '<th class="' + (c.n ? 'n ' : '') + (c.nosort ? '' : 'sort') + '" data-k="' + c.k + '">' + esc(c.label) + (on ? ' <span class="ar">' + (st.dir === 'asc' ? '▲' : '▼') + '</span>' : '') + '</th>'; }).join('') + '</tr>';
+    var tot = opts.totals ? '<tr class="totals">' + cols.map(function (c, i) { var v = opts.totals(c, rows); return '<td class="' + (c.n ? 'n' : '') + '">' + (v == null ? (i === 0 ? 'TOTALS' : '') : v) + '</td>'; }).join('') + '</tr>' : '';
+    var body = shown.length ? shown.map(function (r, i) { return '<tr' + (opts.onRow ? ' class="click" data-i="' + (page * per + i) + '"' : '') + '>' + cols.map(function (c) { return '<td class="' + (c.n ? 'n' : '') + '">' + (c.fmt ? c.fmt(r) : esc(r[c.k])) + '</td>'; }).join('') + '</tr>'; }).join('')
+      : '<tr><td class="empty" colspan="' + cols.length + '">' + esc(opts.empty || 'Nothing in this window.') + filteredBy() + '</td></tr>';
+    var pager = per && sorted.length > per ? '<div class="pager"><span>' + (page * per + 1) + '–' + Math.min(sorted.length, page * per + per) + ' of ' + int(sorted.length) + '</span><a data-pg="-1"' + (page ? '' : ' hidden') + '>Previous</a><a data-pg="1"' + ((page + 1) * per < sorted.length ? '' : ' hidden') + '>Next</a></div>' : '';
+    var html = '<div class="wrap"><table id="t_' + id + '"><thead>' + head + '</thead><tbody>' + tot + body + '</tbody></table></div>' + pager;
+    setTimeout(function () {
+      var t = $('t_' + id); if (!t) return;
+      t.querySelectorAll('th.sort').forEach(function (th) { th.onclick = function () { var k = th.getAttribute('data-k'); var cur = S.sort[id] || opts.sort; S.sort[id] = { k: k, dir: cur && cur.k === k && cur.dir === 'desc' ? 'asc' : 'desc' }; S.page = 0; draw(); }; });
+      if (opts.onRow) t.querySelectorAll('tbody tr.click').forEach(function (tr) { tr.onclick = function () { opts.onRow(sorted[Number(tr.getAttribute('data-i'))]); }; });
+      var w = t.closest('.wrap'); if (w && w.nextElementSibling && w.nextElementSibling.classList.contains('pager')) w.nextElementSibling.querySelectorAll('a[data-pg]').forEach(function (a) { a.onclick = function () { S.page += Number(a.getAttribute('data-pg')); draw(); }; });
+    }, 0);
+    return html;
+  }
+  function sum(rows, k) { return rows.reduce(function (s, r) { return s + (Number(r[k]) || 0); }, 0); }
+  function numTotals(map) { return function (c, rows) { if (map && map[c.k]) return map[c.k](rows); return c.sum ? (c.fmtSum ? c.fmtSum(sum(rows, c.k)) : int(sum(rows, c.k))) : null; }; }
+
+  // --------------------------------------------------------------- charts --
+  function lineChart(points, o) {
+    o = o || {};
+    var W = 640, H = 210, L = 52, R = 14, T = 12, B = 30;
+    if (!points.length) return '<p class="empty">Nothing in this window.</p>';
+    var ys = points.map(function (p) { return p.y; }).concat(o.target != null ? [o.target] : []);
+    var lo = Math.min(0, Math.min.apply(null, ys)), hi = Math.max.apply(null, ys); if (hi === lo) hi = lo + 1;
+    hi += (hi - lo) * 0.08;
+    var X = function (i) { return L + (points.length === 1 ? (W - L - R) / 2 : i * (W - L - R) / (points.length - 1)); };
+    var Y = function (v) { return T + (H - T - B) * (1 - (v - lo) / (hi - lo)); };
+    var ticks = 4, grid = '';
+    for (var t = 0; t <= ticks; t++) { var v = lo + (hi - lo) * t / ticks; grid += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + Y(v).toFixed(1) + '" y2="' + Y(v).toFixed(1) + '" stroke="#ececec"/><text x="' + (L - 6) + '" y="' + (Y(v) + 4).toFixed(1) + '" text-anchor="end" font-size="11" fill="#9a9a9a">' + esc(o.yfmt ? o.yfmt(v) : int(v)) + '</text>'; }
+    var path = points.map(function (p, i) { return (i ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(p.y).toFixed(1); }).join(' ');
+    var area = path + ' L' + X(points.length - 1).toFixed(1) + ' ' + Y(lo).toFixed(1) + ' L' + X(0).toFixed(1) + ' ' + Y(lo).toFixed(1) + ' Z';
+    var step = Math.max(1, Math.ceil(points.length / 8)), xl = '';
+    points.forEach(function (p, i) { if (i % step === 0 || i === points.length - 1) xl += '<text x="' + X(i).toFixed(1) + '" y="' + (H - 10) + '" text-anchor="middle" font-size="11" fill="#9a9a9a">' + esc(p.x) + '</text>'; });
+    var dots = points.map(function (p, i) { return '<circle cx="' + X(i).toFixed(1) + '" cy="' + Y(p.y).toFixed(1) + '" r="' + (i === points.length - 1 ? 4 : 2.5) + '" fill="' + (o.color || '#2b8fdd') + '"><title>' + esc(p.x + ': ' + (o.yfmt ? o.yfmt(p.y) : int(p.y))) + '</title></circle>'; }).join('');
+    var tgt = o.target != null ? '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + Y(o.target).toFixed(1) + '" y2="' + Y(o.target).toFixed(1) + '" stroke="#1a9f8f" stroke-dasharray="5 4"/><text x="' + (W - R) + '" y="' + (Y(o.target) - 5).toFixed(1) + '" text-anchor="end" font-size="11" fill="#1a9f8f">' + esc(o.targetLabel || '') + '</text>' : '';
+    return '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + esc(o.label || 'chart') + '">' + grid + '<path d="' + area + '" fill="' + (o.color || '#2b8fdd') + '" fill-opacity=".10"/><path d="' + path + '" fill="none" stroke="' + (o.color || '#2b8fdd') + '" stroke-width="2"/>' + tgt + dots + xl + '</svg>';
+  }
+
+  // ---------------------------------------------------------------- views --
+  function load() {
+    if (!S.me || !S.tab) return;
+    liveNote();
+    var f = filters(), tab = S.tab, path;
+    if (tab === 'report') path = 'report?' + qs({ from: f.from, to: f.to, rows: f.rows, band: f.band, q: f.q });
+    else if (tab === 'coins') path = 'coins?' + qs({ from: f.from, to: f.to });
+    else if (tab === 'transactions') path = 'transactions?' + qs({ from: f.from, to: f.to, status: f.status, q: f.q });
+    else if (tab === 'trends') path = 'trends?' + qs({ from: f.from, to: f.to });
+    else if (tab === 'players') path = 'players?' + qs({ q: f.q, band: f.band });
+    else if (tab === 'activity') path = 'activity';
+    else if (tab === 'health') path = 'health';
+    if (!S.data[tab]) $('view').innerHTML = '<p class="empty">Loading…</p>';
+    api(path).then(function (d) { if (S.tab !== tab) return; S.data[tab] = d; draw(); }).catch(function (e) { if (e.message !== 'signed_out' && e.message !== 'not_allowed') $('view').innerHTML = '<p class="empty">Could not load: ' + esc(e.message) + '</p>'; });
+  }
+
+  function draw() {
+    var d = S.data[S.tab]; if (!d) return;
+    var v = $('view');
+    if (S.tab === 'report') v.innerHTML = viewReport(d);
+    if (S.tab === 'coins') v.innerHTML = viewCoins(d);
+    if (S.tab === 'transactions') v.innerHTML = viewTx(d);
+    if (S.tab === 'trends') v.innerHTML = viewTrends(d);
+    if (S.tab === 'players') v.innerHTML = viewPlayers(d);
+    if (S.tab === 'activity') { v.innerHTML = viewActivity(d); wireActivity(); }
+    if (S.tab === 'health') { v.innerHTML = viewHealth(d); $('hAgain').onclick = function () { S.data.health = null; load(); }; }
+  }
+
+  function rtpCell(staked, paid) { return staked ? pct(paid, staked) : '<span class="mut">—</span>'; }
+
+  function viewReport(d) {
+    var w = d.window;
+    var head = '<h2 class="sec">' + (d.rows === 'days' ? 'By day' : 'By player') + ' · ' + day(w.from) + (w.to !== w.from ? ' – ' + day(w.to) : '') + '</h2>';
+    if (d.rows === 'days') {
+      return head + table('rdays', [
+        { k: 'day', label: 'Date', fmt: function (r) { return day(r.day); } },
+        { k: 'players', label: 'Players', n: 1, sum: 1, fmt: function (r) { return int(r.players); } },
+        { k: 'new_players', label: 'New', n: 1, sum: 1, fmt: function (r) { return int(r.new_players); } },
+        { k: 'visits', label: 'Visits', n: 1, sum: 1, fmt: function (r) { return int(r.visits); } },
+        { k: 'active_minutes', label: 'Minutes', n: 1, sum: 1, fmt: function (r) { return mins(r.active_minutes); }, fmtSum: mins },
+        { k: 'avg', label: 'Min / visit', n: 1, sortVal: function (r) { return r.visits ? r.active_minutes / r.visits : 0; }, fmt: function (r) { return r.visits ? mins(r.active_minutes / r.visits) : '—'; } },
+        { k: 'daily_claims', label: 'Daily claims', n: 1, sum: 1, fmt: function (r) { return int(r.daily_claims); } },
+        { k: 'missions', label: 'Missions', n: 1, sum: 1, fmt: function (r) { return int(r.missions); } },
+        { k: 'rounds', label: 'Game rounds', n: 1, sum: 1, fmt: function (r) { return int(r.rounds); } },
+        { k: 'staked', label: 'Staked', n: 1, sum: 1, fmt: function (r) { return int(r.staked); } },
+        { k: 'paid', label: 'Paid out', n: 1, sum: 1, fmt: function (r) { return int(r.paid); } },
+        { k: 'rtp', label: 'Game RTP', n: 1, nosort: 1, fmt: function (r) { return rtpCell(r.staked, r.paid); } },
+        { k: 'coins_out', label: 'Coins out', n: 1, sum: 1, fmt: function (r) { return int(r.coins_out); } },
+        { k: 'wheel_spins', label: 'Wheel spins', n: 1, sum: 1, fmt: function (r) { return int(r.wheel_spins); } },
+      ], d.items, { sort: { k: 'day', dir: 'desc' }, totals: numTotals({ day: function (rows) { return 'TOTALS · ' + rows.length + ' days'; }, avg: function (rows) { var v = sum(rows, 'visits'); return v ? mins(sum(rows, 'active_minutes') / v) : '—'; }, rtp: function (rows) { return rtpCell(sum(rows, 'staked'), sum(rows, 'paid')); } }) }) +
+        '<p class="note">Players = anyone who opened the Bonus Center logged in that Lusaka day. New = first daily reward claim that day. Coins out = rewards handed out (daily, missions, level-ups…). Game stake + payout are recorded from 22 Oct 2026.</p>';
+    }
+    badge('report', d.items.length);
+    return head + table('rplayers', [
+      { k: 'last_seen', label: 'Last seen', fmt: function (r) { return dt(r.last_seen); }, sortVal: function (r) { return r.last_seen || ''; } },
+      { k: 'uid', label: 'Player', fmt: function (r) { return '<a>' + esc(r.uid) + '</a>'; }, sortVal: function (r) { return Number(r.uid); } },
+      { k: 'name', label: 'Name', fmt: function (r) { return esc(r.name || '—'); } },
+      { k: 'level', label: 'Level', n: 1, fmt: function (r) { return int(r.level); } },
+      { k: 'visits', label: 'Visits', n: 1, sum: 1, fmt: function (r) { return int(r.visits); } },
+      { k: 'active_minutes', label: 'Minutes', n: 1, sum: 1, fmt: function (r) { return mins(r.active_minutes); }, fmtSum: mins },
+      { k: 'daily_claims', label: 'Daily claims', n: 1, sum: 1, fmt: function (r) { return int(r.daily_claims); } },
+      { k: 'missions', label: 'Missions', n: 1, sum: 1, fmt: function (r) { return int(r.missions); } },
+      { k: 'rounds', label: 'Game rounds', n: 1, sum: 1, fmt: function (r) { return int(r.rounds); } },
+      { k: 'staked', label: 'Staked', n: 1, sum: 1, fmt: function (r) { return int(r.staked); } },
+      { k: 'paid', label: 'Paid out', n: 1, sum: 1, fmt: function (r) { return int(r.paid); } },
+      { k: 'rtp', label: 'Game RTP', n: 1, nosort: 1, fmt: function (r) { return rtpCell(r.staked, r.paid); } },
+      { k: 'coins_out', label: 'Coins out', n: 1, sum: 1, fmt: function (r) { return int(r.coins_out); } },
+      { k: 'wheel_spins', label: 'Wheel spins', n: 1, sum: 1, fmt: function (r) { return int(r.wheel_spins); } },
+    ], d.items, { sort: { k: 'last_seen', dir: 'desc' }, perPage: 100, paged: true, onRow: function (r) { openPlayer(r.uid); },
+      totals: numTotals({ last_seen: function (rows) { return 'TOTALS · ' + int(rows.length) + ' players'; }, rtp: function (rows) { return rtpCell(sum(rows, 'staked'), sum(rows, 'paid')); } }) });
+  }
+
+  function viewCoins(d) {
+    var w = d.window;
+    var rewards = d.rows.filter(function (r) { return r.kind === 'reward'; }).map(function (r) { return Object.assign({ label: EVENT_LABEL[r.source] || r.source }, r); });
+    var games = d.rows.filter(function (r) { return r.kind === 'game'; }).map(function (r) { return Object.assign({ label: GAME_LABEL[r.source] || r.source, net: r.staked != null ? r.staked - r.paid : null }, r); });
+    var s = d.shop;
+    return '<h2 class="sec">Coins handed out · ' + day(w.from) + (w.to !== w.from ? ' – ' + day(w.to) : '') + '</h2>' +
+      table('crew', [
+        { k: 'label', label: 'Source' },
+        { k: 'events', label: 'Times', n: 1, sum: 1, fmt: function (r) { return int(r.events); } },
+        { k: 'players', label: 'Players', n: 1, fmt: function (r) { return int(r.players); } },
+        { k: 'coins', label: 'Coins', n: 1, sum: 1, fmt: function (r) { return int(r.coins); } },
+        { k: 'kv', label: 'Worth', n: 1, sortVal: function (r) { return r.coins; }, fmt: function (r) { return kw(r.coins / 10000); } },
+      ], rewards, { sort: { k: 'coins', dir: 'desc' }, totals: numTotals({ label: function () { return 'TOTALS'; }, kv: function (rows) { return kw(sum(rows, 'coins') / 10000); } }), empty: 'No rewards handed out in this window.' }) +
+      '<p class="note">Worth uses the Coin Shop rate, 10,000 coins = K1. Players count per source.</p>' +
+      '<h2 class="sec">Mini-games</h2>' +
+      table('cgame', [
+        { k: 'label', label: 'Game' },
+        { k: 'events', label: 'Rounds', n: 1, sum: 1, fmt: function (r) { return int(r.events); } },
+        { k: 'players', label: 'Players', n: 1, fmt: function (r) { return int(r.players); } },
+        { k: 'staked', label: 'Staked', n: 1, sum: 1, fmt: function (r) { return r.staked == null ? '<span class="mut">—</span>' : int(r.staked); } },
+        { k: 'paid', label: 'Paid out', n: 1, sum: 1, fmt: function (r) { return r.paid == null ? '<span class="mut">—</span>' : int(r.paid); } },
+        { k: 'net', label: 'Net to house', n: 1, sum: 1, fmt: function (r) { return r.net == null ? '<span class="mut">—</span>' : signed(r.net); } },
+        { k: 'rtp', label: 'RTP', n: 1, nosort: 1, fmt: function (r) { return rtpCell(r.staked, r.paid); } },
+      ], games, { sort: { k: 'events', dir: 'desc' }, totals: numTotals({ label: function () { return 'TOTALS'; }, net: function (rows) { return signed(sum(rows, 'staked') - sum(rows, 'paid')); }, rtp: function (rows) { return rtpCell(sum(rows, 'staked'), sum(rows, 'paid')); } }), empty: 'No mini-game rounds in this window.' }) +
+      '<p class="note">Coins only, never real money. Stake + payout per round are recorded from 22 Oct 2026; earlier rounds show —. Target RTP 98% (97–99% per game).</p>' +
+      '<h2 class="sec">Coin Shop</h2>' +
+      '<div class="wrap"><table><thead><tr><th>Flow</th><th class="n">Count / amount</th></tr></thead><tbody>' +
+      '<tr><td>Purchases and redemptions</td><td class="n">' + int(s.count) + '</td></tr>' +
+      '<tr><td>Coins spent</td><td class="n">' + int(s.coinsSpent) + '</td></tr>' +
+      '<tr><td>Real money waiting to be credited</td><td class="n">' + kw(s.kwachaPending) + '</td></tr>' +
+      '<tr><td>Real money credited</td><td class="n">' + kw(s.kwachaCredited) + '</td></tr>' +
+      '<tr><td>Rejected (refunded in coins)</td><td class="n">' + kw(s.kwachaRejected) + '</td></tr>' +
+      '<tr><td>World Cup prize claims</td><td class="n">' + int(s.prizes) + '</td></tr>' +
+      '</tbody></table></div>';
+  }
+
+  function txStatus(s) { return s === 'credited' ? '<span class="pill ok">Credited</span>' : s === 'rejected' ? '<span class="pill bad">Rejected</span>' : '<span class="pill warn">' + esc(s || 'pending') + '</span>'; }
+  function viewTx(d) {
+    var pending = d.items.filter(function (r) { return r.status === 'pending'; }).length;
+    badge('transactions', pending);
+    return '<h2 class="sec">Coin Shop purchases and prize claims</h2>' + table('tx', [
+      { k: 'created_at', label: 'Date', fmt: function (r) { return dt(r.created_at); } },
+      { k: 'uid', label: 'Player', fmt: function (r) { return '<a data-p="' + esc(r.uid) + '">' + esc(r.uid) + '</a>'; } },
+      { k: 'item_name', label: 'Item', fmt: function (r) { return esc(r.item_name || (r.prize_key ? 'Prize ' + r.prize_key : '—')); } },
+      { k: 'price_kwacha', label: 'Paid (coins)', n: 1, sum: 1, fmt: function (r) { var g = [r.price_emeralds ? r.price_emeralds + ' E' : '', r.price_rubies ? r.price_rubies + ' R' : '', r.price_diamonds ? r.price_diamonds + ' D' : ''].filter(Boolean).join(' '); return int(r.price_kwacha) + (g ? ' + ' + esc(g) : ''); } },
+      { k: 'payout_kwacha', label: 'Payout', n: 1, sum: 1, fmt: function (r) { return r.payout_kwacha ? kw(r.payout_kwacha) : '<span class="mut">—</span>'; }, fmtSum: kw },
+      { k: 'status', label: 'Status', fmt: function (r) { return txStatus(r.status); } },
+      { k: 'handled_by', label: 'Handled by', fmt: function (r) { return esc(r.handled_by || '—'); } },
+      { k: 'handled_at', label: 'Handled at', fmt: function (r) { return dt(r.handled_at); } },
+      { k: 'telegram_error', label: 'Telegram', fmt: function (r) { return r.telegram_error ? '<span class="pill bad">Not sent</span>' : '<span class="pill grey">Sent</span>'; } },
+    ], d.items, { sort: { k: 'created_at', dir: 'desc' }, perPage: 100, paged: true,
+      totals: numTotals({ created_at: function (rows) { return 'TOTALS · ' + rows.length; }, status: function (rows) { var p = rows.filter(function (r) { return r.status === 'pending'; }).length, rj = rows.filter(function (r) { return r.status === 'rejected'; }).length; return p + ' pending, ' + rj + ' rejected'; } }),
+      empty: 'No purchases in this window. (The Coin Shop is still switched to COMING SOON.)' });
+  }
+
+  function viewTrends(d) {
+    var ds = d.days || [];
+    var x = function (r) { return day(r.day).slice(0, 5); };
+    var act = ds.map(function (r) { return { x: x(r), y: Number(r.players) || 0 }; });
+    var avg = ds.map(function (r) { return { x: x(r), y: r.visits ? r.active_minutes / r.visits : 0 }; });
+    var cout = ds.map(function (r) { return { x: x(r), y: Number(r.coins_out) || 0 }; });
+    var rtp = ds.filter(function (r) { return r.staked > 0; }).map(function (r) { return { x: x(r), y: 100 * r.paid / r.staked }; });
+    var tp = sum(ds, 'players'), tv = sum(ds, 'visits'), tm = sum(ds, 'active_minutes'), ts = sum(ds, 'staked'), tpd = sum(ds, 'paid');
+    function chart(title, cap, svg) { return '<div class="chart"><h3>' + esc(title) + '</h3><p class="cap">' + cap + '</p>' + svg + '</div>'; }
+    return '<div class="charts">' +
+      chart('Active players by day', ds.length ? esc(day(ds[0].day)) + ' · ' + int(tp) + ' player-days · ' + esc(day(ds[ds.length - 1].day)) : '', lineChart(act, { label: 'Active players by day' })) +
+      chart('Average minutes per visit', tv ? mins(tm / tv) + ' min across ' + int(tv) + ' visits' : '', lineChart(avg, { label: 'Average minutes per visit', color: '#1a9f8f', yfmt: function (v) { return v.toFixed(1); } })) +
+      chart('Coins handed out by day', int(sum(ds, 'coins_out')) + ' coins · worth ' + kw(sum(ds, 'coins_out') / 10000), lineChart(cout, { label: 'Coins handed out by day', color: '#8e44ad' })) +
+      chart('Mini-game RTP by day', ts ? pct(tpd, ts) + ' of stakes paid back' : 'No staked rounds yet (recorded from 22 Oct 2026)', lineChart(rtp, { label: 'Mini-game RTP by day', color: '#c0392b', target: 98, targetLabel: '98% target', yfmt: function (v) { return v.toFixed(0) + '%'; } })) +
+      '</div>' + table('trdays', [
+        { k: 'day', label: 'Date', fmt: function (r) { return day(r.day); } },
+        { k: 'players', label: 'Players', n: 1, sum: 1, fmt: function (r) { return int(r.players); } },
+        { k: 'new_players', label: 'New', n: 1, sum: 1, fmt: function (r) { return int(r.new_players); } },
+        { k: 'visits', label: 'Visits', n: 1, sum: 1, fmt: function (r) { return int(r.visits); } },
+        { k: 'active_minutes', label: 'Minutes', n: 1, sum: 1, fmt: function (r) { return mins(r.active_minutes); }, fmtSum: mins },
+        { k: 'coins_out', label: 'Coins out', n: 1, sum: 1, fmt: function (r) { return int(r.coins_out); } },
+        { k: 'staked', label: 'Staked', n: 1, sum: 1, fmt: function (r) { return int(r.staked); } },
+        { k: 'paid', label: 'Paid out', n: 1, sum: 1, fmt: function (r) { return int(r.paid); } },
+        { k: 'rtp', label: 'RTP', n: 1, nosort: 1, fmt: function (r) { return rtpCell(r.staked, r.paid); } },
+      ], ds, { sort: { k: 'day', dir: 'desc' }, totals: numTotals({ day: function () { return 'TOTALS'; }, rtp: function (rows) { return rtpCell(sum(rows, 'staked'), sum(rows, 'paid')); } }) });
+  }
+
+  function viewPlayers(d) {
+    badge('players', d.items.length);
+    return '<h2 class="sec">Players</h2>' + table('pl', [
+      { k: 'uid', label: 'Player', fmt: function (r) { return '<a>' + esc(r.uid) + '</a>'; }, sortVal: function (r) { return Number(r.uid); } },
+      { k: 'name', label: 'Name', fmt: function (r) { return esc(r.name || '—'); } },
+      { k: 'level', label: 'Level', n: 1, fmt: function (r) { return int(r.level); } },
+      { k: 'band', label: 'Band', fmt: function (r) { return esc(BAND_LABEL[r.band] || r.band); } },
+      { k: 'xp', label: 'XP', n: 1, fmt: function (r) { return int(r.xp); } },
+      { k: 'coins', label: 'Coins', n: 1, sum: 1, fmt: function (r) { return int(r.coins); } },
+      { k: 'gems', label: 'Gems E/R/D', n: 1, sortVal: function (r) { return r.emeralds * 5 + r.rubies * 10 + r.diamonds * 20; }, fmt: function (r) { return r.emeralds + ' / ' + r.rubies + ' / ' + r.diamonds; } },
+      { k: 'missions', label: 'Missions', n: 1, sum: 1, fmt: function (r) { return int(r.missions); } },
+      { k: 'visits', label: 'Visits', n: 1, sum: 1, fmt: function (r) { return int(r.visits); } },
+      { k: 'active_minutes', label: 'Minutes', n: 1, sum: 1, fmt: function (r) { return mins(r.active_minutes); }, fmtSum: mins },
+      { k: 'casino_7d', label: 'Casino 7d', n: 1, sum: 1, fmt: function (r) { return kw(r.casino_7d); }, fmtSum: kw },
+      { k: 'sports_7d', label: 'Sports 7d', n: 1, sum: 1, fmt: function (r) { return kw(r.sports_7d); }, fmtSum: kw },
+      { k: 'deposits_7d', label: 'Deposits 7d', n: 1, sum: 1, fmt: function (r) { return kw(r.deposits_7d); }, fmtSum: kw },
+      { k: 'bet_days_7d', label: 'Bet days 7d', n: 1, fmt: function (r) { return int(r.bet_days_7d); } },
+      { k: 'last_seen', label: 'Last seen', fmt: function (r) { return dt(r.last_seen); }, sortVal: function (r) { return r.last_seen || ''; } },
+    ], d.items, { sort: { k: 'last_seen', dir: 'desc' }, perPage: 100, paged: true, onRow: function (r) { openPlayer(r.uid); },
+      totals: numTotals({ uid: function (rows) { return 'TOTALS · ' + int(rows.length); } }), empty: 'No players match.' }) +
+      '<p class="note">Everyone who has opened the Bonus Center logged in (newest first, up to 1,000). Casino / sports / deposits are the last 7 days of real bwanabet play from the CRM, in kwacha. Click a player for everything about them.</p>';
+  }
+
+  function openPlayer(uid) {
+    var dlg = $('playerDlg');
+    $('pTitle').textContent = 'Player ' + uid; $('pSub').textContent = 'Loading…'; $('pBody').innerHTML = '';
+    if (!dlg.open) dlg.showModal();
+    if (S.me.permissions.indexOf('see.players') < 0) { $('pSub').textContent = 'Your login cannot see player details.'; return; }
+    api('player?uid=' + encodeURIComponent(uid)).then(function (d) {
+      var p = d.profile;
+      $('pSub').textContent = p ? ((p.name ? p.name + ' · ' : '') + 'Level ' + p.level + ' ' + (p.title || '') + ' · last seen ' + ago(p.lastSeen)) : 'Has not opened the Bonus Center logged in.';
+      var html = '';
+      if (p) html += '<h2 class="sec">Balances and progress</h2><div class="kv">' + [
+        ['Coins', int(p.coins) + ' <span class="mut">(' + kw(p.coins / 10000) + ')</span>'], ['Emeralds / Rubies / Diamonds', p.emeralds + ' / ' + p.rubies + ' / ' + p.diamonds],
+        ['Level', p.level + ' · ' + esc(p.title || '')], ['XP', int(p.xp)], ['Missions collected', p.missions.length + ' of 30'], ['Daily streak', 'day ' + (p.dailyDay || '—') + (p.lastDailyClaim ? ' · last ' + esc(p.lastDailyClaim) : '')],
+        ['Mini-game rounds', int(p.gamesPlayed)], ['First seen', dt(p.firstSeen)], ['Reward start (first daily)', dt(p.firstDaily)], ['Last seen', dt(p.lastSeen)],
+      ].map(function (k) { return '<div><small>' + esc(k[0]) + '</small><b>' + k[1] + '</b></div>'; }).join('') + '</div>' +
+        (p.missions.length ? '<p class="note">Missions: ' + esc(p.missions.join(', ')) + '</p>' : '');
+      html += '<h2 class="sec">Real bwanabet play (CRM, last 30 days)</h2>' + table('pbets', [
+        { k: 'day', label: 'Day', fmt: function (r) { return day(r.day); } },
+        { k: 'casino_stake', label: 'Casino stake', n: 1, sum: 1, fmt: function (r) { return kw(r.casino_stake); }, fmtSum: kw },
+        { k: 'casino_rounds', label: 'Rounds', n: 1, sum: 1, fmt: function (r) { return int(r.casino_rounds); } },
+        { k: 'sports_stake', label: 'Sports stake', n: 1, sum: 1, fmt: function (r) { return kw(r.sports_stake); }, fmtSum: kw },
+        { k: 'sports_slips', label: 'Slips', n: 1, sum: 1, fmt: function (r) { return int(r.sports_slips); } },
+        { k: 'deposits_amount', label: 'Deposits', n: 1, sum: 1, fmt: function (r) { return kw(r.deposits_amount) + ' <span class="mut">(' + int(r.deposits_count) + ')</span>'; }, fmtSum: kw },
+        { k: 'withdrawals_amount', label: 'Withdrawals', n: 1, sum: 1, fmt: function (r) { return kw(r.withdrawals_amount); }, fmtSum: kw },
+        { k: 'crm_synced_at', label: 'Synced', fmt: function (r) { return dt(r.crm_synced_at); } },
+      ], d.bets, { sort: { k: 'day', dir: 'desc' }, totals: numTotals({ day: function () { return 'TOTALS'; } }), empty: 'No betting days in the CRM feed (the feed starts 19 Oct 2026).' });
+      html += '<h2 class="sec">Recent visits</h2>' + table('psess', [
+        { k: 'started_at', label: 'Started', fmt: function (r) { return dt(r.started_at); } },
+        { k: 'active_seconds', label: 'Minutes', n: 1, sum: 1, fmt: function (r) { return mins((r.active_seconds || 0) / 60); }, fmtSum: function (s) { return mins(s / 60); } },
+        { k: 'last_ping_at', label: 'Last ping', fmt: function (r) { return dt(r.last_ping_at); } },
+        { k: 'verified', label: 'Login', fmt: function (r) { return r.verified ? '<span class="pill ok">bwanabet</span>' : '<span class="pill grey">unverified</span>'; } },
+      ], d.sessions, { sort: { k: 'started_at', dir: 'desc' }, totals: numTotals({ started_at: function (rows) { return 'TOTALS · ' + rows.length; } }), empty: 'No visits recorded.' });
+      html += '<h2 class="sec">Recent activity</h2>' + table('pev', [
+        { k: 'created_at', label: 'Time', fmt: function (r) { return dt(r.created_at); } },
+        { k: 'type', label: 'Event', fmt: function (r) { return esc(EVENT_LABEL[r.type] || r.type.replace(/_/g, ' ')); } },
+        { k: 'game_id', label: 'Game', fmt: function (r) { return esc(GAME_LABEL[r.game_id] || r.game_id || ''); } },
+        { k: 'amount', label: 'Amount', n: 1, fmt: function (r) { return r.amount == null ? '' : int(r.amount); } },
+        { k: 'meta', label: 'Detail', nosort: 1, fmt: function (r) { return r.meta ? '<span class="mut">' + esc(JSON.stringify(r.meta)).slice(0, 120) + '</span>' : ''; } },
+      ], d.events, { sort: { k: 'created_at', dir: 'desc' }, empty: 'No activity recorded.' });
+      if (d.purchases.length) html += '<h2 class="sec">Coin Shop</h2>' + table('pbuy', [
+        { k: 'created_at', label: 'Date', fmt: function (r) { return dt(r.created_at); } }, { k: 'item_name', label: 'Item' },
+        { k: 'price_kwacha', label: 'Coins', n: 1, fmt: function (r) { return int(r.price_kwacha); } }, { k: 'payout_kwacha', label: 'Payout', n: 1, fmt: function (r) { return r.payout_kwacha ? kw(r.payout_kwacha) : '—'; } },
+        { k: 'status', label: 'Status', fmt: function (r) { return txStatus(r.status); } },
+      ], d.purchases, { sort: { k: 'created_at', dir: 'desc' } });
+      if (d.predictions.length) html += '<h2 class="sec">Weekly predictions</h2>' + table('ppred', [
+        { k: 'created_at', label: 'Picked', fmt: function (r) { return dt(r.created_at); } }, { k: 'home', label: 'Match', fmt: function (r) { return esc(r.home + ' v ' + r.away); } },
+        { k: 'pick', label: 'Pick' }, { k: 'outcome', label: 'Result', fmt: function (r) { return esc(r.outcome || 'pending'); } }, { k: 'claimed_at', label: 'Claimed', fmt: function (r) { return dt(r.claimed_at); } },
+      ], d.predictions, { sort: { k: 'created_at', dir: 'desc' } });
+      $('pBody').innerHTML = html;
+    }).catch(function (e) { $('pSub').textContent = 'Could not load: ' + e.message; });
+  }
+  document.addEventListener('click', function (e) { var a = e.target.closest && e.target.closest('a[data-p]'); if (a) { e.preventDefault(); openPlayer(a.getAttribute('data-p')); } });
+
+  function viewActivity(d) {
+    return '<h2 class="sec">Console activity (audit log)</h2>' + table('act', [
+      { k: 'at', label: 'Time', fmt: function (r) { return dt(r.at); } },
+      { k: 'action', label: 'Action', fmt: function (r) { return esc(r.action); } },
+      { k: 'target', label: 'Target', fmt: function (r) { return esc(r.target || ''); } },
+      { k: 'actor', label: 'Login', fmt: function (r) { return esc(r.actor); } },
+      { k: 'ip', label: 'Address', fmt: function (r) { return esc(r.ip || ''); } },
+      { k: 'detail', label: 'Detail', nosort: 1, fmt: function (r) { return r.detail ? '<span class="mut">' + esc(JSON.stringify(r.detail)).slice(0, 140) + '</span>' : ''; } },
+    ], d.items, { sort: { k: 'at', dir: 'desc' }, empty: 'No console activity yet.' }) +
+      '<div class="pager"><span id="actChain">' + int(d.total) + ' entries</span><a id="actVerify">Check the chain</a>' + (d.items.length && d.items.length < d.total ? '<a id="actMore">Show earlier</a>' : '') + '</div>';
+  }
+  function wireActivity() {
+    var v = $('actVerify'); if (v) v.onclick = function () { $('actChain').textContent = 'Checking…'; api('activity/verify').then(function (r) { $('actChain').innerHTML = int(S.data.activity.total) + ' entries · ' + (r.ok ? '<span class="pos">chain intact</span>' : '<span class="neg">chain BROKEN at entry ' + r.brokenAt + '</span>'); }); };
+    var m = $('actMore'); if (m) m.onclick = function () { var d = S.data.activity; var last = d.items[d.items.length - 1]; api('activity?before=' + last.id).then(function (x) { d.items = d.items.concat(x.items); draw(); }); };
+  }
+
+  function viewHealth(d) {
+    var pillFor = function (s) { return s === 'healthy' ? '<span class="pill ok">healthy</span>' : s === 'broken' ? '<span class="pill bad">broken</span>' : s === 'needs attention' ? '<span class="pill warn">needs attention</span>' : '<span class="pill grey">unknown</span>'; };
+    badge('health', d.broken + d.attention);
+    var cls = d.broken ? 'banner bad' : d.attention ? 'banner warn' : 'banner';
+    var msg = d.broken || d.attention ? (d.broken ? d.broken + ' broken' : '') + (d.broken && d.attention ? ', ' : '') + (d.attention ? d.attention + ' need attention' : '') + '.' : 'Everything is healthy.';
+    return '<div class="' + cls + '"><b>' + esc(msg) + '</b> <span class="mut">checked in ' + int(d.ms) + ' ms</span> <a id="hAgain" style="margin-left:10px">Check again</a></div>' +
+      '<div class="wrap"><table><thead><tr><th>Check</th><th>Status</th><th>Reading</th><th>Detail</th></tr></thead><tbody>' +
+      d.checks.map(function (c) { return '<tr><td><b>' + esc(c.check) + '</b></td><td>' + pillFor(c.status) + '</td><td>' + esc(c.reading) + '</td><td style="white-space:normal">' + esc(c.detail) + '</td></tr>'; }).join('') + '</tbody></table></div>';
+  }
+
+  // ----------------------------------------------------------------- boot --
+  function poll() {
+    clearInterval(S.timer);
+    S.timer = setInterval(function () {
+      if (document.visibilityState !== 'visible' || !S.me || $('playerDlg').open || $('usersDlg').open || $('formDlg').open) return;
+      if (S.tab === 'activity') return;
+      if (liveNote()) load();
+    }, 30000);
+  }
+  function boot() {
+    api('me').then(function (me) {
+      S.me = me; $('acctBtn').hidden = false;
+      restoreFilters(); renderTabs(); load(); poll();
+    }).catch(function (e) { if (e.message !== 'signed_out') { $('view').innerHTML = '<p class="empty">Could not reach the server: ' + esc(e.message) + '</p>'; } });
+  }
+  var saved = store.get('bc-ops-auth');
+  if (saved && saved.token) { S.token = saved.token; boot(); } else openLogin();
+})();
+</script>
+</body>
+</html>
