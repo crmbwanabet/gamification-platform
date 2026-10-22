@@ -24,7 +24,7 @@ token's signature on our server.
 
 ### The Wheel of Fortune is now INSIDE the Bonus Center (2026-10-19)
 
-This one line also runs the Wheel of Fortune. There is ONE button for both: while the player's free spin for today is unused it shows the **wheel's gift box** and opens the wheel; from the moment they spin it shows the **Bonus Center coin** and opens the Bonus Center. **Remove the wheel's own script**
+This one line also runs the Wheel of Fortune. There is ONE button for both: while the player's free spin for today is unused it shows the **wheel's gift box** and opens the wheel; from the moment they spin it shows the **Bonus Center treasure chest** and opens the Bonus Center. **Remove the wheel's own script**
 (`https://wheel-of-fortune-roan.vercel.app/embed.js`) from the site, otherwise a player sees
 two wheels. What players see:
 
@@ -47,7 +47,7 @@ A player who already used the spin today just sees the treasure chest.
 Preview of the whole flow (test wheel, spins never pay):
 https://bonus.bwanabet.dev/preview.html
 
-## 2. Optional: open it from your own menu button instead of the floating coin
+## 2. Optional: open it from your own menu button instead of the floating button
 
 ```html
 <script>window.BWANABET_BONUS = { launcher: false };</script>
@@ -57,7 +57,7 @@ https://bonus.bwanabet.dev/preview.html
 <a href="#" onclick="BwanaBetBonus.open(); return false;">Bonus Center</a>
 ```
 
-Leave out `launcher: false` to have both the floating coin and your own button.
+Leave out `launcher: false` to have both the floating button and your own button.
 `BwanaBetBonus.close()` closes it from your side.
 
 ## 3. Requirements on the bwanabet site
