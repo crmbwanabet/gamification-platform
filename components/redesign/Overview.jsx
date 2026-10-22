@@ -34,8 +34,12 @@ const OV_CSS = `
       grid-template-areas: "missions daily" "store games" "season games" "predict games"; }
     .ov-grid--nostore { grid-template-rows: auto auto auto 1fr; grid-template-areas: "missions games" "daily games" "season games" "predict games"; }
   }
-  .ov-link { all: unset; box-sizing: border-box; cursor: pointer; display: flex; align-items: center; justify-content: center; min-height: 44px; margin-top: 8px; width: 100%;
-    font-size: 13px; font-weight: 900; color: ${CANDY.gold}; border-radius: 12px; }
+  /* "See all missions": a full button, not a text link (owner 2026-10-22: make it bigger) */
+  .ov-link { all: unset; box-sizing: border-box; cursor: pointer; display: flex; align-items: center; justify-content: center; min-height: 56px; margin-top: 10px; width: 100%;
+    font-family: ${CANDY.display}; font-size: 21px; letter-spacing: .02em; text-transform: uppercase; color: ${CANDY.gold}; border-radius: 16px;
+    background: linear-gradient(180deg, ${CANDY.violet.fill}, ${CANDY.violet.dark}); border: 2px solid #4A0F78; box-shadow: 0 5px 0 #4A0F78;
+    text-shadow: 0 2px 0 ${CANDY.outline}; transition: transform .08s ease; }
+  .ov-link:active { transform: translateY(3px); box-shadow: 0 2px 0 #4A0F78; }
   .ov-link:focus-visible, .ov-mission:focus-visible { outline: 3px solid ${CANDY.gold}; outline-offset: 3px; }
   .ov-mission { all: unset; box-sizing: border-box; cursor: pointer; display: flex; flex-direction: column; gap: 10px; width: 100%; padding: 14px; }
 `;
