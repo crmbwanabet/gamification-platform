@@ -1,6 +1,6 @@
 {
   "name": "wheel-bonus-center",
-  "version": 4,
+  "version": 5,
   "updated": "2026-10-22",
   "about": "How the Wheel of Fortune (crmbwanabet/wheel-of-fortune) and the BwanaBet Bonus Center (crmbwanabet/gamification-platform) talk to each other. This file is copied BYTE FOR BYTE in both repos at docs/integrations/wheel-bonus-center-contract.json. Change it in both in the same sitting, bump version, and run the contract tests + `npm run contract:check` in each repo.",
   "repos": {
@@ -41,6 +41,7 @@
     "Both apps moved to bwanabet.dev on 2026-10-22 (MTN blocks vercel.app). The old vercel.app addresses still serve the same deployments: keep 100xbet-gamification.vercel.app in wheelAllowsAuthFrom until every embed loads widget.js from bonus.bwanabet.dev.",
     "The Bonus Center hosts the wheel in an iframe (components/extras/useWheel.jsx) and must accept messages only from origins.wheel and only from its own iframe.",
     "A new Bonus Center domain must be added to the wheel's ALLOWED_AUTH_ORIGINS AND to wheelAllowsAuthFrom here before it goes live, or the wheel never gets the token.",
-    "When the wheel runs inside the Bonus Center, bwanabet.com must NOT also load the wheel's own embed.js (two wheels otherwise)."
+    "bwanabet.co.zm / bwanabet.com load https://wheel-of-fortune-roan.vercel.app/embed.js (the operator's existing tag). Since v5 that file is a LOADER: it loads https://bonus.bwanabet.dev/widget.js (the one widget, wheel inside) and, only for promo arrivals (?wof=new|existing), /embed-standalone.js with window.__bwArrivalOnly = true so just the arrival popup runs. The standalone wheel embed lives on unchanged as /embed-standalone.js (rollback = copy it back to /embed.js; 5-minute cache).",
+    "Never load the standalone wheel button AND the Bonus Center widget on the same page (two wheels)."
   ]
 }
