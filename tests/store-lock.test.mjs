@@ -1,23 +1,23 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { STORE_UNLOCK_STAGE, STORE_UNLOCK_XP, storeLocked, storeLockReason, cleanStoreConfig, STORE_DEFAULTS } from '../lib/store/catalog.mjs';
+import { STORE_UNLOCK_STAGE, STORE_UNLOCK_XP, itemBuyable, storeLocked, storeLockReason, cleanStoreConfig, STORE_DEFAULTS } from '../lib/store/catalog.mjs';
 import { mergeConfig } from '../lib/config/merge.mjs';
 import { getStage } from '../lib/vuma/stages.mjs';
 
 const OPEN = { open: true };
 
 test('the Coin Shop opens at stage 5 (900 XP) once it is switched on', () => {
-  assert.equal(STORE_UNLOCK_STAGE, 5);
-  assert.equal(STORE_UNLOCK_XP, 900);
-  assert.equal(getStage(STORE_UNLOCK_XP - 1).stage, 4);
-  assert.equal(getStage(STORE_UNLOCK_XP).stage, 5);
+  assert.equal(STORE_UNLOCK_STAGE, 10);
+  assert.equal(STORE_UNLOCK_XP, 7000);
+  assert.equal(getStage(STORE_UNLOCK_XP - 1).stage, 9);
+  assert.equal(getStage(STORE_UNLOCK_XP).stage, 10);
   assert.equal(storeLocked(1, OPEN), true);
-  assert.equal(storeLocked(4, OPEN), true);
-  assert.equal(storeLocked(5, OPEN), false);
+  assert.equal(storeLocked(9, OPEN), true);
+  assert.equal(storeLocked(10, OPEN), false);
   assert.equal(storeLocked(19, OPEN), false);
   assert.equal(storeLocked(undefined, OPEN), true);
-  assert.equal(storeLockReason(4, OPEN), 'stage');
-  assert.equal(storeLockReason(5, OPEN), null);
+  assert.equal(storeLockReason(9, OPEN), 'stage');
+  assert.equal(storeLockReason(10, OPEN), null);
 });
 
 test('launch switch: shut by default = COMING SOON for every stage', () => {
@@ -39,4 +39,11 @@ test('the `store` config row reaches the merged config', () => {
   assert.deepEqual(mergeConfig(defaults, []).store, { open: false });
   assert.deepEqual(mergeConfig(defaults, [{ key: 'store', value: { open: true } }]).store, { open: true });
   assert.deepEqual(mergeConfig(defaults, [{ key: 'store', value: { open: 'yes' } }]).store, { open: false });
+});
+
+test('only the kwacha packs are buyable; prizes and other items stay locked', () => {
+  assert.equal(itemBuyable({ redeem: { currency: 'coins', amount: 5 } }), true);
+  assert.equal(itemBuyable({ redeem: { currency: 'emeralds', amount: 1 } }), false);
+  assert.equal(itemBuyable({ id: 'cap', price: { kwacha: 20000 } }), false);
+  assert.equal(itemBuyable(null), false);
 });

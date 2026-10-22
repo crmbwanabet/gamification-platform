@@ -23,7 +23,7 @@ import { Predictions } from '../extras/ExtrasViews';
 // week → bonus games; desktop (≥861px) opens with missions (400px) left + the
 // daily reward right (full column width, lined up with the games), then the Coin Shop + this week on the left
 // beside the games grid (3 per row). With an empty store the games take the
-// top-right slot. Below stage 5 the Coin Shop is greyed with a lock plate.
+// top-right slot. Below level 10 the Coin Shop is greyed with a lock plate.
 const OV_CSS = `
   .ov-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 26px; grid-template-areas: "missions" "daily" "games" "predict" "store" "season"; }
   .ov-daily { grid-area: daily; } .ov-store { grid-area: store; } .ov-season { grid-area: season; display: grid; gap: 12px; } .ov-games { grid-area: games; } .ov-missions { grid-area: missions; display: grid; gap: 12px; } .ov-predict { grid-area: predict; }

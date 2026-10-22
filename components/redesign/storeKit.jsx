@@ -107,7 +107,7 @@ export const goalText = (goal, long = false) => (goal
   : 'You can buy every pack');
 
 /**
- * Coin Shop lock (stage 5, lib/store/catalog.mjs): the plate laid over the
+ * Coin Shop lock (level 10, lib/store/catalog.mjs): the plate laid over the
  * greyed shop on Home and in the Store tab. `xp` = the player's XP;
  * reason 'soon' = the shop is switched off for everyone (storeLockReason).
  */

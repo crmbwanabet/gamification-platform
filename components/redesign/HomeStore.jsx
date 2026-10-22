@@ -3,12 +3,12 @@
 import React from 'react';
 import { C, CANDY } from './tokens';
 import { RewardIcon, CurrencyAmounts } from './RedesignShell';
-import { PackBuyButton, balancesOf } from './StoreView';
+import { PackBuyButton, balancesOf, SoonLock } from './StoreView';
 import { BB_CSS, STORE_ART, packArtSrc, CoinMeter, PackLock, goalText, ShopLockPlate, ShopLockWrap } from './storeKit';
 import { ShineImg, Sparkles } from './Shine';
 import { IMAGES } from '@/lib/data/images';
 import { canAfford, cleanReward, coinsToKwacha, formatKwacha, formatNumber } from '@/lib/economy/currency.mjs';
-import { splitCatalog, nextPackGoal } from '@/lib/store/catalog.mjs';
+import { splitCatalog, nextPackGoal, itemBuyable } from '@/lib/store/catalog.mjs';
 
 // Home store panel ("COIN SHOP", was "Cash out coins"; a rate plate on the
 // banner art says "10,000 COINS / BUYS / K1.00" from economy.coinsPerKwacha; Coins & Store redesign 2026-10-14): a
@@ -138,7 +138,9 @@ function HomeItemTile({ item, balances, onBuy }) {
         {Object.keys(cleanReward(item.price)).length ? <CurrencyAmounts r={item.price} size={14} fontSize={13} gap={6} /> : <span style={{ color: C.green }}>Free</span>}
       </div>
       <div className="hs-name">{item.name}</div>
-      <button type="button" className="bb-buy hs-act" disabled={!ok} onClick={(e) => ok && onBuy && onBuy(item, e?.currentTarget)}>Convert</button>
+      {itemBuyable(item)
+        ? <button type="button" className="bb-buy hs-act" disabled={!ok} onClick={(e) => ok && onBuy && onBuy(item, e?.currentTarget)}>Convert</button>
+        : <SoonLock className="hs-act" />}
     </div>
   );
 }

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { verifyBwanabetToken } from '@/lib/auth/bwanabetToken';
 import { purchaseMessage } from '@/lib/telegram/format.mjs';
-import { parsePurchaseBody, STORE_UNLOCK_XP, cleanStoreConfig } from '@/lib/store/catalog.mjs';
+import { parsePurchaseBody, STORE_UNLOCK_XP, BUYABLE_REDEEM, cleanStoreConfig } from '@/lib/store/catalog.mjs';
 import { sendPurchase } from '@/lib/telegram/client';
 import { rateLimit } from '@/lib/rateLimit';
 
@@ -43,10 +43,14 @@ export async function POST(req) {
   const { data: storeRow } = await supabaseAdmin.from('platform_config').select('value').eq('key', 'store').maybeSingle();
   if (!cleanStoreConfig(storeRow?.value).open) return NextResponse.json({ error: 'store_closed' }, { status: 403 });
 
-  // Coin Shop opens at stage 5 (the saved profile XP; lib/store/catalog.mjs).
+  // Coin Shop opens at level 10 (the saved profile XP; lib/store/catalog.mjs).
   const { data: prof } = await supabaseAdmin.from('profiles').select('xp').eq('bwanabet_user_id', uid).maybeSingle();
   if (!prof) return NextResponse.json({ error: 'profile_required' }, { status: 403 });
   if (!(Number(prof.xp) >= STORE_UNLOCK_XP)) return NextResponse.json({ error: 'store_locked' }, { status: 403 });
+
+  // Only the kwacha packs are on sale; every other item stays locked.
+  const { data: row } = await supabaseAdmin.from('store_items').select('redeem_currency').eq('id', itemId).maybeSingle();
+  if (row?.redeem_currency !== BUYABLE_REDEEM) return NextResponse.json({ error: 'item_locked' }, { status: 403 });
 
   const { data, error } = await supabaseAdmin.rpc('purchase_item', { p_uid: uid, p_item_id: itemId });
   if (error) {

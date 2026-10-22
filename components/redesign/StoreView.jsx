@@ -7,7 +7,8 @@ import { IMAGES } from '@/lib/data/images';
 import { STORE_ITEMS } from '@/lib/data/platform';
 import { amountText } from '@/lib/rewardText.mjs';
 import { canAfford, cleanReward, coinsToKwacha, economyRates, formatKwacha, formatNumber } from '@/lib/economy/currency.mjs';
-import { splitCatalog, nextPackGoal, storeLockReason } from '@/lib/store/catalog.mjs';
+import { splitCatalog, nextPackGoal, storeLockReason, itemBuyable } from '@/lib/store/catalog.mjs';
+import { PRIZE_TIERS } from '@/lib/store/prizes.mjs';
 import { getLevel } from '@/lib/data/platform';
 import { BB_CSS, STORE_ART, packArtSrc, CoinMeter, PackLock, goalText, ShopLockPlate, ShopLockWrap } from './storeKit';
 import { ShineImg, Sparkles } from './Shine';
@@ -17,7 +18,12 @@ import { layerSrc } from '@/lib/avatar/items.mjs';
 // Balances the store compares prices against ({ kwacha, emeralds, rubies, diamonds }).
 export const balancesOf = (w) => ({ kwacha: w?.kwacha || 0, emeralds: w?.emeralds || 0, rubies: w?.rubies || 0, diamonds: w?.diamonds || 0 });
 
-/** An ordinary (non-pack) store item in the tile look: art well, name, price, Buy. */
+/** "Coming soon" plate in place of Convert: only the kwacha packs are on sale (itemBuyable). */
+export function SoonLock({ className = '' }) {
+  return <div className={`bb-lock ${className}`}><img src="/ui/reward/lock.png" alt="" width={16} height={16} style={{ marginRight: 6 }} />Coming soon</div>;
+}
+
+/** An ordinary (non-pack) store item in the tile look: art well, name, price, and a Coming soon lock (only kwacha packs sell for now). */
 export function StoreCard({ item, canBuy, onBuy }) {
   const src = item.imageUrl || IMAGES[item.image];
   return (
@@ -31,7 +37,9 @@ export function StoreCard({ item, canBuy, onBuy }) {
         {Object.keys(cleanReward(item.price)).length ? <CurrencyAmounts r={item.price} size={16} fontSize={12.5} gap={8} /> : <span style={{ fontSize: 12.5, fontWeight: 800, color: C.green }}>Free</span>}
       </div>
       <div className="st-item-name">{item.name}</div>
-      <button type="button" className="bb-buy st-item-buy" disabled={!canBuy} onClick={(e) => canBuy && onBuy && onBuy(item, e?.currentTarget)}>Convert</button>
+      {itemBuyable(item)
+        ? <button type="button" className="bb-buy st-item-buy" disabled={!canBuy} onClick={(e) => canBuy && onBuy && onBuy(item, e?.currentTarget)}>Convert</button>
+        : <SoonLock className="st-item-buy" />}
     </div>
   );
 }
@@ -128,6 +136,17 @@ function AvatarItemCard({ item, stage, coins, owned, worn, onBuy, onWear }) {
   );
 }
 
+/** Locked real prize: greyed art, name, Coming soon (lib/store/prizes.mjs). */
+function PrizeCard({ prize }) {
+  return (
+    <div className="bb-tile st-prize" data-prize={prize.id}>
+      <div className="bb-well st-prize-art"><img src={prize.art} alt={prize.name} width={128} height={128} loading="lazy" /></div>
+      <div className="st-prize-name">{prize.name}</div>
+      <SoonLock className="st-pack-act st-prize-lock" />
+    </div>
+  );
+}
+
 /** Store hero: BwanaBet banner, title and the rate guide ("10,000 COINS BUYS K1.00").
  * The balance + next-pack meter were removed 2026-10-18 (they confused players). */
 function StoreHero({ economy }) {
@@ -179,6 +198,15 @@ const ST_CSS = `
   .st-av-art { position: relative; width: 100%; border-radius: 16px; overflow: hidden; margin-bottom: 4px; }
   .st-av-name { font-size: 26px; line-height: 1.05; text-align: center; }
   .st-items { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 16px; }
+  .st-tier { display: flex; align-items: center; gap: 10px; margin: 6px 0 12px; }
+  .st-tier h3 { margin: 0; font-family: ${CANDY.display}; font-weight: 400; font-size: 20px; color: #fff; text-transform: uppercase; text-shadow: 0 2px 0 #2A0A4F; }
+  .st-tier span { font-size: 11px; font-weight: 900; padding: 4px 10px; border-radius: 999px; text-transform: uppercase; background: rgba(255,210,31,.16); color: #FFD21F; border: 1px solid rgba(255,210,31,.45); }
+  .st-prizes { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 14px; margin-bottom: 18px; }
+  .st-prize { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 12px; border-radius: 20px; min-width: 0; }
+  .st-prize-art { width: 100%; aspect-ratio: 1; border-radius: 16px; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+  .st-prize-art img { width: 86%; height: 86%; object-fit: contain; display: block; filter: saturate(.75) brightness(.8); opacity: .8; }
+  .st-prize-name { font-family: ${CANDY.display}; font-size: 17px; line-height: 1.1; color: #fff; text-align: center; min-height: 2.2em; display: flex; align-items: center; }
+  .st-prize-lock { font-size: 13px; color: #FFD21F; }
   .st-item { display: flex; flex-direction: column; gap: 10px; padding: 12px; border-radius: 22px; min-width: 0; }
   .st-item-art { position: relative; height: 120px; border-radius: 16px; overflow: hidden; display: flex; align-items: center; justify-content: center; }
   .st-item-art img { width: 100%; height: 100%; object-fit: cover; display: block; }
@@ -202,6 +230,8 @@ const ST_CSS = `
     .st-pack { padding: 12px 10px; border-radius: 18px; }
     .st-pack-k { font-size: 30px; }
     .st-items { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+    .st-prizes { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    .st-prize-name { font-size: 15px; }
   }
 `;
 
@@ -260,6 +290,18 @@ export default function StoreView({ wallet = null, xp = 0, onNavigate, onOpenPro
                 </div>
               </section>
             )}
+            <section aria-labelledby="st-prizes-title" id="prizes">
+              <div className="st-head">
+                <h2 id="st-prizes-title" className="bb-display st-h2">Real prizes</h2>
+                <span className="st-note">Coming soon · keep collecting coins and gems</span>
+              </div>
+              {PRIZE_TIERS.map(t => (
+                <div key={t.id}>
+                  <div className="st-tier"><h3>{t.title}</h3><span>{t.pay}</span></div>
+                  <div className="st-prizes">{t.items.map(p => <PrizeCard key={p.id} prize={p} />)}</div>
+                </div>
+              ))}
+            </section>
             {items.length > 0 && (
               <section aria-labelledby="st-more-title">
                 <div className="st-head"><h2 id="st-more-title" className="bb-display st-h2">More rewards</h2></div>
