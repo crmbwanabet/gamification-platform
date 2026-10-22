@@ -353,9 +353,24 @@
     // SMS / campaign links: https://bwanabet.co.zm/?bonus=open opens the
     // Bonus Center straight away (the comeback bonus waits inside).
     try { if (/[?&]bonus=open/.test(window.location.search)) openWidget(); } catch (e) { /* ignore */ }
-    // Logged in (or the preview page): load the Bonus Center hidden now, so it
-    // can open by itself with the Wheel of Fortune while a free spin is unused.
+    // Logged in (or the preview page): load the Bonus Center hidden now, so the
+    // launcher knows at once whether today's spin is open (gift box vs chest).
     if (!frame && (readToken() || cfg.preview)) ensureFrame();
+    // Visitors from the free-spins promo sites (?wof=new|existing) get the
+    // wheel's "register / log in and deposit" arrival popup: only that part of
+    // the wheel's old embed runs (window.__bwArrivalOnly), served from
+    // wheel.bwanabet.dev (vercel.app is blocked on some networks). One per page
+    // even while the wheel's own embed.js loader is also on it.
+    try {
+      if (/[?&]wof=(new|existing)\b/.test(window.location.search) && !window.__bwArrivalLoaded) {
+        window.__bwArrivalLoaded = true;
+        window.__bwArrivalOnly = true;
+        var arrival = document.createElement('script');
+        arrival.src = 'https://wheel.bwanabet.dev/embed-standalone.js';
+        arrival.defer = true;
+        (document.head || document.documentElement).appendChild(arrival);
+      }
+    } catch (e) { /* never break the host page */ }
   }
   if (document.body) mount();
   else document.addEventListener('DOMContentLoaded', mount);
