@@ -1986,7 +1986,9 @@ export default function GamificationPlatform() {
   // Casino missions progress from the CRM feed instead (below), so this is
   // now just the activity beacon; call sites are unchanged.
   const trackMission = useCallback((actionType, metadata = {}) => {
-    if (actionType === 'gamePlayed') track('game_played', { gameId: metadata.gameId, amount: metadata.coinsWon || 0 });
+    // game_played: amount = net coins won (0 = a loss); meta carries the round's stake + payout
+    // so the ops console can show staked / paid out / RTP per game (2026-10-22).
+    if (actionType === 'gamePlayed') track('game_played', { gameId: metadata.gameId, amount: metadata.coinsWon || 0, meta: Number.isFinite(metadata.stake) ? { stake: metadata.stake, payout: metadata.payout || 0 } : null });
   }, []);
 
   // trackQuest + claimQuest parked — see parked/components/GamificationPlatform.removed-wiring.jsx
@@ -2093,7 +2095,7 @@ export default function GamificationPlatform() {
       setUser(u => ({ ...u, stageRewarded: Math.max(Number(u.stageRewarded) || 0, up.rewarded) }));
       addCurrencies(total);
       const lvl = getLevel(user.xp);
-      track('level_up', { meta: { level: lvl.level } });
+      track('level_up', { amount: total.kwacha || 0, meta: { level: lvl.level } }); // amount = level-up coins (ops console)
       // The celebration waits until the XP stars have filled the bar (the
       // bar crosses into the new stage first) and the WELCOME BACK pop-up has
       // closed, then: ring, modal, coins.
@@ -2145,7 +2147,7 @@ export default function GamificationPlatform() {
             triggerReward('big', null, { coins: meta?.net ?? n });
             setUser(u => ({ ...u, gamesPlayed: u.gamesPlayed + 1, dailyTasksDone: [...new Set([...u.dailyTasksDone, 'game'])] }));
             setGamesPlayedToday(prev => new Set([...prev, 'njuka']));
-            trackMission('gamePlayed', { gameId: 'njuka', coinsWon: meta?.net ?? n, gamesSet: gamesPlayedToday });
+            trackMission('gamePlayed', { gameId: 'njuka', coinsWon: meta?.net ?? n, stake: n - (meta?.net ?? n), payout: n, gamesSet: gamesPlayedToday });
           }}
         />
       )}
@@ -2156,7 +2158,7 @@ export default function GamificationPlatform() {
             if (win) addCoins(payout); // the game's own WinCelebration shows the win — no toast / float
             setUser(u => ({ ...u, gamesPlayed: u.gamesPlayed + 1, dailyTasksDone: [...new Set([...u.dailyTasksDone, 'game'])] }));
             setGamesPlayedToday(prev => new Set([...prev, 'coinflip']));
-            trackMission('gamePlayed', { gameId: 'coinflip', coinsWon: win ? payout - stake : 0, gamesSet: gamesPlayedToday });
+            trackMission('gamePlayed', { gameId: 'coinflip', coinsWon: win ? payout - stake : 0, stake, payout: win ? payout : 0, gamesSet: gamesPlayedToday });
           }} />
       )}
       {activeGame === 'penalty' && (
@@ -2166,7 +2168,7 @@ export default function GamificationPlatform() {
             if (win) addCoins(payout); // the game's own WinCelebration shows the win — no toast / float
             setUser(u => ({ ...u, gamesPlayed: u.gamesPlayed + 1, dailyTasksDone: [...new Set([...u.dailyTasksDone, 'game'])] }));
             setGamesPlayedToday(prev => new Set([...prev, 'penalty']));
-            trackMission('gamePlayed', { gameId: 'penalty', coinsWon: win ? payout - stake : 0, gamesSet: gamesPlayedToday });
+            trackMission('gamePlayed', { gameId: 'penalty', coinsWon: win ? payout - stake : 0, stake, payout: win ? payout : 0, gamesSet: gamesPlayedToday });
           }} />
       )}
       {activeGame === 'chicken' && (
@@ -2176,7 +2178,7 @@ export default function GamificationPlatform() {
             if (win) addCoins(payout); // the game's own WinCelebration shows the win — no toast / float
             setUser(u => ({ ...u, gamesPlayed: u.gamesPlayed + 1, dailyTasksDone: [...new Set([...u.dailyTasksDone, 'game'])] }));
             setGamesPlayedToday(prev => new Set([...prev, 'chicken']));
-            trackMission('gamePlayed', { gameId: 'chicken', coinsWon: win ? payout - stake : 0, gamesSet: gamesPlayedToday });
+            trackMission('gamePlayed', { gameId: 'chicken', coinsWon: win ? payout - stake : 0, stake, payout: win ? payout : 0, gamesSet: gamesPlayedToday });
           }} />
       )}
       {activeGame === 'chicken2' && (
@@ -2186,7 +2188,7 @@ export default function GamificationPlatform() {
             if (win) addCoins(payout); // the game's own WinCelebration shows the win — no toast / float
             setUser(u => ({ ...u, gamesPlayed: u.gamesPlayed + 1, dailyTasksDone: [...new Set([...u.dailyTasksDone, 'game'])] }));
             setGamesPlayedToday(prev => new Set([...prev, 'chicken2']));
-            trackMission('gamePlayed', { gameId: 'chicken2', coinsWon: win ? payout - stake : 0, gamesSet: gamesPlayedToday });
+            trackMission('gamePlayed', { gameId: 'chicken2', coinsWon: win ? payout - stake : 0, stake, payout: win ? payout : 0, gamesSet: gamesPlayedToday });
           }} />
       )}
       {activeGame === 'minibus' && (
@@ -2196,7 +2198,7 @@ export default function GamificationPlatform() {
             if (win) addCoins(payout); // the game's own WinCelebration shows the win — no toast / float
             setUser(u => ({ ...u, gamesPlayed: u.gamesPlayed + 1, dailyTasksDone: [...new Set([...u.dailyTasksDone, 'game'])] }));
             setGamesPlayedToday(prev => new Set([...prev, 'minibus']));
-            trackMission('gamePlayed', { gameId: 'minibus', coinsWon: win ? payout - stake : 0, gamesSet: gamesPlayedToday });
+            trackMission('gamePlayed', { gameId: 'minibus', coinsWon: win ? payout - stake : 0, stake, payout: win ? payout : 0, gamesSet: gamesPlayedToday });
           }} />
       )}
       {activeGame === 'bottle' && (
@@ -2206,7 +2208,7 @@ export default function GamificationPlatform() {
             if (win) addCoins(payout); // the game's own WinCelebration shows the win — no toast / float
             setUser(u => ({ ...u, gamesPlayed: u.gamesPlayed + 1, dailyTasksDone: [...new Set([...u.dailyTasksDone, 'game'])] }));
             setGamesPlayedToday(prev => new Set([...prev, 'bottle']));
-            trackMission('gamePlayed', { gameId: 'bottle', coinsWon: win ? payout - stake : 0, gamesSet: gamesPlayedToday });
+            trackMission('gamePlayed', { gameId: 'bottle', coinsWon: win ? payout - stake : 0, stake, payout: win ? payout : 0, gamesSet: gamesPlayedToday });
           }} />
       )}
       {activeGame === 'scratch' && (
@@ -2216,7 +2218,7 @@ export default function GamificationPlatform() {
             if (win) addCoins(payout); // the game's own WinCelebration shows the win — no toast / float
             setUser(u => ({ ...u, gamesPlayed: u.gamesPlayed + 1, dailyTasksDone: [...new Set([...u.dailyTasksDone, 'game'])] }));
             setGamesPlayedToday(prev => new Set([...prev, 'scratch']));
-            trackMission('gamePlayed', { gameId: 'scratch', coinsWon: win ? payout - stake : 0, gamesSet: gamesPlayedToday });
+            trackMission('gamePlayed', { gameId: 'scratch', coinsWon: win ? payout - stake : 0, stake, payout: win ? payout : 0, gamesSet: gamesPlayedToday });
           }} />
       )}
       {activeGame === 'numbers' && (
@@ -2226,7 +2228,7 @@ export default function GamificationPlatform() {
             if (win) addCoins(payout); // the game's own WinCelebration shows the win — no toast / float
             setUser(u => ({ ...u, gamesPlayed: u.gamesPlayed + 1, dailyTasksDone: [...new Set([...u.dailyTasksDone, 'game'])] }));
             setGamesPlayedToday(prev => new Set([...prev, 'numbers']));
-            trackMission('gamePlayed', { gameId: 'numbers', coinsWon: win ? payout - stake : 0, gamesSet: gamesPlayedToday });
+            trackMission('gamePlayed', { gameId: 'numbers', coinsWon: win ? payout - stake : 0, stake, payout: win ? payout : 0, gamesSet: gamesPlayedToday });
           }} />
       )}
       {/* trivia game modals + QuestDetailModal parked — see parked/components/GamificationPlatform.removed-wiring.jsx */}
