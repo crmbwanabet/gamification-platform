@@ -18,10 +18,15 @@ import { Card } from '../redesign/RedesignShell';
 export const WHEEL_URL = process.env.NEXT_PUBLIC_WHEEL_URL || 'https://wheel.bwanabet.dev';
 const WHEEL_ORIGIN = (() => { try { return new URL(WHEEL_URL).origin; } catch { return null; } })();
 
+// The wheel gets the WHOLE screen with frame=full, exactly like its own
+// embed.js gave it (owner 2026-10-22: show the bigger design): it then draws
+// its own dimming layer, scales its card up to fit, uses the wide "corners"
+// layout on desktop, and posts 'bwanabet-wheel-close' for a click outside the
+// card. color-scheme:normal stops Chrome painting an opaque frame background.
 const CSS = `
-  .wh-ov { position: fixed; inset: 0; z-index: 420; background: rgba(8,4,20,.72); display: none; align-items: center; justify-content: center; }
-  .wh-ov.open { display: flex; }
-  .wh-ov iframe { border: 0; border-radius: 16px; width: 95vw; max-width: 420px; height: 90vh; max-height: 750px; background: transparent; }
+  .wh-ov { position: fixed; inset: 0; z-index: 420; background: transparent; display: none; }
+  .wh-ov.open { display: block; }
+  .wh-ov iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: transparent; color-scheme: normal; }
 `;
 
 /**
@@ -50,7 +55,7 @@ export function useWheel({ enabled, getToken, autoOpen = false, preview = false,
   const on = enabled || preview;
   const token = enabled && !preview ? getToken() : null;
   if (token !== tokenRef.current) tokenRef.current = token;
-  const src = preview ? `${WHEEL_URL}/?test=1&closeAfter=1` : WHEEL_URL;
+  const src = preview ? `${WHEEL_URL}/?test=1&closeAfter=1&frame=full` : `${WHEEL_URL}/?frame=full`;
 
   const setOpen = setOpenState;
   const firstRef = React.useRef(true);

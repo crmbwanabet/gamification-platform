@@ -1,6 +1,6 @@
 {
   "name": "wheel-bonus-center",
-  "version": 6,
+  "version": 7,
   "updated": "2026-10-22",
   "about": "How the Wheel of Fortune (crmbwanabet/wheel-of-fortune) and the BwanaBet Bonus Center (crmbwanabet/gamification-platform) talk to each other. This file is copied BYTE FOR BYTE in both repos at docs/integrations/wheel-bonus-center-contract.json. Change it in both in the same sitting, bump version, and run the contract tests + `npm run contract:check` in each repo.",
   "repos": {
@@ -34,7 +34,8 @@
   },
   "urlParams": [
     { "name": "test", "value": "1", "meaning": "public TEST mode: no login, simulated spins that never pay (Bonus Center /preview.html)" },
-    { "name": "closeAfter", "value": "1", "meaning": "with test=1: close after the result like real mode" }
+    { "name": "closeAfter", "value": "1", "meaning": "with test=1: close after the result like real mode" },
+    { "name": "frame", "value": "full", "meaning": "the host gives the wheel the WHOLE screen (transparent iframe): the wheel draws its own dimming layer, scales its card up (corners layout on wide screens) and posts bwanabet-wheel-close for a click outside the card. The Bonus Center sends it since v7 (owner: show the bigger design)." }
   ],
   "rules": [
     "The wheel stays its own app: prizes, odds, daily limit, kill switch and Telegram payouts live ONLY in the wheel repo and its CRM database.",
