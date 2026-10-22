@@ -1,6 +1,6 @@
 {
   "name": "wheel-bonus-center",
-  "version": 3,
+  "version": 4,
   "updated": "2026-10-22",
   "about": "How the Wheel of Fortune (crmbwanabet/wheel-of-fortune) and the BwanaBet Bonus Center (crmbwanabet/gamification-platform) talk to each other. This file is copied BYTE FOR BYTE in both repos at docs/integrations/wheel-bonus-center-contract.json. Change it in both in the same sitting, bump version, and run the contract tests + `npm run contract:check` in each repo.",
   "repos": {
@@ -21,6 +21,15 @@
     ],
     "hostToWheel": [
       { "type": "bwanabet-auth", "fields": ["token"], "meaning": "the bwanabet `token` JWT, posted ONLY to the wheel origin, never in a URL" }
+    ]
+  },
+  "launcher": {
+    "about": "ONE widget on bwanabet.com for both apps (owner 2026-10-22): the Bonus Center's widget.js launcher shows the WHEEL icon (the wheel's gift box) while today's spin is open and opens the wheel first; from the spin on it shows the Bonus Center icon (gold K coin) and opens the Bonus Center. Messages between the Bonus Center app and its own widget.js (the wheel itself is not involved).",
+    "appToWidget": [
+      { "type": "100x-widget:wheel", "fields": ["available"], "meaning": "today's spin is open (true) or used / unknown / logged out (false); sent when the wheel answers and again at the spin" }
+    ],
+    "widgetToApp": [
+      { "type": "100x-widget:show-wheel", "fields": [], "meaning": "the player tapped the wheel icon: open the wheel on top of the Bonus Center" }
     ]
   },
   "urlParams": [

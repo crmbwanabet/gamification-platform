@@ -1761,14 +1761,35 @@ export default function GamificationPlatform() {
   // The wheel opens by itself the first time a spin is available in widget
   // mode ("wheel first, then the Bonus Center"): it asks widget.js to show the
   // popup; closing the wheel leaves the Bonus Center underneath.
+  // ONE widget for the wheel and the Bonus Center (owner 2026-10-22):
+  // widget.js shows the WHEEL icon while today's spin is open and the Bonus
+  // Center icon otherwise, so we tell it ('100x-widget:wheel' {available}),
+  // and flip it to the Bonus Center the moment the player spins.
+  const wheelSpunRef = useRef(false);
+  const tellWidgetWheel = (available) => { try { window.parent.postMessage({ type: '100x-widget:wheel', available: !!available }, '*'); } catch { /* not embedded */ } };
   const wheel = useWheel({
     enabled: loggedIn, getToken: session.getToken, preview, autoOpen: isWidget || preview,
     onEvent: (name) => {
       track(`wheel_${name}`);
       if (name === 'auto_open') { try { window.parent.postMessage({ type: '100x-widget:open', reason: 'wheel' }, '*'); } catch { /* not embedded */ } }
+      if (name === 'spun') { wheelSpunRef.current = true; tellWidgetWheel(false); }
       if (name === 'spun' || name === 'closed') flushTrack();
     },
   });
+  useEffect(() => {
+    if (wheel.settled) tellWidgetWheel(wheel.available && !wheelSpunRef.current);
+  }, [wheel.available, wheel.settled]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Tapping the launcher while it shows the wheel icon opens the wheel first.
+  const wheelRef = useRef(wheel);
+  wheelRef.current = wheel;
+  useEffect(() => {
+    const onMsg = (e) => {
+      if (e.source !== window.parent || !e.data || e.data.type !== '100x-widget:show-wheel') return;
+      if (wheelRef.current.available && !wheelSpunRef.current) wheelRef.current.open();
+    };
+    window.addEventListener('message', onMsg);
+    return () => window.removeEventListener('message', onMsg);
+  }, []);
   // Opening order (2026-10-21): Wheel of Fortune → its result → WELCOME BACK
   // (only when rewards were earned while away; replaces "New bonuses
   // unlocked") → daily reward pop-up → comeback etc. The wheel's `settled` says it has answered

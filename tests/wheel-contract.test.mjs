@@ -36,3 +36,17 @@ test('the preview uses only contract URL params', () => {
   const names = contract.urlParams.map(p => p.name);
   for (const pair of m[1].split('&')) assert.ok(names.includes(pair.split('=')[0]), `${pair} is not in the contract`);
 });
+
+test('one launcher: the app reports the spin and widget.js swaps the icon (contract.launcher)', () => {
+  const app = read('components/GamificationPlatform.jsx');
+  for (const { type } of contract.launcher.appToWidget) {
+    assert.ok(app.includes(`type: '${type}'`), `the app never posts ${type}`);
+    assert.ok(widget.includes(`'${type}'`), `widget.js does not handle ${type}`);
+  }
+  for (const { type } of contract.launcher.widgetToApp) {
+    assert.ok(widget.includes(`type: '${type}'`), `widget.js never sends ${type}`);
+    assert.ok(app.includes(`'${type}'`), `the app does not handle ${type}`);
+  }
+  assert.ok(widget.includes('x100wBoxFront'), 'the wheel gift-box icon is in widget.js (ids prefixed x100w)');
+  assert.ok(!/id="bw/.test(widget), 'no id clashes with the wheel embed.js gradients');
+});

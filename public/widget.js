@@ -13,6 +13,8 @@
  * Page API: BwanaBetBonus.open(), BwanaBetBonus.close().
  * A page URL with ?bonus=open opens the Bonus Center on load (SMS links).
  *
+ * ONE launcher for the Wheel of Fortune and the Bonus Center: the wheel's gift
+ * box while today's spin is open (opens the wheel first), the K coin after it.
  * Renders a floating launcher bubble (bottom-right). Clicking it opens the
  * platform in a full-screen iframe popup under a top strip that holds the big
  * red close X (2026-10-21): the iframe starts BELOW the strip, so nothing in
@@ -113,19 +115,125 @@
     '.x100w-close:active{transform:scale(.94);}',
     '.x100w-close:focus-visible{outline:3px solid #FEF200;outline-offset:2px;}',
     '.x100w-frame{position:absolute;top:var(--x100w-bar);left:0;width:100%;height:calc(100% - var(--x100w-bar));border:0;background:#191b27;}',
-    '@media (prefers-reduced-motion:reduce){.x100w-launcher img{animation:none}}',
+    // wheel icon (today's spin is open): the wheel's own gift box + its gold pulse
+    '.x100w-launcher.x100w-wheel{background:rgba(250,204,21,.15);border-color:rgba(250,204,21,.55);',
+    '-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);animation:x100w-pulse 2s ease-in-out infinite;}',
+    '.x100w-launcher.x100w-wheel svg{pointer-events:none;filter:drop-shadow(0 2px 4px rgba(0,0,0,.35));}',
+    '@keyframes x100w-pulse{0%,100%{box-shadow:0 4px 20px rgba(250,204,21,.4),0 0 0 0 rgba(250,204,21,.6)}',
+    '50%{box-shadow:0 4px 30px rgba(250,204,21,.6),0 0 0 12px rgba(250,204,21,0)}}',
+    '@media (prefers-reduced-motion:reduce){.x100w-launcher img,.x100w-launcher.x100w-wheel{animation:none}}',
   ].join('');
   var style = document.createElement('style');
   style.textContent = css;
   document.head.appendChild(style);
 
   /* ---------- launcher bubble (with its own red X) ---------- */
+  // ONE widget for the Wheel of Fortune and the Bonus Center (owner
+  // 2026-10-22): while today's spin is open the launcher shows the WHEEL icon
+  // (the wheel's own gift box) and opens the wheel first; from the spin on it
+  // shows the Bonus Center icon (gold K coin) and opens the Bonus Center. The
+  // app inside says which ('100x-widget:wheel' {available}); the last answer
+  // is remembered per player per day so the icon doesn't flicker between pages.
+  var WHEEL_ICON =
+    '<svg viewBox="0 0 64 64" width="50" height="50" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">' +
+    '<defs>' +
+    '<linearGradient id="x100wBoxFront" x1="0%" y1="0%" x2="100%" y2="0%">' +
+    '<stop offset="0%" stop-color="#eab308"/><stop offset="100%" stop-color="#facc15"/>' +
+    '</linearGradient>' +
+    '<linearGradient id="x100wBoxSide" x1="0%" y1="0%" x2="100%" y2="0%">' +
+    '<stop offset="0%" stop-color="#ca8a04"/><stop offset="100%" stop-color="#d69e0a"/>' +
+    '</linearGradient>' +
+    '<linearGradient id="x100wBoxTop" x1="0%" y1="100%" x2="0%" y2="0%">' +
+    '<stop offset="0%" stop-color="#fde047"/><stop offset="100%" stop-color="#fef08a"/>' +
+    '</linearGradient>' +
+    '<linearGradient id="x100wLidFront" x1="0%" y1="0%" x2="100%" y2="0%">' +
+    '<stop offset="0%" stop-color="#fde047"/><stop offset="100%" stop-color="#fef9c3"/>' +
+    '</linearGradient>' +
+    '<linearGradient id="x100wLidSide" x1="0%" y1="0%" x2="100%" y2="0%">' +
+    '<stop offset="0%" stop-color="#ca8a04"/><stop offset="100%" stop-color="#d69e0a"/>' +
+    '</linearGradient>' +
+    '<linearGradient id="x100wLidTop" x1="0%" y1="100%" x2="0%" y2="0%">' +
+    '<stop offset="0%" stop-color="#fef08a"/><stop offset="100%" stop-color="#fefce8"/>' +
+    '</linearGradient>' +
+    '<linearGradient id="x100wRibbon" x1="0%" y1="0%" x2="0%" y2="100%">' +
+    '<stop offset="0%" stop-color="#ef4444"/><stop offset="100%" stop-color="#b91c1c"/>' +
+    '</linearGradient>' +
+    '<linearGradient id="x100wRibbonDark" x1="0%" y1="0%" x2="0%" y2="100%">' +
+    '<stop offset="0%" stop-color="#dc2626"/><stop offset="100%" stop-color="#991b1b"/>' +
+    '</linearGradient>' +
+    '</defs>' +
+    // Box body — front face
+    '<polygon points="8,32 48,32 48,56 8,56" fill="url(#x100wBoxFront)"/>' +
+    // Box body — right side face
+    '<polygon points="48,32 58,24 58,48 48,56" fill="url(#x100wBoxSide)"/>' +
+    // Box body — top face
+    '<polygon points="8,32 48,32 58,24 18,24" fill="url(#x100wBoxTop)"/>' +
+    // Lid — front face
+    '<polygon points="5,25 51,25 51,32 5,32" fill="url(#x100wLidFront)"/>' +
+    // Lid — right side
+    '<polygon points="51,25 61,17 61,24 51,32" fill="url(#x100wLidSide)"/>' +
+    // Lid — top face
+    '<polygon points="5,25 51,25 61,17 15,17" fill="url(#x100wLidTop)"/>' +
+    // Ribbon — front vertical
+    '<polygon points="24,25 32,25 32,56 24,56" fill="url(#x100wRibbon)"/>' +
+    // Ribbon — front horizontal
+    '<polygon points="5,27 51,27 51,31 5,31" fill="url(#x100wRibbon)"/>' +
+    // Ribbon — right side vertical
+    '<polygon points="32,25 32,56 48,56 48,32 58,24 42,17" fill="url(#x100wRibbonDark)" opacity="0.3"/>' +
+    '<polygon points="48,32 52,29 52,52 48,56" fill="url(#x100wRibbonDark)" opacity="0.6"/>' +
+    // Ribbon — top
+    '<polygon points="24,25 32,25 42,17 34,17" fill="#dc2626"/>' +
+    // Ribbon cross on top face
+    '<polygon points="5,27 51,27 61,19 15,19" fill="#dc2626" opacity="0.5"/>' +
+    '<polygon points="5,29 51,29 61,21 15,21" fill="#dc2626" opacity="0.3"/>' +
+    // Bow — left loop
+    '<ellipse cx="28" cy="14" rx="10" ry="6" fill="#ef4444" stroke="#dc2626" stroke-width="1" transform="rotate(-20 28 14)"/>' +
+    '<ellipse cx="28" cy="14" rx="7" ry="4" fill="#f87171" transform="rotate(-20 28 14)"/>' +
+    // Bow — right loop
+    '<ellipse cx="44" cy="14" rx="10" ry="6" fill="#ef4444" stroke="#dc2626" stroke-width="1" transform="rotate(20 44 14)"/>' +
+    '<ellipse cx="44" cy="14" rx="7" ry="4" fill="#f87171" transform="rotate(20 44 14)"/>' +
+    // Bow — center knot
+    '<ellipse cx="36" cy="16" rx="4" ry="3" fill="#dc2626"/>' +
+    '<ellipse cx="36" cy="15.5" rx="2.5" ry="2" fill="#ef4444"/>' +
+    // Shine highlights
+    '<polygon points="10,34 14,34 13,44 9,44" fill="rgba(255,255,255,0.25)" rx="1"/>' +
+    '<polygon points="52,26 56,22 56.5,28 52.5,32" fill="rgba(255,255,255,0.15)"/>' +
+    // Edge lines for definition
+    '<polygon points="8,32 48,32 48,56 8,56" fill="none" stroke="#b45309" stroke-width="0.5" opacity="0.4"/>' +
+    '<polygon points="48,32 58,24 58,48 48,56" fill="none" stroke="#92400e" stroke-width="0.5" opacity="0.4"/>' +
+    '<polygon points="5,25 51,25 51,32 5,32" fill="none" stroke="#b45309" stroke-width="0.5" opacity="0.3"/>' +
+    '<polygon points="51,25 61,17 61,24 51,32" fill="none" stroke="#92400e" stroke-width="0.5" opacity="0.3"/>' +
+    '</svg>';
+  var BONUS_ICON = '<img src="' + APP_ORIGIN + '/ui/reward/coin-k.png" alt="">';
+  var MODE_KEY = 'x100-widget-mode';
+  var mode = null;
   var launcher = document.createElement('button');
   launcher.type = 'button';
   launcher.className = 'x100w-launcher';
-  launcher.setAttribute('aria-label', 'Open the BwanaBet Bonus Center');
-  launcher.title = 'Bonus Center';
-  launcher.innerHTML = '<img src="' + APP_ORIGIN + '/ui/reward/coin-k.png" alt="">';
+  var launcherIcon = document.createElement('span');
+  launcherIcon.style.cssText = 'display:grid;place-items:center;pointer-events:none;';
+  launcher.appendChild(launcherIcon);
+  function today() { return new Date().toISOString().slice(0, 10); }
+  function setMode(next, remember) {
+    if (next !== 'wheel') next = 'bonus';
+    if (remember) {
+      try { sessionStorage.setItem(MODE_KEY, JSON.stringify({ uid: currentUid(), day: today(), mode: next })); } catch (e) { /* storage blocked */ }
+    }
+    if (next === mode) return;
+    mode = next;
+    var wheel = next === 'wheel';
+    launcherIcon.innerHTML = wheel ? WHEEL_ICON : BONUS_ICON;
+    launcher.classList.toggle('x100w-wheel', wheel);
+    launcher.setAttribute('aria-label', wheel ? 'Spin the BwanaBet Wheel of Fortune' : 'Open the BwanaBet Bonus Center');
+    launcher.title = wheel ? 'Wheel of Fortune' : 'Bonus Center';
+  }
+  // Start with what this player was last told today (same tab session), else the Bonus Center.
+  (function () {
+    var saved = null;
+    try { saved = JSON.parse(sessionStorage.getItem(MODE_KEY) || 'null'); } catch (e) { /* storage blocked */ }
+    var fresh = saved && readToken() && saved.uid === currentUid() && saved.day === today();
+    setMode(fresh ? saved.mode : 'bonus', false);
+  })();
 
   var dismiss = document.createElement('span');
   dismiss.className = 'x100w-dismiss';
@@ -166,7 +274,7 @@
     // the player logged in, out or switched account since the iframe opened:
     // start a fresh iframe so it never shows the previous session
     var t = readToken();
-    if (frame && t !== frameToken) { frame.remove(); frame = null; }
+    if (frame && t !== frameToken) { frame.remove(); frame = null; setMode('bonus', false); }
     frameToken = t;
     if (!frame) {
       frame = document.createElement('iframe');
@@ -175,6 +283,7 @@
       var uid = currentUid();
       frame.src = APP_ORIGIN + '/?widget=1' + (uid ? '&uid=' + encodeURIComponent(uid) : '') + (cfg.preview ? '&preview=1' : '') + '&strip=1';
       frame.addEventListener('load', sendToken);
+      frame.addEventListener('load', function () { if (wantWheel) setTimeout(showWheel, 1500); });
       // the app's heartbeat needs the open state even when the iframe loaded after openWidget() told it
       frame.addEventListener('load', function () { tellApp(isOpen); });
       overlay.appendChild(frame);
@@ -219,13 +328,28 @@
     try { frame.contentWindow.postMessage({ type: 'bwanabet-token', token: t }, APP_ORIGIN); } catch (e) { /* ignore */ }
   }
 
-  launcher.addEventListener('click', openWidget);
+  // Wheel icon: open the popup with the wheel on top (the app opens it when it
+  // can; a frame still loading gets the request once it has loaded).
+  var wantWheel = false;
+  function showWheel() {
+    try { if (frame && frame.contentWindow) frame.contentWindow.postMessage({ type: '100x-widget:show-wheel' }, APP_ORIGIN); } catch (e) { /* ignore */ }
+  }
+  launcher.addEventListener('click', function () {
+    wantWheel = mode === 'wheel';
+    openWidget();
+    if (wantWheel) showWheel();
+  });
   closeBtn.addEventListener('click', closeWidget);
   document.addEventListener('keydown', function (e) { if (isOpen && e.key === 'Escape') closeWidget(); });
   window.BwanaBetBonus = { open: openWidget, close: closeWidget };
   window.addEventListener('message', function (e) {
     if (e.origin !== APP_ORIGIN) return;
     if (e.data && e.data.type === '100x-widget:close') closeWidget();
+    // the app's wheel verdict: open spin -> wheel icon, spun / none -> Bonus Center icon
+    if (e.data && e.data.type === '100x-widget:wheel' && frame && e.source === frame.contentWindow) {
+      setMode(e.data.available ? 'wheel' : 'bonus', true);
+      if (!e.data.available) wantWheel = false;
+    }
     if (e.data && e.data.type === '100x-widget:open' && frame && e.source === frame.contentWindow && !isOpen) autoOpen();
     // the app says it is mounted and listening: hand it the session token
     if (e.data && e.data.type === 'gamification-ready') sendToken();
