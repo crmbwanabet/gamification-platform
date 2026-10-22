@@ -22,44 +22,141 @@ const kickoffText = (iso) => {
 // ---------------------------------------------------------------------------
 
 // ---------------------------------------------------------------------------
-// Match-day predictions
+// Weekly predictions (redesign 2026-10-22, owner picked "match tickets" +
+// "prize board"; canvas AcHrXJ4PiFjHhckkWQzqKT): a gold prize card with a
+// 5-step progress strip, the open matches as white tickets with 1 / X / 2
+// buttons and bwanabet's odds, and a "MY 5 PICKS" board with each pick's
+// result. Phones stack them; a wide section (container >= 820 px, desktop)
+// puts the tickets left and the prize board right. A tap IS the pick (saved
+// at once, POST /api/predictions); 5 picks a Lusaka week, all 5 right = the
+// coins, once per week (POST /api/predictions/claim { week }).
 // ---------------------------------------------------------------------------
 const PICK_LABEL = { home: '1', draw: 'X', away: '2' };
+const PICK_WORD = { home: 'HOME', draw: 'DRAW', away: 'AWAY' };
+const INK = '#2A0A4F';
+const odd = (v) => (Number.isFinite(Number(v)) && Number(v) > 1 ? Number(v).toFixed(2) : '');
+const pickName = (r) => (r.pick === 'home' ? r.home : r.pick === 'away' ? r.away : 'Draw');
 
-function PickBtn({ label, sub, active, disabled, onClick }) {
-  return (
-    <button type="button" disabled={disabled} onClick={onClick} aria-pressed={active}
-      style={{ all: 'unset', boxSizing: 'border-box', cursor: disabled ? 'default' : 'pointer', flex: 1, minWidth: 0, minHeight: 48, padding: '6px 4px', borderRadius: 12, textAlign: 'center',
-        background: active ? `linear-gradient(180deg, ${CANDY.green.light}, ${CANDY.green.fill})` : C.track, border: `2px solid ${active ? CANDY.green.dark : CANDY.violet.dark}`, opacity: disabled && !active ? 0.55 : 1 }}>
-      <div style={{ fontFamily: CANDY.display, fontSize: 17, color: '#fff' }}>{label}</div>
-      <div style={{ fontSize: 10.5, fontWeight: 800, color: 'rgba(255,255,255,.75)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{sub}</div>
-    </button>
-  );
-}
-
-const SLOT = {
-  won: { bg: CANDY.green.fill, border: CANDY.green.dark, mark: '✓' },
-  lost: { bg: CANDY.red.fill, border: CANDY.red.dark, mark: '✗' },
-  pending: { bg: C.track, border: CANDY.gold, mark: '•' },
+const STEP = {
+  won: { bg: CANDY.green.fill, mark: '✓', tag: 'RIGHT', tagBg: CANDY.green.fill, row: 'rgba(67,194,26,.14)', border: CANDY.green.fill },
+  lost: { bg: CANDY.red.fill, mark: '✗', tag: 'MISSED', tagBg: CANDY.red.fill, row: 'rgba(227,38,30,.12)', border: CANDY.red.fill },
+  pending: { bg: CANDY.gold, mark: '•', tag: 'WAITING', tagBg: 'rgba(255,255,255,.16)', row: 'rgba(255,210,31,.08)', border: 'rgba(255,210,31,.55)' },
 };
 const weekLabel = (w) => {
   const d = new Date(`${w}T12:00:00Z`);
   return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' });
 };
 
-/** The week's slots: ✓ right, ✗ wrong, • waiting for the result, a number = not picked yet. */
-function SlipSlots({ slip, size }) {
-  const picks = slip?.picks || [];
+function slipLine(slip, size, coins) {
+  const n = slip.picks?.length || 0;
+  if (slip.status === 'lost') return 'One pick missed. A new slip starts on Monday.';
+  if (slip.status === 'won') return slip.claimed ? `${size} out of ${size}! ${fmt(coins)} coins collected.` : `${size} out of ${size}! Collect your ${fmt(coins)} coins.`;
+  if (slip.status === 'pending') return `All ${size} picked · ${slip.right} right so far.`;
+  return n ? `${n} of ${size} picked · pick ${size - n} more` : `Pick ${size} matches to play`;
+}
+
+const PRED_CSS = `
+  .pr-wrap { container-type: inline-size; }
+  .pr-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
+  .pr-tix { display: grid; gap: 10px; min-width: 0; align-content: start; }
+  .pr-side { display: grid; gap: 12px; align-content: start; min-width: 0; }
+  .pr-teams { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 8px; }
+  .pr-team { font-weight: 900; font-size: 14px; line-height: 1.15; overflow-wrap: anywhere; }
+  .pr-btn { all: unset; box-sizing: border-box; cursor: pointer; min-height: 46px; border-radius: 10px; text-align: center; display: grid; place-items: center; padding: 4px 2px; font-weight: 900; font-size: 13px; line-height: 1.1; }
+  .pr-btn[disabled] { cursor: default; }
+  .pr-btn:focus-visible { outline: 3px solid ${CANDY.gold}; outline-offset: 2px; }
+  @container (min-width: 820px) {
+    .pr-grid { grid-template-columns: minmax(0, 1fr) 340px; gap: 22px; }
+    .pr-side { grid-column: 2; grid-row: 1; position: sticky; top: 8px; }
+    .pr-tix { grid-column: 1; grid-row: 1; }
+    .pr-ticket { grid-template-columns: 150px minmax(0, 1fr) 300px !important; align-items: center; column-gap: 16px; }
+    .pr-meta { flex-direction: column; justify-content: center !important; gap: 2px !important; }
+    .pr-league { white-space: normal !important; line-height: 1.2; }
+    .pr-time { font-family: ${CANDY.display}; font-size: 16px; letter-spacing: 0; }
+    .pr-team { font-size: 16px; }
+  }
+`;
+
+function PrizeCard({ p, cur, size, compact }) {
+  const picks = cur.picks || [];
   return (
-    <div style={{ display: 'flex', gap: 6 }} aria-label={`${picks.length} of ${size} picks made`}>
+    <div data-pred-prize style={{ borderRadius: 20, padding: compact ? '12px 14px' : '16px 14px', textAlign: 'center', background: 'linear-gradient(180deg, #FFE27A 0%, #E0A300 100%)', boxShadow: '0 5px 0 #8A5A00', color: INK, display: 'grid', gap: 2 }}>
+      <div style={{ fontSize: 11.5, fontWeight: 900, letterSpacing: '.12em' }}>THIS WEEK&apos;S PRIZE</div>
+      <div style={{ fontFamily: CANDY.display, fontSize: compact ? 38 : 50, lineHeight: 1 }}>{fmt(p.coins)}</div>
+      <div style={{ fontFamily: CANDY.display, fontSize: 17 }}>COINS FOR {size} OUT OF {size}</div>
+      {p.loggedIn && (
+        <>
+          <div style={{ marginTop: 8, display: 'grid', gridTemplateColumns: `repeat(${size}, minmax(0, 1fr))`, gap: 5 }} aria-label={`${picks.length} of ${size} picked`}>
+            {Array.from({ length: size }, (_, i) => {
+              const r = picks[i];
+              const st = r ? STEP[r.status] || STEP.pending : null;
+              return <span key={i} style={{ height: 9, borderRadius: 5, background: st ? (r.status === 'pending' ? INK : st.bg) : 'rgba(42,10,79,.22)' }} />;
+            })}
+          </div>
+          <div style={{ marginTop: 6, fontSize: 13, fontWeight: 900 }}>{slipLine(cur, size, p.coins)}</div>
+          {cur.claimable && <div style={{ marginTop: 8 }}><GreenBtn full onClick={(e) => p.onClaim(cur.week, e.currentTarget)}>Collect {fmt(p.coins)} coins</GreenBtn></div>}
+        </>
+      )}
+      {!p.loggedIn && <div style={{ marginTop: 6, fontSize: 13, fontWeight: 800 }}>Free to play · worth K2 in the Coin Shop</div>}
+    </div>
+  );
+}
+
+function Ticket({ m, p, locked }) {
+  const opts = [['home', m.odds?.h], ['draw', m.odds?.d], ['away', m.odds?.a]];
+  return (
+    <div className="pr-ticket" data-pred-ticket style={{ display: 'grid', gap: 8, background: '#fff', color: INK, borderRadius: 14, padding: '10px 12px 12px', boxShadow: '0 4px 0 #120530' }}>
+      <div className="pr-meta" style={{ display: 'flex', justifyContent: 'space-between', gap: 8, fontSize: 11, fontWeight: 900, letterSpacing: '.05em', color: '#7A6A9A' }}>
+        <span className="pr-league" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textTransform: 'uppercase' }}>{m.league}</span>
+        <span className="pr-time" style={{ flex: 'none', color: CANDY.violet.fill, textTransform: 'uppercase' }}>{kickoffText(m.time)}</span>
+      </div>
+      <div className="pr-teams">
+        <div className="pr-team">{m.home}</div>
+        <div style={{ fontFamily: CANDY.display, fontSize: 14, color: CANDY.violet.fill }}>VS</div>
+        <div className="pr-team" style={{ textAlign: 'right' }}>{m.away}</div>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 6 }}>
+        {opts.map(([k, o]) => {
+          const on = m.myPick === k;
+          const dis = !!m.myPick || locked || p.busyId === m.id;
+          return (
+            <button key={k} type="button" className="pr-btn" disabled={dis} aria-pressed={on}
+              aria-label={`${k === 'draw' ? 'Draw' : (k === 'home' ? m.home : m.away) + ' win'}${odd(o) ? `, odds ${odd(o)}` : ''}`}
+              onClick={() => p.onPick(m.id, k)}
+              style={{ background: on ? CANDY.green.fill : '#F3EEFC', color: on ? '#fff' : INK, border: `2px solid ${on ? CANDY.green.dark : '#E2D8F5'}`, opacity: dis && !on ? 0.55 : 1 }}>
+              <span>{PICK_LABEL[k]} · {PICK_WORD[k]}{odd(o) && <span style={{ display: 'block', fontSize: 11, fontWeight: 800, opacity: 0.75 }}>{odd(o)}</span>}</span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function PicksBoard({ cur, size }) {
+  const picks = cur.picks || [];
+  return (
+    <div data-pred-board style={{ borderRadius: 16, padding: 12, background: 'rgba(255,255,255,.06)', border: '1px solid rgba(255,255,255,.12)', display: 'grid', gap: 7 }}>
+      <div style={{ fontFamily: CANDY.display, fontSize: 18, color: CANDY.gold }}>MY {size} PICKS</div>
       {Array.from({ length: size }, (_, i) => {
         const r = picks[i];
-        const st = r ? SLOT[r.status] || SLOT.pending : null;
+        if (!r) {
+          return (
+            <div key={i} style={{ display: 'grid', gridTemplateColumns: '28px minmax(0, 1fr)', alignItems: 'center', gap: 10, padding: '7px 10px', borderRadius: 12, background: 'rgba(255,255,255,.04)', border: '1px dashed rgba(255,255,255,.18)' }}>
+              <span style={{ width: 26, height: 26, borderRadius: '50%', display: 'grid', placeItems: 'center', background: 'rgba(255,255,255,.14)', color: '#fff', fontFamily: CANDY.display, fontSize: 13 }}>{i + 1}</span>
+              <span style={{ fontSize: 13, fontWeight: 800, color: C.muted }}>Not picked yet</span>
+            </div>
+          );
+        }
+        const st = STEP[r.status] || STEP.pending;
         return (
-          <div key={i} title={r ? `${r.home} v ${r.away}` : 'Not picked yet'}
-            style={{ flex: 1, height: 34, borderRadius: 10, display: 'grid', placeItems: 'center', fontFamily: CANDY.display, fontSize: 18, color: st ? '#fff' : C.muted,
-              background: st ? st.bg : 'transparent', border: `2px ${st ? 'solid' : 'dashed'} ${st ? st.border : CANDY.violet.fill}` }}>
-            {st ? st.mark : i + 1}
+          <div key={r.eventId} style={{ display: 'grid', gridTemplateColumns: '28px minmax(0, 1fr) auto', alignItems: 'center', gap: 10, padding: '7px 10px', borderRadius: 12, background: st.row, border: `2px solid ${st.border}` }}>
+            <span style={{ width: 26, height: 26, borderRadius: '50%', display: 'grid', placeItems: 'center', background: st.bg, color: r.status === 'pending' ? INK : '#fff', fontFamily: CANDY.display, fontSize: 14 }}>{st.mark}</span>
+            <span style={{ minWidth: 0, display: 'grid' }}>
+              <span style={{ fontSize: 12, fontWeight: 800, color: C.sub, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.home} v {r.away}</span>
+              <span style={{ fontSize: 14, fontWeight: 900, color: '#fff' }}>{pickName(r)}{r.score ? <span style={{ color: C.sub, fontWeight: 800 }}> · {r.score}</span> : null}</span>
+            </span>
+            <span style={{ fontSize: 11, fontWeight: 900, padding: '3px 8px', borderRadius: 999, background: st.tagBg, color: '#fff', whiteSpace: 'nowrap' }}>{r.status === 'pending' ? (kickoffText(r.kickoff) || st.tag) : st.tag}</span>
           </div>
         );
       })}
@@ -67,16 +164,6 @@ function SlipSlots({ slip, size }) {
   );
 }
 
-function slipLine(slip, size, coins) {
-  const n = slip.picks?.length || 0;
-  if (slip.status === 'lost') return 'One pick missed. A new slip starts on Monday.';
-  if (slip.status === 'won') return slip.claimed ? `${size} out of ${size}! ${fmt(coins)} coins collected.` : `${size} out of ${size}! Collect your ${fmt(coins)} coins.`;
-  if (slip.status === 'pending') return `All ${size} picked · ${slip.right} right so far. Waiting for the results.`;
-  return `Pick ${size - n} more ${size - n === 1 ? 'match' : 'matches'} this week.`;
-}
-
-// Weekly predictions (owner 2026-10-20): 5 picks a Lusaka week, all 5 right =
-// the coins, once per week (POST /api/predictions/claim { week }).
 export function Predictions({ predictions: p, compact = false, onSeeAll }) {
   if (!p) return null;
   const size = p.week?.max || 5;
@@ -84,67 +171,35 @@ export function Predictions({ predictions: p, compact = false, onSeeAll }) {
   const cur = slips[0] || { picks: [], status: 'open', right: 0 };
   const earlier = slips.slice(1).filter(x => x.claimable);
   const left = Math.max(0, size - (p.week?.picks || 0));
-  const open = (p.matches || []).filter(m => m.open);
+  const open = (p.matches || []).filter(m => m.open).sort((a, b) => String(a.time).localeCompare(String(b.time)));
   const canPick = !p.loggedIn || (left > 0 && cur.status !== 'lost');
-  const list = !canPick ? [] : compact ? open.slice(0, 2) : open.slice(0, 8);
+  const list = !canPick ? [] : compact ? open.filter(m => !m.myPick).slice(0, 2) : open.slice(0, 10);
   const titleId = compact ? 'pred-title-home' : 'pred-title';
   return (
-    <section aria-labelledby={titleId} style={compact ? null : { marginTop: 26 }}>
+    <section aria-labelledby={titleId} className="pr-wrap" style={compact ? null : { marginTop: 26 }}>
+      <style>{PRED_CSS}</style>
       <SectionTitle id={titleId} right={p.loggedIn ? <TitleNote>{size - left} of {size} picked this week</TitleNote> : null}>Weekly predictions</SectionTitle>
-      <Card style={{ padding: 14, display: 'grid', gap: 12 }}>
-        <div style={{ fontSize: 13, fontWeight: 700, color: C.sub }}>
-          Free to play. Pick the winners of <b style={{ color: C.text }}>{size} real matches</b> this week. Get <b style={{ color: C.text }}>all {size} right</b> = <b style={{ color: CANDY.gold }}>{fmt(p.coins)} coins</b>.
+      <div className="pr-grid">
+        <div className="pr-side">
+          <PrizeCard p={p} cur={cur} size={size} compact={compact} />
+          {earlier.map(x => (
+            <div key={x.week} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: 10, borderRadius: 12, border: `2px solid ${CANDY.gold}` }}>
+              <Trophy size={22} color={CANDY.gold} style={{ flex: 'none' }} />
+              <div style={{ flex: 1, fontSize: 13, fontWeight: 800, color: C.text }}>Week of {weekLabel(x.week)}: {size} out of {size}! {fmt(p.coins)} coins</div>
+              <GreenBtn onClick={(e) => p.onClaim(x.week, e.currentTarget)}>Collect</GreenBtn>
+            </div>
+          ))}
+          {!compact && p.loggedIn && <PicksBoard cur={cur} size={size} />}
         </div>
-        {p.loggedIn && (
-          <div style={{ display: 'grid', gap: 8 }}>
-            <SlipSlots slip={cur} size={size} />
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div style={{ flex: 1, fontSize: 13, fontWeight: 800, color: cur.status === 'won' ? C.green : cur.status === 'lost' ? C.muted : C.text }}>{slipLine(cur, size, p.coins)}</div>
-              {cur.claimable && <GreenBtn onClick={(e) => p.onClaim(cur.week, e.currentTarget)}>Claim</GreenBtn>}
-            </div>
-          </div>
-        )}
-        {earlier.map(x => (
-          <div key={x.week} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: 10, borderRadius: 12, border: `2px solid ${CANDY.gold}` }}>
-            <Trophy size={22} color={CANDY.gold} style={{ flex: 'none' }} />
-            <div style={{ flex: 1, fontSize: 13, fontWeight: 800, color: C.text }}>Week of {weekLabel(x.week)}: {size} out of {size}! {fmt(p.coins)} coins</div>
-            <GreenBtn onClick={(e) => p.onClaim(x.week, e.currentTarget)}>Claim</GreenBtn>
-          </div>
-        ))}
-        {canPick && p.status === 'idle' && <div style={{ fontSize: 13, color: C.muted }}>Loading matches…</div>}
-        {canPick && p.status !== 'idle' && !list.length && <div style={{ fontSize: 13, color: C.muted }}>No matches open right now. Check back on match day.</div>}
-        {list.map(m => (
-          <div key={m.id} style={{ display: 'grid', gap: 6 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, fontSize: 11.5, fontWeight: 800, color: C.muted }}>
-              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.league}</span><span style={{ flex: 'none' }}>{kickoffText(m.time)}</span>
-            </div>
-            <div style={{ ...title(15), textTransform: 'none' }}>{m.home} <span style={{ color: C.muted }}>v</span> {m.away}</div>
-            <div style={{ display: 'flex', gap: 6 }}>
-              {['home', 'draw', 'away'].map(k => (
-                <PickBtn key={k} label={PICK_LABEL[k]} sub={k === 'home' ? m.home : k === 'away' ? m.away : 'Draw'}
-                  active={m.myPick === k} disabled={!!m.myPick || p.busyId === m.id}
-                  onClick={() => p.onPick(m.id, k)} />
-              ))}
-            </div>
-          </div>
-        ))}
-        {!compact && cur.picks?.length > 0 && (
-          <div style={{ display: 'grid', gap: 8, borderTop: `1px solid ${CANDY.violet.dark}`, paddingTop: 10 }}>
-            <div style={{ fontSize: 12, fontWeight: 900, color: CANDY.gold, textTransform: 'uppercase' }}>This week&apos;s picks</div>
-            {cur.picks.map(r => (
-              <div key={r.eventId} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <div style={{ flex: 1, minWidth: 0, fontSize: 13, fontWeight: 700, color: C.text }}>
-                  {r.home} v {r.away} <span style={{ color: C.muted }}>· you: {PICK_LABEL[r.pick]}{r.score ? ` · ${r.score}` : ''}</span>
-                </div>
-                <span style={{ flex: 'none', fontSize: 12, fontWeight: 900, color: r.status === 'won' ? C.green : r.status === 'lost' ? C.muted : CANDY.gold }}>
-                  {r.status === 'won' ? 'Right ✓' : r.status === 'lost' ? 'Missed' : 'Waiting'}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
-        {compact && onSeeAll && <button type="button" onClick={onSeeAll} style={{ all: 'unset', cursor: 'pointer', textAlign: 'center', fontSize: 13, fontWeight: 900, color: CANDY.gold, minHeight: 36 }}>All matches ›</button>}
-      </Card>
+        <div className="pr-tix">
+          {canPick && !compact && <div style={{ fontSize: 13, fontWeight: 700, color: C.sub }}>Pick the winner of {size} matches. Free to play. Picks lock 5 minutes before kick-off.</div>}
+          {canPick && p.status === 'idle' && <div style={{ fontSize: 13, color: C.muted }}>Loading matches…</div>}
+          {canPick && p.status !== 'idle' && !list.length && <div style={{ fontSize: 13, color: C.muted }}>No matches open right now. Check back on match day.</div>}
+          {list.map(m => <Ticket key={m.id} m={m} p={p} locked={p.loggedIn && left === 0} />)}
+          {!canPick && !compact && cur.status !== 'lost' && <div style={{ fontSize: 13, fontWeight: 700, color: C.sub }}>Your {size} picks are in. Results show on the board as the matches finish.</div>}
+          {compact && onSeeAll && <button type="button" onClick={onSeeAll} style={{ all: 'unset', cursor: 'pointer', textAlign: 'center', fontSize: 13, fontWeight: 900, color: CANDY.gold, minHeight: 40 }}>{canPick ? 'All matches ›' : 'My picks ›'}</button>}
+        </div>
+      </div>
     </section>
   );
 }

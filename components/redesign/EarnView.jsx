@@ -299,13 +299,14 @@ export default function EarnView({ wallet = null, xp = 0, onNavigate, onOpenProf
             </div>
           )}
           {extras && <>
-            <div id="missions-predictions" style={{ scrollMarginTop: 12 }}><Predictions predictions={extras.predictions} /></div>
             <Leaderboard board={extras.board} />
             <Album album={extras.album} />
           </>}
         </section>
         <VumaRoad xp={xp} levelRewards={levelRewards} seasonCfg={season?.cfg} displayName={displayName} userId={userId} onEditName={onEditName} />
       </div>
+      {/* Weekly predictions span the full width (2026-10-22 redesign: tickets left, prize board right on desktop) */}
+      {extras && <div id="missions-predictions" style={{ scrollMarginTop: 12 }}><Predictions predictions={extras.predictions} /></div>}
       <div id="missions-rewards" style={{ marginTop: 26, scrollMarginTop: 12, maxWidth: 720 }}>
         <RewardsSection xp={xp} levelRewards={levelRewards} seasonCfg={season?.cfg} displayName={displayName} userId={userId} />
       </div>
