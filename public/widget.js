@@ -258,6 +258,7 @@
   dismiss.addEventListener('click', function (e) {
     e.stopPropagation();
     try { sessionStorage.setItem(HIDE_KEY, '1'); } catch (err) { /* storage blocked */ }
+    showLauncher = false;
     launcher.remove();
     hideBubble();
   });
@@ -344,6 +345,7 @@
     try { if (frame && frame.contentWindow) frame.contentWindow.postMessage({ type: '100x-widget:visibility', open: open }, APP_ORIGIN); } catch (e) { /* ignore */ }
   }
   function openWidget() {
+    if (!loggedIn()) return; // logged-out visitors never see the Bonus Center
     hideBubble();
     ensureFrame();
     overlay.classList.add('open');
@@ -394,15 +396,35 @@
     if (e.data && e.data.type === 'gamification-ready') sendToken();
   });
 
+  // LOGGED-IN PLAYERS ONLY (owner 2026-10-22): no launcher, bubble or popup
+  // for a visitor without a live bwanabet `token` cookie (the preview page
+  // excepted). bwanabet logs in/out without a page reload, so the cookie is
+  // checked every 2 s: login shows the button, logout removes it, closes the
+  // popup and drops the iframe (it held the old session).
+  function loggedIn() { return !!cfg.preview || !!readToken(); }
+  var pendingOpen = false;
+  function syncLogin() {
+    if (loggedIn()) {
+      if (showLauncher && !launcher.parentNode) { document.body.appendChild(launcher); setTimeout(showBubble, 1500); }
+      // load the Bonus Center hidden now (or afresh after an account switch), so
+      // the launcher knows at once whether today's spin is open (gift box vs chest)
+      if (!frame || (!cfg.preview && readToken() !== frameToken)) ensureFrame();
+      if (pendingOpen) { pendingOpen = false; openWidget(); }
+    } else {
+      hideBubble();
+      if (isOpen) closeWidget();
+      if (launcher.parentNode) launcher.parentNode.removeChild(launcher);
+      if (frame) { frame.remove(); frame = null; frameToken = null; setMode('bonus', false); }
+    }
+  }
+
   function mount() {
-    if (showLauncher) { document.body.appendChild(launcher); setTimeout(showBubble, 1500); }
     document.body.appendChild(overlay);
     // SMS / campaign links: https://bwanabet.co.zm/?bonus=open opens the
-    // Bonus Center straight away (the comeback bonus waits inside).
-    try { if (/[?&]bonus=open/.test(window.location.search)) openWidget(); } catch (e) { /* ignore */ }
-    // Logged in (or the preview page): load the Bonus Center hidden now, so the
-    // launcher knows at once whether today's spin is open (gift box vs chest).
-    if (!frame && (readToken() || cfg.preview)) ensureFrame();
+    // Bonus Center straight away (the comeback bonus waits inside), or right after the visitor logs in.
+    try { if (/[?&]bonus=open\b/.test(window.location.search)) pendingOpen = true; } catch (e) { /* ignore */ }
+    syncLogin();
+    setInterval(syncLogin, 2000);
     // Visitors from the free-spins promo sites (?wof=new|existing) get the
     // wheel's "register / log in and deposit" arrival popup: only that part of
     // the wheel's old embed runs (window.__bwArrivalOnly), served from
