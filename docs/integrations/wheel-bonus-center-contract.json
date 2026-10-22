@@ -1,7 +1,7 @@
 {
   "name": "wheel-bonus-center",
-  "version": 1,
-  "updated": "2026-10-21",
+  "version": 2,
+  "updated": "2026-10-22",
   "about": "How the Wheel of Fortune (crmbwanabet/wheel-of-fortune) and the BwanaBet Bonus Center (crmbwanabet/gamification-platform) talk to each other. This file is copied BYTE FOR BYTE in both repos at docs/integrations/wheel-bonus-center-contract.json. Change it in both in the same sitting, bump version, and run the contract tests + `npm run contract:check` in each repo.",
   "repos": {
     "wheel": "crmbwanabet/wheel-of-fortune",
@@ -11,7 +11,7 @@
     "wheel": "https://wheel-of-fortune-roan.vercel.app",
     "bonusCenter": "https://100xbet-gamification.vercel.app"
   },
-  "wheelAllowsAuthFrom": ["https://100xbet-gamification.vercel.app"],
+  "wheelAllowsAuthFrom": ["https://100xbet-gamification.vercel.app", "https://bonus.bwanabet.dev"],
   "messages": {
     "wheelToHost": [
       { "type": "bwanabet-wheel-ready", "fields": [], "meaning": "wheel mounted, send me the token" },
