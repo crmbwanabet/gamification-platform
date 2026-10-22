@@ -86,13 +86,13 @@
 
   /* ---------- styles ---------- */
   var css = [
-    '.x100w-launcher{position:fixed;bottom:20px;right:20px;z-index:2147483000;width:64px;height:64px;border-radius:50%;',
-    'background:radial-gradient(120% 120% at 30% 25%,#5ecb8f,#2e7d5f);border:2px solid rgba(255,255,255,.35);cursor:pointer;',
-    'box-shadow:0 10px 28px rgba(0,0,0,.45),0 0 22px rgba(79,169,139,.4);display:grid;place-items:center;',
+    // Bonus Center icon (owner 2026-10-22): the gold K coin IS the button, filling it edge to edge
+    '.x100w-launcher{position:fixed;bottom:20px;right:20px;z-index:2147483000;width:64px;height:64px;border-radius:50%;padding:0;',
+    'background:transparent;border:0;cursor:pointer;display:grid;place-items:center;',
     'transition:transform .15s ease;-webkit-tap-highlight-color:transparent;}',
     '.x100w-launcher:hover{transform:scale(1.07);}',
-    '.x100w-launcher img{width:38px;height:38px;object-fit:contain;pointer-events:none;',
-    'filter:drop-shadow(0 2px 4px rgba(0,0,0,.4));animation:x100w-bob 2.6s ease-in-out infinite;}',
+    '.x100w-launcher img{display:block;width:64px;height:64px;object-fit:contain;pointer-events:none;',
+    'filter:drop-shadow(0 6px 12px rgba(0,0,0,.45)) drop-shadow(0 0 10px rgba(255,210,31,.35));animation:x100w-bob 2.6s ease-in-out infinite;}',
     '@keyframes x100w-bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}',
     '.x100w-dismiss{position:absolute;top:-6px;right:-6px;width:22px;height:22px;border-radius:50%;border:1.5px solid rgba(255,255,255,.5);',
     'background:#d43a22;color:#fff;font:900 12px/1 Arial,sans-serif;display:grid;place-items:center;cursor:pointer;',
@@ -116,7 +116,7 @@
     '.x100w-close:focus-visible{outline:3px solid #FEF200;outline-offset:2px;}',
     '.x100w-frame{position:absolute;top:var(--x100w-bar);left:0;width:100%;height:calc(100% - var(--x100w-bar));border:0;background:#191b27;}',
     // wheel icon (today's spin is open): the wheel's own gift box + its gold pulse
-    '.x100w-launcher.x100w-wheel{background:rgba(250,204,21,.15);border-color:rgba(250,204,21,.55);',
+    '.x100w-launcher.x100w-wheel{background:rgba(250,204,21,.15);border:2px solid rgba(250,204,21,.55);',
     '-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);animation:x100w-pulse 2s ease-in-out infinite;}',
     '.x100w-launcher.x100w-wheel svg{pointer-events:none;filter:drop-shadow(0 2px 4px rgba(0,0,0,.35));}',
     '@keyframes x100w-pulse{0%,100%{box-shadow:0 4px 20px rgba(250,204,21,.4),0 0 0 0 rgba(250,204,21,.6)}',
