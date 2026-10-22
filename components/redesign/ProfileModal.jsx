@@ -1,11 +1,10 @@
 'use client';
 
 import React from 'react';
-import { Gamepad2, Target, Trophy, Flame, Users, Pencil, Lock } from 'lucide-react';
+import { Gamepad2, Target, Trophy, Flame, Users, Pencil } from 'lucide-react';
 import { C, CANDY, goldRim, dotRow, goldTitle } from './tokens';
 import { Progress, RewardIcon, CURRENCY_COLOR, CloseX } from './RedesignShell';
 import { formatNumber } from '@/lib/economy/currency.mjs';
-import { XP_LEVELS } from '@/lib/data/platform';
 import { textStroke } from '../games/candy/tokens';
 import CandyButton from '../games/candy/CandyButton';
 import { validateName, canRename, nextRenameStage, playerLabel, playerName, NAME_MAX } from '@/lib/profile/name.mjs';
@@ -25,7 +24,7 @@ const tile = { background: `linear-gradient(180deg, ${C.panelHi}, ${C.panelLo})`
  * opens it straight into the name form (header "Add name", level-up modal).
  * Rename rules live in lib/profile/name.mjs.
  */
-export default function ProfileModal({ open, onClose, level, nextLevel, xpPct = 0, vip, user, userId = null, onSaveName, startEditing = false, onWearItem, onOpenShop, shopItemCount = 0, namePrizeXp = 0 }) {
+export default function ProfileModal({ open, onClose, level, nextLevel, xpPct = 0, vip, user, userId = null, onSaveName, startEditing = false, onWearItem, onOpenShop, shopItemCount = 0, namePrizeXp = 0, nextBonuses = [] }) {
   const u = user || {};
   const stage = level?.level || 1;
   const current = playerName(u);
@@ -33,12 +32,14 @@ export default function ProfileModal({ open, onClose, level, nextLevel, xpPct = 
   const [editing, setEditing] = React.useState(false);
   const [draft, setDraft] = React.useState('');
   const [error, setError] = React.useState(null);
+  const [lockNote, setLockNote] = React.useState(false); // tapped the name while a rename is locked
   const inputRef = React.useRef(null);
   React.useEffect(() => {
     if (!open) return;
     setEditing(!!startEditing && canRename(user || {}, stage));
     setDraft(playerName(user || {}) || '');
     setError(null);
+    setLockNote(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, startEditing]);
   const scrollRef = React.useRef(null);
@@ -98,7 +99,16 @@ export default function ProfileModal({ open, onClose, level, nextLevel, xpPct = 
               ? <HeroPicture stage={level.level} alt={`Level ${level.level}: ${level.title || level.name}`} style={{ aspectRatio: '10 / 9' }} />
               : <div style={{ width: '100%', aspectRatio: '10 / 9' }} />}
             <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, padding: '60px 18px 12px', textAlign: 'center', background: `linear-gradient(180deg, rgba(43,15,94,0) 0%, rgba(43,15,94,.8) 55%, ${CANDY.bgTop} 100%)` }}>
-              <div data-profile-name style={{ fontFamily: CANDY.display, fontSize: 28, lineHeight: 1.05, color: '#fff', overflowWrap: 'anywhere', textShadow: `${textStroke(2.5, CANDY.outline)}, 0 4px 0 ${CANDY.outline}` }}>{who.title}</div>
+              {/* A named player renames by tapping their own name (owner 2026-10-22: no Change name button). */}
+              {current ? (
+                <button type="button" data-profile-name onClick={() => (allowed ? startEdit() : setLockNote(v => !v))} aria-label={`${who.title}: ${allowed ? 'change your name' : 'name change locked'}`}
+                  style={{ all: 'unset', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8, maxWidth: '100%', fontFamily: CANDY.display, fontSize: 28, lineHeight: 1.05, color: '#fff', overflowWrap: 'anywhere', textShadow: `${textStroke(2.5, CANDY.outline)}, 0 4px 0 ${CANDY.outline}` }}>
+                  {who.title}<Pencil size={16} strokeWidth={3} aria-hidden style={{ flex: 'none', opacity: 0.6, filter: 'none' }} />
+                </button>
+              ) : (
+                <div data-profile-name style={{ fontFamily: CANDY.display, fontSize: 28, lineHeight: 1.05, color: '#fff', overflowWrap: 'anywhere', textShadow: `${textStroke(2.5, CANDY.outline)}, 0 4px 0 ${CANDY.outline}` }}>{who.title}</div>
+              )}
+              {lockNote && !allowed && <div data-rename-locked role="status" style={{ fontSize: 12.5, fontWeight: 800, color: CANDY.gold, marginTop: 6 }}>You can change your name again at Level {lockedUntil}</div>}
               {who.sub && <div style={{ fontSize: 12.5, fontWeight: 800, color: 'rgba(255,255,255,.75)', marginTop: 4 }}>{who.sub}</div>}
               <div style={{ display: 'flex', justifyContent: 'center', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
                 <span style={{ fontSize: 12, fontWeight: 900, color: '#fff', background: 'rgba(20,4,48,.8)', border: `1.5px solid ${CANDY.violet.fill}`, padding: '2px 11px', borderRadius: 999 }}>Level {stage}{level?.title ? ` · ${level.title}` : ''}</span>
@@ -108,8 +118,8 @@ export default function ProfileModal({ open, onClose, level, nextLevel, xpPct = 
             </div>
           </div>
 
-          {/* Player name: first name any time, then one rename per stage-up. */}
-          <div style={{ padding: '14px 18px 2px' }}>
+          {/* Player name: first name any time, then one rename per level-up (tap the name). */}
+          <div style={{ padding: editing || !current ? '14px 18px 2px' : 0 }}>
             {editing ? (
               <form ref={formRef} onSubmit={save} noValidate style={{ ...tile, padding: '12px 12px 6px' }}>
                 <label htmlFor="rs-pm-name" style={{ display: 'block', fontFamily: CANDY.display, fontSize: 17, color: CANDY.gold, marginBottom: 8 }}>{current ? 'Change your name' : 'Add your name'}{!current && namePrizeXp ? <span style={{ fontFamily: CANDY.body, fontSize: 13, fontWeight: 800, color: C.sub }}> · earn <XpAmount size={14} gap={3}>{namePrizeXp} XP</XpAmount></span> : null}</label>
@@ -124,19 +134,12 @@ export default function ProfileModal({ open, onClose, level, nextLevel, xpPct = 
                   <CandyButton color="violet" onClick={() => { setEditing(false); setError(null); }} style={{ flex: 1, fontSize: 19, minHeight: 48, borderRadius: 14 }}>Cancel</CandyButton>
                 </div>
               </form>
-            ) : allowed ? (
-              <CandyButton color={current ? 'violet' : 'green'} onClick={startEdit} aria-label={current ? 'Change your name' : 'Add your name'}
+            ) : !current ? (
+              <CandyButton color="green" onClick={startEdit} aria-label="Add your name"
                 style={{ width: '100%', flexDirection: 'row', gap: 8, fontSize: 18, minHeight: 48, borderRadius: 14 }}>
-                <Pencil size={17} strokeWidth={3} aria-hidden />{current ? 'Change name' : 'Add your name'}{!current && namePrizeXp ? <XpAmount size={18} style={{ marginLeft: 4 }}>+{namePrizeXp} XP</XpAmount> : null}
+                <Pencil size={17} strokeWidth={3} aria-hidden />Add your name{namePrizeXp ? <XpAmount size={18} style={{ marginLeft: 4 }}>+{namePrizeXp} XP</XpAmount> : null}
               </CandyButton>
-            ) : (
-              <div>
-                <CandyButton disabled aria-describedby="rs-pm-lock" style={{ width: '100%', flexDirection: 'row', gap: 8, fontSize: 18, minHeight: 48, borderRadius: 14 }}>
-                  <Lock size={16} strokeWidth={3} aria-hidden />Change name
-                </CandyButton>
-                <div id="rs-pm-lock" data-rename-locked style={{ fontSize: 12.5, fontWeight: 800, color: C.sub, textAlign: 'center', margin: '2px 0 0' }}>You can change your name again at Level {lockedUntil}</div>
-              </div>
-            )}
+            ) : null}
           </div>
 
           {/* Avatar items (lib/avatar/items.mjs): bought in the Coin Shop, worn by the hero above. */}
@@ -166,9 +169,10 @@ export default function ProfileModal({ open, onClose, level, nextLevel, xpPct = 
           )}
 
           <div style={{ padding: '14px 18px 16px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: C.sub, marginBottom: 7 }}>
-              <span>Level {level?.level} of {XP_LEVELS.length}</span>
-              <span>{nextLevel ? `Next: ${nextLevel.title && nextLevel.title !== level?.title ? nextLevel.title : `Level ${nextLevel.level}`}` : 'Final level'}</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10, fontSize: 12, color: C.sub, marginBottom: 7 }}>
+              <span style={{ flex: 'none' }}>Level {level?.level}</span>
+              {/* what the next level gives (lib/profile/nextBonuses.mjs), never its place or name */}
+              <span data-next-bonuses style={{ textAlign: 'right' }}>{nextLevel ? (nextBonuses.length ? <>Next level bonuses: <b style={{ color: CANDY.gold }}>{nextBonuses.join(', ')}</b></> : null) : 'Final level'}</span>
             </div>
             <Progress value={xpPct} height={14} color={XP_BAR} />
           </div>

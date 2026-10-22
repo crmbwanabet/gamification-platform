@@ -27,7 +27,7 @@ import { useSession } from './session/SessionProvider';
 import { useRemoteConfig } from '@/lib/config/useRemoteConfig';
 import { setName as setPlayerName, validateName, canRename, normalizeNameState, heroName, heroText } from '@/lib/profile/name.mjs';
 import { GEMS, CURRENCY_VERSION, migrateCurrencyState, cleanReward, canAfford, formatKwacha } from '@/lib/economy/currency.mjs';
-import { paidFromPurchase, refundTotals } from '@/lib/store/catalog.mjs';
+import { paidFromPurchase, refundTotals, STORE_UNLOCK_STAGE } from '@/lib/store/catalog.mjs';
 
 import { DEFAULT_DAILY_PLAYS } from '@/lib/config/defaults';
 import { playsFromConfig } from '@/lib/config/plays.mjs';
@@ -47,6 +47,7 @@ import {
 // parked in parked/lib/data/missions.legacy.js
 import { MISSIONS } from '../lib/data/missions';
 import { STORY_PRIZE, NAME_PRIZE } from '@/lib/extras/rules.mjs';
+import { nextLevelBonuses } from '@/lib/profile/nextBonuses.mjs';
 import { missionStates as buildMissionStates, missionCounts, countClaimable, recordMissionClaim, recordMissionBase, migrateMissionBases } from '@/lib/missions/ladder.mjs';
 import { initialStageRewarded, stageUpRewards } from '@/lib/xp/stageReward.mjs';
 import { lusakaDay } from '@/lib/casino/feed.mjs';
@@ -2236,6 +2237,7 @@ export default function GamificationPlatform() {
       <ProfileModal
         open={showProfile} onClose={() => { setShowProfile(false); setProfileEdit(false); }}
         startEditing={profileEdit} userId={playerId} onSaveName={savePlayerName} namePrizeXp={namePrizeDue ? NAME_PRIZE.xp : 0}
+        nextBonuses={nextLevelBonuses({ next: nextLevel?.level ?? null, levelRewards: cfg.levelRewards, season: seasonCfg, storeStage: STORE_UNLOCK_STAGE, named: !!user.displayName })}
         onWearItem={onWearAvatarItem} shopItemCount={avatarShopItems.length}
         onOpenShop={() => { setShowProfile(false); setProfileEdit(false); navigateTab('store'); }}
         level={level} nextLevel={nextLevel} xpPct={xpProgress} vip={vip} user={user}

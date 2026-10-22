@@ -13,7 +13,7 @@ import { xpSourceLines } from '@/lib/xp/sources.mjs';
 import { heroName, heroText, playerName } from '@/lib/profile/name.mjs';
 import { XP_LEVELS, LEVEL_REWARDS, getLevel } from '@/lib/data/platform';
 import { Check, Lock, LogIn, RefreshCw } from 'lucide-react';
-import { getStage, getNextStage, stageProgress, nextStageLabel, STAGE_COUNT } from '@/lib/vuma/stages.mjs';
+import { getStage, getNextStage, stageProgress, nextStageLabel } from '@/lib/vuma/stages.mjs';
 import { SeasonSection } from './SeasonCards';
 import { Predictions, Leaderboard, Album } from '../extras/ExtrasViews';
 
@@ -223,7 +223,7 @@ function VumaRoad({ xp = 0, levelRewards = null, seasonCfg = null, displayName =
   const x = Math.max(0, Math.floor(Number(xp) || 0));
   return (
     <div className="ev-vuma">
-      <SectionTitle right={<TitleNote>Level {cur.stage} of {STAGE_COUNT}</TitleNote>}>{hero}&apos;s road</SectionTitle>
+      <SectionTitle right={<TitleNote>Level {cur.stage}</TitleNote>}>{hero}&apos;s road</SectionTitle>
       {!playerName({ displayName }) && onEditName && (
         <button type="button" onClick={onEditName} className="ev-name-invite"
           style={{ all: 'unset', boxSizing: 'border-box', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, width: '100%', minHeight: 44, margin: '-4px 0 12px', padding: '6px 6px 6px 12px', borderRadius: 14, background: C.track, border: `2px solid ${CANDY.violet.dark}` }}>
