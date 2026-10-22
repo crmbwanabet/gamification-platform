@@ -20,7 +20,7 @@
   "crons": [
     {
       "path": "/api/cron/crm-pull",
-      "schedule": "35 * * * *"
+      "schedule": "6-56/10 * * * *"
     }
   ]
 }

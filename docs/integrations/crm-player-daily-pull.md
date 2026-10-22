@@ -126,4 +126,4 @@ To re-import from scratch: `delete from public.feed_cursors where name = 'crm_pl
 
 ## Live setup (2026-10-21)
 
-The schedule in use is **Vercel Cron** (`vercel.json`, `35 * * * *`). Do not also enable the pg_cron job below. `CRM_URL`, `GAMIFICATION_API_KEY` and `CRON_SECRET` are set on Vercel production.
+The schedule in use is **Vercel Cron** (`vercel.json`, `6-56/10 * * * *`: every 10 minutes at :06 :16 :26 :36 :46 :56, since 2026-10-22). The CRM pushes TODAY every 10 minutes at :03/:13/... (crm-ec2 unit `crm-next-sync-player-daily-today`, `node sync/player-daily.js --days 0`, ~7 s) plus the full today + 2 days run hourly at :20 (~35 s), so each of our runs lands about 3 minutes after the CRM's. ClickHouse itself loads casino every 5 minutes, transactions hourly at :06 and sport hourly at :51 (checked 2026-10-22), so casino play reaches players in about 5–15 minutes, deposits and sports within about an hour. Do not also enable the pg_cron job below. `CRM_URL`, `GAMIFICATION_API_KEY` and `CRON_SECRET` are set on Vercel production.
