@@ -122,14 +122,15 @@
     '@keyframes x100w-pulse{0%,100%{box-shadow:0 4px 20px rgba(250,204,21,.4),0 0 0 0 rgba(250,204,21,.6)}',
     '50%{box-shadow:0 4px 30px rgba(250,204,21,.6),0 0 0 12px rgba(250,204,21,0)}}',
     // "BRAND NEW BONUS CENTER! TRY ME!" speech bubble beside the button (owner 2026-10-22)
-    '.x100w-bubble{position:fixed;left:calc(98px + env(safe-area-inset-left,0px));bottom:calc(28px + env(safe-area-inset-bottom,0px));',
-    'z-index:2147483000;max-width:min(240px,calc(100vw - 118px));box-sizing:border-box;padding:10px 32px 11px 14px;border-radius:14px;',
+    // ABOVE the button (owner 2026-10-22), its arrow pointing down at it
+    '.x100w-bubble{position:fixed;left:calc(12px + env(safe-area-inset-left,0px));bottom:calc(98px + env(safe-area-inset-bottom,0px));',
+    'z-index:2147483000;max-width:min(240px,calc(100vw - 24px));box-sizing:border-box;padding:10px 32px 11px 14px;border-radius:14px;',
     'background:linear-gradient(180deg,#3a1d6e,#24104a);border:2px solid #FEF200;box-shadow:0 10px 26px rgba(0,0,0,.5);',
     'color:#fff;font:900 14px/1.2 "Arial Black",Arial,sans-serif;letter-spacing:.02em;text-transform:uppercase;cursor:pointer;',
-    'opacity:0;transform:translateX(-8px) scale(.96);transition:opacity .25s ease,transform .25s ease;-webkit-tap-highlight-color:transparent;}',
+    'opacity:0;transform:translateY(8px) scale(.96);transform-origin:40px 100%;transition:opacity .25s ease,transform .25s ease;-webkit-tap-highlight-color:transparent;}',
     '.x100w-bubble.show{opacity:1;transform:none;}',
     '.x100w-bubble b{display:block;color:#FEF200;font-weight:900;}',
-    '.x100w-bubble::before{content:"";position:absolute;left:-10px;bottom:16px;border:9px solid transparent;border-left:0;border-right-color:#FEF200;}',
+    '.x100w-bubble::before{content:"";position:absolute;left:31px;bottom:-11px;border:10px solid transparent;border-bottom:0;border-top-color:#FEF200;}',
     '.x100w-bubble-x{position:absolute;top:3px;right:4px;width:26px;height:26px;display:grid;place-items:center;border-radius:50%;',
     'color:rgba(255,255,255,.8);font:900 14px/1 Arial,sans-serif;cursor:pointer;}',
     '@media (prefers-reduced-motion:reduce){.x100w-launcher.x100w-wheel{animation:none}.x100w-bubble{transition:none}}',
@@ -263,7 +264,7 @@
   launcher.appendChild(dismiss);
 
   /* ---------- "BRAND NEW BONUS CENTER! TRY ME!" bubble ---------- */
-  // Beside the button, never over the page: 1.5 s after the button shows,
+  // Above the button, never over the page: 1.5 s after the button shows,
   // gone after 8 s, once per browser session. Tapping it opens the widget
   // (wheel first while the spin is unused); its X just hides it.
   var BUBBLE_KEY = 'x100-widget-bubble';
