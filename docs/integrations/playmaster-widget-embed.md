@@ -1,7 +1,7 @@
 # BwanaBet Bonus Center: embed code for Playmaster
 
 The Bonus Center (daily reward, missions, football story, Coin Shop, games) runs on our server
-and shows on the bwanabet website as a widget: a round coin button bottom-right that opens the
+and shows on the bwanabet website as a widget: a round button bottom-LEFT that opens the
 Bonus Center full screen (desktop and phone). The red X inside closes it.
 
 ## 1. Add this line to every page (once, in `<head>` or before `</body>`)
@@ -28,16 +28,21 @@ This one line also runs the Wheel of Fortune. There is ONE button for both: whil
 (`https://wheel-of-fortune-roan.vercel.app/embed.js`) from the site, otherwise a player sees
 two wheels. What players see:
 
-1. A logged-in player whose free spin for today is unused gets the Wheel of Fortune
-   automatically, once per day per browser tab (not on every page).
-2. They spin and see whether they won or lost.
+Nothing ever opens by itself: the widget never covers a page (or a casino game) unless the
+player taps the button.
+
+1. A logged-in player whose free spin for today is unused sees the wheel's GIFT BOX button.
+   Tapping it opens the Bonus Center with the Wheel of Fortune on top.
+2. They spin and see whether they won or lost. From that moment the button is the Bonus
+   Center's TREASURE CHEST for the rest of the day.
 3. When they close the wheel (its button, its red X, or a click outside the box), the Bonus
    Center is already open behind it.
-4. On the first visit of the day a "New bonuses unlocked!" pop-up follows. Its button leads to
-   the daily reward pop-up.
-5. The red X at the top right closes the Bonus Center. The gold coin button opens it again.
+4. A returning player who earned rewards while away gets the WELCOME BACK pop-up, then the
+   daily reward pop-up. Pop-ups only appear while the Bonus Center is open, and never while a
+   Bonus Center mini-game is being played.
+5. The red X at the top right closes the Bonus Center. The button opens it again.
 
-A player who already used the spin today just sees the coin button, as before.
+A player who already used the spin today just sees the treasure chest.
 
 Preview of the whole flow (test wheel, spins never pay):
 https://bonus.bwanabet.dev/preview.html
@@ -67,10 +72,10 @@ Leave out `launcher: false` to have both the floating coin and your own button.
 
 ## 4. How to check it works
 
-1. Open any bwanabet page: a gold K coin button appears bottom-right.
+1. Open any bwanabet page: a treasure-chest button (gift box while a free spin is waiting) appears bottom-left.
 2. Click it: the Bonus Center opens full screen. Logged out, it says "Log in on bwanabet.com".
    Logged in, the header shows the player's ID and the daily reward can be claimed.
-3. The red X closes it. The small red X on the coin button hides the button until the page is
+3. The red X closes it. The small black X on the button hides it until the page is
    reloaded.
 
 Contact: the BwanaBet CRM team.

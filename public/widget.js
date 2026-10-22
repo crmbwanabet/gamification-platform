@@ -15,7 +15,7 @@
  *
  * ONE launcher for the Wheel of Fortune and the Bonus Center: the wheel's gift
  * box while today's spin is open (opens the wheel first), the K coin after it.
- * Renders a floating launcher bubble (bottom-right). Clicking it opens the
+ * Renders a floating launcher bubble (bottom-LEFT, owner 2026-10-22). Clicking it opens the
  * platform in a full-screen iframe popup under a top strip that holds the big
  * red close X (2026-10-21): the iframe starts BELOW the strip, so nothing in
  * the app (games, pop-ups, the wheel) can ever sit under the button. The app
@@ -88,7 +88,7 @@
   var css = [
     // Bonus Center icon (owner 2026-10-22): the daily reward's treasure chest IS the button,
     // filling it, opening and shutting like on the daily reward card
-    '.x100w-launcher{position:fixed;bottom:20px;right:20px;z-index:2147483000;width:64px;height:64px;border-radius:50%;padding:0;',
+    '.x100w-launcher{position:fixed;bottom:calc(20px + env(safe-area-inset-bottom,0px));left:calc(20px + env(safe-area-inset-left,0px));z-index:2147483000;width:64px;height:64px;border-radius:50%;padding:0;',
     'background:transparent;border:0;cursor:pointer;display:grid;place-items:center;',
     'transition:transform .15s ease;-webkit-tap-highlight-color:transparent;}',
     '.x100w-launcher:hover{transform:scale(1.07);}',
@@ -311,19 +311,9 @@
     if (isOpen) { isOpen = false; tellApp(false); }
   }
 
-  // "Wheel first, then the Bonus Center" (2026-10-19): while today's free
-  // spin is unused, the app opens the Wheel of Fortune by itself and asks us
-  // to show the popup ('100x-widget:open'); closing the wheel leaves the Bonus
-  // Center on screen, and its red X closes everything. At most once per day
-  // per browser tab session, so it never re-opens on every page the player visits.
-  var AUTO_KEY = 'x100-widget-auto';
-  function autoOpen() {
-    var day = new Date().toISOString().slice(0, 10);
-    if (!cfg.preview) {
-      try { if (sessionStorage.getItem(AUTO_KEY) === day) return; sessionStorage.setItem(AUTO_KEY, day); } catch (e) { /* storage blocked */ }
-    }
-    openWidget();
-  }
+  // The popup NEVER opens by itself (owner 2026-10-22: a casino game on the
+  // page must never be interrupted); only the player opens it. With today's
+  // spin unused the button is the gift box and the wheel shows first inside.
 
   function sendToken() {
     var t = readToken();
@@ -353,7 +343,6 @@
       setMode(e.data.available ? 'wheel' : 'bonus', true);
       if (!e.data.available) wantWheel = false;
     }
-    if (e.data && e.data.type === '100x-widget:open' && frame && e.source === frame.contentWindow && !isOpen) autoOpen();
     // the app says it is mounted and listening: hand it the session token
     if (e.data && e.data.type === 'gamification-ready') sendToken();
   });

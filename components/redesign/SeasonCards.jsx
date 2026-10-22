@@ -163,12 +163,17 @@ const STATUS_CHIP = {
 };
 const Chip = ({ status }) => { const s = STATUS_CHIP[status] || STATUS_CHIP.upcoming; return <Badge bg={s.bg} color={s.color}>{s.label}</Badge>; };
 
-/** The match to show now: a live World Cup round first, else this week's league match. */
+// The World Cup is LOCKED for every player for now (owner 2026-10-22): the
+// Missions tab shows it as a greyed "FIFA World Cup Mission" card and no
+// World Cup match takes the match slot. Flip to true when it opens.
+export const WORLD_CUP_OPEN = false;
+
+/** The match to show now: a live World Cup round first (once the World Cup is open), else this week's league match. */
 export function currentMatch(season) {
   if (!season) return null;
   const wc = season.worldCup;
   const prizeK = `K${fmt(season.cfg?.worldCup?.prizeKwacha ?? 10000)}`;
-  if (wc && wc.unlocked && wc.current) {
+  if (WORLD_CUP_OPEN && wc && wc.unlocked && wc.current) {
     const r = wc.current;
     const lose = r.round === 'final' ? `MISS IT AND YOU LOSE THE ${prizeK}`
       : r.round === 'group' ? `MISS IT AND YOU LOSE: ${fmt(r.reward)} COINS + 3 POINTS`
@@ -755,7 +760,24 @@ export function HustleCard({ hustle, onCollect, busy = false, hero = HERO_DEFAUL
   );
 }
 
-/** Missions tab section: match card, league record, World Cup path. */
+/**
+ * A mission section that is not open yet (owner 2026-10-22): greyed out with a
+ * lock, only its name showing. The World Cup is locked this way for every
+ * player for now (WorldCupPath stays for when it opens), and the England
+ * Premier League mission is coming.
+ */
+export function LockedMission({ title }) {
+  return (
+    <Card data-locked-mission style={{ padding: 16, filter: 'grayscale(1)', opacity: 0.55 }} aria-label={`${title}, locked`}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <span style={{ width: 46, height: 46, flex: 'none', borderRadius: 12, display: 'grid', placeItems: 'center', background: C.track }}><Lock size={20} color={C.muted} aria-hidden /></span>
+        <div style={{ flex: 1, minWidth: 0, fontFamily: CANDY.display, textTransform: 'uppercase', fontSize: 19, lineHeight: 1.15, color: C.sub }}>{title}</div>
+      </div>
+    </Card>
+  );
+}
+
+/** Missions tab section: match card, league record, locked World Cup + Premier League missions. */
 export function SeasonSection({ season, onClaimLeague, onClaimWc, onClaimPrize, prizeBusy }) {
   if (!season) return null;
   const L = season.league;
@@ -764,7 +786,8 @@ export function SeasonSection({ season, onClaimLeague, onClaimWc, onClaimPrize, 
       <SectionTitle id="season-title" right={L?.unlocked ? <TitleNote>{L.record.points} pts</TitleNote> : null}>Season</SectionTitle>
       <MatchCard season={season} onClaimLeague={onClaimLeague} />
       <LeagueRecord league={L} onClaim={onClaimLeague} />
-      <WorldCupPath worldCup={season.worldCup} cfg={season.cfg} prize={season.prize} onClaim={onClaimWc} onClaimPrize={onClaimPrize} prizeBusy={prizeBusy} />
+      <LockedMission title="FIFA World Cup Mission" />
+      <LockedMission title="England Premier League Mission" />
     </section>
   );
 }

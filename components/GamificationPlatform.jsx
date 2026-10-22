@@ -59,7 +59,7 @@ import { hustleState, collectHustle } from '@/lib/season/hustle.mjs';
 import { leagueState, claimLeagueBonus } from '@/lib/season/league.mjs';
 import { worldCupState, claimWorldCupBonus } from '@/lib/season/worldcup.mjs';
 import { cleanFriendlies, acceptFriendly, declineFriendly } from '@/lib/season/friendly.mjs';
-import { SeasonResultModal } from './redesign/SeasonCards';
+import { SeasonResultModal, WORLD_CUP_OPEN } from './redesign/SeasonCards';
 
 // Component imports
 import MissionDetailModal from './modals/MissionDetailModal';
@@ -1083,6 +1083,24 @@ export default function GamificationPlatform() {
   // batch carries the token so the server knows the player; widget.js tells
   // us when the popup opens/closes; every tab change is a tab_view.
   useEffect(() => { setTrackToken(session.getToken); }, [session.getToken]);
+  // Pop-ups (wheel, WELCOME BACK, daily reward, level-up, match results, the
+  // "XP from your bets" card, comeback) only while the Bonus Center is ON
+  // SCREEN and no mini-game is open (owner 2026-10-22); they wait otherwise.
+  // Embedded = shown after widget.js says '100x-widget:visibility' {open};
+  // a standalone page is shown from the start.
+  const [centerShown, setCenterShown] = useState(false);
+  const popupsOkRef = useRef(false);
+  useEffect(() => {
+    let embedded = false;
+    try { embedded = window.self !== window.top; } catch (e) { embedded = true; }
+    if (!embedded) setCenterShown(true);
+    const on = (e) => {
+      if (e.source !== window.parent || !e.data || e.data.type !== '100x-widget:visibility') return;
+      setCenterShown(!!e.data.open);
+    };
+    window.addEventListener('message', on);
+    return () => window.removeEventListener('message', on);
+  }, []);
   useEffect(() => {
     const onVis = (e) => {
       if (e.source !== window.parent || !e.data || e.data.type !== '100x-widget:visibility') return;
@@ -1371,11 +1389,6 @@ export default function GamificationPlatform() {
   welcomeBusyRef.current = welcomePending;
   const welcomeAfterRef = useRef([]);
   const [stagePending, setStagePending] = useState(false); // a stage-up modal is still to come
-  useEffect(() => {
-    if (welcomePending || !welcomeAfterRef.current.length) return undefined;
-    const t = setTimeout(() => welcomeAfterRef.current.splice(0).forEach(f => f()), 300);
-    return () => clearTimeout(t);
-  }, [welcomePending]);
   const otherModalOpen = !!activeGame || !!selectedMission || showProfile || !!levelUp || !!seasonResult;
   const anyModalOpen = otherModalOpen || dailyPopup === 'open' || dailyPopup === 'closing' || welcomeOpen;
   useEffect(() => {
@@ -1404,8 +1417,16 @@ export default function GamificationPlatform() {
     document.addEventListener('visibilitychange', on);
     return () => document.removeEventListener('visibilitychange', on);
   }, []);
+  const popupsOk = centerShown && pageVisible && !activeGame;
+  popupsOkRef.current = popupsOk;
+  // Celebrations held back (behind WELCOME BACK, while hidden or in a game) play once allowed.
   useEffect(() => {
-    if (dailyConfettiRef.current || prefersReducedMotion || !pageVisible) return undefined;
+    if (!popupsOk || welcomePending || !welcomeAfterRef.current.length) return undefined;
+    const t = setTimeout(() => welcomeAfterRef.current.splice(0).forEach(f => f()), 300);
+    return () => clearTimeout(t);
+  }, [popupsOk, welcomePending]);
+  useEffect(() => {
+    if (dailyConfettiRef.current || prefersReducedMotion || !popupsOk) return undefined;
     if (tab !== 'home' || !loggedIn || !canClaimDaily || user.dailyClaimed || !hydratedRef.current) return undefined;
     if (anyModalOpen || story === 'open') return undefined;
     const t = setTimeout(() => {
@@ -1417,7 +1438,7 @@ export default function GamificationPlatform() {
       burstConfetti(el, 70);
     }, 600);
     return () => clearTimeout(t);
-  }, [tab, loggedIn, canClaimDaily, user.dailyClaimed, prefersReducedMotion, pageVisible, anyModalOpen, story, burstConfetti]);
+  }, [tab, loggedIn, canClaimDaily, user.dailyClaimed, prefersReducedMotion, popupsOk, anyModalOpen, story, burstConfetti]);
   // Daily reward POPUP: opens by itself once per widget open while today's
   // reward is unclaimed. Logged in → waits for the saved state (so a player who
   // already claimed never sees it); still resolving the session → waits; anonymous
@@ -1768,10 +1789,9 @@ export default function GamificationPlatform() {
   const wheelSpunRef = useRef(false);
   const tellWidgetWheel = (available) => { try { window.parent.postMessage({ type: '100x-widget:wheel', available: !!available }, '*'); } catch { /* not embedded */ } };
   const wheel = useWheel({
-    enabled: loggedIn, getToken: session.getToken, preview, autoOpen: isWidget || preview,
+    enabled: loggedIn, getToken: session.getToken, preview, autoOpen: false,
     onEvent: (name) => {
       track(`wheel_${name}`);
-      if (name === 'auto_open') { try { window.parent.postMessage({ type: '100x-widget:open', reason: 'wheel' }, '*'); } catch { /* not embedded */ } }
       if (name === 'spun') { wheelSpunRef.current = true; tellWidgetWheel(false); }
       if (name === 'spun' || name === 'closed') flushTrack();
     },
@@ -1782,6 +1802,17 @@ export default function GamificationPlatform() {
   // Tapping the launcher while it shows the wheel icon opens the wheel first.
   const wheelRef = useRef(wheel);
   wheelRef.current = wheel;
+  // The widget never pops open by itself on bwanabet.com (owner 2026-10-22: a
+  // casino game must never be interrupted). When the player opens the Bonus
+  // Center with today's spin unused, the wheel shows first, once per load,
+  // and never over a mini-game.
+  const wheelFirstRef = useRef(false);
+  useEffect(() => {
+    if (!popupsOk || wheelFirstRef.current || !wheel.available || wheelSpunRef.current) return;
+    wheelFirstRef.current = true;
+    wheel.open();
+    track('wheel_auto_open');
+  }, [popupsOk, wheel.available]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     const onMsg = (e) => {
       if (e.source !== window.parent || !e.data || e.data.type !== '100x-widget:show-wheel') return;
@@ -1803,12 +1834,12 @@ export default function GamificationPlatform() {
   }, [loggedIn]);
   const welcomeDataReady = !loggedIn || welcomeLate || (casino.status !== 'idle' && seasonFeed.status !== 'idle');
   useEffect(() => {
-    if (welcome.phase !== 'idle' || !welcomeEligible || !pageVisible || !wheel.settled || wheel.isOpen) return undefined;
+    if (welcome.phase !== 'idle' || !welcomeEligible || !popupsOk || !wheel.settled || wheel.isOpen) return undefined;
     if (session.status === 'loading' || (loggedIn && !hydratedRef.current)) return undefined;
     if (otherModalOpen || story === 'open' || !welcomeDataReady) return undefined;
     const t = setTimeout(() => { prepareWelcomeRef.current?.(); }, 700);
     return () => clearTimeout(t);
-  }, [welcome.phase, welcomeEligible, pageVisible, wheel.settled, wheel.isOpen, session.status, loggedIn, otherModalOpen, story, welcomeDataReady]);
+  }, [welcome.phase, welcomeEligible, popupsOk, wheel.settled, wheel.isOpen, session.status, loggedIn, otherModalOpen, story, welcomeDataReady]);
   useEffect(() => {
     if (welcome.phase !== 'closing') return undefined;
     const t = setTimeout(() => setWelcome(w => ({ ...w, phase: 'done' })), 420);
@@ -1830,17 +1861,17 @@ export default function GamificationPlatform() {
   // Daily reward pop-up: opens by itself once per widget open while today's
   // reward is unclaimed, after the wheel and the WELCOME BACK pop-up.
   useEffect(() => {
-    if (welcomePending || dailyPopup !== 'idle' || !pageVisible || !canClaimDaily || user.dailyClaimed) return undefined;
+    if (welcomePending || dailyPopup !== 'idle' || !popupsOk || !canClaimDaily || user.dailyClaimed) return undefined;
     if (session.status === 'loading' || (loggedIn && !hydratedRef.current)) return undefined;
     if (otherModalOpen || stagePending || story === 'open' || wheel.isOpen || !wheel.settled) return undefined;
     const t = setTimeout(() => setDailyPopup(p => (p === 'idle' ? 'open' : p)), 900);
     return () => clearTimeout(t);
-  }, [welcomePending, dailyPopup, pageVisible, canClaimDaily, user.dailyClaimed, session.status, loggedIn, otherModalOpen, stagePending, story, wheel.isOpen, wheel.settled]);
+  }, [welcomePending, dailyPopup, popupsOk, canClaimDaily, user.dailyClaimed, session.status, loggedIn, otherModalOpen, stagePending, story, wheel.isOpen, wheel.settled]);
 
   const extras = useExtras({
     session, loggedIn, hydrated: hydratedRef.current, tab, user, setUser, seasonRows: seasonFeed.rows, today,
     stage: getLevel(user.xp).level, league, worldCup, hustle, credit: creditExtra, showNotif,
-    blocked: anyModalOpen || wheel.isOpen || welcomePending || (dailyPopup !== 'done' && canClaimDaily && !user.dailyClaimed),
+    blocked: !popupsOk || anyModalOpen || wheel.isOpen || welcomePending || (dailyPopup !== 'done' && canClaimDaily && !user.dailyClaimed),
   });
 
   // Bonus claims (once each; state keys in user.season) + the hustle collect.
@@ -1923,7 +1954,7 @@ export default function GamificationPlatform() {
       else if (m.status === 'lost' && (today > addDays(m.weekEnd, 1) || f?.status === 'offer')) ev.push({ ...base, id: `L:${m.id}:lost`, kind: 'loss', friendlyKey: f?.status === 'offer' ? f.key : null });
       if (f && (f.status === 'won' || f.status === 'lost')) ev.push({ ...base, end: f.to, id: `F:${f.key}:${f.status}`, kind: f.status === 'won' ? 'friendlyWon' : 'friendlyLost', away: f.opponent, lostTo: m.opponent, xp: f.xp, target: f.target });
     }
-    for (const r of worldCup.rounds) {
+    for (const r of WORLD_CUP_OPEN ? worldCup.rounds : []) { // World Cup locked for now: no result pop-ups
       if (!r.end || r.end < recent) continue;
       const base = { end: r.end, matchKind: 'wc', matchId: r.id, label: r.label, round: r.round, home: 'Zambia', away: r.opponent, xp: r.xp, target: r.target, bonus: r.bonus, claimable: r.claimable };
       const f = r.friendly;
@@ -1937,7 +1968,7 @@ export default function GamificationPlatform() {
     return ev.sort((a, b) => (a.end < b.end ? -1 : a.end > b.end ? 1 : 0));
   }, [seasonFeed.status, seasonFeed.rows, today, seasonCalc.xp, league, worldCup]);
   useEffect(() => {
-    if (!hydratedRef.current || !loggedIn || seasonResult || activeGame || selectedMission || showProfile || levelUp) return;
+    if (!hydratedRef.current || !loggedIn || !popupsOk || seasonResult || activeGame || selectedMission || showProfile || levelUp) return;
     const seen = new Set(userRef.current.season?.seen || []);
     const unseen = seasonEvents.filter(e => !seen.has(e.id));
     if (!unseen.length) return;
@@ -1947,7 +1978,7 @@ export default function GamificationPlatform() {
       const list = [...(Array.isArray(s.seen) ? s.seen : []), ...unseen.map(e => e.id)].slice(-80);
       return { ...u, season: { ...s, seen: list } };
     });
-  }, [seasonEvents, loggedIn, seasonResult, activeGame, selectedMission, showProfile, levelUp]);
+  }, [seasonEvents, loggedIn, popupsOk, seasonResult, activeGame, selectedMission, showProfile, levelUp]);
 
   // The old progress engine (daily pool / weekly / permanent missions counted
   // from in-app actions) is parked with those missions — see
@@ -2074,7 +2105,7 @@ export default function GamificationPlatform() {
         showNotif(`🎉 New level — ${lvl.name}!`);
         triggerReward('big', null, { coins: total.kwacha || undefined, emeralds: total.emeralds || undefined, rubies: total.rubies || undefined, diamonds: total.diamonds || undefined });
       });
-      if (welcomeBusyRef.current) welcomeAfterRef.current.push(celebrate); else celebrate();
+      if (welcomeBusyRef.current || !popupsOkRef.current) welcomeAfterRef.current.push(celebrate); else celebrate();
     }
   }, [user.xp]);
 
@@ -2517,7 +2548,7 @@ export default function GamificationPlatform() {
   const withXp = (node) => (
     <XpFxContext.Provider value={xpFx}><AvatarLookContext.Provider value={avatarLook}>
       {node}
-      <XpFeedCard card={xpCard} collect={xpFx.collect} onDone={() => setXpCard(null)} />
+      {popupsOk && <XpFeedCard card={xpCard} collect={xpFx.collect} onDone={() => setXpCard(null)} />}
       <DailyRewardPopup open={dailyPopup === 'open' || dailyPopup === 'closing'} closing={dailyPopup === 'closing'}
         onClose={() => setDailyPopup('closing')} onClaim={(el) => claimDailyReward(el, { popup: true })}
         dailyDay={user.dailyDay} dailyClaimed={user.dailyClaimed} rewards={cfg.dailyRewards} loggedIn={canClaimDaily} />

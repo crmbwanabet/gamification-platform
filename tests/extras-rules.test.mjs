@@ -86,7 +86,7 @@ test('predictions: picks close 5 minutes before kick-off; settle 1X2', () => {
 
 test('weekly prediction slip: 5 picks, all right to win, once', () => {
   assert.equal(SLIP_SIZE, 5);
-  assert.equal(PREDICTION_COINS, 200);
+  assert.equal(PREDICTION_COINS, 20000);
   const row = (i, pick, outcome, extra = {}) => ({ pick, outcome: outcome || null, settled_at: outcome ? 'x' : null, claimed_at: null,
     pick_day: '2026-10-2' + Math.min(i, 5), kickoff: `2026-10-2${Math.min(i, 5)}T1${i}:00:00Z`, ...extra });
   const wk = '2026-10-19'; // Monday
