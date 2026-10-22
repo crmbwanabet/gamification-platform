@@ -34,6 +34,13 @@ test('disguised spellings are caught (anti-evasion, 2026-10-22)', () => {
   for (const n of tricks) assert.equal(isObscene(n), true, JSON.stringify(n));
 });
 
+test('insults are refused too (owner 2026-10-22)', () => {
+  for (const n of ['idiot', 'fakboy', 'stupid', 'foolish', 'Idiot99', 'st00pid', 'stuuupid', 'f00l', 'fool', 'moron', 'Big Dumb',
+    'dumbass', 'loser', 'l0ser', 'fak boy', 'fakb0y', 'fuk boy', 'phakboi', 'i.d.i.o.t', 'stoopid', 'imbecile', 'jerk', 'clown']) {
+    assert.equal(isObscene(n), true, n);
+  }
+});
+
 test('real Zambian and English names still pass', () => {
   const names = [
     'Mwansa', 'Chanda', 'Mulenga', 'Bwalya', 'Musonda', 'Mutale', 'Phiri', 'Banda', 'Tembo', 'Zulu', 'Ngoma', 'Lungu',
@@ -44,7 +51,7 @@ test('real Zambian and English names still pass', () => {
     'Vusi', 'Vincent', 'Victor', 'Patrick', 'Nick', 'Jackson', 'Dickson', 'Hancock', 'Cassius', 'Cassandra', 'Phillip',
     'Shiku', 'Titus', 'Tito', 'Asante', 'Essex', 'Scott', 'Chuck', 'Buck', 'Kaskazi', 'Mfuka', 'Kanyoni',
     'Chilufya', 'Mafinga', 'Sussex', 'Peniston', 'Grace', 'Mike99', 'Joe 7', 'King Chola', 'Lucky Star', 'B. Mwila',
-    'Shitima', 'Mpundu', 'Chisanga', 'Kangwa', 'Bupe', 'Nkandu', 'Kapasa', 'Nachilima', 'Kasapo', 'Ngandu', 'Nkonde',
+    'Shitima', 'Moroni', 'Foley', 'Jerkins', 'Pigott', 'Ugo', 'Fakudze', 'Lamek', 'Mpundu', 'Chisanga', 'Kangwa', 'Bupe', 'Nkandu', 'Kapasa', 'Nachilima', 'Kasapo', 'Ngandu', 'Nkonde',
   ];
   const wrong = names.filter(isObscene);
   assert.deepEqual(wrong, []);
