@@ -86,16 +86,16 @@
 
   /* ---------- styles ---------- */
   var css = [
-    // Bonus Center icon (owner 2026-10-22): the gold K coin IS the button, filling it edge to edge
+    // Bonus Center icon (owner 2026-10-22): the daily reward's treasure chest IS the button,
+    // filling it, opening and shutting like on the daily reward card
     '.x100w-launcher{position:fixed;bottom:20px;right:20px;z-index:2147483000;width:64px;height:64px;border-radius:50%;padding:0;',
     'background:transparent;border:0;cursor:pointer;display:grid;place-items:center;',
     'transition:transform .15s ease;-webkit-tap-highlight-color:transparent;}',
     '.x100w-launcher:hover{transform:scale(1.07);}',
-    '.x100w-launcher img{display:block;width:64px;height:64px;object-fit:contain;pointer-events:none;',
-    'filter:drop-shadow(0 6px 12px rgba(0,0,0,.45)) drop-shadow(0 0 10px rgba(255,210,31,.35));animation:x100w-bob 2.6s ease-in-out infinite;}',
-    '@keyframes x100w-bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}',
+    '.x100w-launcher img{display:block;width:72px;height:auto;object-fit:contain;pointer-events:none;',
+    'filter:drop-shadow(0 6px 10px rgba(0,0,0,.45));}',
     '.x100w-dismiss{position:absolute;top:-6px;right:-6px;width:22px;height:22px;border-radius:50%;border:1.5px solid rgba(255,255,255,.5);',
-    'background:#d43a22;color:#fff;font:900 12px/1 Arial,sans-serif;display:grid;place-items:center;cursor:pointer;',
+    'background:#111;color:#fff;font:900 12px/1 Arial,sans-serif;display:grid;place-items:center;cursor:pointer;',
     'box-shadow:0 3px 8px rgba(0,0,0,.45);}',
     '.x100w-overlay{position:fixed;inset:0;z-index:2147483001;background:rgba(8,10,16,.6);display:none;}',
     '.x100w-overlay.open{display:block;}',
@@ -121,7 +121,7 @@
     '.x100w-launcher.x100w-wheel svg{pointer-events:none;filter:drop-shadow(0 2px 4px rgba(0,0,0,.35));}',
     '@keyframes x100w-pulse{0%,100%{box-shadow:0 4px 20px rgba(250,204,21,.4),0 0 0 0 rgba(250,204,21,.6)}',
     '50%{box-shadow:0 4px 30px rgba(250,204,21,.6),0 0 0 12px rgba(250,204,21,0)}}',
-    '@media (prefers-reduced-motion:reduce){.x100w-launcher img,.x100w-launcher.x100w-wheel{animation:none}}',
+    '@media (prefers-reduced-motion:reduce){.x100w-launcher.x100w-wheel{animation:none}}',
   ].join('');
   var style = document.createElement('style');
   style.textContent = css;
@@ -204,7 +204,10 @@
     '<polygon points="5,25 51,25 51,32 5,32" fill="none" stroke="#b45309" stroke-width="0.5" opacity="0.3"/>' +
     '<polygon points="51,25 61,17 61,24 51,32" fill="none" stroke="#92400e" stroke-width="0.5" opacity="0.3"/>' +
     '</svg>';
-  var BONUS_ICON = '<img src="' + APP_ORIGIN + '/ui/reward/coin-k.png" alt="">';
+  // the chest loop (recorded from the daily reward's 3D chest, one 3.6 s open/close cycle);
+  // a still open chest under reduced motion
+  var BONUS_ICON = '<picture><source media="(prefers-reduced-motion: reduce)" srcset="' + APP_ORIGIN + '/ui/widget/chest-still.png">' +
+    '<img src="' + APP_ORIGIN + '/ui/widget/chest-loop.webp" alt="" width="72" height="66"></picture>';
   var MODE_KEY = 'x100-widget-mode';
   var mode = null;
   var launcher = document.createElement('button');

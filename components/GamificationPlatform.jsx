@@ -2399,6 +2399,10 @@ export default function GamificationPlatform() {
     setUser(u => ({ ...u, dailyClaimed: true, lastDailyClaim: today, dailyDay: u.dailyDay >= 7 ? 1 : u.dailyDay + 1, streak: newStreak, dailyTasksDone: [...new Set([...u.dailyTasksDone, 'claim'])] }));
     trackMission('dailyClaimed');
     track('daily_claimed', { amount: r.kwacha || 0, meta: { day: user.dailyDay } }); flushTrack();
+    // The FIRST claim starts the reward clock on the server (profiles.first_daily_at,
+    // stamped when this beacon lands): re-read missions + season so the player's
+    // bwanabet activity shows now, not after the next tab change or 2-minute poll.
+    if (!casino.since) [2500, 7000].forEach((ms) => setTimeout(() => { fetchCasino(); fetchSeason(); }, ms));
     showNotif(`🎉 +${rewardParts(r).join(' + ')} claimed!`);
     if (popup) {
       // Popup claim: a stream of K coins pours from the CLAIM button into the
