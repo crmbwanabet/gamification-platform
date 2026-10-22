@@ -54,8 +54,9 @@ function MissionTeaser({ s, onOpen }) {
       <button type="button" className="ov-mission" onClick={() => onOpen && onOpen(m)} aria-label={`BwanaBet missions: ${missionTerms(m)}, ${done ? m.target : s.progress} of ${m.target} ${unit}`}>
         {/* the card's own title (2026-10-21: replaces the mission name and the section header above it) */}
         <span data-mission-title style={{ alignSelf: 'center', textAlign: 'center', fontFamily: CANDY.display, fontSize: 21, lineHeight: 1.1, color: CANDY.gold, textTransform: 'uppercase', textShadow: '0 2px 0 #2A0A4F' }}>BwanaBet missions</span>
-        <span style={{ padding: '4px 0' }}><EarnPrize r={m.reward} size={36} fontSize={32} /></span>
+        {/* what to do first, then what it pays (owner 2026-10-22) */}
         <span style={{ fontFamily: CANDY.display, fontSize: 21, lineHeight: 1.15, letterSpacing: '.01em', color: '#fff' }}><MissionTerms m={m} /></span>
+        <span style={{ padding: '4px 0' }}><EarnPrize r={m.reward} size={36} fontSize={32} /></span>
         {(done || s.claimable) && (
           <span>{done ? <Badge bg={C.green} color="#fff">Collected</Badge> : <Badge bg={CANDY.gold}>Ready to claim</Badge>}</span>
         )}
