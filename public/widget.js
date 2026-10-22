@@ -121,7 +121,18 @@
     '.x100w-launcher.x100w-wheel svg{pointer-events:none;filter:drop-shadow(0 2px 4px rgba(0,0,0,.35));}',
     '@keyframes x100w-pulse{0%,100%{box-shadow:0 4px 20px rgba(250,204,21,.4),0 0 0 0 rgba(250,204,21,.6)}',
     '50%{box-shadow:0 4px 30px rgba(250,204,21,.6),0 0 0 12px rgba(250,204,21,0)}}',
-    '@media (prefers-reduced-motion:reduce){.x100w-launcher.x100w-wheel{animation:none}}',
+    // "BRAND NEW BONUS CENTER! TRY ME!" speech bubble beside the button (owner 2026-10-22)
+    '.x100w-bubble{position:fixed;left:calc(98px + env(safe-area-inset-left,0px));bottom:calc(28px + env(safe-area-inset-bottom,0px));',
+    'z-index:2147483000;max-width:min(240px,calc(100vw - 118px));box-sizing:border-box;padding:10px 32px 11px 14px;border-radius:14px;',
+    'background:linear-gradient(180deg,#3a1d6e,#24104a);border:2px solid #FEF200;box-shadow:0 10px 26px rgba(0,0,0,.5);',
+    'color:#fff;font:900 14px/1.2 "Arial Black",Arial,sans-serif;letter-spacing:.02em;text-transform:uppercase;cursor:pointer;',
+    'opacity:0;transform:translateX(-8px) scale(.96);transition:opacity .25s ease,transform .25s ease;-webkit-tap-highlight-color:transparent;}',
+    '.x100w-bubble.show{opacity:1;transform:none;}',
+    '.x100w-bubble b{display:block;color:#FEF200;font-weight:900;}',
+    '.x100w-bubble::before{content:"";position:absolute;left:-10px;bottom:16px;border:9px solid transparent;border-left:0;border-right-color:#FEF200;}',
+    '.x100w-bubble-x{position:absolute;top:3px;right:4px;width:26px;height:26px;display:grid;place-items:center;border-radius:50%;',
+    'color:rgba(255,255,255,.8);font:900 14px/1 Arial,sans-serif;cursor:pointer;}',
+    '@media (prefers-reduced-motion:reduce){.x100w-launcher.x100w-wheel{animation:none}.x100w-bubble{transition:none}}',
   ].join('');
   var style = document.createElement('style');
   style.textContent = css;
@@ -247,8 +258,42 @@
     e.stopPropagation();
     try { sessionStorage.setItem(HIDE_KEY, '1'); } catch (err) { /* storage blocked */ }
     launcher.remove();
+    hideBubble();
   });
   launcher.appendChild(dismiss);
+
+  /* ---------- "BRAND NEW BONUS CENTER! TRY ME!" bubble ---------- */
+  // Beside the button, never over the page: 1.5 s after the button shows,
+  // gone after 8 s, once per browser session. Tapping it opens the widget
+  // (wheel first while the spin is unused); its X just hides it.
+  var BUBBLE_KEY = 'x100-widget-bubble';
+  var bubble = document.createElement('div');
+  bubble.className = 'x100w-bubble';
+  bubble.setAttribute('role', 'button');
+  bubble.setAttribute('aria-label', 'Brand new Bonus Center! Try me! Open the Bonus Center');
+  bubble.innerHTML = '<b>Brand new Bonus Center!</b>Try me!';
+  var bubbleX = document.createElement('span');
+  bubbleX.className = 'x100w-bubble-x';
+  bubbleX.setAttribute('role', 'button');
+  bubbleX.setAttribute('aria-label', 'Hide this message');
+  bubbleX.textContent = '✕';
+  bubble.appendChild(bubbleX);
+  var bubbleTimer = 0;
+  function hideBubble() {
+    clearTimeout(bubbleTimer);
+    if (!bubble.parentNode) return;
+    bubble.classList.remove('show');
+    setTimeout(function () { if (bubble.parentNode) bubble.parentNode.removeChild(bubble); }, 300);
+  }
+  function showBubble() {
+    if (!launcher.parentNode || launcher.style.display === 'none' || isOpen) return;
+    try { if (sessionStorage.getItem(BUBBLE_KEY)) return; sessionStorage.setItem(BUBBLE_KEY, '1'); } catch (e) { /* storage blocked: show it */ }
+    document.body.appendChild(bubble);
+    requestAnimationFrame(function () { requestAnimationFrame(function () { bubble.classList.add('show'); }); });
+    bubbleTimer = setTimeout(hideBubble, 8000);
+  }
+  bubble.addEventListener('click', function () { hideBubble(); launcher.click(); });
+  bubbleX.addEventListener('click', function (e) { e.stopPropagation(); hideBubble(); });
 
   /* ---------- full-screen popup ---------- */
   var overlay = document.createElement('div');
@@ -298,6 +343,7 @@
     try { if (frame && frame.contentWindow) frame.contentWindow.postMessage({ type: '100x-widget:visibility', open: open }, APP_ORIGIN); } catch (e) { /* ignore */ }
   }
   function openWidget() {
+    hideBubble();
     ensureFrame();
     overlay.classList.add('open');
     if (launcher.parentNode) launcher.style.display = 'none';
@@ -348,7 +394,7 @@
   });
 
   function mount() {
-    if (showLauncher) document.body.appendChild(launcher);
+    if (showLauncher) { document.body.appendChild(launcher); setTimeout(showBubble, 1500); }
     document.body.appendChild(overlay);
     // SMS / campaign links: https://bwanabet.co.zm/?bonus=open opens the
     // Bonus Center straight away (the comeback bonus waits inside).
