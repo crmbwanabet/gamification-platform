@@ -15,7 +15,7 @@
  *
  * ONE launcher for the Wheel of Fortune and the Bonus Center: the wheel's gift
  * box while today's spin is open (opens the wheel first), the K coin after it.
- * Renders a floating launcher bubble (bottom-LEFT, owner 2026-10-22). Clicking it opens the
+ * Renders a floating launcher bubble (bottom-LEFT, owner 2026-10-22; level with the AI BOT since 2026-10-23). Clicking it opens the
  * platform in a full-screen iframe popup under a top strip that holds the big
  * red close X (2026-10-21): the iframe starts BELOW the strip, so nothing in
  * the app (games, pop-ups, the wheel) can ever sit under the button. The app
@@ -88,7 +88,8 @@
   var css = [
     // Bonus Center icon (owner 2026-10-22): the daily reward's treasure chest IS the button,
     // filling it, opening and shutting like on the daily reward card
-    '.x100w-launcher{position:fixed;bottom:calc(20px + env(safe-area-inset-bottom,0px));left:calc(20px + env(safe-area-inset-left,0px));z-index:2147483000;width:64px;height:64px;border-radius:50%;padding:0;',
+    // level with bwanabet's AI BOT (58 px at bottom 80, centre 109 px up; owner 2026-10-23)
+    '.x100w-launcher{position:fixed;bottom:77px;left:calc(20px + env(safe-area-inset-left,0px));z-index:2147483000;width:64px;height:64px;border-radius:50%;padding:0;',
     'background:transparent;border:0;cursor:pointer;display:grid;place-items:center;',
     'transition:transform .15s ease;-webkit-tap-highlight-color:transparent;}',
     '.x100w-launcher:hover{transform:scale(1.07);}',
@@ -123,7 +124,7 @@
     '50%{box-shadow:0 4px 30px rgba(250,204,21,.6),0 0 0 12px rgba(250,204,21,0)}}',
     // "BRAND NEW BONUS CENTER! TRY ME!" speech bubble beside the button (owner 2026-10-22)
     // ABOVE the button (owner 2026-10-22), its arrow pointing down at it
-    '.x100w-bubble{position:fixed;left:calc(12px + env(safe-area-inset-left,0px));bottom:calc(98px + env(safe-area-inset-bottom,0px));',
+    '.x100w-bubble{position:fixed;left:calc(12px + env(safe-area-inset-left,0px));bottom:155px;',
     'z-index:2147483000;max-width:min(240px,calc(100vw - 24px));box-sizing:border-box;padding:10px 32px 11px 14px;border-radius:14px;',
     'background:linear-gradient(180deg,#3a1d6e,#24104a);border:2px solid #FEF200;box-shadow:0 10px 26px rgba(0,0,0,.5);',
     'color:#fff;font:900 14px/1.2 "Arial Black",Arial,sans-serif;letter-spacing:.02em;text-transform:uppercase;cursor:pointer;',
