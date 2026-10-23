@@ -17,10 +17,10 @@ test('redemptionQuote: coin packs K1/K5/K10/K20/K50 at 10,000 coins = K1', () =>
   assert.equal(redemptionQuote('coins', 5).payoutKwacha, 5);
 });
 
-test('redemptionQuote: 1 emerald -> K5, 1 ruby -> K10, 1 diamond -> K20, paid with the gem', () => {
-  assert.deepEqual(redemptionQuote('emeralds', 1), { price: { emeralds: 1 }, payoutKwacha: 5 });
-  assert.deepEqual(redemptionQuote('rubies', 1), { price: { rubies: 1 }, payoutKwacha: 10 });
-  assert.deepEqual(redemptionQuote('diamonds', 1), { price: { diamonds: 1 }, payoutKwacha: 20 });
+test('redemptionQuote: 1 emerald -> K20, 1 ruby -> K50, 1 diamond -> K100, paid with the gem', () => {
+  assert.deepEqual(redemptionQuote('emeralds', 1), { price: { emeralds: 1 }, payoutKwacha: 20 });
+  assert.deepEqual(redemptionQuote('rubies', 1), { price: { rubies: 1 }, payoutKwacha: 50 });
+  assert.deepEqual(redemptionQuote('diamonds', 1), { price: { diamonds: 1 }, payoutKwacha: 100 });
 });
 
 test('redemptionQuote follows coinsPerKwacha and gemValues; rejects junk', () => {
@@ -41,7 +41,7 @@ test('buildStoreCatalog: seeded redemptions priced from config, named by payout'
     ['K20 bwanabet bonus', 200000, 20], ['K50 bwanabet bonus', 500000, 50],
   ]);
   assert.deepEqual(gemRedemptions.map(g => [g.redeem.currency, g.price, g.payoutKwacha]), [
-    ['emeralds', { emeralds: 1 }, 5], ['rubies', { rubies: 1 }, 10], ['diamonds', { diamonds: 1 }, 20],
+    ['emeralds', { emeralds: 1 }, 20], ['rubies', { rubies: 1 }, 50], ['diamonds', { diamonds: 1 }, 100],
   ]);
   assert.equal(items.length, 0);
   assert.ok(cat.every(c => c.isMoney));

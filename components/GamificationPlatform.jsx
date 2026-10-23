@@ -14,7 +14,7 @@ import {
 import Overview from './redesign/Overview';
 import { useExtras } from './extras/useExtras';
 import { useWheel } from './extras/useWheel';
-import { ComebackModal } from './extras/ExtrasViews';
+import { ComebackModal, CashbackModal } from './extras/ExtrasViews';
 import EarnView from './redesign/EarnView';
 import StoreView from './redesign/StoreView';
 import LevelUpModal from './redesign/LevelUpModal';
@@ -1753,19 +1753,20 @@ export default function GamificationPlatform() {
   // weekly league table, comeback bonus + the Wheel of Fortune inside the
   // Bonus Center. `credit` pays coins (+ mission XP); `patch(u)` records the
   // claim and returns null when it is already recorded (pays once).
-  const creditExtra = ({ coins = 0, xp = 0 }, el, label, patch = null) => {
+  const creditExtra = ({ coins = 0, xp = 0, emeralds = 0, rubies = 0, diamonds = 0 }, el, label, patch = null) => {
     let paid = false;
     setUser(u => {
       const p = patch ? patch(u) : {};
       if (p === null) return u;
       paid = true;
       let n = { ...u, ...p, kwacha: u.kwacha + coins };
+      if (emeralds || rubies || diamonds) n = { ...n, emeralds: (u.emeralds || 0) + emeralds, rubies: (u.rubies || 0) + rubies, diamonds: (u.diamonds || 0) + diamonds };
       if (xp) { const t = addMissionXp(u.xpToday, xp, today).xpToday; n = { ...n, xpToday: t, xpDays: recordXpDay(u.xpDays, t) }; }
       return n;
     });
-    const won = [coins ? rewardParts({ kwacha: coins }).join(' + ') : null, xp ? amountText(xp, 'xp') : null].filter(Boolean);
+    const won = [...rewardParts({ kwacha: coins, emeralds, rubies, diamonds }), xp ? amountText(xp, 'xp') : null].filter(Boolean);
     showNotif(`${label}${won.length ? ` +${won.join(' + ')}` : ''}`);
-    triggerReward('medium', el || null, { coins });
+    triggerReward('medium', el || null, { coins, emeralds: emeralds || undefined, rubies: rubies || undefined, diamonds: diamonds || undefined });
     if (xp) xpFx.collect({ from: el || null, amount: xp, delay: 250 });
     return paid;
   };
@@ -2557,6 +2558,7 @@ export default function GamificationPlatform() {
         dailyDay={user.dailyDay} dailyClaimed={user.dailyClaimed} rewards={cfg.dailyRewards} loggedIn={canClaimDaily} />
       <WelcomeBackPopup open={welcomeOpen} closing={welcome.phase === 'closing'} plan={welcome.plan} reduced={prefersReducedMotion}
         onTick={(row, el) => creditWelcomeRow(row, el, true)} onFinished={flushTrack} onClose={closeWelcome} />
+      <CashbackModal cashback={extras.cashback} />
       <ComebackModal comeback={extras.comeback} />
       {wheel.layer}
       {xpFx.layer}

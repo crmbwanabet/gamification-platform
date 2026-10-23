@@ -7,11 +7,11 @@ import { track, flushTrack } from '@/lib/track';
 
 // The 2026-10-19 extras in one place, so GamificationPlatform only wires it:
 // bet-slip missions, souvenir album, match-day predictions, the weekly
-// leaderboard and the comeback bonus. Rewards go through `credit` (coins +
+// leaderboard, the comeback bonus and the daily gem cashback. Rewards go through `credit` (coins +
 // optional XP, with a `patch` that records the claim in the user state and
 // returns null when it is already recorded, so a double tap pays once).
 //
-// Server-checked claims (predictions, leaderboard, comeback) call the API
+// Server-checked claims (predictions, leaderboard, comeback, cashback) call the API
 // first and credit only after an ok; the client-side ones (album sets) are checked against the CRM rows / derived cards here.
 
 export function useExtras({ session, loggedIn, hydrated, tab, user, setUser, seasonRows, today, stage, league, worldCup, hustle, credit, showNotif, blocked }) {
@@ -139,11 +139,49 @@ export function useExtras({ session, loggedIn, hydrated, tab, user, setUser, sea
     else if (data?.error !== 'already_claimed') showNotif('Claim failed — try again later', 'error');
   };
 
+  // --- daily gem cashback (owner 2026-10-23): 5% of yesterday's 06:00→06:00
+  // net loss on bwanabet, awarded by the cron; collected here, one pop-up per
+  // open listing every uncollected window. The server flips collected_at once,
+  // and only then are the gems credited.
+  const [cashback, setCashback] = useState(null); // [{ window, loss, cashbackKwacha, emeralds, rubies, diamonds }]
+  const cbCheckedRef = useRef(false);
+  useEffect(() => {
+    if (!loggedIn || !hydrated || cbCheckedRef.current) return;
+    cbCheckedRef.current = true;
+    (async () => {
+      const { status, data } = await api('/api/cashback');
+      const awards = status === 200 && Array.isArray(data?.awards) ? data.awards : [];
+      if (awards.length) {
+        track('cashback_shown', { meta: { windows: awards.length } });
+        setCashback(awards);
+      }
+    })();
+  }, [loggedIn, hydrated, api]);
+  const collectCashback = async (el) => {
+    if (busy.current.has('cashback') || !cashback) return;
+    busy.current.add('cashback');
+    const total = { emeralds: 0, rubies: 0, diamonds: 0 };
+    let failed = false;
+    for (const a of cashback) {
+      const { status, data } = await api('/api/cashback', { window: a.window });
+      if (status === 200 && data?.ok) {
+        for (const k of Object.keys(total)) total[k] += data.award[k] || 0;
+        track('cashback_collected', { meta: { window: a.window, emeralds: data.award.emeralds, rubies: data.award.rubies, diamonds: data.award.diamonds, valueCoins: data.award.valueCoins } });
+      } else if (data?.error !== 'already_collected') failed = true;
+    }
+    setCashback(null);
+    busy.current.delete('cashback');
+    if (total.emeralds + total.rubies + total.diamonds > 0) { flushTrack(); credit(total, el, '💎 Cashback collected!'); }
+    if (failed) showNotif('Some cashback could not be collected — it will wait for your next visit', 'error');
+  };
+
   return {
+    cashback: cashback && !blocked ? { awards: cashback, onCollect: collectCashback, onClose: () => setCashback(null) } : null, // Later = next open
+    cashbackPending: !!cashback,
     album: { cards, sets, have, total: cards.length, onClaimSet: claimSet },
     predictions: { ...pred, busyId: pickBusy, onPick: makePick, onClaim: claimPrediction, loggedIn },
     board: { ...board, onClaim: claimBoard, loggedIn },
-    comeback: comeback && !blocked ? { ...comeback, onClaim: claimComeback, onClose: () => setComeback(null) } : null,
+    comeback: comeback && !blocked && !cashback ? { ...comeback, onClaim: claimComeback, onClose: () => setComeback(null) } : null,
     comebackPending: !!comeback,
     badge: sets.filter(s => s.claimable).length
       + (pred.slips || []).filter(x => x.claimable).length + (board.lastWeek && !board.lastWeek.claimed ? 1 : 0),

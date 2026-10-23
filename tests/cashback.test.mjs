@@ -1,0 +1,153 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { CASHBACK_RATE, windowAt, windowFor, lastFinishedWindow, nextWindowDay, cashbackAward, paysGems } from '../lib/cashback/rules.mjs';
+import { mapCashbackRow, runCashback, cleanState } from '../lib/cashback/crmCashback.mjs';
+
+const ECO = { coinsPerKwacha: 10000, gemValues: { emerald: 200000, ruby: 500000, diamond: 1000000 } };
+
+test('window = 06:00 -> 06:00 Lusaka (04:00 UTC), named by its start date', () => {
+  assert.equal(CASHBACK_RATE, 0.05);
+  assert.deepEqual(windowFor('2026-10-23'), { day: '2026-10-23', start: '2026-10-23T04:00:00.000Z', end: '2026-10-24T04:00:00.000Z' });
+  assert.equal(windowAt(new Date('2026-10-23T04:00:00Z')).day, '2026-10-23');   // 06:00 Lusaka: a new window
+  assert.equal(windowAt(new Date('2026-10-23T03:59:59Z')).day, '2026-10-22');   // 05:59 Lusaka: still yesterday's
+  assert.equal(windowAt(new Date('2026-10-23T23:30:00Z')).day, '2026-10-23');   // 01:30 Lusaka on the 24th
+  assert.equal(lastFinishedWindow(new Date('2026-10-24T04:00:00Z')), '2026-10-23'); // paid at 06:00
+  assert.equal(lastFinishedWindow(new Date('2026-10-24T03:59:00Z')), '2026-10-22');
+  assert.equal(nextWindowDay('2026-10-31'), '2026-11-01');
+});
+
+test('award: 5% of the loss, biggest gems first, last part to the NEAREST emerald', () => {
+  const a = (loss) => { const r = cashbackAward(loss, ECO); return [r.diamonds, r.rubies, r.emeralds]; };
+  assert.deepEqual(a(0), [0, 0, 0]);
+  assert.deepEqual(a(-50), [0, 0, 0]);
+  assert.deepEqual(a(NaN), [0, 0, 0]);
+  assert.deepEqual(a(199.89), [0, 0, 0]);  // K9.99 back < half an emerald
+  assert.deepEqual(a(200), [0, 0, 1]);     // K10 back = half an emerald -> rounds up
+  assert.deepEqual(a(400), [0, 0, 1]);     // K20 = 1 emerald
+  assert.deepEqual(a(500), [0, 0, 1]);     // K25 -> 1.25 -> 1
+  assert.deepEqual(a(600), [0, 0, 2]);     // K30 -> 1.5 -> 2
+  assert.deepEqual(a(1000), [0, 1, 0]);    // K50 = 1 ruby
+  assert.deepEqual(a(1900), [0, 1, 2]);    // K95 = ruby + K45 -> 2.25 emeralds -> 2
+  assert.deepEqual(a(2000), [1, 0, 0]);    // K100 = 1 diamond
+  assert.deepEqual(a(7340), [3, 1, 1]);    // K367 = 3 diamonds + 1 ruby + K17 -> 1 emerald
+  const r = cashbackAward(7340, ECO);
+  assert.equal(r.cashbackKwacha, 367);
+  assert.equal(r.valueCoins, 3670000);
+  assert.equal(r.paidCoins, 3700000);
+  assert.equal(paysGems(cashbackAward(100, ECO)), false);
+  assert.equal(paysGems(cashbackAward(250, ECO)), true);
+});
+
+test('award: rounding never pays more than half an emerald over the 5%', () => {
+  for (let loss = 0; loss <= 5000; loss += 7.31) {
+    const r = cashbackAward(loss, ECO);
+    assert.ok(r.paidCoins - r.valueCoins <= 100000, `loss ${loss}: over by ${r.paidCoins - r.valueCoins}`);
+    assert.ok(r.valueCoins - r.paidCoins < 100000, `loss ${loss}: under by ${r.valueCoins - r.paidCoins}`);
+  }
+});
+
+test('award follows the configured economy', () => {
+  const r = cashbackAward(400, { coinsPerKwacha: 1000, gemValues: { emerald: 10000, ruby: 50000, diamond: 100000 } });
+  assert.equal(r.valueCoins, 20000);
+  assert.deepEqual([r.diamonds, r.rubies, r.emeralds], [0, 0, 2]);
+});
+
+test('CRM row: net loss = stakes - winnings (casino + sports), never below 0; junk rejected', () => {
+  assert.deepEqual(mapCashbackRow({ user_id: 53, casino_stake: 300, casino_win: 120.5, sports_stake: '100', sports_win: 0 }),
+    { user_id: '53', loss: 279.5, casino_stake: 300, casino_win: 120.5, sports_stake: 100, sports_win: 0 });
+  assert.equal(mapCashbackRow({ user_id: '9', casino_stake: 10, casino_win: 50, sports_stake: 0, sports_win: 0 }).loss, 0);
+  assert.equal(mapCashbackRow({ user_id: 'x', casino_stake: 1, casino_win: 0, sports_stake: 0, sports_win: 0 }).error, 'bad_user_id');
+  assert.equal(mapCashbackRow({ user_id: 5, casino_stake: -1, casino_win: 0, sports_stake: 0, sports_win: 0 }).error, 'bad_casino_stake');
+  assert.equal(mapCashbackRow({ user_id: 5, casino_stake: 1, casino_win: 0, sports_stake: 0 }).error, 'bad_sports_win');
+  assert.equal(mapCashbackRow(null).error, 'not_an_object');
+});
+
+// --- the job, with a fake CRM + DB ---
+function fakes({ pages, anchors = {}, state = null }) {
+  const calls = [];
+  const db = {
+    state, awards: new Map(), saves: [],
+    async readState() { return this.state; },
+    async saveState(s, run) { this.state = { since: s.paid, after_day: s.window, after_user: s.afterUser }; this.saves.push(run.status); },
+    async loadEconomy() { return ECO; },
+    async loadAnchors() { return anchors; },
+    async insertAwards(rows) {
+      let n = 0;
+      for (const r of rows) { const k = `${r.user_id}|${r.window_day}`; if (!this.awards.has(k)) { this.awards.set(k, r); n++; } }
+      return n;
+    },
+  };
+  const fetch = async (url, init) => {
+    const u = new URL(url);
+    calls.push({ window: u.searchParams.get('window'), after: u.searchParams.get('after_user'), key: init.headers['x-api-key'] });
+    const p = pages(u.searchParams.get('window'), u.searchParams.get('after_user'));
+    if (p.status) return { ok: false, status: p.status, json: async () => ({}) };
+    return { ok: true, status: 200, json: async () => p };
+  };
+  return { db, fetch, calls };
+}
+const row = (id, cs, cw = 0) => ({ user_id: id, casino_stake: cs, casino_win: cw, sports_stake: 0, sports_win: 0 });
+const NOW = new Date('2026-10-24T04:05:00Z'); // 06:05 Lusaka on the 24th: window 23 has ended
+
+test('job: disabled without the API key', async () => {
+  const { db, fetch } = fakes({ pages: () => ({}) });
+  assert.equal((await runCashback({ env: {}, fetch, db, now: NOW })).status, 'disabled');
+});
+
+test('job: first run pays the last finished window only, by anchor, pages through, once', async () => {
+  const { db, fetch, calls } = fakes({
+    anchors: { 1: '2026-10-01', 2: '2026-10-23', 3: '2026-10-24' }, // 3 anchored after the window, 4 never
+    pages: (w, after) => (after == null
+      ? { window: w, complete: true, rows: [row(1, 1000), row(2, 600), row(3, 5000)], next_after_user: '3' }
+      : { window: w, complete: true, rows: [row(4, 9000), row(5, 100), { user_id: 'bad' }], next_after_user: null }),
+  });
+  const out = await runCashback({ env: { GAMIFICATION_API_KEY: 'k' }, fetch, db, now: NOW });
+  assert.equal(out.status, 'done');
+  assert.deepEqual(out.windows, ['2026-10-23']);
+  assert.equal(out.rejected, 1);
+  assert.deepEqual(calls.map(c => [c.window, c.after]), [['2026-10-23', null], ['2026-10-23', '3']]);
+  assert.equal(calls[0].key, 'k');
+  assert.deepEqual([...db.awards.keys()].sort(), ['1|2026-10-23', '2|2026-10-23']);
+  assert.deepEqual(['rubies', 'emeralds'].map(k => db.awards.get('1|2026-10-23')[k]), [1, 0]); // K50 = 1 ruby
+  assert.equal(db.awards.get('2|2026-10-23').emeralds, 2);                                     // K30 -> 2 emeralds
+  assert.equal(db.state.since, '2026-10-23');
+  // a second run the same morning: nothing to do, nothing paid twice
+  const again = await runCashback({ env: { GAMIFICATION_API_KEY: 'k' }, fetch, db, now: NOW });
+  assert.equal(again.status, 'up_to_date');
+  assert.equal(db.awards.size, 2);
+});
+
+test('job: waits while the CRM window is not complete, then catches up oldest first', async () => {
+  let ready = false;
+  const { db, fetch } = fakes({
+    state: { since: '2026-10-21' }, anchors: { 1: '2026-10-01' },
+    pages: (w) => ({ window: w, complete: w !== '2026-10-23' || ready, rows: [row(1, 400)], next_after_user: null }),
+  });
+  const first = await runCashback({ env: { GAMIFICATION_API_KEY: 'k' }, fetch, db, now: NOW });
+  assert.equal(first.status, 'waiting');
+  assert.deepEqual(first.windows, ['2026-10-22']);
+  assert.equal(db.state.since, '2026-10-22');
+  ready = true;
+  const second = await runCashback({ env: { GAMIFICATION_API_KEY: 'k' }, fetch, db, now: NOW });
+  assert.equal(second.status, 'done');
+  assert.deepEqual([...db.awards.keys()], ['1|2026-10-22', '1|2026-10-23']);
+});
+
+test('job: a CRM error stops the run and keeps the progress', async () => {
+  const { db, fetch } = fakes({ state: { since: '2026-10-22' }, pages: () => ({ status: 500 }) });
+  const out = await runCashback({ env: { GAMIFICATION_API_KEY: 'k' }, fetch, db, now: NOW });
+  assert.equal(out.status, 'crm_error');
+  assert.equal(out.error, 'crm_http_500');
+  assert.equal(db.state.since, '2026-10-22');
+});
+
+test('job: a page for the wrong window is rejected as a bad body', async () => {
+  const { db, fetch } = fakes({ pages: () => ({ window: '2026-01-01', complete: true, rows: [], next_after_user: null }) });
+  const out = await runCashback({ env: { GAMIFICATION_API_KEY: 'k' }, fetch, db, now: NOW });
+  assert.equal(out.error, 'crm_bad_body');
+});
+
+test('cleanState: junk -> nothing saved', () => {
+  assert.deepEqual(cleanState(null), { paid: null, window: null, afterUser: null });
+  assert.deepEqual(cleanState({ since: 'x', after_day: '2026-10-23', after_user: '7' }), { paid: null, window: '2026-10-23', afterUser: '7' });
+});

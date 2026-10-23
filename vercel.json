@@ -21,6 +21,10 @@
     {
       "path": "/api/cron/crm-pull",
       "schedule": "6-56/10 * * * *"
+    },
+    {
+      "path": "/api/cron/cashback",
+      "schedule": "2-52/10 * * * *"
     }
   ]
 }

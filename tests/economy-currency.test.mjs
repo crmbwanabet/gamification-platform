@@ -5,16 +5,16 @@ import {
   formatKwacha, formatNumber, migrateCurrencyState, cleanReward, canAfford, CURRENCY_VERSION,
 } from '../lib/economy/currency.mjs';
 
-test('defaults: 10,000 coins = K1; emerald K5, ruby K10, diamond K20', () => {
-  assert.deepEqual(economyRates(undefined), { coinsPerKwacha: 10000, gemValues: { emerald: 50000, ruby: 100000, diamond: 200000 } });
+test('defaults: 10,000 coins = K1; emerald K20, ruby K50, diamond K100', () => {
+  assert.deepEqual(economyRates(undefined), { coinsPerKwacha: 10000, gemValues: { emerald: 200000, ruby: 500000, diamond: 1000000 } });
   assert.equal(coinsToKwacha(10000), 1);
   assert.equal(coinsToKwacha(34000), 3.4);
   assert.equal(kwachaToCoins(50), 500000);
-  assert.equal(gemCoins('emeralds'), 50000);
-  assert.equal(gemKwacha('emeralds'), 5);
-  assert.equal(gemKwacha('rubies'), 10);
-  assert.equal(gemKwacha('diamonds'), 20);
-  assert.equal(gemKwacha('diamonds', undefined, 3), 60);
+  assert.equal(gemCoins('emeralds'), 200000);
+  assert.equal(gemKwacha('emeralds'), 20);
+  assert.equal(gemKwacha('rubies'), 50);
+  assert.equal(gemKwacha('diamonds'), 100);
+  assert.equal(gemKwacha('diamonds', undefined, 3), 300);
 });
 
 test('conversions follow the configured rate', () => {
@@ -31,7 +31,7 @@ test('economyRates: each invalid field falls back on its own', () => {
   assert.equal(economyRates({ coinsPerKwacha: '1000' }).coinsPerKwacha, 10000);
   assert.equal(economyRates({ coinsPerKwacha: 2_000_000 }).coinsPerKwacha, 10000); // above the cap
   assert.equal(economyRates({ coinsPerKwacha: 500 }).coinsPerKwacha, 500);
-  assert.deepEqual(economyRates({ gemValues: { ruby: 12000, diamond: -3 } }).gemValues, { emerald: 50000, ruby: 12000, diamond: 200000 });
+  assert.deepEqual(economyRates({ gemValues: { ruby: 12000, diamond: -3 } }).gemValues, { emerald: 200000, ruby: 12000, diamond: 1000000 });
 });
 
 test('cleanEconomyRow keeps other economy fields and drops bad rates', () => {

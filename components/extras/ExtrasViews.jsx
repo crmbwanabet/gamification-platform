@@ -328,3 +328,47 @@ export function ComebackModal({ comeback }) {
     </div>
   );
 }
+
+// ---------------------------------------------------------------------------
+// Daily gem cashback pop-up (owner 2026-10-23): 5% of each 06:00 → 06:00 net
+// loss, paid in gems; one pop-up lists every window not collected yet.
+// ---------------------------------------------------------------------------
+const kw = (n) => `K${Number(n).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
+const windowLabel = (day) => {
+  const d = new Date(`${day}T12:00:00Z`);
+  return d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' });
+};
+export function CashbackModal({ cashback }) {
+  if (!cashback) return null;
+  const total = { emeralds: 0, rubies: 0, diamonds: 0 };
+  for (const a of cashback.awards) for (const k of Object.keys(total)) total[k] += a[k] || 0;
+  const gems = Object.keys(total).filter(k => total[k]);
+  return (
+    <div role="dialog" aria-modal="true" aria-label="Your cashback" onClick={cashback.onClose}
+      style={{ position: 'fixed', inset: 0, zIndex: 310, background: 'rgba(8,4,20,.78)', display: 'grid', placeItems: 'center', padding: 20, fontFamily: CANDY.body, color: '#fff' }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ ...goldRim, width: '100%', maxWidth: 380, padding: 6, borderRadius: 26 }}>
+        <div style={{ borderRadius: 20, background: innerGlow, padding: '24px 18px 18px', textAlign: 'center', display: 'grid', gap: 12 }}>
+          <h2 style={{ ...goldTitle(30), textAlign: 'center', margin: 0 }}>Your cashback</h2>
+          <div style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.4 }}>5% back on what you lost on bwanabet, paid in gems every morning at 06:00.</div>
+          <div style={{ display: 'grid', gap: 6 }}>
+            {cashback.awards.map(a => (
+              <div key={a.window} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: 13, fontWeight: 800, background: 'rgba(255,255,255,.07)', borderRadius: 10, padding: '7px 10px' }}>
+                <span style={{ color: C.sub }}>{windowLabel(a.window)} 06:00 – 06:00</span>
+                <span>Lost {kw(a.loss)} · <span style={{ color: CANDY.gold }}>{kw(a.cashbackKwacha)} back</span></span>
+              </div>
+            ))}
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: '6px 14px', fontFamily: CANDY.display, fontSize: 28, lineHeight: 1, textTransform: 'uppercase' }}>
+            {gems.map(k => (
+              <span key={k} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: CANDY.gold }}>
+                <RewardIcon kind={k} size={34} />{amountText(total[k], k)}
+              </span>
+            ))}
+          </div>
+          <GreenBtn full onClick={(e) => cashback.onCollect(e.currentTarget)}>Collect</GreenBtn>
+          <button type="button" onClick={cashback.onClose} style={{ all: 'unset', cursor: 'pointer', fontSize: 13, fontWeight: 800, color: C.sub, minHeight: 36 }}>Later</button>
+        </div>
+      </div>
+    </div>
+  );
+}
