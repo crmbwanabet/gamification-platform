@@ -171,50 +171,60 @@ const minutesSince = (t) => (t ? Math.round((Date.now() - new Date(t).getTime())
 async function health() {
   const t0 = Date.now();
   const checks = [];
-  const add = (check, status, reading, detail = '') => checks.push({ check, status, reading, detail });
-  const safe = async (fn, name) => { try { await fn(); } catch (e) { add(name, 'unknown', 'could not check', String(e && e.message || e).slice(0, 160)); } };
+  // `id` + reading/detail keys with their values (rk/rv, dk/dv) let the console
+  // show each check in English or Russian; the English text stays as the fallback
+  const add = (id, check, status, reading, detail = '', i18n = {}) => checks.push({ id, check, status, reading, detail, ...i18n });
+  const safe = async (fn, id, name) => { try { await fn(); } catch (e) { add(id, name, 'unknown', 'could not check', String(e && e.message || e).slice(0, 160), { rk: 'failed' }); } };
 
   await safe(async () => {
     const { data } = await db.from('feed_cursors').select('last_run, updated_at').eq('name', 'crm_player_daily').maybeSingle();
     const lr = data?.last_run || {};
     const age = minutesSince(lr.at);
     const st = lr.status && lr.status !== 'done' ? 'broken' : age == null ? 'unknown' : age <= 15 ? 'healthy' : age <= 60 ? 'needs attention' : 'broken';
-    add('CRM pull (every 10 min)', st, age == null ? 'never ran' : `${age} min ago`, `${lr.status || '?'} · fetched ${num(lr.fetched)}, written ${num(lr.written)}, rejected ${num(lr.rejected)} · source ${(process.env.CRM_URL || 'default').replace(/^https?:\/\//, '')}`);
-  }, 'CRM pull (every 10 min)');
+    const source = (process.env.CRM_URL || 'default').replace(/^https?:\/\//, '');
+    add('crm', 'CRM pull (every 10 min)', st, age == null ? 'never ran' : `${age} min ago`, `${lr.status || '?'} · fetched ${num(lr.fetched)}, written ${num(lr.written)}, rejected ${num(lr.rejected)} · source ${source}`,
+      { rk: age == null ? 'never' : 'minago', rv: [age], dk: 'crm', dv: [lr.status || '?', num(lr.fetched), num(lr.written), num(lr.rejected), source] });
+  }, 'crm', 'CRM pull (every 10 min)');
   await safe(async () => {
     const { data } = await db.from('player_activity').select('crm_synced_at').order('crm_synced_at', { ascending: false, nullsFirst: false }).limit(1).maybeSingle();
     const age = minutesSince(data?.crm_synced_at);
-    add('Betting data freshness', age == null ? 'unknown' : age <= 20 ? 'healthy' : age <= 90 ? 'needs attention' : 'broken', age == null ? 'no data' : `newest CRM row ${age} min old`, 'Casino loads into ClickHouse every 5 min; deposits hourly at :06, sports at :51.');
-  }, 'Betting data freshness');
+    add('fresh', 'Betting data freshness', age == null ? 'unknown' : age <= 20 ? 'healthy' : age <= 90 ? 'needs attention' : 'broken', age == null ? 'no data' : `newest CRM row ${age} min old`, 'Casino loads into ClickHouse every 5 min; deposits hourly at :06, sports at :51.',
+      { rk: age == null ? 'nodata' : 'newest', rv: [age], dk: 'fresh' });
+  }, 'fresh', 'Betting data freshness');
   await safe(async () => {
     const { data } = await db.from('activity_events').select('created_at').order('created_at', { ascending: false }).limit(1).maybeSingle();
     const age = minutesSince(data?.created_at);
-    add('Player tracking', age == null ? 'unknown' : age <= 60 ? 'healthy' : 'needs attention', age == null ? 'no events' : `last event ${age} min ago`, 'Quiet hours can be normal at night.');
-  }, 'Player tracking');
+    add('tracking', 'Player tracking', age == null ? 'unknown' : age <= 60 ? 'healthy' : 'needs attention', age == null ? 'no events' : `last event ${age} min ago`, 'Quiet hours can be normal at night.',
+      { rk: age == null ? 'noevents' : 'lastevent', rv: [age], dk: 'tracking' });
+  }, 'tracking', 'Player tracking');
   await safe(async () => {
     const { count } = await db.from('online_now').select('*', { count: 'exact', head: true });
-    add('Players in the Bonus Center now', 'healthy', `${count || 0} online`, 'A ping in the last 90 seconds.');
-  }, 'Players in the Bonus Center now');
+    add('online', 'Players in the Bonus Center now', 'healthy', `${count || 0} online`, 'A ping in the last 90 seconds.', { rk: 'online', rv: [count || 0], dk: 'online' });
+  }, 'online', 'Players in the Bonus Center now');
   await safe(async () => {
     const r = await fetch('https://wheel.bwanabet.dev/ping.txt', { cache: 'no-store', signal: AbortSignal.timeout(6000) });
-    add('Wheel of Fortune', r.ok ? 'healthy' : 'broken', `HTTP ${r.status}`, 'wheel.bwanabet.dev');
-  }, 'Wheel of Fortune');
+    add('wheel', 'Wheel of Fortune', r.ok ? 'healthy' : 'broken', `HTTP ${r.status}`, 'wheel.bwanabet.dev', { rk: 'http', rv: [String(r.status)] });
+  }, 'wheel', 'Wheel of Fortune');
   await safe(async () => {
     const r = await fetch('https://wheel-of-fortune-roan.vercel.app/embed.js', { cache: 'no-store', signal: AbortSignal.timeout(6000) });
     const txt = r.ok ? await r.text() : '';
     const ok = txt.includes('bonus.bwanabet.dev/widget.js');
-    add('bwanabet.com tag', ok ? 'healthy' : 'needs attention', ok ? 'loads the Bonus Center' : `HTTP ${r.status}`, 'The tag on the site (embed.js) must load bonus.bwanabet.dev/widget.js.');
-  }, 'bwanabet.com tag');
+    add('tag', 'bwanabet.com tag', ok ? 'healthy' : 'needs attention', ok ? 'loads the Bonus Center' : `HTTP ${r.status}`, 'The tag on the site (embed.js) must load bonus.bwanabet.dev/widget.js.',
+      { rk: ok ? 'loads' : 'http', rv: ok ? [] : [String(r.status)], dk: 'tag' });
+  }, 'tag', 'bwanabet.com tag');
   await safe(async () => {
     const { data } = await db.from('platform_config').select('key, value');
     const store = (data || []).find(r => r.key === 'store');
-    add('Remote config', (data || []).length ? 'healthy' : 'needs attention', `${(data || []).length} rows`, `Coin Shop ${store && store.value && store.value.open === true ? 'OPEN' : 'coming soon'}`);
-  }, 'Remote config');
+    const open = !!(store && store.value && store.value.open === true);
+    add('config', 'Remote config', (data || []).length ? 'healthy' : 'needs attention', `${(data || []).length} rows`, `Coin Shop ${open ? 'OPEN' : 'coming soon'}`,
+      { rk: 'rows', rv: [(data || []).length], dk: open ? 'shopopen' : 'shopsoon' });
+  }, 'config', 'Remote config');
   await safe(async () => {
     const tg = !!(process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHAT_ID);
     const { count } = await db.from('purchases').select('id', { count: 'exact', head: true }).eq('status', 'pending').lt('created_at', new Date(Date.now() - 24 * 3600e3).toISOString());
-    add('Fulfilment (Telegram)', !tg ? 'broken' : (count || 0) > 0 ? 'needs attention' : 'healthy', tg ? `${count || 0} pending > 24 h` : 'bot not configured', 'Coin Shop redemptions wait here for an admin to credit them.');
-  }, 'Fulfilment (Telegram)');
+    add('fulfil', 'Fulfilment (Telegram)', !tg ? 'broken' : (count || 0) > 0 ? 'needs attention' : 'healthy', tg ? `${count || 0} pending > 24 h` : 'bot not configured', 'Coin Shop redemptions wait here for an admin to credit them.',
+      { rk: tg ? 'pending' : 'nobot', rv: [count || 0], dk: 'fulfil' });
+  }, 'fulfil', 'Fulfilment (Telegram)');
 
   const broken = checks.filter(c => c.status === 'broken').length;
   const attention = checks.filter(c => c.status === 'needs attention').length;

@@ -11,7 +11,8 @@
 <style>
 /* Bonus Center OPS CONSOLE (2026-10-22). Same look as the USSD ops console:
    white back-office report screen, one row of tabs, a filter bar over sortable
-   tables with a pinned TOTALS row, hand-drawn SVG charts. Light only. */
+   tables with a pinned TOTALS row, hand-drawn SVG charts. Light only.
+   English / Russian toggle like the USSD console (2026-10-23). */
 :root {
   color-scheme: light;
   --text: #4a4a4a; --sub: #6b6b6b; --muted: #9a9a9a;
@@ -20,6 +21,7 @@
   --font: "Roboto", "Segoe UI", system-ui, sans-serif;
 }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; } /* .filters / .f set display, which beat the hidden attribute */
 html, body { margin: 0; background: #fff; color: var(--text); font: 14px/1.45 var(--font); }
 body { padding-right: 10px; }
 body::after { content: ""; position: fixed; top: 0; right: 0; bottom: 0; width: 10px; background: linear-gradient(180deg, var(--teal), #16867a); }
@@ -28,7 +30,11 @@ a:hover { text-decoration: underline; }
 .top { display: flex; align-items: center; gap: 22px; flex-wrap: wrap; padding: 12px 22px 0; border-bottom: 1px solid var(--line); }
 .brand { font-weight: 700; font-size: 17px; letter-spacing: .01em; white-space: nowrap; padding-bottom: 10px; }
 .brand b { color: var(--teal); font-weight: 700; }
-.brand small { font-weight: 500; font-size: 12px; color: var(--muted); letter-spacing: .08em; margin-left: 6px; }
+.brand small { font-weight: 500; font-size: 12px; color: var(--muted); letter-spacing: .08em; margin-left: 6px; text-transform: uppercase; }
+.lang { display: inline-flex; border: 1px solid var(--line); border-radius: 3px; overflow: hidden; margin-bottom: 10px; }
+.lang button { all: unset; cursor: pointer; min-width: 38px; text-align: center; padding: 4px 10px; font-size: 12px; font-weight: 500; letter-spacing: .06em; color: var(--sub); }
+.lang button + button { border-left: 1px solid var(--line); }
+.lang button[aria-checked="true"] { background: var(--btn); color: #fff; }
 .tabs { display: flex; gap: 2px; flex-wrap: wrap; flex: 1; }
 .tab { all: unset; cursor: pointer; padding: 8px 12px 10px; font-weight: 500; font-size: 13px; letter-spacing: .06em; text-transform: uppercase; color: var(--sub); border-bottom: 3px solid transparent; }
 .tab:hover { color: var(--text); }
@@ -105,51 +111,55 @@ dialog.small { max-width: 420px; }
 </head>
 <body>
 <header class="top">
-  <div class="brand">BwanaBet <b>BONUS CENTER</b><small>OPS CONSOLE</small></div>
-  <nav class="tabs" id="tabs" role="tablist" aria-label="Sections"></nav>
-  <button class="acct" id="acctBtn" aria-label="Account" title="Account" hidden>⋯</button>
+  <div class="brand">BwanaBet <b>BONUS CENTER</b><small data-i18n="app.sub"></small></div>
+  <div class="lang" id="lang" role="radiogroup" aria-label="Language">
+    <button type="button" role="radio" data-lang="en" aria-checked="true">EN</button>
+    <button type="button" role="radio" data-lang="ru" aria-checked="false">RU</button>
+  </div>
+  <nav class="tabs" id="tabs" role="tablist" data-i18n-al="nav.label"></nav>
+  <button class="acct" id="acctBtn" data-i18n-al="aria.account" hidden>⋯</button>
 </header>
 <div class="menu" id="menu" hidden></div>
 <main>
   <div class="filters" id="filters" hidden>
-    <div class="f"><label for="fFrom">From</label><input type="date" id="fFrom"></div>
-    <div class="f"><label for="fTo">To</label><input type="date" id="fTo"></div>
-    <div class="f" data-for="report players"><label for="fBand">Level band</label>
-      <select id="fBand"><option value="all">ALL</option><option value="street">Street (1–4)</option><option value="amateur">Amateur (5–7)</option><option value="pro">Pro (8–11)</option><option value="intl">International (12–19)</option></select></div>
-    <div class="f" data-for="report players transactions"><label for="fQ">Player ID or name</label><input type="text" id="fQ" placeholder="e.g. 67081"></div>
-    <div class="f" data-for="report"><label for="fRows">Rows</label><select id="fRows"><option value="players">Players</option><option value="days">Days</option></select></div>
-    <div class="f" data-for="transactions"><label for="fStatus">Status</label><select id="fStatus"><option value="all">ALL</option><option value="pending">Pending</option><option value="credited">Credited</option><option value="rejected">Rejected</option></select></div>
-    <button class="btn" id="fGo">Filter</button>
-    <button class="btn ghost" id="fClear">Clear filters</button>
+    <div class="f"><label for="fFrom" data-i18n="f.from"></label><input type="date" id="fFrom"></div>
+    <div class="f"><label for="fTo" data-i18n="f.to"></label><input type="date" id="fTo"></div>
+    <div class="f" data-for="report players"><label for="fBand" data-i18n="f.band"></label>
+      <select id="fBand"><option value="all" data-i18n="opt.all"></option><option value="street" data-i18n="band.street.range"></option><option value="amateur" data-i18n="band.amateur.range"></option><option value="pro" data-i18n="band.pro.range"></option><option value="intl" data-i18n="band.intl.range"></option></select></div>
+    <div class="f" data-for="report players transactions"><label for="fQ" data-i18n="f.q"></label><input type="text" id="fQ" data-i18n-ph="f.q.ph"></div>
+    <div class="f" data-for="report"><label for="fRows" data-i18n="f.rows"></label><select id="fRows"><option value="players" data-i18n="rows.players"></option><option value="days" data-i18n="rows.days"></option></select></div>
+    <div class="f" data-for="transactions"><label for="fStatus" data-i18n="f.status"></label><select id="fStatus"><option value="all" data-i18n="opt.all"></option><option value="pending" data-i18n="st.pending"></option><option value="credited" data-i18n="st.credited"></option><option value="rejected" data-i18n="st.rejected"></option></select></div>
+    <button class="btn" id="fGo" data-i18n="btn.filter"></button>
+    <button class="btn ghost" id="fClear" data-i18n="btn.clearfilters"></button>
     <span class="live" id="liveNote"></span>
   </div>
-  <section id="view"><p class="empty">Not connected.</p></section>
+  <section id="view"><p class="empty" data-i18n="empty.notconnected"></p></section>
 </main>
 
 <dialog id="loginDlg" class="small" aria-labelledby="loginTitle">
-  <div class="dh"><div><h2 id="loginTitle">Connect</h2><p>The console holds no data of its own. Figures load from the Bonus Center server.</p></div></div>
+  <div class="dh"><div><h2 id="loginTitle" data-i18n="login.title"></h2><p data-i18n="login.blurb"></p></div></div>
   <form class="db form" id="loginForm" autocomplete="on">
-    <div class="warnbox" id="setupNote" hidden>No logins exist yet. Enter the setup code to create the first administrator (master).</div>
-    <div class="f" id="setupRow" hidden><label for="lCode">Setup code</label><input type="password" id="lCode" autocomplete="off"></div>
-    <div class="f"><label for="lUser">Username</label><input type="text" id="lUser" autocomplete="username" required></div>
-    <div class="f"><label for="lPass">Password</label><input type="password" id="lPass" autocomplete="current-password" required></div>
+    <div class="warnbox" id="setupNote" hidden></div>
+    <div class="f" id="setupRow" hidden><label for="lCode" data-i18n="login.code"></label><input type="password" id="lCode" autocomplete="off"></div>
+    <div class="f"><label for="lUser" data-i18n="login.user"></label><input type="text" id="lUser" autocomplete="username" required></div>
+    <div class="f"><label for="lPass" data-i18n="login.pass"></label><input type="password" id="lPass" autocomplete="current-password" required></div>
     <div class="err" id="lErr" role="alert"></div>
-    <button class="btn" id="lGo" type="submit">Sign in</button>
+    <button class="btn" id="lGo" type="submit"></button>
   </form>
 </dialog>
 
 <dialog id="playerDlg" aria-labelledby="pTitle">
-  <div class="dh"><div><h2 id="pTitle">Player</h2><p id="pSub"></p></div><button class="x" data-close aria-label="Close">✕</button></div>
+  <div class="dh"><div><h2 id="pTitle"></h2><p id="pSub"></p></div><button class="x" data-close data-i18n-al="btn.close">✕</button></div>
   <div class="db" id="pBody"></div>
 </dialog>
 
 <dialog id="usersDlg" aria-labelledby="uTitle">
-  <div class="dh"><div><h2 id="uTitle">Logins</h2><p>Who can open this console, and what they may see.</p></div><button class="x" data-close aria-label="Close">✕</button></div>
+  <div class="dh"><div><h2 id="uTitle" data-i18n="users.title"></h2><p data-i18n="users.blurb"></p></div><button class="x" data-close data-i18n-al="btn.close">✕</button></div>
   <div class="db" id="uBody"></div>
 </dialog>
 
 <dialog id="formDlg" class="small" aria-labelledby="fdTitle">
-  <div class="dh"><div><h2 id="fdTitle"></h2><p id="fdSub"></p></div><button class="x" data-close aria-label="Close">✕</button></div>
+  <div class="dh"><div><h2 id="fdTitle"></h2><p id="fdSub"></p></div><button class="x" data-close data-i18n-al="btn.close">✕</button></div>
   <form class="db form" id="fdForm"></form>
 </dialog>
 
@@ -157,27 +167,290 @@ dialog.small { max-width: 420px; }
 (function () {
   'use strict';
   var API = '/api/ops/';
-  var TABS = [
-    { id: 'report', label: 'Report', perm: 'see.report' },
-    { id: 'coins', label: 'Coins & prizes', perm: 'see.coins' },
-    { id: 'games', label: 'Games', perm: 'see.games' },
-    { id: 'transactions', label: 'Transactions', perm: 'see.txns' },
-    { id: 'trends', label: 'Trends', perm: 'see.trends' },
-    { id: 'players', label: 'Players', perm: 'see.players' },
-    { id: 'activity', label: 'Activity', perm: 'see.activity' },
-    { id: 'health', label: 'System health', perm: 'see.health' },
-  ];
-  var EVENT_LABEL = {
-    daily_claimed: 'Daily reward', mission_completed: 'BwanaBet missions', sports_mission_claimed: 'Sports missions',
-    prediction_claimed: 'Weekly predictions', leaderboard_claimed: 'League table prizes', comeback_claimed: 'Comeback bonus',
-    album_set_claimed: 'Souvenir album sets', hustle_collected: 'Side quests', league_bonus_claimed: 'Football league bonuses',
-    wc_bonus_claimed: 'World Cup bonuses', story_prize_claimed: 'Story prize', level_up: 'Level-up rewards', streak_bonus: 'Streak bonus (old)',
+
+  // ----------------------------------------------------------------- i18n --
+  // Same scheme as the USSD console: every word on screen comes from these two
+  // dictionaries (same keys in both), static markup carries its key in
+  // data-i18n / -ph / -al, {0} {1} are filled in by t(). The choice is kept in
+  // localStorage 'ops-lang'. Russian counts read "игроков: 5" so no plural forms
+  // are needed. Game names, level titles and the BwanaBet brand stay as they are.
+  var EN = {
+    'doc.title': 'Bonus Center Ops Console', 'app.sub': 'Ops console', 'nav.label': 'Sections', 'aria.account': 'Account', 'btn.close': 'Close',
+    'tab.report': 'Report', 'tab.coins': 'Coins & prizes', 'tab.games': 'Games', 'tab.transactions': 'Transactions', 'tab.trends': 'Trends',
+    'tab.players': 'Players', 'tab.activity': 'Activity', 'tab.health': 'System health', 'perm.can.users': 'Manage logins',
+    'f.from': 'From', 'f.to': 'To', 'f.band': 'Level band', 'f.q': 'Player ID or name', 'f.q.ph': 'e.g. 67081', 'f.rows': 'Rows', 'f.status': 'Status',
+    'opt.all': 'ALL', 'rows.players': 'Players', 'rows.days': 'Days',
+    'band.street': 'Street', 'band.amateur': 'Amateur', 'band.pro': 'Pro', 'band.intl': 'International',
+    'band.street.range': 'Street (1–4)', 'band.amateur.range': 'Amateur (5–7)', 'band.pro.range': 'Pro (8–11)', 'band.intl.range': 'International (12–19)',
+    'st.pending': 'Pending', 'st.credited': 'Credited', 'st.rejected': 'Rejected',
+    'btn.filter': 'Filter', 'btn.clearfilters': 'Clear filters', 'btn.prev': 'Previous', 'btn.next': 'Next',
+    'empty.notconnected': 'Not connected.', 'empty.loading': 'Loading…', 'empty.nothing': 'Nothing in this window.',
+    'empty.filteredby': ' Filtered by: {0}. Press CLEAR FILTERS to see everything.', 'filter.band': 'level band {0}', 'filter.status': 'status {0}',
+    'empty.nosections': 'Your login has no sections ticked. Ask a master to give you access.',
+    'live.on': 'Live', 'live.every': 'refreshes every 30 s', 'live.hist': 'Historical window',
+    'err.load': 'Could not load: {0}', 'err.unreachable': 'Could not reach the server: {0}', 'err.notallowed': 'Not allowed for your login.',
+    'totals': 'TOTALS', 'totals.days': 'TOTALS · {0} days', 'totals.players': 'TOTALS · {0} players', 'totals.games': 'TOTALS · {0} games', 'totals.n': 'TOTALS · {0}',
+    'range.of': '{0}–{1} of {2}',
+    'ago.now': 'just now', 'ago.min': '{0} min ago', 'ago.h': '{0} h ago', 'ago.d': '{0} days ago',
+    // login
+    'login.title': 'Connect', 'login.blurb': 'The console holds no data of its own. Figures load from the Bonus Center server.',
+    'login.setup': 'No logins exist yet. Enter the setup code to create the first administrator (master).',
+    'login.setupoff': 'No logins exist yet, and setup is switched off on the server (OPS_SETUP_CODE is not set).',
+    'login.code': 'Setup code', 'login.user': 'Username', 'login.pass': 'Password', 'login.signin': 'Sign in', 'login.create': 'Create administrator',
+    'login.noanswer': 'The server did not answer. Try again in a moment.', 'login.bad': 'Wrong username or password.', 'login.toomany': 'Too many attempts. Wait 15 minutes.',
+    'login.badcode': 'Wrong setup code.', 'login.badname': 'Username: 3–32 lowercase letters, digits, . _ or -.', 'login.already': 'An administrator already exists. Sign in instead.',
+    'login.failed': 'Could not sign in: {0}',
+    'pw.short': 'Use at least 12 characters.', 'pw.long': 'Too long.',
+    'edit.lastmaster': 'The last master login cannot be removed or demoted.', 'edit.selfoff': 'You cannot switch off your own login.', 'edit.selfreduce': 'You cannot reduce your own access.',
+    // account + logins
+    'role.master': 'Master (everything)', 'role.limited': 'Limited', 'role.opt.master': 'Master', 'role.opt.limited': 'Limited',
+    'menu.users': 'Manage logins', 'menu.pw': 'Change my password', 'menu.out': 'Sign out',
+    'pw.current': 'Current password', 'pw.new': 'New password (12+ characters)', 'pw.change': 'Change password', 'pw.changed': 'Password changed. Other sessions were signed out.',
+    'pw.wrong': 'Current password is wrong.', 'users.taken': 'That username is taken.', 'err.save': 'Could not save.',
+    'users.title': 'Logins', 'users.blurb': 'Who can open this console, and what they may see.', 'users.new': 'New login',
+    'users.col.login': 'Login', 'users.col.access': 'Access', 'users.col.last': 'Last signed in', 'users.col.status': 'Status',
+    'users.nothing': 'Nothing ticked', 'users.on': 'On', 'users.off': 'Off', 'users.edit': 'Edit', 'users.setpw': 'Set password', 'users.switchoff': 'Switch off', 'users.switchon': 'Switch on',
+    'users.newsub': 'Masters can do everything; limited logins only what you tick.', 'users.username': 'Username',
+    'users.pwshown': 'Password (12+ characters, shown so you can pass it on)', 'users.newpwshown': 'New password (12+ characters, shown so you can pass it on)',
+    'users.role': 'Role', 'users.perms': 'May see / do (limited only)', 'users.create': 'Create login', 'users.created': 'Login created.',
+    'users.switchedoff': 'Switched off.', 'users.switchedon': 'Switched on.', 'users.pwtitle': 'Set password for {0}', 'users.pwsub': 'Signs that login out everywhere.',
+    'users.pwset': 'Password set.', 'users.edittitle': 'Edit {0}', 'users.save': 'Save', 'users.saved': 'Saved.',
+    // shared columns
+    'col.date': 'Date', 'col.day': 'Day', 'col.time': 'Time', 'col.player': 'Player', 'col.name': 'Name', 'col.level': 'Level', 'col.players': 'Players',
+    'col.new': 'New', 'col.visits': 'Visits', 'col.minutes': 'Minutes', 'col.minvisit': 'Min / visit', 'col.daily': 'Daily claims', 'col.missions': 'Missions',
+    'col.rounds': 'Rounds', 'col.gamerounds': 'Game rounds', 'col.staked': 'Staked', 'col.paid': 'Paid out', 'col.gamertp': 'Game RTP', 'col.rtp': 'RTP',
+    'col.coinsout': 'Coins out', 'col.spins': 'Wheel spins', 'col.lastseen': 'Last seen', 'col.gamesessions': 'Game sessions', 'col.games': 'Games',
+    'col.game': 'Game', 'col.source': 'Source', 'col.times': 'Times', 'col.coins': 'Coins', 'col.worth': 'Worth', 'col.net': 'Net to house',
+    'col.sessions': 'Sessions', 'col.persession': 'Rounds / session', 'col.lastplayed': 'Last played', 'col.status': 'Status', 'col.amount': 'Amount',
+    'col.detail': 'Detail', 'col.item': 'Item', 'col.payout': 'Payout',
+    // report
+    'rep.bydays': 'By day', 'rep.byplayers': 'By player',
+    'rep.note': 'Players = anyone who opened the Bonus Center logged in that Lusaka day. New = first daily reward claim that day. Coins out = rewards handed out (daily, missions, level-ups…). Game stake + payout are recorded from 22 Oct 2026.',
+    // coins
+    'coins.title': 'Coins handed out', 'coins.empty': 'No rewards handed out in this window.',
+    'coins.note': 'Worth uses the Coin Shop rate, 10,000 coins = K1. Players count per source.',
+    'mg.title': 'Mini-games', 'mg.empty': 'No mini-game rounds in this window.',
+    'mg.note': 'Coins only, never real money. Stake + payout per round are recorded from 22 Oct 2026; earlier rounds show —. Target RTP 98% (97–99% per game).',
+    'shop.title': 'Coin Shop', 'shop.flow': 'Flow', 'shop.count': 'Count / amount', 'shop.purchases': 'Purchases and redemptions', 'shop.spent': 'Coins spent',
+    'shop.pending': 'Real money waiting to be credited', 'shop.credited': 'Real money credited', 'shop.rejected': 'Rejected (refunded in coins)', 'shop.prizes': 'World Cup prize claims',
+    // games
+    'games.title': 'Games played', 'games.empty': 'No games played in this window.', 'games.na': 'n/a', 'games.natip': 'Njuka recorded only winning rounds before 22 Oct',
+    'games.note': 'A session = a player opened the game. Players = distinct players who opened or played it. Coins only, never real money; target RTP 98%. Njuka Boss recorded only its winning rounds before 22 Oct 2026, so its older figures overstate RTP.',
+    // transactions
+    'tx.title': 'Coin Shop purchases and prize claims', 'tx.prize': 'Prize {0}', 'tx.paidcoins': 'Paid (coins)', 'tx.handledby': 'Handled by', 'tx.handledat': 'Handled at',
+    'tx.telegram': 'Telegram', 'tx.notsent': 'Not sent', 'tx.sent': 'Sent', 'tx.counts': '{0} pending, {1} rejected',
+    'tx.empty': 'No purchases in this window. (The Coin Shop is still switched to COMING SOON.)',
+    'gem.e': '{0} E', 'gem.r': '{0} R', 'gem.d': '{0} D',
+    // trends
+    'tr.active': 'Active players by day', 'tr.activecap': '{0} · {1} player-days · {2}', 'tr.avg': 'Average minutes per visit', 'tr.avgcap': '{0} min across {1} visits',
+    'tr.coins': 'Coins handed out by day', 'tr.coinscap': '{0} coins · worth {1}', 'tr.rtp': 'Mini-game RTP by day', 'tr.rtpcap': '{0} of stakes paid back',
+    'tr.rtpnone': 'No staked rounds yet (recorded from 22 Oct 2026)', 'tr.target': '98% target', 'chart': 'chart',
+    // players
+    'pl.title': 'Players', 'pl.band': 'Band', 'pl.xp': 'XP', 'pl.gems': 'Gems E/R/D', 'pl.casino': 'Casino 7d', 'pl.sports': 'Sports 7d', 'pl.deposits': 'Deposits 7d',
+    'pl.betdays': 'Bet days 7d', 'pl.empty': 'No players match.',
+    'pl.note': 'Everyone who has opened the Bonus Center logged in (newest first, up to 1,000). Casino / sports / deposits are the last 7 days of real bwanabet play from the CRM, in kwacha. Click a player for everything about them.',
+    // player detail
+    'p.title': 'Player {0}', 'p.noaccess': 'Your login cannot see player details.', 'p.sub': 'Level {0} {1} · last seen {2}', 'p.never': 'Has not opened the Bonus Center logged in.',
+    'p.balances': 'Balances and progress', 'p.coins': 'Coins', 'p.gems': 'Emeralds / Rubies / Diamonds', 'p.level': 'Level', 'p.xp': 'XP', 'p.missions': 'Missions collected',
+    'p.missionsof': '{0} of 30', 'p.streak': 'Daily streak', 'p.streakday': 'day {0}', 'p.streaklast': ' · last {0}', 'p.rounds': 'Mini-game rounds', 'p.first': 'First seen',
+    'p.anchor': 'Reward start (first daily)', 'p.last': 'Last seen', 'p.missionlist': 'Missions: {0}',
+    'p.mg': 'Mini-games (all time)', 'p.netwon': 'Net won', 'p.mgempty': 'Has not played a mini-game.',
+    'p.bets': 'Real bwanabet play (CRM, last 30 days)', 'p.casino': 'Casino stake', 'p.sports': 'Sports stake', 'p.slips': 'Slips', 'p.deposits': 'Deposits',
+    'p.withdrawals': 'Withdrawals', 'p.synced': 'Synced', 'p.betsempty': 'No betting days in the CRM feed (the feed starts 19 Oct 2026).',
+    'p.visits': 'Recent visits', 'p.started': 'Started', 'p.lastping': 'Last ping', 'p.login': 'Login', 'p.verified': 'bwanabet', 'p.unverified': 'unverified', 'p.visitsempty': 'No visits recorded.',
+    'p.activity': 'Recent activity', 'p.event': 'Event', 'p.actempty': 'No activity recorded.',
+    'p.preds': 'Weekly predictions', 'p.picked': 'Picked', 'p.match': 'Match', 'p.pick': 'Pick', 'p.result': 'Result', 'p.claimed': 'Claimed', 'p.vs': '{0} v {1}',
+    'pick.home': 'Home', 'pick.draw': 'Draw', 'pick.away': 'Away', 'pick.pending': 'pending',
+    // activity (audit log)
+    'act.title': 'Console activity (audit log)', 'act.action': 'Action', 'act.target': 'Target', 'act.login': 'Login', 'act.address': 'Address', 'act.empty': 'No console activity yet.',
+    'act.entries': '{0} entries', 'act.verify': 'Check the chain', 'act.more': 'Show earlier', 'act.checking': 'Checking…', 'act.intact': 'chain intact', 'act.broken': 'chain BROKEN at entry {0}',
+    'audit.auth.login': 'Signed in', 'audit.auth.login_failed': 'Failed sign-in', 'audit.auth.logout': 'Signed out', 'audit.auth.password': 'Changed own password',
+    'audit.auth.setup': 'First administrator created', 'audit.user.create': 'Login created', 'audit.user.update': 'Login changed', 'audit.user.password': 'Password set for a login',
+    // system health
+    'h.healthy': 'healthy', 'h.broken': 'broken', 'h.attention': 'needs attention', 'h.unknown': 'unknown', 'h.nbroken': '{0} broken', 'h.nattention': '{0} need attention',
+    'h.allok': 'Everything is healthy.', 'h.took': 'checked in {0} ms', 'h.again': 'Check again', 'h.check': 'Check', 'h.reading': 'Reading',
+    'hc.crm': 'CRM pull (every 10 min)', 'hc.fresh': 'Betting data freshness', 'hc.tracking': 'Player tracking', 'hc.online': 'Players in the Bonus Center now',
+    'hc.wheel': 'Wheel of Fortune', 'hc.tag': 'bwanabet.com tag', 'hc.config': 'Remote config', 'hc.fulfil': 'Fulfilment (Telegram)',
+    'hr.failed': 'could not check', 'hr.never': 'never ran', 'hr.minago': '{0} min ago', 'hr.nodata': 'no data', 'hr.newest': 'newest CRM row {0} min old', 'hr.noevents': 'no events',
+    'hr.lastevent': 'last event {0} min ago', 'hr.online': '{0} online', 'hr.http': 'HTTP {0}', 'hr.loads': 'loads the Bonus Center', 'hr.rows': '{0} rows',
+    'hr.pending': '{0} pending > 24 h', 'hr.nobot': 'bot not configured',
+    'hd.crm': '{0} · fetched {1}, written {2}, rejected {3} · source {4}', 'hd.fresh': 'Casino loads into ClickHouse every 5 min; deposits hourly at :06, sports at :51.',
+    'hd.tracking': 'Quiet hours can be normal at night.', 'hd.online': 'A ping in the last 90 seconds.', 'hd.tag': 'The tag on the site (embed.js) must load bonus.bwanabet.dev/widget.js.',
+    'hd.shopopen': 'Coin Shop OPEN', 'hd.shopsoon': 'Coin Shop coming soon', 'hd.fulfil': 'Coin Shop redemptions wait here for an admin to credit them.',
+    'hv.done': 'done',
+    // events (player activity + coins sources)
+    'ev.daily_claimed': 'Daily reward', 'ev.mission_completed': 'BwanaBet missions', 'ev.sports_mission_claimed': 'Sports missions', 'ev.prediction_claimed': 'Weekly predictions',
+    'ev.leaderboard_claimed': 'League table prizes', 'ev.comeback_claimed': 'Comeback bonus', 'ev.album_set_claimed': 'Souvenir album sets', 'ev.hustle_collected': 'Side quests',
+    'ev.league_bonus_claimed': 'Football league bonuses', 'ev.wc_bonus_claimed': 'World Cup bonuses', 'ev.story_prize_claimed': 'Story prize', 'ev.level_up': 'Level-up rewards',
+    'ev.streak_bonus': 'Streak bonus (old)', 'ev.first_login': 'First login', 'ev.session_start': 'Session start', 'ev.widget_open': 'Bonus Center opened',
+    'ev.widget_close': 'Bonus Center closed', 'ev.tab_view': 'Tab viewed', 'ev.profile_open': 'Profile opened', 'ev.story_open': 'Story opened', 'ev.intro_toggle': 'How it works toggled',
+    'ev.wallet_open': 'Wallet opened', 'ev.game_open': 'Game opened', 'ev.game_played': 'Mini-game round', 'ev.prediction_made': 'Prediction made',
+    'ev.friendly_accepted': 'Friendly accepted', 'ev.friendly_declined': 'Friendly declined', 'ev.prize_claimed': 'Prize claimed', 'ev.name_set': 'Name set', 'ev.purchase': 'Purchase',
+    'ev.mission_open': 'Mission opened', 'ev.comeback_shown': 'Comeback offer shown', 'ev.bonus_unlock_seen': 'New bonuses pop-up seen', 'ev.welcome_back_seen': 'Welcome back pop-up seen',
+    'ev.avatar_item_bought': 'Avatar item bought', 'ev.avatar_item_worn': 'Avatar item put on', 'ev.avatar_item_removed': 'Avatar item taken off', 'ev.wheel_available': 'Wheel spin available',
+    'ev.wheel_auto_open': 'Wheel opened by itself', 'ev.wheel_opened': 'Wheel opened', 'ev.wheel_closed': 'Wheel closed', 'ev.wheel_spun': 'Wheel spun',
   };
+  var RU = {
+    'doc.title': 'Бонус-центр: панель оператора', 'app.sub': 'Панель оператора', 'nav.label': 'Разделы', 'aria.account': 'Учётная запись', 'btn.close': 'Закрыть',
+    'tab.report': 'Отчёт', 'tab.coins': 'Монеты и призы', 'tab.games': 'Игры', 'tab.transactions': 'Транзакции', 'tab.trends': 'Динамика',
+    'tab.players': 'Игроки', 'tab.activity': 'Журнал', 'tab.health': 'Состояние системы', 'perm.can.users': 'Управление доступом',
+    'f.from': 'С', 'f.to': 'По', 'f.band': 'Группа уровней', 'f.q': 'ID или имя игрока', 'f.q.ph': 'например 67081', 'f.rows': 'Строки', 'f.status': 'Статус',
+    'opt.all': 'ВСЕ', 'rows.players': 'Игроки', 'rows.days': 'Дни',
+    'band.street': 'Улица', 'band.amateur': 'Любители', 'band.pro': 'Профи', 'band.intl': 'Международный',
+    'band.street.range': 'Улица (1–4)', 'band.amateur.range': 'Любители (5–7)', 'band.pro.range': 'Профи (8–11)', 'band.intl.range': 'Международный (12–19)',
+    'st.pending': 'В ожидании', 'st.credited': 'Начислено', 'st.rejected': 'Отклонено',
+    'btn.filter': 'Фильтр', 'btn.clearfilters': 'Сбросить фильтры', 'btn.prev': 'Назад', 'btn.next': 'Далее',
+    'empty.notconnected': 'Нет подключения.', 'empty.loading': 'Загрузка…', 'empty.nothing': 'За этот период ничего нет.',
+    'empty.filteredby': ' Активные фильтры: {0}. Нажмите СБРОСИТЬ ФИЛЬТРЫ, чтобы увидеть всё.', 'filter.band': 'группа уровней: {0}', 'filter.status': 'статус: {0}',
+    'empty.nosections': 'Для вашей учётной записи не отмечен ни один раздел. Попросите главного администратора открыть доступ.',
+    'live.on': 'Онлайн', 'live.every': 'обновление каждые 30 с', 'live.hist': 'Исторический период',
+    'err.load': 'Не удалось загрузить: {0}', 'err.unreachable': 'Сервер недоступен: {0}', 'err.notallowed': 'У вашей учётной записи нет доступа к этому действию.',
+    'totals': 'ИТОГО', 'totals.days': 'ИТОГО · дней: {0}', 'totals.players': 'ИТОГО · игроков: {0}', 'totals.games': 'ИТОГО · игр: {0}', 'totals.n': 'ИТОГО · {0}',
+    'range.of': '{0}–{1} из {2}',
+    'ago.now': 'только что', 'ago.min': '{0} мин назад', 'ago.h': '{0} ч назад', 'ago.d': '{0} дн. назад',
+    // login
+    'login.title': 'Подключение', 'login.blurb': 'У консоли нет собственных данных. Цифры загружаются с сервера Бонус-центра.',
+    'login.setup': 'Учётных записей пока нет. Введите код настройки, чтобы создать первого администратора (главного).',
+    'login.setupoff': 'Учётных записей пока нет, а настройка на сервере отключена (OPS_SETUP_CODE не задан).',
+    'login.code': 'Код настройки', 'login.user': 'Имя пользователя', 'login.pass': 'Пароль', 'login.signin': 'Войти', 'login.create': 'Создать администратора',
+    'login.noanswer': 'Сервер не ответил. Попробуйте ещё раз чуть позже.', 'login.bad': 'Неверное имя пользователя или пароль.', 'login.toomany': 'Слишком много попыток. Подождите 15 минут.',
+    'login.badcode': 'Неверный код настройки.', 'login.badname': 'Имя пользователя: 3–32 символа — строчные латинские буквы, цифры, . _ или -.', 'login.already': 'Администратор уже существует. Войдите.',
+    'login.failed': 'Не удалось войти: {0}',
+    'pw.short': 'Не менее 12 символов.', 'pw.long': 'Слишком длинный пароль.',
+    'edit.lastmaster': 'Последнего главного администратора нельзя отключить или понизить.', 'edit.selfoff': 'Нельзя отключить собственную учётную запись.', 'edit.selfreduce': 'Нельзя сократить собственный доступ.',
+    // account + logins
+    'role.master': 'Главный администратор (полный доступ)', 'role.limited': 'Ограниченный доступ', 'role.opt.master': 'Главный администратор', 'role.opt.limited': 'Ограниченный доступ',
+    'menu.users': 'Управление доступом', 'menu.pw': 'Сменить мой пароль', 'menu.out': 'Выйти',
+    'pw.current': 'Текущий пароль', 'pw.new': 'Новый пароль (не менее 12 символов)', 'pw.change': 'Сменить пароль', 'pw.changed': 'Пароль изменён. Остальные сессии завершены.',
+    'pw.wrong': 'Текущий пароль неверен.', 'users.taken': 'Это имя пользователя уже занято.', 'err.save': 'Не удалось сохранить.',
+    'users.title': 'Учётные записи', 'users.blurb': 'Кто может открыть консоль и что каждому доступно.', 'users.new': 'Новая учётная запись',
+    'users.col.login': 'Учётная запись', 'users.col.access': 'Доступ', 'users.col.last': 'Последний вход', 'users.col.status': 'Статус',
+    'users.nothing': 'Ничего не отмечено', 'users.on': 'Вкл.', 'users.off': 'Выкл.', 'users.edit': 'Изменить', 'users.setpw': 'Задать пароль', 'users.switchoff': 'Отключить', 'users.switchon': 'Включить',
+    'users.newsub': 'Главному администратору доступно всё, ограниченной учётной записи — только отмеченное.', 'users.username': 'Имя пользователя',
+    'users.pwshown': 'Пароль (не менее 12 символов; виден, чтобы его можно было передать)', 'users.newpwshown': 'Новый пароль (не менее 12 символов; виден, чтобы его можно было передать)',
+    'users.role': 'Роль', 'users.perms': 'Доступные разделы и действия (только для ограниченного доступа)', 'users.create': 'Создать', 'users.created': 'Учётная запись создана.',
+    'users.switchedoff': 'Отключено.', 'users.switchedon': 'Включено.', 'users.pwtitle': 'Новый пароль для {0}', 'users.pwsub': 'Все сессии этой учётной записи будут завершены.',
+    'users.pwset': 'Пароль задан.', 'users.edittitle': 'Изменение: {0}', 'users.save': 'Сохранить', 'users.saved': 'Сохранено.',
+    // shared columns
+    'col.date': 'Дата', 'col.day': 'День', 'col.time': 'Время', 'col.player': 'Игрок', 'col.name': 'Имя', 'col.level': 'Уровень', 'col.players': 'Игроков',
+    'col.new': 'Новых', 'col.visits': 'Визитов', 'col.minutes': 'Минут', 'col.minvisit': 'Мин. / визит', 'col.daily': 'Ежедн. награды', 'col.missions': 'Миссии',
+    'col.rounds': 'Раунды', 'col.gamerounds': 'Раунды игр', 'col.staked': 'Поставлено', 'col.paid': 'Выплачено', 'col.gamertp': 'RTP игр', 'col.rtp': 'RTP',
+    'col.coinsout': 'Выдано монет', 'col.spins': 'Вращения колеса', 'col.lastseen': 'Последний визит', 'col.gamesessions': 'Игровые сессии', 'col.games': 'Игр',
+    'col.game': 'Игра', 'col.source': 'Источник', 'col.times': 'Раз', 'col.coins': 'Монеты', 'col.worth': 'Стоимость', 'col.net': 'Чистый доход',
+    'col.sessions': 'Сессии', 'col.persession': 'Раундов / сессия', 'col.lastplayed': 'Последняя игра', 'col.status': 'Статус', 'col.amount': 'Сумма',
+    'col.detail': 'Подробно', 'col.item': 'Товар', 'col.payout': 'Выплата',
+    // report
+    'rep.bydays': 'По дням', 'rep.byplayers': 'По игрокам',
+    'rep.note': 'Игроков — все, кто в этот день (по времени Лусаки) открыл Бонус-центр, войдя в аккаунт. Новых — первое получение ежедневной награды в этот день. Выдано монет — выданные награды (ежедневные, миссии, новые уровни…). Ставки и выплаты в играх записываются с 22.10.2026.',
+    // coins
+    'coins.title': 'Выдано монет', 'coins.empty': 'За этот период награды не выдавались.',
+    'coins.note': 'Стоимость — по курсу магазина монет: 10 000 монет = K1. Игроки считаются по каждому источнику отдельно.',
+    'mg.title': 'Мини-игры', 'mg.empty': 'За этот период раундов мини-игр не было.',
+    'mg.note': 'Только монеты, никогда не реальные деньги. Ставка и выплата по каждому раунду записываются с 22.10.2026; у более ранних раундов стоит —. Целевой RTP 98% (97–99% по каждой игре).',
+    'shop.title': 'Магазин монет', 'shop.flow': 'Поток', 'shop.count': 'Кол-во / сумма', 'shop.purchases': 'Покупки и обмены', 'shop.spent': 'Потрачено монет',
+    'shop.pending': 'Реальные деньги, ожидают начисления', 'shop.credited': 'Реальные деньги, начислено', 'shop.rejected': 'Отклонено (возвращено монетами)', 'shop.prizes': 'Заявки на приз чемпионата мира',
+    // games
+    'games.title': 'Сыгранные игры', 'games.empty': 'За этот период игр не было.', 'games.na': 'н/д', 'games.natip': 'До 22.10 Njuka записывала только выигрышные раунды',
+    'games.note': 'Сессия — игрок открыл игру. Игроков — уникальные игроки, которые открыли игру или сыграли в неё. Только монеты, никогда не реальные деньги; целевой RTP 98%. До 22.10.2026 Njuka Boss записывала только выигрышные раунды, поэтому её старые данные завышают RTP.',
+    // transactions
+    'tx.title': 'Покупки в магазине монет и заявки на призы', 'tx.prize': 'Приз {0}', 'tx.paidcoins': 'Оплачено (монеты)', 'tx.handledby': 'Кто обработал', 'tx.handledat': 'Когда обработано',
+    'tx.telegram': 'Telegram', 'tx.notsent': 'Не отправлено', 'tx.sent': 'Отправлено', 'tx.counts': 'в ожидании: {0}, отклонено: {1}',
+    'tx.empty': 'За этот период покупок не было. (Магазин монет пока в режиме «СКОРО ОТКРЫТИЕ».)',
+    'gem.e': 'изумруды: {0}', 'gem.r': 'рубины: {0}', 'gem.d': 'алмазы: {0}',
+    // trends
+    'tr.active': 'Активные игроки по дням', 'tr.activecap': '{0} · игроко-дней: {1} · {2}', 'tr.avg': 'Средняя длительность визита, мин', 'tr.avgcap': 'в среднем {0} мин, визитов: {1}',
+    'tr.coins': 'Выдано монет по дням', 'tr.coinscap': 'монет: {0} · стоимость {1}', 'tr.rtp': 'RTP мини-игр по дням', 'tr.rtpcap': 'возвращено {0} от ставок',
+    'tr.rtpnone': 'Раундов со ставками пока нет (записываются с 22.10.2026)', 'tr.target': 'цель 98%', 'chart': 'график',
+    // players
+    'pl.title': 'Игроки', 'pl.band': 'Группа', 'pl.xp': 'XP', 'pl.gems': 'Изумр. / рубины / алмазы', 'pl.casino': 'Казино, 7 дн.', 'pl.sports': 'Спорт, 7 дн.', 'pl.deposits': 'Депозиты, 7 дн.',
+    'pl.betdays': 'Дни со ставками, 7 дн.', 'pl.empty': 'Нет подходящих игроков.',
+    'pl.note': 'Все, кто открывал Бонус-центр, войдя в аккаунт (сначала новые, до 1 000). Казино, спорт и депозиты — реальная игра на bwanabet за последние 7 дней по данным CRM, в квачах. Нажмите на игрока, чтобы увидеть всё о нём.',
+    // player detail
+    'p.title': 'Игрок {0}', 'p.noaccess': 'Вашей учётной записи недоступны данные игроков.', 'p.sub': 'Уровень {0} {1} · последний визит {2}', 'p.never': 'Бонус-центр с входом в аккаунт не открывался.',
+    'p.balances': 'Балансы и прогресс', 'p.coins': 'Монеты', 'p.gems': 'Изумруды / рубины / алмазы', 'p.level': 'Уровень', 'p.xp': 'XP', 'p.missions': 'Получено миссий',
+    'p.missionsof': '{0} из 30', 'p.streak': 'Серия ежедневных наград', 'p.streakday': 'день {0}', 'p.streaklast': ' · последняя {0}', 'p.rounds': 'Раунды мини-игр', 'p.first': 'Первый визит',
+    'p.anchor': 'Старт наград (первая ежедневная награда)', 'p.last': 'Последний визит', 'p.missionlist': 'Миссии: {0}',
+    'p.mg': 'Мини-игры (за всё время)', 'p.netwon': 'Чистый выигрыш', 'p.mgempty': 'В мини-игры не играли.',
+    'p.bets': 'Реальная игра на bwanabet (CRM, последние 30 дней)', 'p.casino': 'Ставки в казино', 'p.sports': 'Ставки на спорт', 'p.slips': 'Купоны', 'p.deposits': 'Депозиты',
+    'p.withdrawals': 'Выводы', 'p.synced': 'Синхронизировано', 'p.betsempty': 'В данных CRM нет дней со ставками (данные начинаются с 19.10.2026).',
+    'p.visits': 'Последние визиты', 'p.started': 'Начало', 'p.lastping': 'Последний пинг', 'p.login': 'Вход', 'p.verified': 'bwanabet', 'p.unverified': 'не подтверждён', 'p.visitsempty': 'Визитов не записано.',
+    'p.activity': 'Последние действия', 'p.event': 'Событие', 'p.actempty': 'Действий не записано.',
+    'p.preds': 'Еженедельные прогнозы', 'p.picked': 'Выбрано', 'p.match': 'Матч', 'p.pick': 'Прогноз', 'p.result': 'Результат', 'p.claimed': 'Получено', 'p.vs': '{0} — {1}',
+    'pick.home': 'Хозяева', 'pick.draw': 'Ничья', 'pick.away': 'Гости', 'pick.pending': 'ожидается',
+    // activity (audit log)
+    'act.title': 'Действия в консоли (журнал аудита)', 'act.action': 'Действие', 'act.target': 'Объект', 'act.login': 'Учётная запись', 'act.address': 'Адрес', 'act.empty': 'Действий в консоли пока нет.',
+    'act.entries': 'записей: {0}', 'act.verify': 'Проверить цепочку', 'act.more': 'Показать ранее', 'act.checking': 'Проверка…', 'act.intact': 'цепочка цела', 'act.broken': 'цепочка НАРУШЕНА на записи {0}',
+    'audit.auth.login': 'Вход в систему', 'audit.auth.login_failed': 'Неудачный вход', 'audit.auth.logout': 'Выход из системы', 'audit.auth.password': 'Изменён собственный пароль',
+    'audit.auth.setup': 'Создан первый администратор', 'audit.user.create': 'Создана учётная запись', 'audit.user.update': 'Изменена учётная запись', 'audit.user.password': 'Задан пароль учётной записи',
+    // system health
+    'h.healthy': 'в норме', 'h.broken': 'неисправно', 'h.attention': 'требует внимания', 'h.unknown': 'неизвестно', 'h.nbroken': 'неисправно: {0}', 'h.nattention': 'требует внимания: {0}',
+    'h.allok': 'Все системы в норме.', 'h.took': 'проверено за {0} мс', 'h.again': 'Проверить снова', 'h.check': 'Проверка', 'h.reading': 'Показание',
+    'hc.crm': 'Загрузка из CRM (каждые 10 мин)', 'hc.fresh': 'Свежесть данных о ставках', 'hc.tracking': 'Отслеживание игроков', 'hc.online': 'Игроки в Бонус-центре сейчас',
+    'hc.wheel': 'Колесо фортуны', 'hc.tag': 'Тег на bwanabet.com', 'hc.config': 'Удалённая конфигурация', 'hc.fulfil': 'Исполнение заявок (Telegram)',
+    'hr.failed': 'проверить не удалось', 'hr.never': 'ещё не запускалась', 'hr.minago': '{0} мин назад', 'hr.nodata': 'нет данных', 'hr.newest': 'последняя строка CRM — {0} мин назад', 'hr.noevents': 'событий нет',
+    'hr.lastevent': 'последнее событие {0} мин назад', 'hr.online': 'онлайн: {0}', 'hr.http': 'HTTP {0}', 'hr.loads': 'загружает Бонус-центр', 'hr.rows': 'строк: {0}',
+    'hr.pending': 'в ожидании дольше 24 ч: {0}', 'hr.nobot': 'бот не настроен',
+    'hd.crm': '{0} · получено {1}, записано {2}, отклонено {3} · источник {4}', 'hd.fresh': 'Казино загружается в ClickHouse каждые 5 мин; депозиты — ежечасно в :06, спорт — в :51.',
+    'hd.tracking': 'Ночью затишье может быть нормой.', 'hd.online': 'Пинг за последние 90 секунд.', 'hd.tag': 'Тег на сайте (embed.js) должен загружать bonus.bwanabet.dev/widget.js.',
+    'hd.shopopen': 'Магазин монет ОТКРЫТ', 'hd.shopsoon': 'Магазин монет скоро откроется', 'hd.fulfil': 'Обмены в магазине монет ждут здесь, пока администратор их не начислит.',
+    'hv.done': 'выполнено',
+    // events (player activity + coins sources)
+    'ev.daily_claimed': 'Ежедневная награда', 'ev.mission_completed': 'Миссии BwanaBet', 'ev.sports_mission_claimed': 'Спортивные миссии', 'ev.prediction_claimed': 'Еженедельные прогнозы',
+    'ev.leaderboard_claimed': 'Призы турнирной таблицы', 'ev.comeback_claimed': 'Бонус за возвращение', 'ev.album_set_claimed': 'Наборы альбома сувениров', 'ev.hustle_collected': 'Побочные задания',
+    'ev.league_bonus_claimed': 'Бонусы футбольной лиги', 'ev.wc_bonus_claimed': 'Бонусы чемпионата мира', 'ev.story_prize_claimed': 'Приз за историю', 'ev.level_up': 'Награды за новый уровень',
+    'ev.streak_bonus': 'Бонус за серию (старый)', 'ev.first_login': 'Первый вход', 'ev.session_start': 'Начало сессии', 'ev.widget_open': 'Бонус-центр открыт',
+    'ev.widget_close': 'Бонус-центр закрыт', 'ev.tab_view': 'Просмотр вкладки', 'ev.profile_open': 'Открыт профиль', 'ev.story_open': 'Открыта история', 'ev.intro_toggle': 'Блок «Как это работает» свёрнут/развёрнут',
+    'ev.wallet_open': 'Открыт кошелёк', 'ev.game_open': 'Игра открыта', 'ev.game_played': 'Раунд мини-игры', 'ev.prediction_made': 'Сделан прогноз',
+    'ev.friendly_accepted': 'Товарищеский матч принят', 'ev.friendly_declined': 'Товарищеский матч отклонён', 'ev.prize_claimed': 'Запрошен приз', 'ev.name_set': 'Указано имя', 'ev.purchase': 'Покупка',
+    'ev.mission_open': 'Открыта миссия', 'ev.comeback_shown': 'Показан бонус за возвращение', 'ev.bonus_unlock_seen': 'Показано окно новых бонусов', 'ev.welcome_back_seen': 'Показано окно «С возвращением»',
+    'ev.avatar_item_bought': 'Куплен предмет для аватара', 'ev.avatar_item_worn': 'Предмет аватара надет', 'ev.avatar_item_removed': 'Предмет аватара снят', 'ev.wheel_available': 'Доступно вращение колеса',
+    'ev.wheel_auto_open': 'Колесо открылось само', 'ev.wheel_opened': 'Колесо открыто', 'ev.wheel_closed': 'Колесо закрыто', 'ev.wheel_spun': 'Колесо прокручено',
+  };
+  var I18N = { en: EN, ru: RU };
+  var LANG = 'en';
+  try { var savedLang = localStorage.getItem('ops-lang'); if (savedLang && I18N[savedLang]) LANG = savedLang; } catch (e) { /* blocked */ }
+  function t(key) {
+    var d = I18N[LANG] || EN;
+    var s = key in d ? d[key] : key in EN ? EN[key] : '?' + key + '?';
+    for (var i = 1; i < arguments.length; i++) s = s.split('{' + (i - 1) + '}').join(arguments[i]);
+    return s;
+  }
+  // a known key, else the fallback (server text / raw id)
+  function tOr(key, fallback) { return key in (I18N[LANG] || EN) || key in EN ? t(key) : fallback; }
+  function applyStatic() {
+    document.documentElement.lang = LANG;
+    document.title = t('doc.title');
+    document.querySelectorAll('[data-i18n]').forEach(function (el) { el.textContent = t(el.getAttribute('data-i18n')); });
+    document.querySelectorAll('[data-i18n-ph]').forEach(function (el) { el.placeholder = t(el.getAttribute('data-i18n-ph')); });
+    document.querySelectorAll('[data-i18n-al]').forEach(function (el) { el.setAttribute('aria-label', t(el.getAttribute('data-i18n-al'))); el.title = t(el.getAttribute('data-i18n-al')); });
+    document.querySelectorAll('#lang button').forEach(function (b) { b.setAttribute('aria-checked', b.getAttribute('data-lang') === LANG ? 'true' : 'false'); });
+  }
+
+  function tabLabel(id) { return t('tab.' + id); }
+  var TABS = [
+    { id: 'report', perm: 'see.report' },
+    { id: 'coins', perm: 'see.coins' },
+    { id: 'games', perm: 'see.games' },
+    { id: 'transactions', perm: 'see.txns' },
+    { id: 'trends', perm: 'see.trends' },
+    { id: 'players', perm: 'see.players' },
+    { id: 'activity', perm: 'see.activity' },
+    { id: 'health', perm: 'see.health' },
+  ];
+  var PERM_TAB = {}; TABS.forEach(function (x) { PERM_TAB[x.perm] = x.id; });
+  function permLabel(p, fallback) { return PERM_TAB[p.id] ? tabLabel(PERM_TAB[p.id]) : tOr('perm.' + p.id, fallback || p.label || p.id); }
+  function eventLabel(type) { return tOr('ev.' + type, String(type || '').replace(/_/g, ' ')); }
   var GAME_LABEL = { njuka: 'Njuka Boss', coinflip: 'Coin Flip', penalty: 'Penalty Crash', chicken: 'Chicken Catch', chicken2: 'Chicken Catch 2', minibus: 'Lucky Minibus', bottle: 'Bottle Spin', scratch: 'Scratch Card', numbers: 'Lucky Numbers' };
-  var BAND_LABEL = { street: 'Street', amateur: 'Amateur', pro: 'Pro', intl: 'International' };
+  function bandLabel(b) { return tOr('band.' + b, b); }
+  // server reasons for weak passwords / blocked login edits, by their English text
+  var SERVER_REASON = {
+    'Use at least 12 characters': 'pw.short', 'Too long': 'pw.long',
+    'The last master login cannot be removed or demoted': 'edit.lastmaster', 'You cannot switch off your own login': 'edit.selfoff', 'You cannot reduce your own access': 'edit.selfreduce',
+  };
+  function reasonText(msg) { return SERVER_REASON[msg] ? t(SERVER_REASON[msg]) : msg; }
 
   // ---------------------------------------------------------------- state --
-  var S = { token: null, me: null, tab: 'report', data: {}, sort: {}, page: 0, timer: 0, menuOpen: false };
+  var S = { token: null, me: null, tab: 'report', data: {}, sort: {}, page: 0, timer: 0, menuOpen: false, loginSetup: null, playerUid: null };
   var $ = function (id) { return document.getElementById(id); };
   var store = {
     get: function (k) { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } },
@@ -186,18 +459,23 @@ dialog.small { max-width: 420px; }
   };
 
   // --------------------------------------------------------------- format --
+  // Russian groups thousands with a space and uses a decimal comma, dates dd.mm.yyyy
+  function loc() { return LANG === 'ru' ? 'ru-RU' : 'en-US'; }
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
-  function int(n) { return Math.round(Number(n) || 0).toLocaleString('en-US'); }
-  function kw(n) { var v = Number(n) || 0; var a = Math.abs(v); var s = a >= 1e6 ? (a / 1e6).toFixed(2) + 'm' : a.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); return (v < 0 ? '−K' : 'K') + s; }
-  function pct(a, b) { return b ? (100 * a / b).toFixed(1) + '%' : '—'; }
-  function mins(n) { return (Number(n) || 0).toLocaleString('en-US', { maximumFractionDigits: 1 }); }
+  function int(n) { return Math.round(Number(n) || 0).toLocaleString(loc()); }
+  function fix(n, d) { return (Number(n) || 0).toLocaleString(loc(), { minimumFractionDigits: d, maximumFractionDigits: d }); }
+  function kw(n) { var v = Number(n) || 0; var a = Math.abs(v); var s = a >= 1e6 ? fix(a / 1e6, 2) + (LANG === 'ru' ? ' млн' : 'm') : fix(a, 2); return (v < 0 ? '−K' : 'K') + s; }
+  function pct(a, b) { return b ? fix(100 * a / b, 1) + '%' : '—'; }
+  function mins(n) { return (Number(n) || 0).toLocaleString(loc(), { maximumFractionDigits: 1 }); }
   function lusaka(ts) { var d = new Date(new Date(ts).getTime() + 2 * 3600e3); return d.toISOString(); }
-  function dt(ts) { if (!ts) return '—'; var s = lusaka(ts); return s.slice(8, 10) + '/' + s.slice(5, 7) + '/' + s.slice(0, 4) + ' ' + s.slice(11, 19); }
-  function day(d) { if (!d) return '—'; var s = String(d).slice(0, 10); return s.slice(8, 10) + '/' + s.slice(5, 7) + '/' + s.slice(0, 4); }
-  function ago(ts) { if (!ts) return '—'; var m = Math.round((Date.now() - new Date(ts).getTime()) / 60000); if (m < 1) return 'just now'; if (m < 60) return m + ' min ago'; var h = Math.round(m / 60); if (h < 48) return h + ' h ago'; return Math.round(h / 24) + ' days ago'; }
+  function dsep() { return LANG === 'ru' ? '.' : '/'; }
+  function dt(ts) { if (!ts) return '—'; var s = lusaka(ts), p = dsep(); return s.slice(8, 10) + p + s.slice(5, 7) + p + s.slice(0, 4) + ' ' + s.slice(11, 19); }
+  function day(d) { if (!d) return '—'; var s = String(d).slice(0, 10), p = dsep(); return s.slice(8, 10) + p + s.slice(5, 7) + p + s.slice(0, 4); }
+  function ago(ts) { if (!ts) return '—'; var m = Math.round((Date.now() - new Date(ts).getTime()) / 60000); if (m < 1) return t('ago.now'); if (m < 60) return t('ago.min', m); var h = Math.round(m / 60); if (h < 48) return t('ago.h', h); return t('ago.d', Math.round(h / 24)); }
   function todayL() { return lusaka(Date.now()).slice(0, 10); }
   function signed(n, cls) { var v = Number(n) || 0; return '<span class="' + (v < 0 ? 'neg' : v > 0 ? (cls || 'pos') : '') + '">' + (v < 0 ? '−' : '') + int(Math.abs(v)) + '</span>'; }
-  function toast(msg) { var t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; document.body.appendChild(t); setTimeout(function () { t.remove(); }, 3200); }
+  function toast(msg) { var el = document.createElement('div'); el.className = 'toast'; el.textContent = msg; document.body.appendChild(el); setTimeout(function () { el.remove(); }, 3200); }
+  function windowLabel(w) { return day(w.from) + (w.to !== w.from ? ' – ' + day(w.to) : ''); }
 
   // ------------------------------------------------------------------ api --
   function api(path, body) {
@@ -207,24 +485,28 @@ dialog.small { max-width: 420px; }
     return fetch(API + path, opts).then(function (r) {
       return r.json().catch(function () { return {}; }).then(function (d) {
         if (r.status === 401 && path.indexOf('auth/') !== 0) { signOut(true); throw new Error('signed_out'); }
-        if (r.status === 403) { toast('Not allowed for your login.'); throw new Error('not_allowed'); }
-        if (!r.ok) { var e = new Error(d.reason || d.error || ('HTTP ' + r.status)); e.code = d.error; e.status = r.status; throw e; }
+        if (r.status === 403) { toast(t('err.notallowed')); throw new Error('not_allowed'); }
+        if (!r.ok) { var e = new Error(reasonText(d.reason || d.error || ('HTTP ' + r.status))); e.code = d.error; e.status = r.status; throw e; }
         return d;
       });
     });
   }
 
   // ----------------------------------------------------------------- auth --
+  function paintLogin() {
+    var st = S.loginSetup;
+    var setup = !!(st && !st.hasUsers);
+    $('setupNote').hidden = !setup; $('setupRow').hidden = !setup;
+    $('setupNote').textContent = setup && !st.setupEnabled ? t('login.setupoff') : t('login.setup');
+    $('lGo').textContent = setup ? t('login.create') : t('login.signin');
+    $('loginForm').dataset.setup = setup ? '1' : '';
+    $('lPass').autocomplete = setup ? 'new-password' : 'current-password';
+  }
   function openLogin() {
     $('lErr').textContent = '';
-    api('auth/status').then(function (st) {
-      var setup = !st.hasUsers;
-      $('setupNote').hidden = !setup; $('setupRow').hidden = !setup;
-      if (setup && !st.setupEnabled) { $('setupNote').textContent = 'No logins exist yet, and setup is switched off on the server (OPS_SETUP_CODE is not set).'; }
-      $('lGo').textContent = setup ? 'Create administrator' : 'Sign in';
-      $('loginForm').dataset.setup = setup ? '1' : '';
-      $('lPass').autocomplete = setup ? 'new-password' : 'current-password';
-    }).catch(function () { $('lErr').textContent = 'The server did not answer. Try again in a moment.'; });
+    paintLogin();
+    api('auth/status').then(function (st) { S.loginSetup = st; paintLogin(); })
+      .catch(function () { $('lErr').textContent = t('login.noanswer'); });
     if (!$('loginDlg').open) $('loginDlg').showModal();
     setTimeout(function () { $('lUser').focus(); }, 50);
   }
@@ -242,8 +524,8 @@ dialog.small { max-width: 420px; }
       boot();
     }).catch(function (err) {
       var c = err.code;
-      $('lErr').textContent = c === 'bad_login' ? 'Wrong username or password.' : c === 'too_many_attempts' ? 'Too many attempts. Wait 15 minutes.' : c === 'bad_setup_code' ? 'Wrong setup code.'
-        : c === 'bad_username' ? 'Username: 3–32 lowercase letters, digits, . _ or -.' : c === 'weak_password' ? (err.message || 'Use at least 12 characters.') : c === 'already_set_up' ? 'An administrator already exists. Sign in instead.' : 'Could not sign in: ' + err.message;
+      $('lErr').textContent = c === 'bad_login' ? t('login.bad') : c === 'too_many_attempts' ? t('login.toomany') : c === 'bad_setup_code' ? t('login.badcode')
+        : c === 'bad_username' ? t('login.badname') : c === 'weak_password' ? (err.message || t('pw.short')) : c === 'already_set_up' ? t('login.already') : t('login.failed', err.message);
       if (c === 'already_set_up') openLogin();
     }).finally(function () { $('lGo').disabled = false; });
   });
@@ -251,7 +533,7 @@ dialog.small { max-width: 420px; }
     if (!expired && S.token) api('auth/logout', {}).catch(function () {});
     S.token = null; S.me = null; store.del('bc-ops-auth'); clearInterval(S.timer);
     $('acctBtn').hidden = true; $('filters').hidden = true; $('tabs').innerHTML = '';
-    $('view').innerHTML = '<p class="empty">Not connected.</p>';
+    $('view').innerHTML = '<p class="empty">' + esc(t('empty.notconnected')) + '</p>';
     closeMenu(); openLogin();
   }
 
@@ -261,19 +543,19 @@ dialog.small { max-width: 420px; }
     e.stopPropagation();
     if (S.menuOpen) return closeMenu();
     var m = $('menu');
-    m.innerHTML = '<div class="who"><b>' + esc(S.me.username) + '</b>' + esc(S.me.role === 'master' ? 'Master (everything)' : 'Limited') + ' · ' + esc(location.host) + '</div>' +
-      (S.me.permissions.indexOf('can.users') >= 0 ? '<button data-act="users">Manage logins</button>' : '') +
-      '<button data-act="pw">Change my password</button><button data-act="out">Sign out</button>';
+    m.innerHTML = '<div class="who"><b>' + esc(S.me.username) + '</b>' + esc(S.me.role === 'master' ? t('role.master') : t('role.limited')) + ' · ' + esc(location.host) + '</div>' +
+      (S.me.permissions.indexOf('can.users') >= 0 ? '<button data-act="users">' + esc(t('menu.users')) + '</button>' : '') +
+      '<button data-act="pw">' + esc(t('menu.pw')) + '</button><button data-act="out">' + esc(t('menu.out')) + '</button>';
     m.hidden = false; S.menuOpen = true;
   });
   document.addEventListener('click', function (e) { if (S.menuOpen && !$('menu').contains(e.target)) closeMenu(); });
   $('menu').addEventListener('click', function (e) {
     var a = e.target.getAttribute('data-act'); if (!a) return; closeMenu();
     if (a === 'out') signOut(false);
-    if (a === 'pw') formDialog('Change my password', '', [
-      { id: 'current', label: 'Current password', type: 'password', ac: 'current-password' },
-      { id: 'password', label: 'New password (12+ characters)', type: 'password', ac: 'new-password' },
-    ], 'Change password', function (v) { return api('auth/password', v).then(function () { toast('Password changed. Other sessions were signed out.'); }); });
+    if (a === 'pw') formDialog(t('menu.pw'), '', [
+      { id: 'current', label: t('pw.current'), type: 'password', ac: 'current-password' },
+      { id: 'password', label: t('pw.new'), type: 'password', ac: 'new-password' },
+    ], t('pw.change'), function (v) { return api('auth/password', v).then(function () { toast(t('pw.changed')); }); });
     if (a === 'users') openUsers();
   });
   document.querySelectorAll('dialog [data-close]').forEach(function (b) { b.addEventListener('click', function () { b.closest('dialog').close(); }); });
@@ -295,7 +577,7 @@ dialog.small { max-width: 420px; }
       });
       $('fdErr').textContent = '';
       onSubmit(v).then(function () { $('formDlg').close(); }).catch(function (err) {
-        $('fdErr').textContent = err.code === 'bad_password' ? 'Current password is wrong.' : err.code === 'username_taken' ? 'That username is taken.' : err.code === 'bad_username' ? 'Username: 3–32 lowercase letters, digits, . _ or -.' : (err.message || 'Could not save.');
+        $('fdErr').textContent = err.code === 'bad_password' ? t('pw.wrong') : err.code === 'username_taken' ? t('users.taken') : err.code === 'bad_username' ? t('login.badname') : (err.message || t('err.save'));
       });
     };
     $('formDlg').showModal();
@@ -304,32 +586,34 @@ dialog.small { max-width: 420px; }
   function openUsers() {
     var dlg = $('usersDlg');
     if (!dlg.open) dlg.showModal();
-    $('uBody').innerHTML = '<p class="empty">Loading…</p>';
+    $('uBody').innerHTML = '<p class="empty">' + esc(t('empty.loading')) + '</p>';
     api('users').then(function (d) {
-      var labels = {}; d.sections.concat(d.actions).forEach(function (p) { labels[p.id] = p.label; });
-      $('uBody').innerHTML = '<div style="margin:10px 0"><button class="btn" id="uNew">New login</button></div><div class="wrap"><table><thead><tr><th>Login</th><th>Access</th><th>Last signed in</th><th>Status</th><th></th></tr></thead><tbody>' +
+      var perms = d.sections.concat(d.actions).map(function (p) { return { id: p.id, label: permLabel(p) }; });
+      var labels = {}; perms.forEach(function (p) { labels[p.id] = p.label; });
+      var roleOpts = [['limited', t('role.opt.limited')], ['master', t('role.opt.master')]];
+      $('uBody').innerHTML = '<div style="margin:10px 0"><button class="btn" id="uNew">' + esc(t('users.new')) + '</button></div><div class="wrap"><table><thead><tr><th>' + esc(t('users.col.login')) + '</th><th>' + esc(t('users.col.access')) + '</th><th>' + esc(t('users.col.last')) + '</th><th>' + esc(t('users.col.status')) + '</th><th></th></tr></thead><tbody>' +
         d.items.map(function (u) {
-          var access = u.role === 'master' ? 'Master (everything)' : (u.permissions.length ? u.permissions.map(function (p) { return labels[p] || p; }).join(', ') : 'Nothing ticked');
-          return '<tr><td><b>' + esc(u.username) + '</b></td><td style="white-space:normal;max-width:360px">' + esc(access) + '</td><td>' + dt(u.last_login_at) + '</td><td>' + (u.active ? '<span class="pill ok">On</span>' : '<span class="pill grey">Off</span>') + '</td>' +
-            '<td><a data-u="edit" data-id="' + u.id + '">Edit</a> · <a data-u="pw" data-id="' + u.id + '">Set password</a> · <a data-u="toggle" data-id="' + u.id + '">' + (u.active ? 'Switch off' : 'Switch on') + '</a></td></tr>';
+          var access = u.role === 'master' ? t('role.master') : (u.permissions.length ? u.permissions.map(function (p) { return labels[p] || p; }).join(', ') : t('users.nothing'));
+          return '<tr><td><b>' + esc(u.username) + '</b></td><td style="white-space:normal;max-width:360px">' + esc(access) + '</td><td>' + dt(u.last_login_at) + '</td><td>' + (u.active ? '<span class="pill ok">' + esc(t('users.on')) + '</span>' : '<span class="pill grey">' + esc(t('users.off')) + '</span>') + '</td>' +
+            '<td><a data-u="edit" data-id="' + u.id + '">' + esc(t('users.edit')) + '</a> · <a data-u="pw" data-id="' + u.id + '">' + esc(t('users.setpw')) + '</a> · <a data-u="toggle" data-id="' + u.id + '">' + esc(u.active ? t('users.switchoff') : t('users.switchon')) + '</a></td></tr>';
         }).join('') + '</tbody></table></div>';
       var byId = {}; d.items.forEach(function (u) { byId[u.id] = u; });
       $('uNew').onclick = function () {
-        formDialog('New login', 'Masters can do everything; limited logins only what you tick.', [
-          { id: 'username', label: 'Username' }, { id: 'password', label: 'Password (12+ characters, shown so you can pass it on)', type: 'text', ac: 'off' },
-          { id: 'role', label: 'Role', type: 'select', value: 'limited', options: [['limited', 'Limited'], ['master', 'Master']] },
-          { id: 'permissions', label: 'May see / do (limited only)', type: 'ticks', options: d.sections.concat(d.actions), value: ['see.report', 'see.players'] },
-        ], 'Create login', function (v) { return api('users/create', v).then(function () { toast('Login created.'); openUsers(); }); });
+        formDialog(t('users.new'), t('users.newsub'), [
+          { id: 'username', label: t('users.username') }, { id: 'password', label: t('users.pwshown'), type: 'text', ac: 'off' },
+          { id: 'role', label: t('users.role'), type: 'select', value: 'limited', options: roleOpts },
+          { id: 'permissions', label: t('users.perms'), type: 'ticks', options: perms, value: ['see.report', 'see.players'] },
+        ], t('users.create'), function (v) { return api('users/create', v).then(function () { toast(t('users.created')); openUsers(); }); });
       };
       $('uBody').querySelectorAll('a[data-u]').forEach(function (a) {
         a.onclick = function () {
           var u = byId[a.getAttribute('data-id')], k = a.getAttribute('data-u');
-          if (k === 'toggle') return api('users/update', { id: u.id, active: !u.active }).then(function () { toast(u.active ? 'Switched off.' : 'Switched on.'); openUsers(); }).catch(function (e) { toast(e.message); });
-          if (k === 'pw') return formDialog('Set password for ' + u.username, 'Signs that login out everywhere.', [{ id: 'password', label: 'New password (12+ characters, shown so you can pass it on)', type: 'text', ac: 'off' }], 'Set password', function (v) { return api('users/password', { id: u.id, password: v.password }).then(function () { toast('Password set.'); }); });
-          formDialog('Edit ' + u.username, '', [
-            { id: 'role', label: 'Role', type: 'select', value: u.role, options: [['limited', 'Limited'], ['master', 'Master']] },
-            { id: 'permissions', label: 'May see / do (limited only)', type: 'ticks', options: d.sections.concat(d.actions), value: u.permissions },
-          ], 'Save', function (v) { return api('users/update', { id: u.id, role: v.role, permissions: v.permissions }).then(function () { toast('Saved.'); openUsers(); }); });
+          if (k === 'toggle') return api('users/update', { id: u.id, active: !u.active }).then(function () { toast(u.active ? t('users.switchedoff') : t('users.switchedon')); openUsers(); }).catch(function (e) { toast(e.message); });
+          if (k === 'pw') return formDialog(t('users.pwtitle', u.username), t('users.pwsub'), [{ id: 'password', label: t('users.newpwshown'), type: 'text', ac: 'off' }], t('users.setpw'), function (v) { return api('users/password', { id: u.id, password: v.password }).then(function () { toast(t('users.pwset')); }); });
+          formDialog(t('users.edittitle', u.username), '', [
+            { id: 'role', label: t('users.role'), type: 'select', value: u.role, options: roleOpts },
+            { id: 'permissions', label: t('users.perms'), type: 'ticks', options: perms, value: u.permissions },
+          ], t('users.save'), function (v) { return api('users/update', { id: u.id, role: v.role, permissions: v.permissions }).then(function () { toast(t('users.saved')); openUsers(); }); });
         };
       });
     }).catch(function (e) { $('uBody').innerHTML = '<p class="empty">' + esc(e.message) + '</p>'; });
@@ -352,29 +636,30 @@ dialog.small { max-width: 420px; }
   ['fQ'].forEach(function (id) { $(id).addEventListener('keydown', function (e) { if (e.key === 'Enter') $('fGo').click(); }); });
   function filteredBy() {
     var f = filters(), parts = [];
-    if (f.band !== 'all' && /report|players/.test(S.tab)) parts.push('level band ' + BAND_LABEL[f.band]);
+    if (f.band !== 'all' && /report|players/.test(S.tab)) parts.push(t('filter.band', bandLabel(f.band)));
     if (f.q && /report|players|transactions/.test(S.tab)) parts.push('"' + f.q + '"');
-    if (f.status !== 'all' && S.tab === 'transactions') parts.push('status ' + f.status);
-    return parts.length ? ' Filtered by: ' + esc(parts.join(', ')) + '. Press CLEAR FILTERS to see everything.' : '';
+    if (f.status !== 'all' && S.tab === 'transactions') parts.push(t('filter.status', t('st.' + f.status).toLowerCase()));
+    return parts.length ? esc(t('empty.filteredby', parts.join(', '))) : '';
   }
   function liveNote() {
     var f = filters();
     var live = S.tab === 'health' || S.tab === 'players' || f.to >= todayL();
-    $('liveNote').innerHTML = S.tab === 'activity' ? '' : live ? '<b>Live</b> · refreshes every 30 s' : 'Historical window';
+    $('liveNote').innerHTML = S.tab === 'activity' ? '' : live ? '<b>' + esc(t('live.on')) + '</b> · ' + esc(t('live.every')) : esc(t('live.hist'));
     return live;
   }
 
   // ----------------------------------------------------------------- tabs --
   function renderTabs() {
-    var allowed = TABS.filter(function (t) { return S.me.permissions.indexOf(t.perm) >= 0; });
-    if (!allowed.some(function (t) { return t.id === S.tab; })) S.tab = allowed.length ? allowed[0].id : null;
-    $('tabs').innerHTML = allowed.map(function (t) { return '<button class="tab" role="tab" data-tab="' + t.id + '" aria-selected="' + (t.id === S.tab) + '">' + esc(t.label) + '<span class="badge" id="b_' + t.id + '" hidden></span></button>'; }).join('');
+    var allowed = TABS.filter(function (x) { return S.me.permissions.indexOf(x.perm) >= 0; });
+    if (!allowed.some(function (x) { return x.id === S.tab; })) S.tab = allowed.length ? allowed[0].id : null;
+    var oldBadges = {}; document.querySelectorAll('#tabs .badge').forEach(function (b) { oldBadges[b.id] = b.hidden ? null : b.textContent; });
+    $('tabs').innerHTML = allowed.map(function (x) { return '<button class="tab" role="tab" data-tab="' + x.id + '" aria-selected="' + (x.id === S.tab) + '">' + esc(tabLabel(x.id)) + '<span class="badge" id="b_' + x.id + '"' + (oldBadges['b_' + x.id] ? '' : ' hidden') + '>' + esc(oldBadges['b_' + x.id] || '') + '</span></button>'; }).join('');
     $('tabs').querySelectorAll('.tab').forEach(function (b) { b.onclick = function () { S.tab = b.getAttribute('data-tab'); S.page = 0; saveFilters(); renderTabs(); load(); }; });
     var showF = S.tab && S.tab !== 'health' && S.tab !== 'activity';
     $('filters').hidden = !showF;
     document.querySelectorAll('#filters [data-for]').forEach(function (el) { el.hidden = el.getAttribute('data-for').split(' ').indexOf(S.tab) < 0; });
     ['fFrom', 'fTo'].forEach(function (id) { $(id).parentNode.hidden = S.tab === 'players'; });
-    if (!S.tab) $('view').innerHTML = '<p class="empty">Your login has no sections ticked. Ask a master to give you access.</p>';
+    if (!S.tab) $('view').innerHTML = '<p class="empty">' + esc(t('empty.nosections')) + '</p>';
   }
   function badge(tab, n) { var b = $('b_' + tab); if (!b) return; b.hidden = !n; b.textContent = n > 999 ? '999+' : n; }
 
@@ -392,16 +677,16 @@ dialog.small { max-width: 420px; }
     var per = opts.perPage || 0, page = opts.paged ? S.page : 0;
     var shown = per ? sorted.slice(page * per, page * per + per) : sorted;
     var head = '<tr>' + cols.map(function (c) { var on = st && st.k === c.k; return '<th class="' + (c.n ? 'n ' : '') + (c.nosort ? '' : 'sort') + '" data-k="' + c.k + '">' + esc(c.label) + (on ? ' <span class="ar">' + (st.dir === 'asc' ? '▲' : '▼') + '</span>' : '') + '</th>'; }).join('') + '</tr>';
-    var tot = opts.totals ? '<tr class="totals">' + cols.map(function (c, i) { var v = opts.totals(c, rows); return '<td class="' + (c.n ? 'n' : '') + '">' + (v == null ? (i === 0 ? 'TOTALS' : '') : v) + '</td>'; }).join('') + '</tr>' : '';
+    var tot = opts.totals ? '<tr class="totals">' + cols.map(function (c, i) { var v = opts.totals(c, rows); return '<td class="' + (c.n ? 'n' : '') + '">' + (v == null ? (i === 0 ? esc(t('totals')) : '') : v) + '</td>'; }).join('') + '</tr>' : '';
     var body = shown.length ? shown.map(function (r, i) { return '<tr' + (opts.onRow ? ' class="click" data-i="' + (page * per + i) + '"' : '') + '>' + cols.map(function (c) { return '<td class="' + (c.n ? 'n' : '') + '">' + (c.fmt ? c.fmt(r) : esc(r[c.k])) + '</td>'; }).join('') + '</tr>'; }).join('')
-      : '<tr><td class="empty" colspan="' + cols.length + '">' + esc(opts.empty || 'Nothing in this window.') + filteredBy() + '</td></tr>';
-    var pager = per && sorted.length > per ? '<div class="pager"><span>' + (page * per + 1) + '–' + Math.min(sorted.length, page * per + per) + ' of ' + int(sorted.length) + '</span><a data-pg="-1"' + (page ? '' : ' hidden') + '>Previous</a><a data-pg="1"' + ((page + 1) * per < sorted.length ? '' : ' hidden') + '>Next</a></div>' : '';
+      : '<tr><td class="empty" colspan="' + cols.length + '">' + esc(opts.empty || t('empty.nothing')) + filteredBy() + '</td></tr>';
+    var pager = per && sorted.length > per ? '<div class="pager"><span>' + esc(t('range.of', int(page * per + 1), int(Math.min(sorted.length, page * per + per)), int(sorted.length))) + '</span><a data-pg="-1"' + (page ? '' : ' hidden') + '>' + esc(t('btn.prev')) + '</a><a data-pg="1"' + ((page + 1) * per < sorted.length ? '' : ' hidden') + '>' + esc(t('btn.next')) + '</a></div>' : '';
     var html = '<div class="wrap"><table id="t_' + id + '"><thead>' + head + '</thead><tbody>' + tot + body + '</tbody></table></div>' + pager;
     setTimeout(function () {
-      var t = $('t_' + id); if (!t) return;
-      t.querySelectorAll('th.sort').forEach(function (th) { th.onclick = function () { var k = th.getAttribute('data-k'); var cur = S.sort[id] || opts.sort; S.sort[id] = { k: k, dir: cur && cur.k === k && cur.dir === 'desc' ? 'asc' : 'desc' }; S.page = 0; draw(); }; });
-      if (opts.onRow) t.querySelectorAll('tbody tr.click').forEach(function (tr) { tr.onclick = function () { opts.onRow(sorted[Number(tr.getAttribute('data-i'))]); }; });
-      var w = t.closest('.wrap'); if (w && w.nextElementSibling && w.nextElementSibling.classList.contains('pager')) w.nextElementSibling.querySelectorAll('a[data-pg]').forEach(function (a) { a.onclick = function () { S.page += Number(a.getAttribute('data-pg')); draw(); }; });
+      var tb = $('t_' + id); if (!tb) return;
+      tb.querySelectorAll('th.sort').forEach(function (th) { th.onclick = function () { var k = th.getAttribute('data-k'); var cur = S.sort[id] || opts.sort; S.sort[id] = { k: k, dir: cur && cur.k === k && cur.dir === 'desc' ? 'asc' : 'desc' }; S.page = 0; draw(); }; });
+      if (opts.onRow) tb.querySelectorAll('tbody tr.click').forEach(function (tr) { tr.onclick = function () { opts.onRow(sorted[Number(tr.getAttribute('data-i'))]); }; });
+      var w = tb.closest('.wrap'); if (w && w.nextElementSibling && w.nextElementSibling.classList.contains('pager')) w.nextElementSibling.querySelectorAll('a[data-pg]').forEach(function (a) { a.onclick = function () { S.page += Number(a.getAttribute('data-pg')); draw(); }; });
     }, 0);
     return html;
   }
@@ -412,21 +697,21 @@ dialog.small { max-width: 420px; }
   function lineChart(points, o) {
     o = o || {};
     var W = 640, H = 210, L = 52, R = 14, T = 12, B = 30;
-    if (!points.length) return '<p class="empty">Nothing in this window.</p>';
+    if (!points.length) return '<p class="empty">' + esc(t('empty.nothing')) + '</p>';
     var ys = points.map(function (p) { return p.y; }).concat(o.target != null ? [o.target] : []);
     var lo = Math.min(0, Math.min.apply(null, ys)), hi = Math.max.apply(null, ys); if (hi === lo) hi = lo + 1;
     hi += (hi - lo) * 0.08;
     var X = function (i) { return L + (points.length === 1 ? (W - L - R) / 2 : i * (W - L - R) / (points.length - 1)); };
     var Y = function (v) { return T + (H - T - B) * (1 - (v - lo) / (hi - lo)); };
     var ticks = 4, grid = '';
-    for (var t = 0; t <= ticks; t++) { var v = lo + (hi - lo) * t / ticks; grid += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + Y(v).toFixed(1) + '" y2="' + Y(v).toFixed(1) + '" stroke="#ececec"/><text x="' + (L - 6) + '" y="' + (Y(v) + 4).toFixed(1) + '" text-anchor="end" font-size="11" fill="#9a9a9a">' + esc(o.yfmt ? o.yfmt(v) : int(v)) + '</text>'; }
+    for (var k = 0; k <= ticks; k++) { var v = lo + (hi - lo) * k / ticks; grid += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + Y(v).toFixed(1) + '" y2="' + Y(v).toFixed(1) + '" stroke="#ececec"/><text x="' + (L - 6) + '" y="' + (Y(v) + 4).toFixed(1) + '" text-anchor="end" font-size="11" fill="#9a9a9a">' + esc(o.yfmt ? o.yfmt(v) : int(v)) + '</text>'; }
     var path = points.map(function (p, i) { return (i ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(p.y).toFixed(1); }).join(' ');
     var area = path + ' L' + X(points.length - 1).toFixed(1) + ' ' + Y(lo).toFixed(1) + ' L' + X(0).toFixed(1) + ' ' + Y(lo).toFixed(1) + ' Z';
     var step = Math.max(1, Math.ceil(points.length / 8)), xl = '';
     points.forEach(function (p, i) { if (i % step === 0 || i === points.length - 1) xl += '<text x="' + X(i).toFixed(1) + '" y="' + (H - 10) + '" text-anchor="middle" font-size="11" fill="#9a9a9a">' + esc(p.x) + '</text>'; });
     var dots = points.map(function (p, i) { return '<circle cx="' + X(i).toFixed(1) + '" cy="' + Y(p.y).toFixed(1) + '" r="' + (i === points.length - 1 ? 4 : 2.5) + '" fill="' + (o.color || '#2b8fdd') + '"><title>' + esc(p.x + ': ' + (o.yfmt ? o.yfmt(p.y) : int(p.y))) + '</title></circle>'; }).join('');
     var tgt = o.target != null ? '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + Y(o.target).toFixed(1) + '" y2="' + Y(o.target).toFixed(1) + '" stroke="#1a9f8f" stroke-dasharray="5 4"/><text x="' + (W - R) + '" y="' + (Y(o.target) - 5).toFixed(1) + '" text-anchor="end" font-size="11" fill="#1a9f8f">' + esc(o.targetLabel || '') + '</text>' : '';
-    return '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + esc(o.label || 'chart') + '">' + grid + '<path d="' + area + '" fill="' + (o.color || '#2b8fdd') + '" fill-opacity=".10"/><path d="' + path + '" fill="none" stroke="' + (o.color || '#2b8fdd') + '" stroke-width="2"/>' + tgt + dots + xl + '</svg>';
+    return '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + esc(o.label || t('chart')) + '">' + grid + '<path d="' + area + '" fill="' + (o.color || '#2b8fdd') + '" fill-opacity=".10"/><path d="' + path + '" fill="none" stroke="' + (o.color || '#2b8fdd') + '" stroke-width="2"/>' + tgt + dots + xl + '</svg>';
   }
 
   // ---------------------------------------------------------------- views --
@@ -442,8 +727,8 @@ dialog.small { max-width: 420px; }
     else if (tab === 'players') path = 'players?' + qs({ q: f.q, band: f.band });
     else if (tab === 'activity') path = 'activity';
     else if (tab === 'health') path = 'health';
-    if (!S.data[tab]) $('view').innerHTML = '<p class="empty">Loading…</p>';
-    api(path).then(function (d) { if (S.tab !== tab) return; S.data[tab] = d; draw(); }).catch(function (e) { if (e.message !== 'signed_out' && e.message !== 'not_allowed') $('view').innerHTML = '<p class="empty">Could not load: ' + esc(e.message) + '</p>'; });
+    if (!S.data[tab]) $('view').innerHTML = '<p class="empty">' + esc(t('empty.loading')) + '</p>';
+    api(path).then(function (d) { if (S.tab !== tab) return; S.data[tab] = d; draw(); }).catch(function (e) { if (e.message !== 'signed_out' && e.message !== 'not_allowed') $('view').innerHTML = '<p class="empty">' + esc(t('err.load', e.message)) + '</p>'; });
   }
 
   function draw() {
@@ -462,120 +747,117 @@ dialog.small { max-width: 420px; }
   function rtpCell(staked, paid) { return staked ? pct(paid, staked) : '<span class="mut">—</span>'; }
 
   function viewReport(d) {
-    var w = d.window;
-    var head = '<h2 class="sec">' + (d.rows === 'days' ? 'By day' : 'By player') + ' · ' + day(w.from) + (w.to !== w.from ? ' – ' + day(w.to) : '') + '</h2>';
+    var head = '<h2 class="sec">' + esc(d.rows === 'days' ? t('rep.bydays') : t('rep.byplayers')) + ' · ' + windowLabel(d.window) + '</h2>';
     if (d.rows === 'days') {
       return head + table('rdays', [
-        { k: 'day', label: 'Date', fmt: function (r) { return day(r.day); } },
-        { k: 'players', label: 'Players', n: 1, sum: 1, fmt: function (r) { return int(r.players); } },
-        { k: 'new_players', label: 'New', n: 1, sum: 1, fmt: function (r) { return int(r.new_players); } },
-        { k: 'visits', label: 'Visits', n: 1, sum: 1, fmt: function (r) { return int(r.visits); } },
-        { k: 'active_minutes', label: 'Minutes', n: 1, sum: 1, fmt: function (r) { return mins(r.active_minutes); }, fmtSum: mins },
-        { k: 'avg', label: 'Min / visit', n: 1, sortVal: function (r) { return r.visits ? r.active_minutes / r.visits : 0; }, fmt: function (r) { return r.visits ? mins(r.active_minutes / r.visits) : '—'; } },
-        { k: 'daily_claims', label: 'Daily claims', n: 1, sum: 1, fmt: function (r) { return int(r.daily_claims); } },
-        { k: 'missions', label: 'Missions', n: 1, sum: 1, fmt: function (r) { return int(r.missions); } },
-        { k: 'rounds', label: 'Game rounds', n: 1, sum: 1, fmt: function (r) { return int(r.rounds); } },
-        { k: 'staked', label: 'Staked', n: 1, sum: 1, fmt: function (r) { return int(r.staked); } },
-        { k: 'paid', label: 'Paid out', n: 1, sum: 1, fmt: function (r) { return int(r.paid); } },
-        { k: 'rtp', label: 'Game RTP', n: 1, nosort: 1, fmt: function (r) { return rtpCell(r.staked, r.paid); } },
-        { k: 'coins_out', label: 'Coins out', n: 1, sum: 1, fmt: function (r) { return int(r.coins_out); } },
-        { k: 'wheel_spins', label: 'Wheel spins', n: 1, sum: 1, fmt: function (r) { return int(r.wheel_spins); } },
-      ], d.items, { sort: { k: 'day', dir: 'desc' }, totals: numTotals({ day: function (rows) { return 'TOTALS · ' + rows.length + ' days'; }, avg: function (rows) { var v = sum(rows, 'visits'); return v ? mins(sum(rows, 'active_minutes') / v) : '—'; }, rtp: function (rows) { return rtpCell(sum(rows, 'staked'), sum(rows, 'paid')); } }) }) +
-        '<p class="note">Players = anyone who opened the Bonus Center logged in that Lusaka day. New = first daily reward claim that day. Coins out = rewards handed out (daily, missions, level-ups…). Game stake + payout are recorded from 22 Oct 2026.</p>';
+        { k: 'day', label: t('col.date'), fmt: function (r) { return day(r.day); } },
+        { k: 'players', label: t('col.players'), n: 1, sum: 1, fmt: function (r) { return int(r.players); } },
+        { k: 'new_players', label: t('col.new'), n: 1, sum: 1, fmt: function (r) { return int(r.new_players); } },
+        { k: 'visits', label: t('col.visits'), n: 1, sum: 1, fmt: function (r) { return int(r.visits); } },
+        { k: 'active_minutes', label: t('col.minutes'), n: 1, sum: 1, fmt: function (r) { return mins(r.active_minutes); }, fmtSum: mins },
+        { k: 'avg', label: t('col.minvisit'), n: 1, sortVal: function (r) { return r.visits ? r.active_minutes / r.visits : 0; }, fmt: function (r) { return r.visits ? mins(r.active_minutes / r.visits) : '—'; } },
+        { k: 'daily_claims', label: t('col.daily'), n: 1, sum: 1, fmt: function (r) { return int(r.daily_claims); } },
+        { k: 'missions', label: t('col.missions'), n: 1, sum: 1, fmt: function (r) { return int(r.missions); } },
+        { k: 'rounds', label: t('col.gamerounds'), n: 1, sum: 1, fmt: function (r) { return int(r.rounds); } },
+        { k: 'staked', label: t('col.staked'), n: 1, sum: 1, fmt: function (r) { return int(r.staked); } },
+        { k: 'paid', label: t('col.paid'), n: 1, sum: 1, fmt: function (r) { return int(r.paid); } },
+        { k: 'rtp', label: t('col.gamertp'), n: 1, nosort: 1, fmt: function (r) { return rtpCell(r.staked, r.paid); } },
+        { k: 'coins_out', label: t('col.coinsout'), n: 1, sum: 1, fmt: function (r) { return int(r.coins_out); } },
+        { k: 'wheel_spins', label: t('col.spins'), n: 1, sum: 1, fmt: function (r) { return int(r.wheel_spins); } },
+      ], d.items, { sort: { k: 'day', dir: 'desc' }, totals: numTotals({ day: function (rows) { return esc(t('totals.days', int(rows.length))); }, avg: function (rows) { var v = sum(rows, 'visits'); return v ? mins(sum(rows, 'active_minutes') / v) : '—'; }, rtp: function (rows) { return rtpCell(sum(rows, 'staked'), sum(rows, 'paid')); } }) }) +
+        '<p class="note">' + esc(t('rep.note')) + '</p>';
     }
     badge('report', d.items.length);
     return head + table('rplayers', [
-      { k: 'last_seen', label: 'Last seen', fmt: function (r) { return dt(r.last_seen); }, sortVal: function (r) { return r.last_seen || ''; } },
-      { k: 'uid', label: 'Player', fmt: function (r) { return '<a>' + esc(r.uid) + '</a>'; }, sortVal: function (r) { return Number(r.uid); } },
-      { k: 'name', label: 'Name', fmt: function (r) { return esc(r.name || '—'); } },
-      { k: 'level', label: 'Level', n: 1, fmt: function (r) { return int(r.level); } },
-      { k: 'visits', label: 'Visits', n: 1, sum: 1, fmt: function (r) { return int(r.visits); } },
-      { k: 'active_minutes', label: 'Minutes', n: 1, sum: 1, fmt: function (r) { return mins(r.active_minutes); }, fmtSum: mins },
-      { k: 'daily_claims', label: 'Daily claims', n: 1, sum: 1, fmt: function (r) { return int(r.daily_claims); } },
-      { k: 'missions', label: 'Missions', n: 1, sum: 1, fmt: function (r) { return int(r.missions); } },
-      { k: 'game_sessions', label: 'Game sessions', n: 1, sum: 1, fmt: function (r) { return int(r.game_sessions); } },
-      { k: 'games', label: 'Games', n: 1, fmt: function (r) { return int(r.games); } },
-      { k: 'rounds', label: 'Game rounds', n: 1, sum: 1, fmt: function (r) { return int(r.rounds); } },
-      { k: 'staked', label: 'Staked', n: 1, sum: 1, fmt: function (r) { return int(r.staked); } },
-      { k: 'paid', label: 'Paid out', n: 1, sum: 1, fmt: function (r) { return int(r.paid); } },
-      { k: 'rtp', label: 'Game RTP', n: 1, nosort: 1, fmt: function (r) { return rtpCell(r.staked, r.paid); } },
-      { k: 'coins_out', label: 'Coins out', n: 1, sum: 1, fmt: function (r) { return int(r.coins_out); } },
-      { k: 'wheel_spins', label: 'Wheel spins', n: 1, sum: 1, fmt: function (r) { return int(r.wheel_spins); } },
+      { k: 'last_seen', label: t('col.lastseen'), fmt: function (r) { return dt(r.last_seen); }, sortVal: function (r) { return r.last_seen || ''; } },
+      { k: 'uid', label: t('col.player'), fmt: function (r) { return '<a>' + esc(r.uid) + '</a>'; }, sortVal: function (r) { return Number(r.uid); } },
+      { k: 'name', label: t('col.name'), fmt: function (r) { return esc(r.name || '—'); } },
+      { k: 'level', label: t('col.level'), n: 1, fmt: function (r) { return int(r.level); } },
+      { k: 'visits', label: t('col.visits'), n: 1, sum: 1, fmt: function (r) { return int(r.visits); } },
+      { k: 'active_minutes', label: t('col.minutes'), n: 1, sum: 1, fmt: function (r) { return mins(r.active_minutes); }, fmtSum: mins },
+      { k: 'daily_claims', label: t('col.daily'), n: 1, sum: 1, fmt: function (r) { return int(r.daily_claims); } },
+      { k: 'missions', label: t('col.missions'), n: 1, sum: 1, fmt: function (r) { return int(r.missions); } },
+      { k: 'game_sessions', label: t('col.gamesessions'), n: 1, sum: 1, fmt: function (r) { return int(r.game_sessions); } },
+      { k: 'games', label: t('col.games'), n: 1, fmt: function (r) { return int(r.games); } },
+      { k: 'rounds', label: t('col.gamerounds'), n: 1, sum: 1, fmt: function (r) { return int(r.rounds); } },
+      { k: 'staked', label: t('col.staked'), n: 1, sum: 1, fmt: function (r) { return int(r.staked); } },
+      { k: 'paid', label: t('col.paid'), n: 1, sum: 1, fmt: function (r) { return int(r.paid); } },
+      { k: 'rtp', label: t('col.gamertp'), n: 1, nosort: 1, fmt: function (r) { return rtpCell(r.staked, r.paid); } },
+      { k: 'coins_out', label: t('col.coinsout'), n: 1, sum: 1, fmt: function (r) { return int(r.coins_out); } },
+      { k: 'wheel_spins', label: t('col.spins'), n: 1, sum: 1, fmt: function (r) { return int(r.wheel_spins); } },
     ], d.items, { sort: { k: 'last_seen', dir: 'desc' }, perPage: 100, paged: true, onRow: function (r) { openPlayer(r.uid); },
-      totals: numTotals({ last_seen: function (rows) { return 'TOTALS · ' + int(rows.length) + ' players'; }, rtp: function (rows) { return rtpCell(sum(rows, 'staked'), sum(rows, 'paid')); } }) });
+      totals: numTotals({ last_seen: function (rows) { return esc(t('totals.players', int(rows.length))); }, rtp: function (rows) { return rtpCell(sum(rows, 'staked'), sum(rows, 'paid')); } }) });
   }
 
   function viewCoins(d) {
-    var w = d.window;
-    var rewards = d.rows.filter(function (r) { return r.kind === 'reward'; }).map(function (r) { return Object.assign({ label: EVENT_LABEL[r.source] || r.source }, r); });
+    var rewards = d.rows.filter(function (r) { return r.kind === 'reward'; }).map(function (r) { return Object.assign({ label: eventLabel(r.source) }, r); });
     var games = d.rows.filter(function (r) { return r.kind === 'game'; }).map(function (r) { return Object.assign({ label: GAME_LABEL[r.source] || r.source, net: r.staked != null ? r.staked - r.paid : null }, r); });
     var s = d.shop;
-    return '<h2 class="sec">Coins handed out · ' + day(w.from) + (w.to !== w.from ? ' – ' + day(w.to) : '') + '</h2>' +
+    return '<h2 class="sec">' + esc(t('coins.title')) + ' · ' + windowLabel(d.window) + '</h2>' +
       table('crew', [
-        { k: 'label', label: 'Source' },
-        { k: 'events', label: 'Times', n: 1, sum: 1, fmt: function (r) { return int(r.events); } },
-        { k: 'players', label: 'Players', n: 1, fmt: function (r) { return int(r.players); } },
-        { k: 'coins', label: 'Coins', n: 1, sum: 1, fmt: function (r) { return int(r.coins); } },
-        { k: 'kv', label: 'Worth', n: 1, sortVal: function (r) { return r.coins; }, fmt: function (r) { return kw(r.coins / 10000); } },
-      ], rewards, { sort: { k: 'coins', dir: 'desc' }, totals: numTotals({ label: function () { return 'TOTALS'; }, kv: function (rows) { return kw(sum(rows, 'coins') / 10000); } }), empty: 'No rewards handed out in this window.' }) +
-      '<p class="note">Worth uses the Coin Shop rate, 10,000 coins = K1. Players count per source.</p>' +
-      '<h2 class="sec">Mini-games</h2>' +
+        { k: 'label', label: t('col.source') },
+        { k: 'events', label: t('col.times'), n: 1, sum: 1, fmt: function (r) { return int(r.events); } },
+        { k: 'players', label: t('col.players'), n: 1, fmt: function (r) { return int(r.players); } },
+        { k: 'coins', label: t('col.coins'), n: 1, sum: 1, fmt: function (r) { return int(r.coins); } },
+        { k: 'kv', label: t('col.worth'), n: 1, sortVal: function (r) { return r.coins; }, fmt: function (r) { return kw(r.coins / 10000); } },
+      ], rewards, { sort: { k: 'coins', dir: 'desc' }, totals: numTotals({ label: function () { return esc(t('totals')); }, kv: function (rows) { return kw(sum(rows, 'coins') / 10000); } }), empty: t('coins.empty') }) +
+      '<p class="note">' + esc(t('coins.note')) + '</p>' +
+      '<h2 class="sec">' + esc(t('mg.title')) + '</h2>' +
       table('cgame', [
-        { k: 'label', label: 'Game' },
-        { k: 'events', label: 'Rounds', n: 1, sum: 1, fmt: function (r) { return int(r.events); } },
-        { k: 'players', label: 'Players', n: 1, fmt: function (r) { return int(r.players); } },
-        { k: 'staked', label: 'Staked', n: 1, sum: 1, fmt: function (r) { return r.staked == null ? '<span class="mut">—</span>' : int(r.staked); } },
-        { k: 'paid', label: 'Paid out', n: 1, sum: 1, fmt: function (r) { return r.paid == null ? '<span class="mut">—</span>' : int(r.paid); } },
-        { k: 'net', label: 'Net to house', n: 1, sum: 1, fmt: function (r) { return r.net == null ? '<span class="mut">—</span>' : signed(r.net); } },
-        { k: 'rtp', label: 'RTP', n: 1, nosort: 1, fmt: function (r) { return rtpCell(r.staked, r.paid); } },
-      ], games, { sort: { k: 'events', dir: 'desc' }, totals: numTotals({ label: function () { return 'TOTALS'; }, net: function (rows) { return signed(sum(rows, 'staked') - sum(rows, 'paid')); }, rtp: function (rows) { return rtpCell(sum(rows, 'staked'), sum(rows, 'paid')); } }), empty: 'No mini-game rounds in this window.' }) +
-      '<p class="note">Coins only, never real money. Stake + payout per round are recorded from 22 Oct 2026; earlier rounds show —. Target RTP 98% (97–99% per game).</p>' +
-      '<h2 class="sec">Coin Shop</h2>' +
-      '<div class="wrap"><table><thead><tr><th>Flow</th><th class="n">Count / amount</th></tr></thead><tbody>' +
-      '<tr><td>Purchases and redemptions</td><td class="n">' + int(s.count) + '</td></tr>' +
-      '<tr><td>Coins spent</td><td class="n">' + int(s.coinsSpent) + '</td></tr>' +
-      '<tr><td>Real money waiting to be credited</td><td class="n">' + kw(s.kwachaPending) + '</td></tr>' +
-      '<tr><td>Real money credited</td><td class="n">' + kw(s.kwachaCredited) + '</td></tr>' +
-      '<tr><td>Rejected (refunded in coins)</td><td class="n">' + kw(s.kwachaRejected) + '</td></tr>' +
-      '<tr><td>World Cup prize claims</td><td class="n">' + int(s.prizes) + '</td></tr>' +
+        { k: 'label', label: t('col.game') },
+        { k: 'events', label: t('col.rounds'), n: 1, sum: 1, fmt: function (r) { return int(r.events); } },
+        { k: 'players', label: t('col.players'), n: 1, fmt: function (r) { return int(r.players); } },
+        { k: 'staked', label: t('col.staked'), n: 1, sum: 1, fmt: function (r) { return r.staked == null ? '<span class="mut">—</span>' : int(r.staked); } },
+        { k: 'paid', label: t('col.paid'), n: 1, sum: 1, fmt: function (r) { return r.paid == null ? '<span class="mut">—</span>' : int(r.paid); } },
+        { k: 'net', label: t('col.net'), n: 1, sum: 1, fmt: function (r) { return r.net == null ? '<span class="mut">—</span>' : signed(r.net); } },
+        { k: 'rtp', label: t('col.rtp'), n: 1, nosort: 1, fmt: function (r) { return rtpCell(r.staked, r.paid); } },
+      ], games, { sort: { k: 'events', dir: 'desc' }, totals: numTotals({ label: function () { return esc(t('totals')); }, net: function (rows) { return signed(sum(rows, 'staked') - sum(rows, 'paid')); }, rtp: function (rows) { return rtpCell(sum(rows, 'staked'), sum(rows, 'paid')); } }), empty: t('mg.empty') }) +
+      '<p class="note">' + esc(t('mg.note')) + '</p>' +
+      '<h2 class="sec">' + esc(t('shop.title')) + '</h2>' +
+      '<div class="wrap"><table><thead><tr><th>' + esc(t('shop.flow')) + '</th><th class="n">' + esc(t('shop.count')) + '</th></tr></thead><tbody>' +
+      '<tr><td>' + esc(t('shop.purchases')) + '</td><td class="n">' + int(s.count) + '</td></tr>' +
+      '<tr><td>' + esc(t('shop.spent')) + '</td><td class="n">' + int(s.coinsSpent) + '</td></tr>' +
+      '<tr><td>' + esc(t('shop.pending')) + '</td><td class="n">' + kw(s.kwachaPending) + '</td></tr>' +
+      '<tr><td>' + esc(t('shop.credited')) + '</td><td class="n">' + kw(s.kwachaCredited) + '</td></tr>' +
+      '<tr><td>' + esc(t('shop.rejected')) + '</td><td class="n">' + kw(s.kwachaRejected) + '</td></tr>' +
+      '<tr><td>' + esc(t('shop.prizes')) + '</td><td class="n">' + int(s.prizes) + '</td></tr>' +
       '</tbody></table></div>';
   }
 
   function viewGames(d) {
-    var w = d.window;
     var rows = d.items.map(function (r) { return Object.assign({ label: GAME_LABEL[r.game] || r.game, net: r.staked - r.paid, perSession: r.sessions ? r.rounds / r.sessions : 0 }, r); });
-    return '<h2 class="sec">Games played · ' + day(w.from) + (w.to !== w.from ? ' – ' + day(w.to) : '') + '</h2>' + table('games', [
-      { k: 'label', label: 'Game' },
-      { k: 'sessions', label: 'Sessions', n: 1, sum: 1, fmt: function (r) { return int(r.sessions); } },
-      { k: 'players', label: 'Players', n: 1, fmt: function (r) { return int(r.players); } },
-      { k: 'rounds', label: 'Rounds', n: 1, sum: 1, fmt: function (r) { return int(r.rounds); } },
-      { k: 'perSession', label: 'Rounds / session', n: 1, fmt: function (r) { return r.sessions ? (r.rounds / r.sessions).toFixed(1) : '—'; } },
-      { k: 'staked', label: 'Staked', n: 1, sum: 1, fmt: function (r) { return int(r.staked); } },
-      { k: 'paid', label: 'Paid out', n: 1, sum: 1, fmt: function (r) { return int(r.paid); } },
-      { k: 'net', label: 'Net to house', n: 1, sum: 1, fmt: function (r) { return signed(r.net); } },
-      { k: 'rtp', label: 'RTP', n: 1, nosort: 1, fmt: function (r) { return r.game === 'njuka' && r.staked < r.paid ? '<span class="mut" title="Njuka recorded only winning rounds before 22 Oct">n/a</span>' : rtpCell(r.staked, r.paid); } },
-      { k: 'last_played', label: 'Last played', fmt: function (r) { return dt(r.last_played); }, sortVal: function (r) { return r.last_played || ''; } },
-    ], rows, { sort: { k: 'sessions', dir: 'desc' }, totals: numTotals({ label: function (rs) { return 'TOTALS · ' + rs.length + ' games'; }, perSession: function (rs) { var s = sum(rs, 'sessions'); return s ? (sum(rs, 'rounds') / s).toFixed(1) : '—'; }, net: function (rs) { return signed(sum(rs, 'staked') - sum(rs, 'paid')); }, rtp: function (rs) { return rtpCell(sum(rs, 'staked'), sum(rs, 'paid')); } }), empty: 'No games played in this window.' }) +
-      '<p class="note">A session = a player opened the game. Players = distinct players who opened or played it. Coins only, never real money; target RTP 98%. Njuka Boss recorded only its winning rounds before 22 Oct 2026, so its older figures overstate RTP.</p>';
+    return '<h2 class="sec">' + esc(t('games.title')) + ' · ' + windowLabel(d.window) + '</h2>' + table('games', [
+      { k: 'label', label: t('col.game') },
+      { k: 'sessions', label: t('col.sessions'), n: 1, sum: 1, fmt: function (r) { return int(r.sessions); } },
+      { k: 'players', label: t('col.players'), n: 1, fmt: function (r) { return int(r.players); } },
+      { k: 'rounds', label: t('col.rounds'), n: 1, sum: 1, fmt: function (r) { return int(r.rounds); } },
+      { k: 'perSession', label: t('col.persession'), n: 1, fmt: function (r) { return r.sessions ? fix(r.rounds / r.sessions, 1) : '—'; } },
+      { k: 'staked', label: t('col.staked'), n: 1, sum: 1, fmt: function (r) { return int(r.staked); } },
+      { k: 'paid', label: t('col.paid'), n: 1, sum: 1, fmt: function (r) { return int(r.paid); } },
+      { k: 'net', label: t('col.net'), n: 1, sum: 1, fmt: function (r) { return signed(r.net); } },
+      { k: 'rtp', label: t('col.rtp'), n: 1, nosort: 1, fmt: function (r) { return r.game === 'njuka' && r.staked < r.paid ? '<span class="mut" title="' + esc(t('games.natip')) + '">' + esc(t('games.na')) + '</span>' : rtpCell(r.staked, r.paid); } },
+      { k: 'last_played', label: t('col.lastplayed'), fmt: function (r) { return dt(r.last_played); }, sortVal: function (r) { return r.last_played || ''; } },
+    ], rows, { sort: { k: 'sessions', dir: 'desc' }, totals: numTotals({ label: function (rs) { return esc(t('totals.games', int(rs.length))); }, perSession: function (rs) { var s = sum(rs, 'sessions'); return s ? fix(sum(rs, 'rounds') / s, 1) : '—'; }, net: function (rs) { return signed(sum(rs, 'staked') - sum(rs, 'paid')); }, rtp: function (rs) { return rtpCell(sum(rs, 'staked'), sum(rs, 'paid')); } }), empty: t('games.empty') }) +
+      '<p class="note">' + esc(t('games.note')) + '</p>';
   }
 
-  function txStatus(s) { return s === 'credited' ? '<span class="pill ok">Credited</span>' : s === 'rejected' ? '<span class="pill bad">Rejected</span>' : '<span class="pill warn">' + esc(s || 'pending') + '</span>'; }
+  function txStatus(s) { return s === 'credited' ? '<span class="pill ok">' + esc(t('st.credited')) + '</span>' : s === 'rejected' ? '<span class="pill bad">' + esc(t('st.rejected')) + '</span>' : '<span class="pill warn">' + esc(!s || s === 'pending' ? t('st.pending') : s) + '</span>'; }
   function viewTx(d) {
     var pending = d.items.filter(function (r) { return r.status === 'pending'; }).length;
     badge('transactions', pending);
-    return '<h2 class="sec">Coin Shop purchases and prize claims</h2>' + table('tx', [
-      { k: 'created_at', label: 'Date', fmt: function (r) { return dt(r.created_at); } },
-      { k: 'uid', label: 'Player', fmt: function (r) { return '<a data-p="' + esc(r.uid) + '">' + esc(r.uid) + '</a>'; } },
-      { k: 'item_name', label: 'Item', fmt: function (r) { return esc(r.item_name || (r.prize_key ? 'Prize ' + r.prize_key : '—')); } },
-      { k: 'price_kwacha', label: 'Paid (coins)', n: 1, sum: 1, fmt: function (r) { var g = [r.price_emeralds ? r.price_emeralds + ' E' : '', r.price_rubies ? r.price_rubies + ' R' : '', r.price_diamonds ? r.price_diamonds + ' D' : ''].filter(Boolean).join(' '); return int(r.price_kwacha) + (g ? ' + ' + esc(g) : ''); } },
-      { k: 'payout_kwacha', label: 'Payout', n: 1, sum: 1, fmt: function (r) { return r.payout_kwacha ? kw(r.payout_kwacha) : '<span class="mut">—</span>'; }, fmtSum: kw },
-      { k: 'status', label: 'Status', fmt: function (r) { return txStatus(r.status); } },
-      { k: 'handled_by', label: 'Handled by', fmt: function (r) { return esc(r.handled_by || '—'); } },
-      { k: 'handled_at', label: 'Handled at', fmt: function (r) { return dt(r.handled_at); } },
-      { k: 'telegram_error', label: 'Telegram', fmt: function (r) { return r.telegram_error ? '<span class="pill bad">Not sent</span>' : '<span class="pill grey">Sent</span>'; } },
+    return '<h2 class="sec">' + esc(t('tx.title')) + '</h2>' + table('tx', [
+      { k: 'created_at', label: t('col.date'), fmt: function (r) { return dt(r.created_at); } },
+      { k: 'uid', label: t('col.player'), fmt: function (r) { return '<a data-p="' + esc(r.uid) + '">' + esc(r.uid) + '</a>'; } },
+      { k: 'item_name', label: t('col.item'), fmt: function (r) { return esc(r.item_name || (r.prize_key ? t('tx.prize', r.prize_key) : '—')); } },
+      { k: 'price_kwacha', label: t('tx.paidcoins'), n: 1, sum: 1, fmt: function (r) { var g = [r.price_emeralds ? t('gem.e', r.price_emeralds) : '', r.price_rubies ? t('gem.r', r.price_rubies) : '', r.price_diamonds ? t('gem.d', r.price_diamonds) : ''].filter(Boolean).join(', '); return int(r.price_kwacha) + (g ? ' + ' + esc(g) : ''); } },
+      { k: 'payout_kwacha', label: t('col.payout'), n: 1, sum: 1, fmt: function (r) { return r.payout_kwacha ? kw(r.payout_kwacha) : '<span class="mut">—</span>'; }, fmtSum: kw },
+      { k: 'status', label: t('col.status'), fmt: function (r) { return txStatus(r.status); } },
+      { k: 'handled_by', label: t('tx.handledby'), fmt: function (r) { return esc(r.handled_by || '—'); } },
+      { k: 'handled_at', label: t('tx.handledat'), fmt: function (r) { return dt(r.handled_at); } },
+      { k: 'telegram_error', label: t('tx.telegram'), fmt: function (r) { return r.telegram_error ? '<span class="pill bad">' + esc(t('tx.notsent')) + '</span>' : '<span class="pill grey">' + esc(t('tx.sent')) + '</span>'; } },
     ], d.items, { sort: { k: 'created_at', dir: 'desc' }, perPage: 100, paged: true,
-      totals: numTotals({ created_at: function (rows) { return 'TOTALS · ' + rows.length; }, status: function (rows) { var p = rows.filter(function (r) { return r.status === 'pending'; }).length, rj = rows.filter(function (r) { return r.status === 'rejected'; }).length; return p + ' pending, ' + rj + ' rejected'; } }),
-      empty: 'No purchases in this window. (The Coin Shop is still switched to COMING SOON.)' });
+      totals: numTotals({ created_at: function (rows) { return esc(t('totals.n', int(rows.length))); }, status: function (rows) { var p = rows.filter(function (r) { return r.status === 'pending'; }).length, rj = rows.filter(function (r) { return r.status === 'rejected'; }).length; return esc(t('tx.counts', int(p), int(rj))); } }),
+      empty: t('tx.empty') });
   }
 
   function viewTrends(d) {
@@ -586,135 +868,166 @@ dialog.small { max-width: 420px; }
     var cout = ds.map(function (r) { return { x: x(r), y: Number(r.coins_out) || 0 }; });
     var rtp = ds.filter(function (r) { return r.staked > 0; }).map(function (r) { return { x: x(r), y: 100 * r.paid / r.staked }; });
     var tp = sum(ds, 'players'), tv = sum(ds, 'visits'), tm = sum(ds, 'active_minutes'), ts = sum(ds, 'staked'), tpd = sum(ds, 'paid');
-    function chart(title, cap, svg) { return '<div class="chart"><h3>' + esc(title) + '</h3><p class="cap">' + cap + '</p>' + svg + '</div>'; }
+    function chart(title, cap, svg) { return '<div class="chart"><h3>' + esc(title) + '</h3><p class="cap">' + esc(cap) + '</p>' + svg + '</div>'; }
     return '<div class="charts">' +
-      chart('Active players by day', ds.length ? esc(day(ds[0].day)) + ' · ' + int(tp) + ' player-days · ' + esc(day(ds[ds.length - 1].day)) : '', lineChart(act, { label: 'Active players by day' })) +
-      chart('Average minutes per visit', tv ? mins(tm / tv) + ' min across ' + int(tv) + ' visits' : '', lineChart(avg, { label: 'Average minutes per visit', color: '#1a9f8f', yfmt: function (v) { return v.toFixed(1); } })) +
-      chart('Coins handed out by day', int(sum(ds, 'coins_out')) + ' coins · worth ' + kw(sum(ds, 'coins_out') / 10000), lineChart(cout, { label: 'Coins handed out by day', color: '#8e44ad' })) +
-      chart('Mini-game RTP by day', ts ? pct(tpd, ts) + ' of stakes paid back' : 'No staked rounds yet (recorded from 22 Oct 2026)', lineChart(rtp, { label: 'Mini-game RTP by day', color: '#c0392b', target: 98, targetLabel: '98% target', yfmt: function (v) { return v.toFixed(0) + '%'; } })) +
+      chart(t('tr.active'), ds.length ? t('tr.activecap', day(ds[0].day), int(tp), day(ds[ds.length - 1].day)) : '', lineChart(act, { label: t('tr.active') })) +
+      chart(t('tr.avg'), tv ? t('tr.avgcap', mins(tm / tv), int(tv)) : '', lineChart(avg, { label: t('tr.avg'), color: '#1a9f8f', yfmt: function (v) { return fix(v, 1); } })) +
+      chart(t('tr.coins'), t('tr.coinscap', int(sum(ds, 'coins_out')), kw(sum(ds, 'coins_out') / 10000)), lineChart(cout, { label: t('tr.coins'), color: '#8e44ad' })) +
+      chart(t('tr.rtp'), ts ? t('tr.rtpcap', pct(tpd, ts)) : t('tr.rtpnone'), lineChart(rtp, { label: t('tr.rtp'), color: '#c0392b', target: 98, targetLabel: t('tr.target'), yfmt: function (v) { return fix(v, 0) + '%'; } })) +
       '</div>' + table('trdays', [
-        { k: 'day', label: 'Date', fmt: function (r) { return day(r.day); } },
-        { k: 'players', label: 'Players', n: 1, sum: 1, fmt: function (r) { return int(r.players); } },
-        { k: 'new_players', label: 'New', n: 1, sum: 1, fmt: function (r) { return int(r.new_players); } },
-        { k: 'visits', label: 'Visits', n: 1, sum: 1, fmt: function (r) { return int(r.visits); } },
-        { k: 'active_minutes', label: 'Minutes', n: 1, sum: 1, fmt: function (r) { return mins(r.active_minutes); }, fmtSum: mins },
-        { k: 'coins_out', label: 'Coins out', n: 1, sum: 1, fmt: function (r) { return int(r.coins_out); } },
-        { k: 'staked', label: 'Staked', n: 1, sum: 1, fmt: function (r) { return int(r.staked); } },
-        { k: 'paid', label: 'Paid out', n: 1, sum: 1, fmt: function (r) { return int(r.paid); } },
-        { k: 'rtp', label: 'RTP', n: 1, nosort: 1, fmt: function (r) { return rtpCell(r.staked, r.paid); } },
-      ], ds, { sort: { k: 'day', dir: 'desc' }, totals: numTotals({ day: function () { return 'TOTALS'; }, rtp: function (rows) { return rtpCell(sum(rows, 'staked'), sum(rows, 'paid')); } }) });
+        { k: 'day', label: t('col.date'), fmt: function (r) { return day(r.day); } },
+        { k: 'players', label: t('col.players'), n: 1, sum: 1, fmt: function (r) { return int(r.players); } },
+        { k: 'new_players', label: t('col.new'), n: 1, sum: 1, fmt: function (r) { return int(r.new_players); } },
+        { k: 'visits', label: t('col.visits'), n: 1, sum: 1, fmt: function (r) { return int(r.visits); } },
+        { k: 'active_minutes', label: t('col.minutes'), n: 1, sum: 1, fmt: function (r) { return mins(r.active_minutes); }, fmtSum: mins },
+        { k: 'coins_out', label: t('col.coinsout'), n: 1, sum: 1, fmt: function (r) { return int(r.coins_out); } },
+        { k: 'staked', label: t('col.staked'), n: 1, sum: 1, fmt: function (r) { return int(r.staked); } },
+        { k: 'paid', label: t('col.paid'), n: 1, sum: 1, fmt: function (r) { return int(r.paid); } },
+        { k: 'rtp', label: t('col.rtp'), n: 1, nosort: 1, fmt: function (r) { return rtpCell(r.staked, r.paid); } },
+      ], ds, { sort: { k: 'day', dir: 'desc' }, totals: numTotals({ day: function () { return esc(t('totals')); }, rtp: function (rows) { return rtpCell(sum(rows, 'staked'), sum(rows, 'paid')); } }) });
   }
 
   function viewPlayers(d) {
     badge('players', d.items.length);
-    return '<h2 class="sec">Players</h2>' + table('pl', [
-      { k: 'uid', label: 'Player', fmt: function (r) { return '<a>' + esc(r.uid) + '</a>'; }, sortVal: function (r) { return Number(r.uid); } },
-      { k: 'name', label: 'Name', fmt: function (r) { return esc(r.name || '—'); } },
-      { k: 'level', label: 'Level', n: 1, fmt: function (r) { return int(r.level); } },
-      { k: 'band', label: 'Band', fmt: function (r) { return esc(BAND_LABEL[r.band] || r.band); } },
-      { k: 'xp', label: 'XP', n: 1, fmt: function (r) { return int(r.xp); } },
-      { k: 'coins', label: 'Coins', n: 1, sum: 1, fmt: function (r) { return int(r.coins); } },
-      { k: 'gems', label: 'Gems E/R/D', n: 1, sortVal: function (r) { return r.emeralds * 5 + r.rubies * 10 + r.diamonds * 20; }, fmt: function (r) { return r.emeralds + ' / ' + r.rubies + ' / ' + r.diamonds; } },
-      { k: 'missions', label: 'Missions', n: 1, sum: 1, fmt: function (r) { return int(r.missions); } },
-      { k: 'visits', label: 'Visits', n: 1, sum: 1, fmt: function (r) { return int(r.visits); } },
-      { k: 'active_minutes', label: 'Minutes', n: 1, sum: 1, fmt: function (r) { return mins(r.active_minutes); }, fmtSum: mins },
-      { k: 'casino_7d', label: 'Casino 7d', n: 1, sum: 1, fmt: function (r) { return kw(r.casino_7d); }, fmtSum: kw },
-      { k: 'sports_7d', label: 'Sports 7d', n: 1, sum: 1, fmt: function (r) { return kw(r.sports_7d); }, fmtSum: kw },
-      { k: 'deposits_7d', label: 'Deposits 7d', n: 1, sum: 1, fmt: function (r) { return kw(r.deposits_7d); }, fmtSum: kw },
-      { k: 'bet_days_7d', label: 'Bet days 7d', n: 1, fmt: function (r) { return int(r.bet_days_7d); } },
-      { k: 'last_seen', label: 'Last seen', fmt: function (r) { return dt(r.last_seen); }, sortVal: function (r) { return r.last_seen || ''; } },
+    return '<h2 class="sec">' + esc(t('pl.title')) + '</h2>' + table('pl', [
+      { k: 'uid', label: t('col.player'), fmt: function (r) { return '<a>' + esc(r.uid) + '</a>'; }, sortVal: function (r) { return Number(r.uid); } },
+      { k: 'name', label: t('col.name'), fmt: function (r) { return esc(r.name || '—'); } },
+      { k: 'level', label: t('col.level'), n: 1, fmt: function (r) { return int(r.level); } },
+      { k: 'band', label: t('pl.band'), fmt: function (r) { return esc(bandLabel(r.band)); } },
+      { k: 'xp', label: t('pl.xp'), n: 1, fmt: function (r) { return int(r.xp); } },
+      { k: 'coins', label: t('col.coins'), n: 1, sum: 1, fmt: function (r) { return int(r.coins); } },
+      { k: 'gems', label: t('pl.gems'), n: 1, sortVal: function (r) { return r.emeralds * 5 + r.rubies * 10 + r.diamonds * 20; }, fmt: function (r) { return r.emeralds + ' / ' + r.rubies + ' / ' + r.diamonds; } },
+      { k: 'missions', label: t('col.missions'), n: 1, sum: 1, fmt: function (r) { return int(r.missions); } },
+      { k: 'visits', label: t('col.visits'), n: 1, sum: 1, fmt: function (r) { return int(r.visits); } },
+      { k: 'active_minutes', label: t('col.minutes'), n: 1, sum: 1, fmt: function (r) { return mins(r.active_minutes); }, fmtSum: mins },
+      { k: 'casino_7d', label: t('pl.casino'), n: 1, sum: 1, fmt: function (r) { return kw(r.casino_7d); }, fmtSum: kw },
+      { k: 'sports_7d', label: t('pl.sports'), n: 1, sum: 1, fmt: function (r) { return kw(r.sports_7d); }, fmtSum: kw },
+      { k: 'deposits_7d', label: t('pl.deposits'), n: 1, sum: 1, fmt: function (r) { return kw(r.deposits_7d); }, fmtSum: kw },
+      { k: 'bet_days_7d', label: t('pl.betdays'), n: 1, fmt: function (r) { return int(r.bet_days_7d); } },
+      { k: 'last_seen', label: t('col.lastseen'), fmt: function (r) { return dt(r.last_seen); }, sortVal: function (r) { return r.last_seen || ''; } },
     ], d.items, { sort: { k: 'last_seen', dir: 'desc' }, perPage: 100, paged: true, onRow: function (r) { openPlayer(r.uid); },
-      totals: numTotals({ uid: function (rows) { return 'TOTALS · ' + int(rows.length); } }), empty: 'No players match.' }) +
-      '<p class="note">Everyone who has opened the Bonus Center logged in (newest first, up to 1,000). Casino / sports / deposits are the last 7 days of real bwanabet play from the CRM, in kwacha. Click a player for everything about them.</p>';
+      totals: numTotals({ uid: function (rows) { return esc(t('totals.n', int(rows.length))); } }), empty: t('pl.empty') }) +
+      '<p class="note">' + esc(t('pl.note')) + '</p>';
   }
 
+  function pickLabel(v) { return v ? tOr('pick.' + v, v) : ''; }
   function openPlayer(uid) {
     var dlg = $('playerDlg');
-    $('pTitle').textContent = 'Player ' + uid; $('pSub').textContent = 'Loading…'; $('pBody').innerHTML = '';
+    S.playerUid = uid;
+    $('pTitle').textContent = t('p.title', uid); $('pSub').textContent = t('empty.loading'); $('pBody').innerHTML = '';
     if (!dlg.open) dlg.showModal();
-    if (S.me.permissions.indexOf('see.players') < 0) { $('pSub').textContent = 'Your login cannot see player details.'; return; }
+    if (S.me.permissions.indexOf('see.players') < 0) { $('pSub').textContent = t('p.noaccess'); return; }
     api('player?uid=' + encodeURIComponent(uid)).then(function (d) {
+      if (S.playerUid !== uid) return;
       var p = d.profile;
-      $('pSub').textContent = p ? ((p.name ? p.name + ' · ' : '') + 'Level ' + p.level + ' ' + (p.title || '') + ' · last seen ' + ago(p.lastSeen)) : 'Has not opened the Bonus Center logged in.';
+      $('pSub').textContent = p ? ((p.name ? p.name + ' · ' : '') + t('p.sub', p.level, p.title || '', ago(p.lastSeen))) : t('p.never');
       var html = '';
-      if (p) html += '<h2 class="sec">Balances and progress</h2><div class="kv">' + [
-        ['Coins', int(p.coins) + ' <span class="mut">(' + kw(p.coins / 10000) + ')</span>'], ['Emeralds / Rubies / Diamonds', p.emeralds + ' / ' + p.rubies + ' / ' + p.diamonds],
-        ['Level', p.level + ' · ' + esc(p.title || '')], ['XP', int(p.xp)], ['Missions collected', p.missions.length + ' of 30'], ['Daily streak', 'day ' + (p.dailyDay || '—') + (p.lastDailyClaim ? ' · last ' + esc(p.lastDailyClaim) : '')],
-        ['Mini-game rounds', int(p.gamesPlayed)], ['First seen', dt(p.firstSeen)], ['Reward start (first daily)', dt(p.firstDaily)], ['Last seen', dt(p.lastSeen)],
+      if (p) html += '<h2 class="sec">' + esc(t('p.balances')) + '</h2><div class="kv">' + [
+        [t('p.coins'), int(p.coins) + ' <span class="mut">(' + kw(p.coins / 10000) + ')</span>'], [t('p.gems'), p.emeralds + ' / ' + p.rubies + ' / ' + p.diamonds],
+        [t('p.level'), p.level + ' · ' + esc(p.title || '')], [t('p.xp'), int(p.xp)], [t('p.missions'), esc(t('p.missionsof', p.missions.length))], [t('p.streak'), esc(t('p.streakday', p.dailyDay || '—') + (p.lastDailyClaim ? t('p.streaklast', day(p.lastDailyClaim)) : ''))],
+        [t('p.rounds'), int(p.gamesPlayed)], [t('p.first'), dt(p.firstSeen)], [t('p.anchor'), dt(p.firstDaily)], [t('p.last'), dt(p.lastSeen)],
       ].map(function (k) { return '<div><small>' + esc(k[0]) + '</small><b>' + k[1] + '</b></div>'; }).join('') + '</div>' +
-        (p.missions.length ? '<p class="note">Missions: ' + esc(p.missions.join(', ')) + '</p>' : '');
-      html += '<h2 class="sec">Mini-games (all time)</h2>' + table('pgames', [
-        { k: 'game', label: 'Game', fmt: function (r) { return esc(GAME_LABEL[r.game] || r.game); } },
-        { k: 'sessions', label: 'Sessions', n: 1, sum: 1, fmt: function (r) { return int(r.sessions); } },
-        { k: 'rounds', label: 'Rounds', n: 1, sum: 1, fmt: function (r) { return int(r.rounds); } },
-        { k: 'staked', label: 'Staked', n: 1, sum: 1, fmt: function (r) { return int(r.staked); } },
-        { k: 'paid', label: 'Paid out', n: 1, sum: 1, fmt: function (r) { return int(r.paid); } },
-        { k: 'rtp', label: 'RTP', n: 1, nosort: 1, fmt: function (r) { return rtpCell(r.staked, r.paid); } },
-        { k: 'won_net', label: 'Net won', n: 1, sum: 1, fmt: function (r) { return signed(r.won_net); } },
-        { k: 'last_played', label: 'Last played', fmt: function (r) { return dt(r.last_played); } },
-      ], d.games || [], { sort: { k: 'sessions', dir: 'desc' }, totals: numTotals({ game: function () { return 'TOTALS'; }, rtp: function (rows) { return rtpCell(sum(rows, 'staked'), sum(rows, 'paid')); } }), empty: 'Has not played a mini-game.' });
-      html += '<h2 class="sec">Real bwanabet play (CRM, last 30 days)</h2>' + table('pbets', [
-        { k: 'day', label: 'Day', fmt: function (r) { return day(r.day); } },
-        { k: 'casino_stake', label: 'Casino stake', n: 1, sum: 1, fmt: function (r) { return kw(r.casino_stake); }, fmtSum: kw },
-        { k: 'casino_rounds', label: 'Rounds', n: 1, sum: 1, fmt: function (r) { return int(r.casino_rounds); } },
-        { k: 'sports_stake', label: 'Sports stake', n: 1, sum: 1, fmt: function (r) { return kw(r.sports_stake); }, fmtSum: kw },
-        { k: 'sports_slips', label: 'Slips', n: 1, sum: 1, fmt: function (r) { return int(r.sports_slips); } },
-        { k: 'deposits_amount', label: 'Deposits', n: 1, sum: 1, fmt: function (r) { return kw(r.deposits_amount) + ' <span class="mut">(' + int(r.deposits_count) + ')</span>'; }, fmtSum: kw },
-        { k: 'withdrawals_amount', label: 'Withdrawals', n: 1, sum: 1, fmt: function (r) { return kw(r.withdrawals_amount); }, fmtSum: kw },
-        { k: 'crm_synced_at', label: 'Synced', fmt: function (r) { return dt(r.crm_synced_at); } },
-      ], d.bets, { sort: { k: 'day', dir: 'desc' }, totals: numTotals({ day: function () { return 'TOTALS'; } }), empty: 'No betting days in the CRM feed (the feed starts 19 Oct 2026).' });
-      html += '<h2 class="sec">Recent visits</h2>' + table('psess', [
-        { k: 'started_at', label: 'Started', fmt: function (r) { return dt(r.started_at); } },
-        { k: 'active_seconds', label: 'Minutes', n: 1, sum: 1, fmt: function (r) { return mins((r.active_seconds || 0) / 60); }, fmtSum: function (s) { return mins(s / 60); } },
-        { k: 'last_ping_at', label: 'Last ping', fmt: function (r) { return dt(r.last_ping_at); } },
-        { k: 'verified', label: 'Login', fmt: function (r) { return r.verified ? '<span class="pill ok">bwanabet</span>' : '<span class="pill grey">unverified</span>'; } },
-      ], d.sessions, { sort: { k: 'started_at', dir: 'desc' }, totals: numTotals({ started_at: function (rows) { return 'TOTALS · ' + rows.length; } }), empty: 'No visits recorded.' });
-      html += '<h2 class="sec">Recent activity</h2>' + table('pev', [
-        { k: 'created_at', label: 'Time', fmt: function (r) { return dt(r.created_at); } },
-        { k: 'type', label: 'Event', fmt: function (r) { return esc(EVENT_LABEL[r.type] || r.type.replace(/_/g, ' ')); } },
-        { k: 'game_id', label: 'Game', fmt: function (r) { return esc(GAME_LABEL[r.game_id] || r.game_id || ''); } },
-        { k: 'amount', label: 'Amount', n: 1, fmt: function (r) { return r.amount == null ? '' : int(r.amount); } },
-        { k: 'meta', label: 'Detail', nosort: 1, fmt: function (r) { return r.meta ? '<span class="mut">' + esc(JSON.stringify(r.meta)).slice(0, 120) + '</span>' : ''; } },
-      ], d.events, { sort: { k: 'created_at', dir: 'desc' }, empty: 'No activity recorded.' });
-      if (d.purchases.length) html += '<h2 class="sec">Coin Shop</h2>' + table('pbuy', [
-        { k: 'created_at', label: 'Date', fmt: function (r) { return dt(r.created_at); } }, { k: 'item_name', label: 'Item' },
-        { k: 'price_kwacha', label: 'Coins', n: 1, fmt: function (r) { return int(r.price_kwacha); } }, { k: 'payout_kwacha', label: 'Payout', n: 1, fmt: function (r) { return r.payout_kwacha ? kw(r.payout_kwacha) : '—'; } },
-        { k: 'status', label: 'Status', fmt: function (r) { return txStatus(r.status); } },
+        (p.missions.length ? '<p class="note">' + esc(t('p.missionlist', p.missions.join(', '))) + '</p>' : '');
+      html += '<h2 class="sec">' + esc(t('p.mg')) + '</h2>' + table('pgames', [
+        { k: 'game', label: t('col.game'), fmt: function (r) { return esc(GAME_LABEL[r.game] || r.game); } },
+        { k: 'sessions', label: t('col.sessions'), n: 1, sum: 1, fmt: function (r) { return int(r.sessions); } },
+        { k: 'rounds', label: t('col.rounds'), n: 1, sum: 1, fmt: function (r) { return int(r.rounds); } },
+        { k: 'staked', label: t('col.staked'), n: 1, sum: 1, fmt: function (r) { return int(r.staked); } },
+        { k: 'paid', label: t('col.paid'), n: 1, sum: 1, fmt: function (r) { return int(r.paid); } },
+        { k: 'rtp', label: t('col.rtp'), n: 1, nosort: 1, fmt: function (r) { return rtpCell(r.staked, r.paid); } },
+        { k: 'won_net', label: t('p.netwon'), n: 1, sum: 1, fmt: function (r) { return signed(r.won_net); } },
+        { k: 'last_played', label: t('col.lastplayed'), fmt: function (r) { return dt(r.last_played); } },
+      ], d.games || [], { sort: { k: 'sessions', dir: 'desc' }, totals: numTotals({ game: function () { return esc(t('totals')); }, rtp: function (rows) { return rtpCell(sum(rows, 'staked'), sum(rows, 'paid')); } }), empty: t('p.mgempty') });
+      html += '<h2 class="sec">' + esc(t('p.bets')) + '</h2>' + table('pbets', [
+        { k: 'day', label: t('col.day'), fmt: function (r) { return day(r.day); } },
+        { k: 'casino_stake', label: t('p.casino'), n: 1, sum: 1, fmt: function (r) { return kw(r.casino_stake); }, fmtSum: kw },
+        { k: 'casino_rounds', label: t('col.rounds'), n: 1, sum: 1, fmt: function (r) { return int(r.casino_rounds); } },
+        { k: 'sports_stake', label: t('p.sports'), n: 1, sum: 1, fmt: function (r) { return kw(r.sports_stake); }, fmtSum: kw },
+        { k: 'sports_slips', label: t('p.slips'), n: 1, sum: 1, fmt: function (r) { return int(r.sports_slips); } },
+        { k: 'deposits_amount', label: t('p.deposits'), n: 1, sum: 1, fmt: function (r) { return kw(r.deposits_amount) + ' <span class="mut">(' + int(r.deposits_count) + ')</span>'; }, fmtSum: kw },
+        { k: 'withdrawals_amount', label: t('p.withdrawals'), n: 1, sum: 1, fmt: function (r) { return kw(r.withdrawals_amount); }, fmtSum: kw },
+        { k: 'crm_synced_at', label: t('p.synced'), fmt: function (r) { return dt(r.crm_synced_at); } },
+      ], d.bets, { sort: { k: 'day', dir: 'desc' }, totals: numTotals({ day: function () { return esc(t('totals')); } }), empty: t('p.betsempty') });
+      html += '<h2 class="sec">' + esc(t('p.visits')) + '</h2>' + table('psess', [
+        { k: 'started_at', label: t('p.started'), fmt: function (r) { return dt(r.started_at); } },
+        { k: 'active_seconds', label: t('col.minutes'), n: 1, sum: 1, fmt: function (r) { return mins((r.active_seconds || 0) / 60); }, fmtSum: function (s) { return mins(s / 60); } },
+        { k: 'last_ping_at', label: t('p.lastping'), fmt: function (r) { return dt(r.last_ping_at); } },
+        { k: 'verified', label: t('p.login'), fmt: function (r) { return r.verified ? '<span class="pill ok">' + esc(t('p.verified')) + '</span>' : '<span class="pill grey">' + esc(t('p.unverified')) + '</span>'; } },
+      ], d.sessions, { sort: { k: 'started_at', dir: 'desc' }, totals: numTotals({ started_at: function (rows) { return esc(t('totals.n', int(rows.length))); } }), empty: t('p.visitsempty') });
+      html += '<h2 class="sec">' + esc(t('p.activity')) + '</h2>' + table('pev', [
+        { k: 'created_at', label: t('col.time'), fmt: function (r) { return dt(r.created_at); } },
+        { k: 'type', label: t('p.event'), fmt: function (r) { return esc(eventLabel(r.type)); } },
+        { k: 'game_id', label: t('col.game'), fmt: function (r) { return esc(GAME_LABEL[r.game_id] || r.game_id || ''); } },
+        { k: 'amount', label: t('col.amount'), n: 1, fmt: function (r) { return r.amount == null ? '' : int(r.amount); } },
+        { k: 'meta', label: t('col.detail'), nosort: 1, fmt: function (r) { return r.meta ? '<span class="mut">' + esc(JSON.stringify(r.meta)).slice(0, 120) + '</span>' : ''; } },
+      ], d.events, { sort: { k: 'created_at', dir: 'desc' }, empty: t('p.actempty') });
+      if (d.purchases.length) html += '<h2 class="sec">' + esc(t('shop.title')) + '</h2>' + table('pbuy', [
+        { k: 'created_at', label: t('col.date'), fmt: function (r) { return dt(r.created_at); } }, { k: 'item_name', label: t('col.item') },
+        { k: 'price_kwacha', label: t('col.coins'), n: 1, fmt: function (r) { return int(r.price_kwacha); } }, { k: 'payout_kwacha', label: t('col.payout'), n: 1, fmt: function (r) { return r.payout_kwacha ? kw(r.payout_kwacha) : '—'; } },
+        { k: 'status', label: t('col.status'), fmt: function (r) { return txStatus(r.status); } },
       ], d.purchases, { sort: { k: 'created_at', dir: 'desc' } });
-      if (d.predictions.length) html += '<h2 class="sec">Weekly predictions</h2>' + table('ppred', [
-        { k: 'created_at', label: 'Picked', fmt: function (r) { return dt(r.created_at); } }, { k: 'home', label: 'Match', fmt: function (r) { return esc(r.home + ' v ' + r.away); } },
-        { k: 'pick', label: 'Pick' }, { k: 'outcome', label: 'Result', fmt: function (r) { return esc(r.outcome || 'pending'); } }, { k: 'claimed_at', label: 'Claimed', fmt: function (r) { return dt(r.claimed_at); } },
+      if (d.predictions.length) html += '<h2 class="sec">' + esc(t('p.preds')) + '</h2>' + table('ppred', [
+        { k: 'created_at', label: t('p.picked'), fmt: function (r) { return dt(r.created_at); } }, { k: 'home', label: t('p.match'), fmt: function (r) { return esc(t('p.vs', r.home, r.away)); } },
+        { k: 'pick', label: t('p.pick'), fmt: function (r) { return esc(pickLabel(r.pick)); } }, { k: 'outcome', label: t('p.result'), fmt: function (r) { return esc(r.outcome ? pickLabel(r.outcome) : t('pick.pending')); } }, { k: 'claimed_at', label: t('p.claimed'), fmt: function (r) { return dt(r.claimed_at); } },
       ], d.predictions, { sort: { k: 'created_at', dir: 'desc' } });
       $('pBody').innerHTML = html;
-    }).catch(function (e) { $('pSub').textContent = 'Could not load: ' + e.message; });
+    }).catch(function (e) { $('pSub').textContent = t('err.load', e.message); });
   }
   document.addEventListener('click', function (e) { var a = e.target.closest && e.target.closest('a[data-p]'); if (a) { e.preventDefault(); openPlayer(a.getAttribute('data-p')); } });
 
   function viewActivity(d) {
-    return '<h2 class="sec">Console activity (audit log)</h2>' + table('act', [
-      { k: 'at', label: 'Time', fmt: function (r) { return dt(r.at); } },
-      { k: 'action', label: 'Action', fmt: function (r) { return esc(r.action); } },
-      { k: 'target', label: 'Target', fmt: function (r) { return esc(r.target || ''); } },
-      { k: 'actor', label: 'Login', fmt: function (r) { return esc(r.actor); } },
-      { k: 'ip', label: 'Address', fmt: function (r) { return esc(r.ip || ''); } },
-      { k: 'detail', label: 'Detail', nosort: 1, fmt: function (r) { return r.detail ? '<span class="mut">' + esc(JSON.stringify(r.detail)).slice(0, 140) + '</span>' : ''; } },
-    ], d.items, { sort: { k: 'at', dir: 'desc' }, empty: 'No console activity yet.' }) +
-      '<div class="pager"><span id="actChain">' + int(d.total) + ' entries</span><a id="actVerify">Check the chain</a>' + (d.items.length && d.items.length < d.total ? '<a id="actMore">Show earlier</a>' : '') + '</div>';
+    return '<h2 class="sec">' + esc(t('act.title')) + '</h2>' + table('act', [
+      { k: 'at', label: t('col.time'), fmt: function (r) { return dt(r.at); } },
+      { k: 'action', label: t('act.action'), fmt: function (r) { return esc(tOr('audit.' + r.action, r.action)); } },
+      { k: 'target', label: t('act.target'), fmt: function (r) { return esc(r.target || ''); } },
+      { k: 'actor', label: t('act.login'), fmt: function (r) { return esc(r.actor); } },
+      { k: 'ip', label: t('act.address'), fmt: function (r) { return esc(r.ip || ''); } },
+      { k: 'detail', label: t('col.detail'), nosort: 1, fmt: function (r) { return r.detail ? '<span class="mut">' + esc(JSON.stringify(r.detail)).slice(0, 140) + '</span>' : ''; } },
+    ], d.items, { sort: { k: 'at', dir: 'desc' }, empty: t('act.empty') }) +
+      '<div class="pager"><span id="actChain">' + esc(t('act.entries', int(d.total))) + '</span><a id="actVerify">' + esc(t('act.verify')) + '</a>' + (d.items.length && d.items.length < d.total ? '<a id="actMore">' + esc(t('act.more')) + '</a>' : '') + '</div>';
   }
   function wireActivity() {
-    var v = $('actVerify'); if (v) v.onclick = function () { $('actChain').textContent = 'Checking…'; api('activity/verify').then(function (r) { $('actChain').innerHTML = int(S.data.activity.total) + ' entries · ' + (r.ok ? '<span class="pos">chain intact</span>' : '<span class="neg">chain BROKEN at entry ' + r.brokenAt + '</span>'); }); };
+    var v = $('actVerify'); if (v) v.onclick = function () { $('actChain').textContent = t('act.checking'); api('activity/verify').then(function (r) { $('actChain').innerHTML = esc(t('act.entries', int(S.data.activity.total))) + ' · ' + (r.ok ? '<span class="pos">' + esc(t('act.intact')) + '</span>' : '<span class="neg">' + esc(t('act.broken', r.brokenAt)) + '</span>'); }); };
     var m = $('actMore'); if (m) m.onclick = function () { var d = S.data.activity; var last = d.items[d.items.length - 1]; api('activity?before=' + last.id).then(function (x) { d.items = d.items.concat(x.items); draw(); }); };
   }
 
+  // health checks carry ids + values (2026-10-23) so both languages read them;
+  // the English text the server also sends is the fallback for anything new
+  function hText(prefix, key, vars, fallback) {
+    if (!key || !(prefix + key in EN)) return fallback || '';
+    return t.apply(null, [prefix + key].concat((vars || []).map(function (v) { return typeof v === 'number' ? int(v) : tOr('hv.' + v, v); })));
+  }
   function viewHealth(d) {
-    var pillFor = function (s) { return s === 'healthy' ? '<span class="pill ok">healthy</span>' : s === 'broken' ? '<span class="pill bad">broken</span>' : s === 'needs attention' ? '<span class="pill warn">needs attention</span>' : '<span class="pill grey">unknown</span>'; };
+    var pillFor = function (s) { return s === 'healthy' ? '<span class="pill ok">' + esc(t('h.healthy')) + '</span>' : s === 'broken' ? '<span class="pill bad">' + esc(t('h.broken')) + '</span>' : s === 'needs attention' ? '<span class="pill warn">' + esc(t('h.attention')) + '</span>' : '<span class="pill grey">' + esc(t('h.unknown')) + '</span>'; };
     badge('health', d.broken + d.attention);
     var cls = d.broken ? 'banner bad' : d.attention ? 'banner warn' : 'banner';
-    var msg = d.broken || d.attention ? (d.broken ? d.broken + ' broken' : '') + (d.broken && d.attention ? ', ' : '') + (d.attention ? d.attention + ' need attention' : '') + '.' : 'Everything is healthy.';
-    return '<div class="' + cls + '"><b>' + esc(msg) + '</b> <span class="mut">checked in ' + int(d.ms) + ' ms</span> <a id="hAgain" style="margin-left:10px">Check again</a></div>' +
-      '<div class="wrap"><table><thead><tr><th>Check</th><th>Status</th><th>Reading</th><th>Detail</th></tr></thead><tbody>' +
-      d.checks.map(function (c) { return '<tr><td><b>' + esc(c.check) + '</b></td><td>' + pillFor(c.status) + '</td><td>' + esc(c.reading) + '</td><td style="white-space:normal">' + esc(c.detail) + '</td></tr>'; }).join('') + '</tbody></table></div>';
+    var parts = [];
+    if (d.broken) parts.push(t('h.nbroken', d.broken));
+    if (d.attention) parts.push(t('h.nattention', d.attention));
+    var msg = parts.length ? parts.join(', ') + '.' : t('h.allok');
+    msg = msg.charAt(0).toUpperCase() + msg.slice(1);
+    return '<div class="' + cls + '"><b>' + esc(msg) + '</b> <span class="mut">' + esc(t('h.took', int(d.ms))) + '</span> <a id="hAgain" style="margin-left:10px">' + esc(t('h.again')) + '</a></div>' +
+      '<div class="wrap"><table><thead><tr><th>' + esc(t('h.check')) + '</th><th>' + esc(t('col.status')) + '</th><th>' + esc(t('h.reading')) + '</th><th>' + esc(t('col.detail')) + '</th></tr></thead><tbody>' +
+      d.checks.map(function (c) {
+        var name = c.id ? tOr('hc.' + c.id, c.check) : c.check;
+        return '<tr><td><b>' + esc(name) + '</b></td><td>' + pillFor(c.status) + '</td><td>' + esc(hText('hr.', c.rk, c.rv, c.reading)) + '</td><td style="white-space:normal">' + esc(hText('hd.', c.dk, c.dv, c.detail)) + '</td></tr>';
+      }).join('') + '</tbody></table></div>';
   }
+
+  // ------------------------------------------------------------- language --
+  function setLang(next) {
+    if (!I18N[next] || next === LANG) return;
+    LANG = next;
+    try { localStorage.setItem('ops-lang', LANG); } catch (e) { /* blocked */ }
+    applyStatic();
+    closeMenu();
+    if ($('loginDlg').open) paintLogin();
+    if (S.me) { renderTabs(); liveNote(); draw(); }
+    if ($('playerDlg').open && S.playerUid) openPlayer(S.playerUid);
+    if ($('usersDlg').open) openUsers();
+    if ($('formDlg').open) $('formDlg').close(); // its labels were built in the old language
+  }
+  document.querySelectorAll('#lang button').forEach(function (b) { b.addEventListener('click', function () { setLang(b.getAttribute('data-lang')); }); });
 
   // ----------------------------------------------------------------- boot --
   function poll() {
@@ -729,8 +1042,9 @@ dialog.small { max-width: 420px; }
     api('me').then(function (me) {
       S.me = me; $('acctBtn').hidden = false;
       restoreFilters(); renderTabs(); load(); poll();
-    }).catch(function (e) { if (e.message !== 'signed_out') { $('view').innerHTML = '<p class="empty">Could not reach the server: ' + esc(e.message) + '</p>'; } });
+    }).catch(function (e) { if (e.message !== 'signed_out') { $('view').innerHTML = '<p class="empty">' + esc(t('err.unreachable', e.message)) + '</p>'; } });
   }
+  applyStatic();
   var saved = store.get('bc-ops-auth');
   if (saved && saved.token) { S.token = saved.token; boot(); } else openLogin();
 })();
