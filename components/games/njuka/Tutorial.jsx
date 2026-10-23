@@ -36,7 +36,7 @@ const STEPS = [
   { id: 'declare', target: 'njk-tut-declare', title: 'Declaring a win', text: 'When you build the winning hand from your own draw instead, this green button appears — tap it and the pot is yours. Face cards (J, Q, K) can never be claimed off the pile; you must draw those yourself.' },
   { id: 'swap', target: 'njk-tut-swap', title: 'Swap a pair', text: 'Dealt two pairs and stuck? The Swap button appears whenever your 4 cards hold two pairs or runs — throw one pair (nobody can claim those) and draw a fresh card.' },
   { id: 'timer', target: 'njk-tut-timer', title: 'The turn timer', text: 'Each of your turns lasts 15 seconds — the gold ring counts it down. If time runs out, the game simply plays a sensible move for you. You never forfeit your stake to the clock.' },
-  { id: 'done', target: null, title: "You're ready!", text: 'Pick a stake and a table size, tap "Deal me in", and go claim some pots. Remember: every round is staked — there are no free plays at this table.' },
+  { id: 'done', target: null, title: "You're ready!", text: 'Pick a stake and a table size, tap "Start game", and go claim some pots. Remember: every round is staked — there are no free plays at this table.' },
 ];
 
 function useSpotRect(targetId, stepIdx) {

@@ -453,26 +453,21 @@ export default function NjukaGame({ onClose, closing, onWin, onSpend, onRefund, 
 
   // ---- shared setup controls: identical on the first menu and between rounds ----
   const pillCaption = (text) => (
-    <div style={{ fontSize: 10, fontWeight: 800, color: 'rgba(255,255,255,.55)', textTransform: 'uppercase', letterSpacing: 1 }}>{text}</div>
+    <div style={{ fontSize: 13, fontWeight: 800, color: 'rgba(255,255,255,.6)', textTransform: 'uppercase', letterSpacing: 1 }}>{text}</div>
   );
   const setupControls = (
     <>
       {pillCaption('Stake')}
       <div style={{ display: 'flex', gap: 6, justifyContent: 'center' }}>
         {STAKES.map(s => (
-          <OptionBtn key={s} selected={stake === s} disabled={balanceRef.current < s} onClick={() => setStake(s)} style={{ padding: '7px 12px', fontSize: 12.5 }}>{s}</OptionBtn>
+          <OptionBtn key={s} selected={stake === s} disabled={balanceRef.current < s} onClick={() => setStake(s)} style={{ padding: '9px 16px', fontSize: 16 }}>{s}</OptionBtn>
         ))}
       </div>
       {pillCaption('Players')}
       <div style={{ display: 'flex', gap: 6, justifyContent: 'center' }}>
         {SEAT_CHOICES.map(n => (
-          <OptionBtn key={n} selected={seats === n} onClick={() => setSeats(n)} style={{ padding: '7px 12px', fontSize: 12.5 }}>
-            {n} <span style={{ fontSize: 9.5, fontWeight: 600, opacity: 0.7 }}>({n - 1} bot{n > 2 ? 's' : ''})</span>
-          </OptionBtn>
+          <OptionBtn key={n} selected={seats === n} onClick={() => setSeats(n)} style={{ padding: '9px 16px', fontSize: 16 }}>{n}</OptionBtn>
         ))}
-      </div>
-      <div style={{ fontSize: 12.5, color: C.sub }}>
-        Pot <b style={{ color: C.gold }}>{stake * seats}</b> · win <b style={{ color: C.green }}>+{winFor(stake, seats)}</b> coins
       </div>
     </>
   );
@@ -481,24 +476,24 @@ export default function NjukaGame({ onClose, closing, onWin, onSpend, onRefund, 
   // dark overlay over the table, same pills, same buttons.
   const menuOverlay = (
     <div style={{ position: 'absolute', inset: 0, zIndex: 6, background: 'rgba(10,8,20,.55)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10, textAlign: 'center', padding: 16 }}>
-      <div style={{ fontSize: 22, fontWeight: 800, color: C.gold, fontFamily: "var(--font-display, 'Bricolage Grotesque', sans-serif)" }}>Take your seat</div>
-      <div style={{ display: 'flex', justifyContent: 'center', gap: 5, alignItems: 'center', fontSize: 12.5, color: C.sub }}>
-        Balance <b style={{ color: C.gold, display: 'inline-flex', alignItems: 'center', gap: 3 }}><RewardIcon kind="coins" size={13} />{balance}</b>
+      <div style={{ fontSize: 28, fontWeight: 800, color: C.gold, fontFamily: "var(--font-display, 'Bricolage Grotesque', sans-serif)" }}>Take your seat</div>
+      <div style={{ display: 'flex', justifyContent: 'center', gap: 6, alignItems: 'center', fontSize: 16, color: C.sub }}>
+        Balance <b style={{ color: C.gold, display: 'inline-flex', alignItems: 'center', gap: 4 }}><RewardIcon kind="coins" size={17} />{balance}</b>
       </div>
       {setupControls}
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, marginTop: 2 }}>
-        <GameBtn full={false} disabled={balance < stake} onClick={enterGame}>Deal me in — stake {stake}</GameBtn>
+        <GameBtn full={false} disabled={balance < stake} onClick={enterGame} style={{ fontSize: 17 }}>Start game — stake {stake}</GameBtn>
         <div style={{ display: 'flex', gap: 8 }}>
-          <GameBtn full={false} variant="ghost" onClick={() => setScreen('tutorial')} style={{ padding: '10px 16px', fontSize: 13 }}>
+          <GameBtn full={false} variant="ghost" onClick={() => setScreen('tutorial')} style={{ padding: '11px 18px', fontSize: 15 }}>
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><GraduationCap size={15} /> Start tutorial</span>
           </GameBtn>
-          <GameBtn full={false} variant="ghost" onClick={() => setScreen('rules')} style={{ padding: '10px 16px', fontSize: 13 }}>
+          <GameBtn full={false} variant="ghost" onClick={() => setScreen('rules')} style={{ padding: '11px 18px', fontSize: 15 }}>
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><BookOpen size={15} /> Rules</span>
           </GameBtn>
         </div>
       </div>
-      {hint && <div style={{ fontSize: 12, color: C.gold }}>{hint}</div>}
-      <div style={{ fontSize: 10.5, color: 'rgba(255,255,255,.5)', lineHeight: 1.5, maxWidth: 340 }}>
+      {hint && <div style={{ fontSize: 14, color: C.gold }}>{hint}</div>}
+      <div style={{ fontSize: 13, color: 'rgba(255,255,255,.6)', lineHeight: 1.5, maxWidth: 380 }}>
         Triple + follower (7·7·7·8) or pair + run (5·5·7·8) wins. No free plays — every round is staked.
         The bots play fair: they see only their own cards and the discards.
       </div>
@@ -624,7 +619,7 @@ export default function NjukaGame({ onClose, closing, onWin, onSpend, onRefund, 
                     </div>
                   )}
                   <div style={{ fontSize: 12.5, color: C.sub }}>{banner.sub}</div>
-                  {nextIn != null && <div style={{ fontSize: 12, color: C.muted }}>Next round in {nextIn}s — stake {stake}</div>}
+                  {nextIn != null && <div style={{ fontSize: 14, color: C.muted }}>Next round in {nextIn}s — stake {stake}</div>}
                   {setupControls}
                   <div style={{ display: 'flex', gap: 8, marginTop: 2 }}>
                     <GameBtn full={false} onClick={() => startRound()}>Deal now</GameBtn>
