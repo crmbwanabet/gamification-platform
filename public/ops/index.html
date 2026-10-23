@@ -41,7 +41,10 @@ a:hover { text-decoration: underline; }
 .tab[aria-selected="true"] { color: var(--text); border-bottom-color: var(--teal); }
 .tab:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--btn); outline-offset: 2px; }
 .badge { display: inline-block; min-width: 18px; padding: 0 5px; margin-left: 4px; border-radius: 9px; background: var(--line2); color: var(--sub); font-size: 11px; text-align: center; }
-.acct { all: unset; cursor: pointer; padding: 4px 10px 12px; font-size: 20px; color: var(--sub); }
+.acct { all: unset; cursor: pointer; margin-bottom: 10px; padding: 3px 9px; border: 1px solid var(--line); border-radius: 3px; font-size: 9px; letter-spacing: 1px; line-height: 16px; color: var(--sub); }
+.acct:hover { background: #f3f6f9; color: var(--text); }
+.acct[aria-expanded="true"] { background: #eef3f8; border-color: var(--btn); }
+.brk { display: none; }
 .menu { position: absolute; right: 22px; top: 48px; background: #fff; border: 1px solid var(--line); box-shadow: 0 6px 20px rgba(0,0,0,.12); min-width: 220px; z-index: 20; }
 .menu .who { padding: 10px 14px; border-bottom: 1px solid var(--line2); font-size: 12.5px; color: var(--sub); }
 .menu .who b { color: var(--text); display: block; font-size: 14px; }
@@ -106,7 +109,18 @@ dialog.small { max-width: 420px; }
 .ticks label { display: flex; gap: 6px; align-items: center; font-size: 13px; }
 .toast { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); background: #333; color: #fff; padding: 9px 16px; border-radius: 3px; font-size: 13px; z-index: 50; }
 .warnbox { background: #fdf5e6; border-left: 4px solid var(--warn); padding: 8px 12px; font-size: 12.5px; }
-@media (max-width: 720px) { .top { padding: 10px 12px 0; } main { padding: 12px; } .charts { grid-template-columns: minmax(0, 1fr); } .live { margin-left: 0; } }
+@media (max-width: 720px) {
+  /* phones, like the USSD console: name + EN/RU on the first row, the ••• button
+     on its own row, then the tabs across the full width */
+  .top { padding: 10px 14px 0; gap: 12px 16px; }
+  .brand { padding-bottom: 0; white-space: normal; flex: 1 1 0; min-width: 0; }
+  .brand b, .brand small { white-space: nowrap; }
+  .lang { margin-bottom: 0; flex: none; }
+  .brk { display: block; order: 3; flex-basis: 100%; height: 0; }
+  .acct { order: 4; margin-bottom: 0; }
+  .tabs { order: 5; flex: 1 1 100%; }
+  main { padding: 12px 14px; } .charts { grid-template-columns: minmax(0, 1fr); } .live { margin-left: 0; }
+}
 </style>
 </head>
 <body>
@@ -116,8 +130,9 @@ dialog.small { max-width: 420px; }
     <button type="button" role="radio" data-lang="en" aria-checked="true">EN</button>
     <button type="button" role="radio" data-lang="ru" aria-checked="false">RU</button>
   </div>
+  <span class="brk" aria-hidden="true"></span>
   <nav class="tabs" id="tabs" role="tablist" data-i18n-al="nav.label"></nav>
-  <button class="acct" id="acctBtn" data-i18n-al="aria.account" hidden>⋯</button>
+  <button class="acct" id="acctBtn" aria-haspopup="menu" aria-expanded="false" data-i18n-al="aria.account" hidden>&#9679;&#9679;&#9679;</button>
 </header>
 <div class="menu" id="menu" hidden></div>
 <main>
@@ -538,7 +553,15 @@ dialog.small { max-width: 420px; }
   }
 
   // ------------------------------------------------------------- account --
-  function closeMenu() { $('menu').hidden = true; S.menuOpen = false; }
+  function closeMenu() { $('menu').hidden = true; S.menuOpen = false; $('acctBtn').setAttribute('aria-expanded', 'false'); }
+  // the menu hangs under the ••• button: right-aligned to it on a wide screen,
+  // from the left edge on a phone (where the button sits on its own row, left)
+  function placeMenu() {
+    var r = $('acctBtn').getBoundingClientRect(), m = $('menu');
+    m.style.top = (r.bottom + window.scrollY + 6) + 'px';
+    m.style.right = 'auto';
+    m.style.left = Math.max(10, Math.min(r.right - m.offsetWidth, window.innerWidth - m.offsetWidth - 20)) + 'px';
+  }
   $('acctBtn').addEventListener('click', function (e) {
     e.stopPropagation();
     if (S.menuOpen) return closeMenu();
@@ -546,7 +569,7 @@ dialog.small { max-width: 420px; }
     m.innerHTML = '<div class="who"><b>' + esc(S.me.username) + '</b>' + esc(S.me.role === 'master' ? t('role.master') : t('role.limited')) + ' · ' + esc(location.host) + '</div>' +
       (S.me.permissions.indexOf('can.users') >= 0 ? '<button data-act="users">' + esc(t('menu.users')) + '</button>' : '') +
       '<button data-act="pw">' + esc(t('menu.pw')) + '</button><button data-act="out">' + esc(t('menu.out')) + '</button>';
-    m.hidden = false; S.menuOpen = true;
+    m.hidden = false; S.menuOpen = true; placeMenu(); $('acctBtn').setAttribute('aria-expanded', 'true');
   });
   document.addEventListener('click', function (e) { if (S.menuOpen && !$('menu').contains(e.target)) closeMenu(); });
   $('menu').addEventListener('click', function (e) {
