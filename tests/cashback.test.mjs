@@ -5,14 +5,16 @@ import { mapCashbackRow, runCashback, cleanState } from '../lib/cashback/crmCash
 
 const ECO = { coinsPerKwacha: 10000, gemValues: { emerald: 200000, ruby: 500000, diamond: 1000000 } };
 
-test('window = 06:00 -> 06:00 Lusaka (04:00 UTC), named by its start date', () => {
+test('window = the UTC day (02:00 -> 02:00 Lusaka), paid from 06:00 Lusaka the next morning', () => {
   assert.equal(CASHBACK_RATE, 0.05);
-  assert.deepEqual(windowFor('2026-10-23'), { day: '2026-10-23', start: '2026-10-23T04:00:00.000Z', end: '2026-10-24T04:00:00.000Z' });
-  assert.equal(windowAt(new Date('2026-10-23T04:00:00Z')).day, '2026-10-23');   // 06:00 Lusaka: a new window
-  assert.equal(windowAt(new Date('2026-10-23T03:59:59Z')).day, '2026-10-22');   // 05:59 Lusaka: still yesterday's
-  assert.equal(windowAt(new Date('2026-10-23T23:30:00Z')).day, '2026-10-23');   // 01:30 Lusaka on the 24th
-  assert.equal(lastFinishedWindow(new Date('2026-10-24T04:00:00Z')), '2026-10-23'); // paid at 06:00
-  assert.equal(lastFinishedWindow(new Date('2026-10-24T03:59:00Z')), '2026-10-22');
+  assert.deepEqual(windowFor('2026-10-24'), {
+    day: '2026-10-24', start: '2026-10-24T00:00:00.000Z', end: '2026-10-25T00:00:00.000Z', payAt: '2026-10-25T04:00:00.000Z',
+  });
+  assert.equal(windowAt(new Date('2026-10-24T00:00:00Z')).day, '2026-10-24');   // 02:00 Lusaka: a new window
+  assert.equal(windowAt(new Date('2026-10-23T23:59:59Z')).day, '2026-10-23');   // 01:59 Lusaka on the 24th: still the 23rd's
+  assert.equal(lastFinishedWindow(new Date('2026-10-25T04:00:00Z')), '2026-10-24'); // 06:00 Lusaka: pay the 24th
+  assert.equal(lastFinishedWindow(new Date('2026-10-25T03:59:00Z')), '2026-10-23'); // 05:59: the 24th waits (data is ready, the gems wait)
+  assert.equal(lastFinishedWindow(new Date('2026-10-25T01:00:00Z')), '2026-10-23');
   assert.equal(nextWindowDay('2026-10-31'), '2026-11-01');
 });
 

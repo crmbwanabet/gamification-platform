@@ -330,7 +330,7 @@ export function ComebackModal({ comeback }) {
 }
 
 // ---------------------------------------------------------------------------
-// Daily gem cashback pop-up (owner 2026-10-23): 5% of each 06:00 → 06:00 net
+// Daily gem cashback pop-up (owner 2026-10-23): 5% of each day's (UTC day) net
 // loss, paid in gems; one pop-up lists every window not collected yet.
 // ---------------------------------------------------------------------------
 const kw = (n) => `K${Number(n).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
@@ -353,7 +353,7 @@ export function CashbackModal({ cashback }) {
           <div style={{ display: 'grid', gap: 6 }}>
             {cashback.awards.map(a => (
               <div key={a.window} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: 13, fontWeight: 800, background: 'rgba(255,255,255,.07)', borderRadius: 10, padding: '7px 10px' }}>
-                <span style={{ color: C.sub }}>{windowLabel(a.window)} 06:00 – 06:00</span>
+                <span style={{ color: C.sub }}>{windowLabel(a.window)}</span>
                 <span>Lost {kw(a.loss)} · <span style={{ color: CANDY.gold }}>{kw(a.cashbackKwacha)} back</span></span>
               </div>
             ))}

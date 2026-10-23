@@ -8,8 +8,8 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
 
-// Daily gem CASHBACK (2026-10-23): every 10 minutes, pay each 06:00 → 06:00
-// Lusaka window that has ended once the CRM says its data is complete
+// Daily gem CASHBACK (2026-10-23): every 10 minutes, pay each UTC-day window
+// (02:00 → 02:00 Lusaka) from 06:00 Lusaka the next morning, once the CRM says its data is complete
 // (`GET {CRM_URL}/api/player-cashback`, x-api-key: GAMIFICATION_API_KEY).
 // Awards land in cashback_awards (one per player per window); the player
 // collects them in the Bonus Center. Logic: lib/cashback/crmCashback.mjs.

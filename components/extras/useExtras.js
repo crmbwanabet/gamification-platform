@@ -139,7 +139,7 @@ export function useExtras({ session, loggedIn, hydrated, tab, user, setUser, sea
     else if (data?.error !== 'already_claimed') showNotif('Claim failed — try again later', 'error');
   };
 
-  // --- daily gem cashback (owner 2026-10-23): 5% of yesterday's 06:00→06:00
+  // --- daily gem cashback (owner 2026-10-23): 5% of yesterday's (UTC day)
   // net loss on bwanabet, awarded by the cron; collected here, one pop-up per
   // open listing every uncollected window. The server flips collected_at once,
   // and only then are the gems credited.

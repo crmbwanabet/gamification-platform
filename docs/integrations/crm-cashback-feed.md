@@ -6,7 +6,7 @@
 
 Every player gets **5% of their real-money net loss** on bwanabet back as prize gems, once a day:
 
-- **Window:** 06:00 → 06:00 Lusaka time (04:00 → 04:00 UTC). The window is named by the date it **starts**: window `2026-10-23` = 23 Oct 06:00 → 24 Oct 06:00 Lusaka = `2026-10-23T04:00:00Z` → `2026-10-24T04:00:00Z`.
+- **Window:** one UTC day, `00:00Z` → `00:00Z` (02:00 → 02:00 Lusaka), named by its UTC date: window `2026-10-24` = `2026-10-24T00:00:00Z` → `2026-10-25T00:00:00Z`. Agreed with the CRM session on 2026-10-23: the warehouse has casino totals only per player per UTC day, so the owner's first idea of a 06:00 cut was not possible. The owner chose this window, with the gems going out from **06:00 Lusaka** the next morning.
 - **Net loss** = real-money stakes − real-money winnings, casino + sports added together. A player who won overall gets nothing. Bonus money (free bets, bonus balance) is excluded on both sides.
 - **Paid in gems** (emerald 200,000 coins = K20, ruby 500,000 = K50, diamond 1,000,000 = K100 at 10,000 coins = K1): biggest gems first, the last part rounded to the nearest emerald. A K200 loss (K10 back) is the smallest that pays: 1 emerald.
 
@@ -33,7 +33,8 @@ Response:
 ```
 
 - **`window`**: echo of the requested window. Any other value makes us reject the page.
-- **`complete`**: `true` only when every source has loaded data up to the window's END (04:00 UTC the next day): casino rounds AND sports settlements. While it is `false` we retry every 10 minutes and pay nothing for that window. Today's ClickHouse load times suggest about 06:00–07:00 Lusaka.
+- **`complete`**: `true` only when every source has loaded data up to the window's END (00:00 UTC the next day) plus a safety margin: casino AND sports settlements. The CRM expects this around 00:30 UTC. We first ask at 04:00 UTC (06:00 Lusaka, the pay time), and while it is `false` we retry every 10 minutes and pay nothing for that window.
+- **Served from** `https://bwanabet-crm-overview.vercel.app` after the CRM database move of 2026-10-24 (our `CRM_URL` env switches to it).
 - **`rows`**: one row per player who had real-money activity in the window. Rows where winnings exceed stakes may be sent or left out. Amounts are kwacha with up to 2 decimals, as numbers or numeric strings, all four required and ≥ 0.
   - `casino_stake` / `casino_win`: real-money casino bets and their winnings for rounds that **settled** inside the window.
   - `sports_stake` / `sports_win`: real-money slips that **settled** inside the window: stake, and the amount returned (0 for a lost slip, the payout for a won one, the cash-out amount for a cashed-out one). Voided slips are left out entirely (stake and return both 0).
@@ -44,7 +45,7 @@ Response:
 
 `app/api/cron/cashback` (Vercel Cron every 10 min, `lib/cashback/crmCashback.mjs`):
 
-1. Finds the oldest window that has ended and is not paid yet. On the very first run it pays only the latest one, with no back pay.
+1. From 06:00 Lusaka (04:00 UTC) after a window, finds the oldest unpaid window whose pay time has come. On the very first run it pays only the latest one, with no back pay.
 2. Pages through the CRM rows once `complete` is true.
 3. Keeps only players whose **reward anchor** (first daily-reward claim in the Bonus Center, its Lusaka day) is on or before the window day. A player who never opened the Bonus Center gets no cashback.
 4. Writes ONE `cashback_awards` row per player per window (primary key). Re-runs never pay twice, and a later CRM correction does not change a window that is already paid.
