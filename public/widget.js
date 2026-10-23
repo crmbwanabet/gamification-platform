@@ -393,7 +393,7 @@
       if (!e.data.available) wantWheel = false;
     }
     // the app says it is mounted and listening: hand it the session token
-    if (e.data && e.data.type === 'gamification-ready') sendToken();
+    if (e.data && e.data.type === 'gamification-ready' && loggedIn()) sendToken();
   });
 
   // LOGGED-IN PLAYERS ONLY (owner 2026-10-22): no launcher, bubble or popup
@@ -401,7 +401,68 @@
   // excepted). bwanabet logs in/out without a page reload, so the cookie is
   // checked every 2 s: login shows the button, logout removes it, closes the
   // popup and drops the iframe (it held the old session).
-  function loggedIn() { return !!cfg.preview || !!readToken(); }
+  //
+  // A cookie is not enough (2026-10-23): a token bwanabet's server no longer
+  // accepts (session ended, logged in elsewhere) still sits in the cookie until
+  // the site's own check deletes it, and the button flashed for those players.
+  // On bwanabet's own domains the token is first checked with the same account
+  // info call the site makes; only a token that returns a player ID shows
+  // anything. A verdict is remembered per token for the tab session (only a
+  // hash is stored) so page loads after the first show the button at once.
+  var VERIFY_KEY = 'x100-widget-verified';
+  var verifyApi = (function () {
+    var h = location.hostname;
+    if (/(^|\.)bwanabet\.co\.zm$/.test(h)) return 'https://api.bwanabet.co.zm/api/v2/multi';
+    if (/(^|\.)bwanabet\.com$/.test(h)) return 'https://api.bwanabet.com/api/v2/multi';
+    return null; // staging / test pages: the cookie alone decides
+  })();
+  var verifiedToken = null;
+  var rejectedToken = null;
+  var checkingToken = null;
+  var retryAt = 0;
+  function tokenHash(t) {
+    var h = 5381;
+    for (var i = 0; i < t.length; i++) h = ((h << 5) + h + t.charCodeAt(i)) | 0;
+    return String(h >>> 0);
+  }
+  try { var savedHash = sessionStorage.getItem(VERIFY_KEY); } catch (e) { /* storage blocked */ }
+  function isVerified(t) {
+    if (!verifyApi) return true;
+    if (t === verifiedToken) return true;
+    if (savedHash && savedHash === tokenHash(t)) { verifiedToken = t; return true; }
+    return false;
+  }
+  function verifyToken(t) {
+    if (!verifyApi || t === checkingToken || t === rejectedToken || Date.now() < retryAt) return;
+    checkingToken = t;
+    fetch(verifyApi, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: t },
+      body: JSON.stringify([{ module: 'account', method: 'info', options: {} }]),
+    }).then(function (r) { return r.json(); }).then(function (res) {
+      var acc = res && res[0] && res[0].account;
+      if (acc && acc.id != null) {
+        verifiedToken = t;
+        savedHash = tokenHash(t);
+        try { sessionStorage.setItem(VERIFY_KEY, savedHash); } catch (e) { /* storage blocked */ }
+      } else {
+        rejectedToken = t; // never shown; a new login brings a new token
+      }
+    }).catch(function () {
+      retryAt = Date.now() + 30000; // network trouble: try again later, show nothing meanwhile
+    }).then(function () {
+      if (checkingToken === t) checkingToken = null;
+      syncLogin();
+    });
+  }
+  function loggedIn() {
+    if (cfg.preview) return true;
+    var t = readToken();
+    if (!t) return false;
+    if (isVerified(t)) return true;
+    verifyToken(t);
+    return false;
+  }
   var pendingOpen = false;
   function syncLogin() {
     if (loggedIn()) {
