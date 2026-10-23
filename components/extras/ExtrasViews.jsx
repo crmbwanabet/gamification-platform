@@ -25,7 +25,7 @@ const kickoffText = (iso) => {
 // Weekly predictions (redesign 2026-10-22, owner picked "match tickets" +
 // "prize board"; canvas AcHrXJ4PiFjHhckkWQzqKT): a gold prize card with a
 // 5-step progress strip, the open matches as white tickets with 1 / X / 2
-// buttons and bwanabet's odds, and a "MY 5 PICKS" board with each pick's
+// buttons (no odds since 2026-10-23), and a "MY 5 PICKS" board with each pick's
 // result. Phones stack them; a wide section (container >= 820 px, desktop)
 // puts the tickets left and the prize board right. A tap IS the pick (saved
 // at once, POST /api/predictions); 5 picks a Lusaka week, all 5 right = the
@@ -34,7 +34,6 @@ const kickoffText = (iso) => {
 const PICK_LABEL = { home: '1', draw: 'X', away: '2' };
 const PICK_WORD = { home: 'HOME', draw: 'DRAW', away: 'AWAY' };
 const INK = '#2A0A4F';
-const odd = (v) => (Number.isFinite(Number(v)) && Number(v) > 1 ? Number(v).toFixed(2) : '');
 const pickName = (r) => (r.pick === 'home' ? r.home : r.pick === 'away' ? r.away : 'Draw');
 
 const STEP = {
@@ -103,7 +102,8 @@ function PrizeCard({ p, cur, size, compact }) {
 }
 
 function Ticket({ m, p, locked }) {
-  const opts = [['home', m.odds?.h], ['draw', m.odds?.d], ['away', m.odds?.a]];
+  // no odds on the tickets (owner 2026-10-23): they made picking the favourite too easy
+  const opts = ['home', 'draw', 'away'];
   return (
     <div className="pr-ticket" data-pred-ticket style={{ display: 'grid', gap: 8, background: '#fff', color: INK, borderRadius: 14, padding: '10px 12px 12px', boxShadow: '0 4px 0 #120530' }}>
       <div className="pr-meta" style={{ display: 'flex', justifyContent: 'space-between', gap: 8, fontSize: 11, fontWeight: 900, letterSpacing: '.05em', color: '#7A6A9A' }}>
@@ -116,15 +116,15 @@ function Ticket({ m, p, locked }) {
         <div className="pr-team" style={{ textAlign: 'right' }}>{m.away}</div>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 6 }}>
-        {opts.map(([k, o]) => {
+        {opts.map((k) => {
           const on = m.myPick === k;
           const dis = !!m.myPick || locked || p.busyId === m.id;
           return (
             <button key={k} type="button" className="pr-btn" disabled={dis} aria-pressed={on}
-              aria-label={`${k === 'draw' ? 'Draw' : (k === 'home' ? m.home : m.away) + ' win'}${odd(o) ? `, odds ${odd(o)}` : ''}`}
+              aria-label={k === 'draw' ? 'Draw' : (k === 'home' ? m.home : m.away) + ' win'}
               onClick={() => p.onPick(m.id, k)}
               style={{ background: on ? CANDY.green.fill : '#F3EEFC', color: on ? '#fff' : INK, border: `2px solid ${on ? CANDY.green.dark : '#E2D8F5'}`, opacity: dis && !on ? 0.55 : 1 }}>
-              <span>{PICK_LABEL[k]} · {PICK_WORD[k]}{odd(o) && <span style={{ display: 'block', fontSize: 11, fontWeight: 800, opacity: 0.75 }}>{odd(o)}</span>}</span>
+              <span>{PICK_LABEL[k]} · {PICK_WORD[k]}</span>
             </button>
           );
         })}

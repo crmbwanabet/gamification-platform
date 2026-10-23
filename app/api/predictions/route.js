@@ -90,7 +90,7 @@ export async function GET(req) {
   const earlier = [...new Set(mine.map(r => r.pick_day && weekStart(r.pick_day)).filter(w => w && w < week))].sort().reverse().slice(0, 2);
   const current = weekSlip(mine, week);
   return json({
-    matches: matches.map(m => ({ id: m.eventId, league: m.league, home: m.home, away: m.away, time: m.time, open: pickOpen(m.time), myPick: picked[m.eventId] || null, odds: { h: m.h ?? null, d: m.d ?? null, a: m.a ?? null } })),
+    matches: matches.map(m => ({ id: m.eventId, league: m.league, home: m.home, away: m.away, time: m.time, open: pickOpen(m.time), myPick: picked[m.eventId] || null })), // no odds (owner 2026-10-23: they made picks too easy)
     week: { start: week, picks: current.picks.length, max: SLIP_SIZE },
     slips: [current, ...earlier.map(w => weekSlip(mine, w))].map(slipView),
     coins: PREDICTION_COINS,
