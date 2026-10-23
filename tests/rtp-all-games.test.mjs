@@ -57,15 +57,15 @@ test('rounding: half up in integer hundredths — no float traps', () => {
   }
 });
 
-test('stakes: 1/10/25/50 for the 4x games, 1/5/10/20 for the 10x games', () => {
+test('stakes: 1/10/25/50 for the 4x games, 1/5/10/20 for Lucky Numbers, 100–2,000 for Chicken Catch 2', () => {
   for (const m of [pick6, flip, bottle, scratch]) {
     assert.deepEqual(m.STAKES, [1, 10, 25, 50]);
     assert.equal(m.DEFAULT_STAKE, 10);
   }
-  for (const m of [numbers, crash]) {
-    assert.deepEqual(m.STAKES, [1, 5, 10, 20]);
-    assert.equal(m.DEFAULT_STAKE, 5);
-  }
+  assert.deepEqual(numbers.STAKES, [1, 5, 10, 20]);
+  assert.equal(numbers.DEFAULT_STAKE, 5);
+  assert.deepEqual(crash.STAKES, [100, 500, 1000, 2000]);
+  assert.equal(crash.DEFAULT_STAKE, 500);
 });
 
 const PICK6_GAMES = { penalty: SPOTS, chicken: BIRDS, minibus: PASSENGERS };
@@ -165,10 +165,10 @@ test('Lucky Numbers: whole-coin paytable per stake, RTP inside [97%, 99%], close
 test('Chicken Catch 2: every cash-out (any stake, any 2-decimal target) returns exactly the RTP', () => {
   for (const rtp of RTPS) {
     for (const s of crash.STAKES) {
-      for (let x100 = 101; x100 <= 1000; x100++) {
+      for (let x100 = 101; x100 <= 5000; x100++) {
         const x = x100 / 100;
         const pay = crash.payoutFor(s, x);
-        assert.ok(pay <= 200, `${s} × ${x}`);
+        assert.ok(pay <= 100_000, `${s} × ${x}`);
         const r = (crash.survival(s, x, rtp) * pay) / s;
         near(r, clampRtp(rtp), `stake ${s} cash-out ${x}`);
       }
@@ -176,14 +176,16 @@ test('Chicken Catch 2: every cash-out (any stake, any 2-decimal target) returns 
   }
 });
 
-test('Chicken Catch 2: drawCrash realises the survival exactly (u just below / above the boundary)', () => {
+test('Chicken Catch 2: with the no-repeat redraw, the run of rounds lands exactly on the target odds', () => {
   for (const rtp of [0.97, 0.98, 0.99]) {
     for (const s of crash.STAKES) {
-      for (const x of [1.01, 1.02, 1.05, 1.1, 1.25, 1.49, 1.5, 1.99, 2, 2.37, 3, 5, 7.77, 9.99, 10]) {
-        const edge = crash.survival(s, x, rtp); // P(C ≥ x) must equal P(u < edge)
-        assert.ok(crash.drawCrash(s, rtp, () => edge * (1 - 1e-9)) >= x, `${s} ${x} below`);
-        assert.ok(crash.drawCrash(s, rtp, () => edge * (1 + 1e-9)) < x, `${s} ${x} above`);
-      }
+      const { target: p, base: b } = crash.crashOdds(s, rtp);
+      near(p.reduce((a, v) => a + v, 0), 1, `target sums to 1 (${s})`);
+      near(b.reduce((a, v) => a + v, 0), 1, `base sums to 1 (${s})`);
+      // stationary odds of "draw from b, redraw a repeat": π_j = b_j (T − p_j / (1 − b_j))
+      let T = 0;
+      for (let i = 0; i < p.length; i++) T += p[i] / (1 - b[i]);
+      for (let j = 0; j < p.length; j++) near(b[j] * (T - p[j] / (1 - b[j])), p[j], `stake ${s} rtp ${rtp} crash ${(100 + j) / 100}`);
     }
   }
 });

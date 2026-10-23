@@ -126,3 +126,8 @@ Everything the player sees before the crash is a function of **(t, seed) only**.
 ## Out of scope
 
 Dashboard UI for the RTP field, server-authoritative crash points (the same client-authoritative trust boundary as the other candy games), and new missions.
+
+## 2026-10-23 change (owner): bigger stakes, 50x, no repeats
+
+- **Stakes 100 / 500 / 1,000 / 2,000 coins** (default 500), **cap 50x**, so the max win is **2,000 × 50 = 100,000 coins**. Why: with stakes 1/5/10/20 the payout only stepped every half coin, so the crash point piled onto the last multiplier before a step (1.49x in ~49% of stake-1 rounds). From 100 coins every 0.01x pays a different amount, so P(C ≥ x) = RTP / x at every stake and C can land on any 2-decimal point (1.00 ≈ 3%, 50x ≈ 2%, every other point < 1%).
+- **Never the same crash point twice in a row**: `drawCrash(stake, rtp, rng, prev)` redraws a repeat; the game passes this session's last crash, else the newest saved history entry. A plain redraw would make 1.00 and 50x rarer than their odds (an AUTO 50x would return ~96%), so each round draws from a solved BASE table (`baseCdf`) whose redraw chain settles on exactly the target odds; `tests/rtp-all-games.test.mjs` checks the stationary equation for every point, and `tests/chicken2-crash.test.mjs` samples runs of rounds.

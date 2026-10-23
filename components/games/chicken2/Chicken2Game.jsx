@@ -7,6 +7,8 @@ import CandyButton from '../candy/CandyButton';
 import CandyChip from '../candy/CandyChip';
 import WinCelebration from '../candy/WinCelebration';
 import { CANDY, outlineShadow, textStroke } from '../candy/tokens';
+import { amountText } from '@/lib/rewardText.mjs';
+import { formatNumber } from '@/lib/economy/currency.mjs';
 import {
   STAKES, MAX_MULT, MIN_CASHOUT, clampRtp, drawCrash, payoutFor, shownAt, endTime, timeFor, settleOnClose, DEFAULT_STAKE} from '@/lib/chicken2/crash.mjs';
 import { cid } from '../chicken/shared/rig';
@@ -21,16 +23,17 @@ import { makeRig2, render2, eggsCollected, setGone2, HEN, AFTER_CASH_S, AFTER_FA
 // ============================================================================
 // CHICKEN CATCH 2 — a crash game, stake-only
 // (spec: docs/superpowers/specs/2026-10-07-chicken-catch-2-design.md).
-// Pick a stake (1/5/10/20) and optionally an AUTO cash-out, tap RUN. The stake is
+// Pick a stake (100/500/1,000/2,000) and optionally an AUTO cash-out, tap RUN. The stake is
 // charged right then (onSpend) and the crash point C is drawn from
 // crypto.getRandomValues (lib/chicken2/crash.mjs; RTP from remote config
 // games.chicken2.rtp, clamped 97–99%, default 98%; drawn for the chosen stake so
-// every cash-out returns exactly the RTP after rounding). The farmer chases the golden hen;
+// every cash-out returns exactly the RTP after rounding; never the previous
+// round's crash point). The farmer chases the golden hen;
 // the multiplier climbs e^(K·t) from 1.00× (each golden egg he runs through
 // pulses it). CASH OUT banks stake × shown multiplier, rounded half up — he dives and
 // catches her, WinCelebration plays, and a faded ghost counter runs on to where
 // he would have fallen. If the counter would pass C he trips and the hen flies
-// off: LOSE, "CRASHED @ C×". At 10× he catches her automatically (MAX WIN!).
+// off: LOSE, "CRASHED @ C×". At 50× he catches her automatically (MAX WIN!).
 // The chase (near-catch waves) is chase(t, seed) — never a function of C, so
 // nothing foreshadows the crash (lib/chicken2/motion.mjs, tested). A strip of
 // the last 8 crash points (localStorage chicken2:history) sits over the scene.
@@ -38,14 +41,14 @@ import { makeRig2, render2, eggsCollected, setGone2, HEN, AFTER_CASH_S, AFTER_FA
 // tap is checked against the clock (never after the fall time), and closing
 // mid-run settles via settleOnClose (a cash-out at that moment; 1.00× = stake
 // back unless C = 1.00; already fallen = loss). RUN is locked while running.
-// NOTE: STAKES are mirrored by stakeRange '1–20' in lib/data/platform.js and
+// NOTE: STAKES are mirrored by stakeRange '100–2,000' in lib/data/platform.js and
 // the tutorial lines in lib/data/tutorials.js — change all three together.
 // ============================================================================
 
 const LAST_KEY = 'chicken2:last';
 const HIST_KEY = 'chicken2:history';
 const HIST_N = 8;
-const CHIP_COLORS = { 1: 'violet', 5: 'blue', 10: 'red', 20: 'green' };
+const CHIP_COLORS = { 100: 'violet', 500: 'blue', 1000: 'red', 2000: 'green' };
 const AUTOS = [null, 1.5, 2, 3, 5];
 const MIN_STAKE = STAKES[0];
 const REGROUP_MS = 220;
@@ -210,7 +213,7 @@ export default function Chicken2Game({ onClose, closing, balance = 0, rtp, onSpe
         if (!r.done) {
           const m = shownAt(t, r.crash);
           setCounter(r.auto ? `AUTO AT ${r.auto}×` : 'CASH OUT IN TIME!', fmt(m));
-          if (payRef.current) payRef.current.textContent = `${payoutFor(r.stake, Math.max(1, m))} coins`;
+          if (payRef.current) payRef.current.textContent = amountText(payoutFor(r.stake, Math.max(1, m)));
           const n = eggsCollected(r, t);
           if (n > r.eggs) { r.eggs = n; pulse('pulse'); }
         } else if (r.cashT != null && !r.max) {
@@ -270,7 +273,8 @@ export default function Chicken2Game({ onClose, closing, balance = 0, rtp, onSpe
   const run = () => {
     if (runningRef.current || cel || stake > balance) return;
     runningRef.current = true;
-    const crash = drawCrash(stake, clampRtp(rtp));
+    // never the same crash point twice in a row (this session's last round, else the saved history)
+    const crash = drawCrash(stake, clampRtp(rtp), undefined, roundRef.current?.crash ?? histRef.current[0] ?? null);
     onSpend?.(stake);
     const fromResult = phase !== 'idle';
     const delay = fromResult && !reduced ? REGROUP_MS : 0;
@@ -398,8 +402,9 @@ export default function Chicken2Game({ onClose, closing, balance = 0, rtp, onSpe
         <div style={{ display: 'flex', gap: 7, marginBottom: 2 }}>
           <div role="group" aria-label="Stake" style={{ display: 'flex', gap: 7, flex: 3, minWidth: 0 }}>
             {STAKES.map(s => (
-              <CandyChip key={s} color={CHIP_COLORS[s]} disabled={s > balance} selected={stake === s} onClick={() => chooseStake(s)}>
-                {s}
+              <CandyChip key={s} color={CHIP_COLORS[s]} disabled={s > balance} selected={stake === s} onClick={() => chooseStake(s)}
+                style={{ fontSize: 19 }}>
+                {formatNumber(s)}
               </CandyChip>
             ))}
           </div>
@@ -414,12 +419,12 @@ export default function Chicken2Game({ onClose, closing, balance = 0, rtp, onSpe
           <CandyButton key="cash" color="green" big disabled={!canCash} onClick={tapCash}
             style={{ width: '100%', minHeight: 66, gap: 2, marginBottom: 6, borderRadius: 18, ...(canCash ? GOLD_BTN : null) }}>
             <span style={{ fontSize: 30, textShadow: canCash ? `${textStroke(2.5, CANDY.outline)}, 0 4px 0 ${CANDY.outline}` : 'none' }}>CASH OUT</span>
-            <span ref={payRef} style={{ fontSize: 15, color: '#fff', textShadow: canCash ? `${textStroke(1.5, CANDY.outline)}, 0 2px 0 ${CANDY.outline}` : 'none', letterSpacing: 1 }}>{stake} coins</span>
+            <span ref={payRef} style={{ fontSize: 15, color: '#fff', textShadow: canCash ? `${textStroke(1.5, CANDY.outline)}, 0 2px 0 ${CANDY.outline}` : 'none', letterSpacing: 1 }}>{amountText(stake)}</span>
           </CandyButton>
         ) : (
           <CandyButton key="run" color="green" big disabled={!canRun} onClick={run} style={{ width: '100%', minHeight: 66, gap: 2, marginBottom: 6, borderRadius: 18 }}>
             <span style={{ fontSize: 34, textShadow: canRun ? `${textStroke(2.5, CANDY.outline)}, 0 4px 0 ${CANDY.outline}` : 'none' }}>RUN</span>
-            <span style={{ fontSize: 14, color: canRun ? CANDY.gold : 'inherit', textShadow: canRun ? `${textStroke(1.5, CANDY.outline)}, 0 2px 0 ${CANDY.outline}` : 'none', letterSpacing: 1 }}>✦ WIN UP TO {payoutFor(stake, MAX_MULT)} ✦</span>
+            <span style={{ fontSize: 14, color: canRun ? CANDY.gold : 'inherit', textShadow: canRun ? `${textStroke(1.5, CANDY.outline)}, 0 2px 0 ${CANDY.outline}` : 'none', letterSpacing: 1 }}>✦ WIN UP TO {formatNumber(payoutFor(stake, MAX_MULT))} ✦</span>
           </CandyButton>
         )}
       </div>
