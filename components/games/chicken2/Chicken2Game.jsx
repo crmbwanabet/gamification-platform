@@ -23,17 +23,16 @@ import { makeRig2, render2, eggsCollected, setGone2, HEN, AFTER_CASH_S, AFTER_FA
 // ============================================================================
 // CHICKEN CATCH 2 — a crash game, stake-only
 // (spec: docs/superpowers/specs/2026-10-07-chicken-catch-2-design.md).
-// Pick a stake (100/500/1,000/2,000) and optionally an AUTO cash-out, tap RUN. The stake is
+// Pick a stake (1/5/10/20) and optionally an AUTO cash-out, tap RUN. The stake is
 // charged right then (onSpend) and the crash point C is drawn from
 // crypto.getRandomValues (lib/chicken2/crash.mjs; RTP from remote config
-// games.chicken2.rtp, clamped 97–99%, default 98%; drawn for the chosen stake so
-// every cash-out returns exactly the RTP after rounding; never the previous
-// round's crash point). The farmer chases the golden hen;
+// games.chicken2.rtp, clamped 97–99%, default 98%; P(C ≥ x) = RTP / x at every
+// stake, never the previous round's crash point). The farmer chases the golden hen;
 // the multiplier climbs e^(K·t) from 1.00× (each golden egg he runs through
-// pulses it). CASH OUT banks stake × shown multiplier, rounded half up — he dives and
+// pulses it). CASH OUT banks stake × shown multiplier, rounded down to whole coins — he dives and
 // catches her, WinCelebration plays, and a faded ghost counter runs on to where
 // he would have fallen. If the counter would pass C he trips and the hen flies
-// off: LOSE, "CRASHED @ C×". At 50× he catches her automatically (MAX WIN!).
+// off: LOSE, "CRASHED @ C×". At 5,000× he catches her automatically (MAX WIN!).
 // The chase (near-catch waves) is chase(t, seed) — never a function of C, so
 // nothing foreshadows the crash (lib/chicken2/motion.mjs, tested). A strip of
 // the last 8 crash points (localStorage chicken2:history) sits over the scene.
@@ -41,14 +40,14 @@ import { makeRig2, render2, eggsCollected, setGone2, HEN, AFTER_CASH_S, AFTER_FA
 // tap is checked against the clock (never after the fall time), and closing
 // mid-run settles via settleOnClose (a cash-out at that moment; 1.00× = stake
 // back unless C = 1.00; already fallen = loss). RUN is locked while running.
-// NOTE: STAKES are mirrored by stakeRange '100–2,000' in lib/data/platform.js and
+// NOTE: STAKES are mirrored by stakeRange '1–20' in lib/data/platform.js and
 // the tutorial lines in lib/data/tutorials.js — change all three together.
 // ============================================================================
 
 const LAST_KEY = 'chicken2:last';
 const HIST_KEY = 'chicken2:history';
 const HIST_N = 8;
-const CHIP_COLORS = { 100: 'violet', 500: 'blue', 1000: 'red', 2000: 'green' };
+const CHIP_COLORS = { 1: 'violet', 5: 'blue', 10: 'red', 20: 'green' };
 const AUTOS = [null, 1.5, 2, 3, 5];
 const MIN_STAKE = STAKES[0];
 const REGROUP_MS = 220;
@@ -81,7 +80,7 @@ function affordable(stake, balance) {
   const fit = STAKES.filter(s => s <= balance);
   return fit.length ? fit[fit.length - 1] : stake;
 }
-const fmt = (m) => `${m.toFixed(2)}×`;
+const fmt = (m) => `${m >= 1000 ? formatNumber(Math.floor(m)) : m.toFixed(2)}×`;
 
 const TITLE = (
   <span style={{ display: 'block', lineHeight: .9, margin: '2px 0 2px' }}>
@@ -330,7 +329,7 @@ export default function Chicken2Game({ onClose, closing, balance = 0, rtp, onSpe
   else if (phase === 'cashed') line = <span key="win" className="anim-scale-in" style={{ fontSize: 28, color: CANDY.gold, letterSpacing: 2, textShadow: `${outlineShadow(2, CANDY.outline, 3)}, 0 0 18px rgba(255,210,31,.8)` }}>{result?.max ? 'MAX WIN!' : 'WIN'}</span>;
   else if (phase === 'fell') line = <span key="lose" className="anim-scale-in" style={{ fontSize: 26, color: '#fff', letterSpacing: 2, textShadow: outlineShadow(2, CANDY.outline, 3) }}>LOSE</span>;
   else if (broke) line = <span style={{ fontSize: 17, color: '#FF8A80' }}>Not enough coins</span>;
-  else line = <span style={{ fontSize: 17, color: CANDY.sub }}>Golden eggs push it up to 10×</span>;
+  else line = <span style={{ fontSize: 17, color: CANDY.sub }}>Golden eggs push it up to 5,000×</span>;
 
   return (
     <CandyScreen title={TITLE} balance={shownBalance} pillRef={pillRef} closing={closing} onClose={onClose} onHelp={() => setShowTutorial(true)}
@@ -402,8 +401,7 @@ export default function Chicken2Game({ onClose, closing, balance = 0, rtp, onSpe
         <div style={{ display: 'flex', gap: 7, marginBottom: 2 }}>
           <div role="group" aria-label="Stake" style={{ display: 'flex', gap: 7, flex: 3, minWidth: 0 }}>
             {STAKES.map(s => (
-              <CandyChip key={s} color={CHIP_COLORS[s]} disabled={s > balance} selected={stake === s} onClick={() => chooseStake(s)}
-                style={{ fontSize: 19 }}>
+              <CandyChip key={s} color={CHIP_COLORS[s]} disabled={s > balance} selected={stake === s} onClick={() => chooseStake(s)}>
                 {formatNumber(s)}
               </CandyChip>
             ))}

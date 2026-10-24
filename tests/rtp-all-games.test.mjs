@@ -57,15 +57,15 @@ test('rounding: half up in integer hundredths — no float traps', () => {
   }
 });
 
-test('stakes: 1/10/25/50 for the 4x games, 1/5/10/20 for Lucky Numbers, 100–2,000 for Chicken Catch 2', () => {
+test('stakes: 1/10/25/50 for the 4x games, 1/5/10/20 for Lucky Numbers, 1/5/10/20 for Chicken Catch 2', () => {
   for (const m of [pick6, flip, bottle, scratch]) {
     assert.deepEqual(m.STAKES, [1, 10, 25, 50]);
     assert.equal(m.DEFAULT_STAKE, 10);
   }
   assert.deepEqual(numbers.STAKES, [1, 5, 10, 20]);
   assert.equal(numbers.DEFAULT_STAKE, 5);
-  assert.deepEqual(crash.STAKES, [100, 500, 1000, 2000]);
-  assert.equal(crash.DEFAULT_STAKE, 500);
+  assert.deepEqual(crash.STAKES, [1, 5, 10, 20]);
+  assert.equal(crash.DEFAULT_STAKE, 5);
 });
 
 const PICK6_GAMES = { penalty: SPOTS, chicken: BIRDS, minibus: PASSENGERS };
@@ -162,15 +162,16 @@ test('Lucky Numbers: whole-coin paytable per stake, RTP inside [97%, 99%], close
   assert.equal(numbers.paytableFor(20).pays[6], 200);
 });
 
-test('Chicken Catch 2: every cash-out (any stake, any 2-decimal target) returns exactly the RTP', () => {
+test('Chicken Catch 2: a cash-out never returns more than the RTP, and exactly the RTP when stake × x is whole', () => {
   for (const rtp of RTPS) {
     for (const s of crash.STAKES) {
-      for (let x100 = 101; x100 <= 5000; x100++) {
+      for (let x100 = 101; x100 <= 500_000; x100 += (x100 < 10_000 ? 1 : 89)) {
         const x = x100 / 100;
         const pay = crash.payoutFor(s, x);
         assert.ok(pay <= 100_000, `${s} × ${x}`);
         const r = (crash.survival(s, x, rtp) * pay) / s;
-        near(r, clampRtp(rtp), `stake ${s} cash-out ${x}`);
+        assert.ok(r <= clampRtp(rtp) + EPS, `stake ${s} cash-out ${x}: ${r}`);
+        if ((s * x100) % 100 === 0) near(r, clampRtp(rtp), `stake ${s} cash-out ${x}`);
       }
     }
   }

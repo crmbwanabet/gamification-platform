@@ -23,27 +23,30 @@ function sample(stake, rtp, seed = 7) {
   return out;
 }
 
-test('defaults: RTP 98%, range [0.97, 0.99], 50x ceiling, stakes 100/500/1,000/2,000', () => {
+test('defaults: RTP 98%, range [0.97, 0.99], 5,000x ceiling, stakes 1/5/10/20 (max win 100,000)', () => {
   assert.equal(RTP_DEFAULT, 0.98);
   assert.equal(RTP_MIN, 0.97);
   assert.equal(RTP_MAX, 0.99);
-  assert.equal(MAX_MULT, 50);
-  assert.deepEqual(STAKES, [100, 500, 1000, 2000]);
-  assert.equal(DEFAULT_STAKE, 500);
-  assert.equal(payoutFor(2000, MAX_MULT), 100_000);
+  assert.equal(MAX_MULT, 5000);
+  assert.deepEqual(STAKES, [1, 5, 10, 20]);
+  assert.equal(DEFAULT_STAKE, 5);
+  assert.equal(payoutFor(20, MAX_MULT), 100_000);
+  assert.equal(payoutFor(1, MAX_MULT), 5_000);
 });
 
-test('survival follows the rounded payout: P(C >= x) = RTP × stake / payout(stake, x)', () => {
-  assert.ok(Math.abs(survival(100, 1.49) - 0.98 / 1.49) < 1e-12);
-  assert.ok(Math.abs(survival(100, 1.5) - 0.98 / 1.5) < 1e-12);
-  assert.ok(Math.abs(survival(2000, 2) - 0.49) < 1e-12);
-  assert.ok(Math.abs(survival(1000, 50) - 0.0196) < 1e-12);
-  assert.equal(survival(100, 1), 1);
-  assert.equal(survival(100, 50.01), 0);
+test('survival is the crash curve P(C >= x) = RTP / x, the same at every stake', () => {
+  for (const s of STAKES) {
+    assert.ok(Math.abs(survival(s, 1.49) - 0.98 / 1.49) < 1e-12);
+    assert.ok(Math.abs(survival(s, 1.5) - 0.98 / 1.5) < 1e-12);
+    assert.ok(Math.abs(survival(s, 2) - 0.49) < 1e-12);
+    assert.ok(Math.abs(survival(s, 50) - 0.0196) < 1e-12);
+    assert.equal(survival(s, 1), 1);
+    assert.equal(survival(s, 5000.01), 0);
+  }
 });
 
 test('sampled P(C >= x) ~= survival for x in {1.01, 1.5, 2, 3, 5, 10, 50}, no-repeat redraw included', () => {
-  for (const [stake, rtp, seed] of [[2000, 0.98, 11], [100, 0.97, 12], [500, 0.99, 13]]) {
+  for (const [stake, rtp, seed] of [[20, 0.98, 11], [1, 0.97, 12], [5, 0.99, 13]]) {
     const C = sample(stake, rtp, seed);
     for (const x of [1.01, 1.5, 2, 3, 5, 10, 50]) {
       let n = 0; for (const c of C) if (c >= x) n++;
@@ -54,7 +57,7 @@ test('sampled P(C >= x) ~= survival for x in {1.01, 1.5, 2, 3, 5, 10, 50}, no-re
   }
 });
 
-test('crash points: 2-decimal, within [1.00, 50], never the same twice in a row, no clumping', () => {
+test('crash points: 2-decimal, within [1.00, 5,000], never the same twice in a row, no clumping (not even at stake 1)', () => {
   for (const stake of STAKES) {
     const C = sample(stake, 0.98, 3 + stake);
     for (let i = 0; i < N; i++) {
@@ -63,32 +66,32 @@ test('crash points: 2-decimal, within [1.00, 50], never the same twice in a row,
       assert.equal(Math.round(c * 100), +(c * 100).toFixed(6), `not 2-decimal ${c}`);
       if (i) assert.notEqual(c, C[i - 1], `stake ${stake}: ${c} twice in a row at round ${i}`);
     }
-    // between 1.00 and 50 the most common point is 1.01, at under 1% of rounds
+    // between 1.00 and 5,000 the most common point is 1.01, at under 1% of rounds
     const counts = new Map();
     for (const c of C) if (c > 1 && c < MAX_MULT) counts.set(c, (counts.get(c) || 0) + 1);
     assert.ok(Math.max(...counts.values()) / N < 0.011, `stake ${stake} clumps`);
   }
 });
 
-test('a repeat of prev is drawn again; u at the ends gives 1.00 and 50', () => {
-  assert.equal(drawCrash(100, 0.98, () => 0), 1);
-  assert.equal(drawCrash(100, 0.98, () => 0.999999), MAX_MULT);
+test('a repeat of prev is drawn again; u at the ends gives 1.00 and 5,000', () => {
+  assert.equal(drawCrash(1, 0.98, () => 0), 1);
+  assert.equal(drawCrash(1, 0.98, () => 0.99999999), MAX_MULT);
   const us = [0, 0, 0.5];
-  const c = drawCrash(100, 0.98, () => us.shift(), 1);
+  const c = drawCrash(1, 0.98, () => us.shift(), 1);
   assert.ok(c > 1, `got ${c}`);
 });
 
 test('instant-crash rate (C = 1.00) is 1 - RTP / 1.01 (1.01x already pays more than the stake)', () => {
   for (const rtp of [0.98, 0.97]) {
-    const C = sample(1000, rtp, rtp === 0.98 ? 5 : 6);
+    const C = sample(10, rtp, rtp === 0.98 ? 5 : 6);
     let n = 0; for (const c of C) if (c === 1) n++;
     const p = n / N, want = 1 - rtp / 1.01, tol = 4 * Math.sqrt(want * (1 - want) / N);
     assert.ok(Math.abs(p - want) < tol, `rtp ${rtp}: instant ${p} want ${want}`);
   }
 });
 
-test('EV of a fixed cash-out over a run of rounds ~= RTP in coins', () => {
-  for (const [stake, x, seed] of [[100, 1.5, 9], [2000, 2, 10], [2000, 5, 14], [2000, 10, 15], [500, 1.01, 16], [1000, 50, 17]]) {
+test('EV of a fixed cash-out over a run of rounds ~= RTP in coins (stake × x whole)', () => {
+  for (const [stake, x, seed] of [[10, 1.5, 9], [1, 2, 10], [20, 5, 14], [5, 10, 15], [20, 1.05, 16], [10, 50, 17]]) {
     const C = sample(stake, 0.98, seed);
     const pay = payoutFor(stake, x);
     let ret = 0;
@@ -117,38 +120,42 @@ test('RTP is validated and clamped to [0.97, 0.99]', () => {
   assert.equal(clampRtp(-1), RTP_MIN);
   // drawCrash clamps too: an RTP of 2 behaves like 0.99
   const r = seeded(1); let n = 0, prev = null;
-  for (let i = 0; i < 50_000; i++) { prev = drawCrash(1000, 2, r, prev); if (prev === 1) n++; }
+  for (let i = 0; i < 50_000; i++) { prev = drawCrash(10, 2, r, prev); if (prev === 1) n++; }
   const want = 1 - 0.99 / 1.01;
   assert.ok(Math.abs(n / 50_000 - want) < 0.003, `rtp 2 -> instant ${n / 50_000}`);
 });
 
 test('drawCrash uses crypto when no rng is given; rejects unknown stakes', () => {
-  const c = drawCrash(500, 0.98);
+  const c = drawCrash(5, 0.98);
   assert.ok(c >= 1 && c <= MAX_MULT);
   assert.throws(() => drawCrash(7, 0.98));
-  assert.throws(() => drawCrash(20, 0.98));
+  assert.throws(() => drawCrash(100, 0.98));
 });
 
-test('payouts are exact whole numbers and never above 100,000', () => {
+test('payouts: stake × x rounded DOWN to whole coins, never above 100,000', () => {
   for (const s of STAKES) {
-    for (let m = 100; m <= 5000; m++) {
+    for (let m = 100; m <= 500_000; m += (m < 10_000 ? 1 : 97)) {
       const p = payoutFor(s, m / 100);
-      assert.equal(p, (s * m) / 100, `${s} x ${m / 100} -> ${p}`);
+      assert.equal(p, Math.floor((s * m) / 100), `${s} x ${m / 100} -> ${p}`);
       assert.ok(p <= 100_000 && p >= s, `${s} x ${m / 100} -> ${p}`);
     }
   }
-  assert.equal(payoutFor(100, 1.15), 115); // no float drift
-  assert.equal(payoutFor(500, 2.37), 1185);
-  assert.equal(payoutFor(1000, 99), 50_000); // the multiplier is capped at 50x
+  assert.equal(payoutFor(20, 1.15), 23); // no float drift
+  assert.equal(payoutFor(1, 1.49), 1);
+  assert.equal(payoutFor(1, 1.99), 1);   // stake 1: only whole multipliers add a coin
+  assert.equal(payoutFor(1, 2), 2);
+  assert.equal(payoutFor(5, 1.1), 5);    // 5.5 → 5, never up
+  assert.equal(payoutFor(5, 2.37), 11);
+  assert.equal(payoutFor(10, 9999), 50_000); // the multiplier is capped at 5,000x
   assert.throws(() => payoutFor(7, 2));
 });
 
-test('growth curve: 2x in 5-6 s, 10x in 18-22 s, 50x in 31-35 s, timeFor inverts multAt', () => {
+test('growth curve: 2x in 5-6 s, 10x in 18-22 s, 5,000x in 69-73 s, timeFor inverts multAt', () => {
   assert.equal(multAt(0), 1);
-  const t2 = timeFor(2), t10 = timeFor(10), t50 = timeFor(50);
+  const t2 = timeFor(2), t10 = timeFor(10), tMax = timeFor(5000);
   assert.ok(t2 >= 5 && t2 <= 6, `2x at ${t2}`);
   assert.ok(t10 >= 18 && t10 <= 22, `10x at ${t10}`);
-  assert.ok(t50 >= 31 && t50 <= 35, `50x at ${t50}`);
+  assert.ok(tMax >= 69 && tMax <= 73, `5,000x at ${tMax}`);
   for (const x of [1.01, 1.5, 3.33, 7, 42.5]) assert.ok(Math.abs(multAt(timeFor(x)) - x) < 1e-9);
 });
 
@@ -156,9 +163,9 @@ test('the counter: shown multiplier is floored, freezes at the crash point; he f
   assert.equal(shownAt(0, 5), 1);
   assert.equal(shownAt(timeFor(2.37) + 1e-6, 5), 2.37);
   assert.equal(shownAt(timeFor(9), 2.37), 2.37);
-  assert.equal(shownAt(timeFor(60)), MAX_MULT);
+  assert.equal(shownAt(timeFor(6000)), MAX_MULT);
   assert.ok(endTime(2.37) > timeFor(2.37) && Math.abs(endTime(2.37) - timeFor(2.38)) < 1e-12);
-  assert.equal(endTime(50), timeFor(50));
+  assert.equal(endTime(5000), timeFor(5000));
 });
 
 test('closing mid-run settles like a cash-out at that moment', () => {
@@ -166,6 +173,6 @@ test('closing mid-run settles like a cash-out at that moment', () => {
   assert.deepEqual(settleOnClose(endTime(3) + .01, 3), { win: false, mult: 3 });
   assert.deepEqual(settleOnClose(.05, 2), { win: true, mult: 1 });   // before 1.01x: stake back
   assert.deepEqual(settleOnClose(.05, 1), { win: false, mult: 1 });  // instant crash: lost
-  assert.deepEqual(settleOnClose(timeFor(50) + 1, 50), { win: true, mult: 50 });
-  assert.equal(payoutFor(500, settleOnClose(.05, 2).mult), 500);
+  assert.deepEqual(settleOnClose(timeFor(5000) + 1, 5000), { win: true, mult: 5000 });
+  assert.equal(payoutFor(5, settleOnClose(.05, 2).mult), 5);
 });
