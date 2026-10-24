@@ -7,10 +7,10 @@ import { purchaseMessage } from '../lib/telegram/format.mjs';
 
 const D0 = '2026-01-05';
 const CFG = cleanSeasonConfig({ weeklyCap: 700000 });
-const U = addDays(D0, 97);
+const U = addDays(D0, 79); // 80 days x 400 = 32,000 (stage 22)
 
 function rowsFor(windows) {
-  const rows = Array.from({ length: 98 }, (_, i) => ({ day: addDays(D0, i), casino_stake: 4000 }));
+  const rows = Array.from({ length: 80 }, (_, i) => ({ day: addDays(D0, i), casino_stake: 4000 }));
   windows.split('').forEach((w, i) => {
     const n = w === 'W' ? 5 : w === 'L' ? 1 : 0;
     for (let k = 0; k < n; k++) rows.push({ day: addDays(U, 1 + i * 6 + k), casino_stake: 4000 });
@@ -55,17 +55,17 @@ test('a modified client cannot fake it: its platform XP is clamped to 60 a day',
 });
 
 test('the client path: a real winner whose windows shift under the max assumption still verifies', () => {
-  // platform cap 10 to make the shift visible. Max assumption: 10 XP every
-  // day from D0 reaches stage 2 (50 XP) on D4. The client earned no platform
-  // XP: its stage 2 comes from a 50 XP feed row on D10, so its windows start
+  // platform cap 20 to make the shift visible. Max assumption: 20 XP every
+  // day from D0 reaches stage 2 (100 XP) on D4. The client earned no platform
+  // XP: its stage 2 comes from a 100 XP feed row on D10, so its windows start
   // D11 and each ends with a row worth exactly that match's target.
-  const cfg = cleanSeasonConfig({ platformDailyCap: 10, dailyCap: 100000, weeklyCap: 700000, worldCup: { unlockStage: 2 } });
+  const cfg = cleanSeasonConfig({ platformDailyCap: 20, dailyCap: 100000, weeklyCap: 700000, worldCup: { unlockStage: 2 } });
   const D = '2026-03-02';
-  const rows = [{ day: D, casino_rounds: 5 }, { day: addDays(D, 10), casino_stake: 500 }];
+  const rows = [{ day: D, casino_rounds: 5 }, { day: addDays(D, 10), casino_stake: 1000 }];
   cfg.worldCup.rounds.forEach((r, i) => rows.push({ day: addDays(D, 16 + 6 * i), casino_stake: r.target * 10 }));
   const today = addDays(D, 60);
   const noClient = verifyWorldCupPrize({ rows, cfg, today });
-  assert.equal(noClient.won, false, 'under 10/day everywhere the windows shift one match and the R32 is lost');
+  assert.equal(noClient.won, false, 'under 20/day everywhere the windows shift one match and the R32 is lost');
   assert.equal(noClient.reason, 'eliminated');
   const v = verifyWorldCupPrize({ rows, clientPlatform: { [D]: 0 }, cfg, today });
   assert.equal(v.won, true);

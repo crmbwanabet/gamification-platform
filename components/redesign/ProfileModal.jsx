@@ -24,7 +24,7 @@ const tile = { background: `linear-gradient(180deg, ${C.panelHi}, ${C.panelLo})`
  * opens it straight into the name form (header "Add name", level-up modal).
  * Rename rules live in lib/profile/name.mjs.
  */
-export default function ProfileModal({ open, onClose, level, nextLevel, xpPct = 0, vip, user, userId = null, onSaveName, startEditing = false, onWearItem, onOpenShop, shopItemCount = 0, namePrizeXp = 0, nextBonuses = [] }) {
+export default function ProfileModal({ open, onClose, level, subId = null, nextLevel, xpPct = 0, vip, user, userId = null, onSaveName, startEditing = false, onWearItem, onOpenShop, shopItemCount = 0, namePrizeXp = 0, nextBonuses = [] }) {
   const u = user || {};
   const stage = level?.level || 1;
   const current = playerName(u);
@@ -111,7 +111,7 @@ export default function ProfileModal({ open, onClose, level, nextLevel, xpPct = 
               {lockNote && !allowed && <div data-rename-locked role="status" style={{ fontSize: 12.5, fontWeight: 800, color: CANDY.gold, marginTop: 6 }}>You can change your name again at Level {lockedUntil}</div>}
               {who.sub && <div style={{ fontSize: 12.5, fontWeight: 800, color: 'rgba(255,255,255,.75)', marginTop: 4 }}>{who.sub}</div>}
               <div style={{ display: 'flex', justifyContent: 'center', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
-                <span style={{ fontSize: 12, fontWeight: 900, color: '#fff', background: 'rgba(20,4,48,.8)', border: `1.5px solid ${CANDY.violet.fill}`, padding: '2px 11px', borderRadius: 999 }}>Level {stage}{level?.title ? ` · ${level.title}` : ''}</span>
+                <span style={{ fontSize: 12, fontWeight: 900, color: '#fff', background: 'rgba(20,4,48,.8)', border: `1.5px solid ${CANDY.violet.fill}`, padding: '2px 11px', borderRadius: 999 }}>Level {subId || stage}{level?.title ? ` · ${level.title}` : ''}</span>
                 {/* Where the hero lives now (owner 2026-10-22: replaced the "Standard VIP" chip). */}
                 {level?.place && <span data-profile-place style={{ fontSize: 12, fontWeight: 900, color: CANDY.outline, background: CANDY.gold, padding: '3px 11px', borderRadius: 999, textTransform: 'uppercase' }}>{level.place}</span>}
               </div>
@@ -170,7 +170,7 @@ export default function ProfileModal({ open, onClose, level, nextLevel, xpPct = 
 
           <div style={{ padding: '14px 18px 16px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10, fontSize: 12, color: C.sub, marginBottom: 7 }}>
-              <span style={{ flex: 'none' }}>Level {level?.level}{user?.xp > 0 ? <> · {Math.floor(user.xp).toLocaleString('en-US')} XP in all</> : null}</span>
+              <span style={{ flex: 'none' }}>Level {subId || level?.level}{user?.xp > 0 ? <> · {Math.floor(user.xp).toLocaleString('en-US')} XP in all</> : null}</span>
               {/* what the next level gives (lib/profile/nextBonuses.mjs), never its place or name */}
               <span data-next-bonuses style={{ textAlign: 'right' }}>{nextLevel ? (nextBonuses.length ? <>Next level bonuses: <b style={{ color: CANDY.gold }}>{nextBonuses.join(', ')}</b></> : null) : 'Final level'}</span>
             </div>

@@ -7,31 +7,33 @@ import CandyButton from '../games/candy/CandyButton';
 import { COIN_ICON } from '../games/candy/tokens';
 import { amountText } from '@/lib/rewardText.mjs';
 import XpStar from './XpStar';
+import { storyFor } from '@/lib/vuma/stories.mjs';
 
 // "My story" comic speech bubbles anchored under the header avatar.
 // mode 'hint' = the small "My story" bubble (tap to open); 'open' = the big
 // bubble with the player's story. When and how long they show is decided by
 // GamificationPlatform (once per widget open, hidden while a modal is open).
 // The title is a plain "YOUR STORY:" (2026-10-18; the League level / Status
-// header was dropped, those live on the profile-modal chip). Stage 1 tells
-// the bottle-and-chickens opening; later stages say where the player is now.
+// header was dropped, those live on the profile-modal chip). Since
+// 2026-10-24 the middle part is the CURRENT sub-level's story
+// (lib/vuma/stories.mjs: "Level 1.3 · Last Goal Wins", the story and what
+// the player is working towards).
 
 const B = ({ children }) => <b style={{ fontWeight: 900, color: INK_TEXT }}>{children}</b>;
 const INK_TEXT = '#2A1446';
 
-function StoryBody({ level }) {
-  const first = !level || level.level <= 1;
-  const where = level ? `${level.club ? `${level.club}, ` : ''}${level.place}` : '';
+function StoryBody({ level, subId }) {
+  const [stage, sub] = String(subId || `${level?.level || 1}.1`).split('.').map(Number);
+  const st = storyFor(stage, sub);
   return (
     <>
       <p>The game of football is your passion.</p>
       <p>You dream of representing Zambia at the <B>WORLD CUP</B> and earning <B>MILLIONS</B> while crowds cheer your name.</p>
-      {first ? (<>
-        <p>For now, your football is an empty bottle.<br />Your pitch is the bush.<br />Your goalposts are two tied chickens.</p>
-        <p>You start your journey here.</p>
-      </>) : (
-        <p>You have come a long way. Now you play at <B>{where}</B>.</p>
-      )}
+      {st && (<>
+        <h3 style={H3}>Level {stage}.{sub}: {st.title}</h3>
+        <p>{st.story}</p>
+        <p><B>Working towards:</B> {st.quest}</p>
+      </>)}
       <h3 style={H3}>To progress</h3>
       <p>Earn <B>XP points</B> from <B>EVERY</B> casino or sport bet.</p>
       <p>More XP points = <B>LEVEL UP</B>: increase your skills and equipment, and win more matches.</p>
@@ -65,7 +67,7 @@ const tail = (left) => ({
   borderTop: `3px solid ${INK}`, borderLeft: `3px solid ${INK}`, transform: 'rotate(45deg)', borderTopLeftRadius: 4,
 });
 
-export default function StoryBubble({ mode, onOpen, onClose, onGo, prize = null, level = null }) {
+export default function StoryBubble({ mode, onOpen, onClose, onGo, prize = null, level = null, subId = null }) {
   const closeRef = React.useRef(null);
   React.useEffect(() => {
     if (mode !== 'open') return undefined;
@@ -115,7 +117,7 @@ export default function StoryBubble({ mode, onOpen, onClose, onGo, prize = null,
             </span>
           </button>
         </div>
-        <div className="rs-sb-story" style={{ position: 'relative', margin: '8px 0 14px', fontFamily: CANDY.body, fontSize: 15, lineHeight: 1.45, color: '#3B2559' }}><StoryBody level={level} /></div>
+        <div className="rs-sb-story" style={{ position: 'relative', margin: '8px 0 14px', fontFamily: CANDY.body, fontSize: 15, lineHeight: 1.45, color: '#3B2559' }}><StoryBody level={level} subId={subId} /></div>
         {prize && (
           <div data-story-prize style={{ margin: '0 0 8px', textAlign: 'center', fontFamily: CANDY.display, fontSize: 18, lineHeight: 1.25, color: INK, textTransform: 'uppercase' }}>
             Start now and earn<br />

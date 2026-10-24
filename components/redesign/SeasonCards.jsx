@@ -187,7 +187,7 @@ export function currentMatch(season) {
   const L = season.league;
   if (L && L.unlocked && L.current) {
     const m = L.current;
-    const stage = Math.max(getStage(season.xp).stage, season.cfg?.league?.unlockStage || 8);
+    const stage = Math.max(getStage(season.xp).stage, season.cfg?.league?.unlockStage || 12);
     const tierBonus = season.cfg?.league?.bonus?.[m.tier] || 0;
     return { kind: 'league', id: m.id, title: `${m.tierName} · Week ${m.n}`, home: VUMA_STAGES[stage - 1].club || m.home, away: m.opponent,
       vumaSrc: vumaArt(stage), oppSrc: opponentArt(m.opponent),
@@ -200,7 +200,7 @@ export function currentMatch(season) {
 
 /**
  * Current match card. Before the league unlocks it shows the road to the
- * first pro club (stage 8). `compact` = the Home version. An open FRIENDLY offer
+ * first pro club (stage 12). `compact` = the Home version. An open FRIENDLY offer
  * or a live friendly (season.friendlies) takes the slot on Home and leads the
  * Missions season section.
  */
@@ -227,7 +227,7 @@ function RegularMatchCard({ season, compact = false, onClaimLeague, link = null 
   if (!m) {
     // Locked until the first club (league unlockStage, 8): greyed out on the
     // village mud pitch, no link into the season (2026-10-16).
-    const first = VUMA_STAGES[(season.cfg?.league?.unlockStage || 8) - 1];
+    const first = VUMA_STAGES[(season.cfg?.league?.unlockStage || 12) - 1];
     const pct = Math.min(100, (season.xp / first.xp) * 100);
     const lockedPlate = (
       <div className="pitch-plate is-dim" style={{ display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left' }}>
@@ -618,10 +618,10 @@ export function LeagueRecord({ league, onClaim }) {
   );
 }
 
-/** World Cup path: locked teaser before stage 18, then the 8 matches. */
+/** World Cup path: locked teaser before stage 22, then the 8 matches. */
 export function WorldCupPath({ worldCup, cfg, prize, onClaim, onClaimPrize, prizeBusy = false }) {
   if (!worldCup) return null;
-  const unlockStage = VUMA_STAGES[(cfg?.worldCup?.unlockStage || 18) - 1];
+  const unlockStage = VUMA_STAGES[(cfg?.worldCup?.unlockStage || 22) - 1];
   const prizeK = `K${fmt(cfg?.worldCup?.prizeKwacha ?? 10000)}`;
   if (!worldCup.unlocked) {
     return (

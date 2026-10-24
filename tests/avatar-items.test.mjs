@@ -9,7 +9,7 @@ import { mergeConfig } from '../lib/config/merge.mjs';
 
 const ART = {
   cap: { shared: true, stages: [19], v: 'abc' },
-  tshirt: { shared: false, stages: Array.from({ length: 19 }, (_, i) => i + 1) },
+  tshirt: { shared: false, stages: Array.from({ length: 23 }, (_, i) => i + 1) },
   hoodie: { shared: false, stages: [1, 2, 3] },
 };
 

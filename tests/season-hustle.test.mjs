@@ -30,8 +30,9 @@ test('levels: names, stock thresholds, pay', () => {
   for (let l = 1; l <= 10; l++) assert.match(hustleImage(l), /^\/vuma\/hustle-[1-5]\.jpg$/);
 });
 
-test('locked until stage 2 (50 XP)', () => {
-  const s = computeSeasonXp({ platform: { [MON]: { daily: 20, games: 29 } } });
+test('locked until stage 2 (100 XP)', () => {
+  // 49 platform XP + 50 casino XP (K500 stake) = 99: one short
+  const s = computeSeasonXp({ rows: [row(MON, 500)], platform: { [MON]: { daily: 20, games: 29 } } });
   const h = hustleState({ season: s, hustle: null, today: MON });
   assert.equal(h.unlocked, false);
   assert.equal(h.ready, 0);
@@ -39,7 +40,7 @@ test('locked until stage 2 (50 XP)', () => {
 });
 
 test('first visit unlocks: 20 coins today, collect once a day', () => {
-  const s = computeSeasonXp({ platform: { [MON]: { daily: 20, games: 30 } } });
+  const s = computeSeasonXp({ rows: [row(MON, 500)], platform: { [MON]: { daily: 20, games: 30 } } }); // 50 casino + 50 platform = 100 XP
   const h = hustleState({ season: s, hustle: null, today: MON });
   assert.equal(h.unlocked, true);
   assert.equal(h.unlockDay, MON);
@@ -58,7 +59,7 @@ test('first visit unlocks: 20 coins today, collect once a day', () => {
 });
 
 test('uncollected pay accrues for at most 2 days ("the shop was closed")', () => {
-  const s = computeSeasonXp({ platform: { [MON]: { daily: 20, games: 30 } } });
+  const s = computeSeasonXp({ rows: [row(MON, 500)], platform: { [MON]: { daily: 20, games: 30 } } }); // 50 casino + 50 platform = 100 XP
   const h = hustleState({ season: s, hustle: { lastCollectDay: MON, collected: 20 }, today: addDays(MON, 6) });
   assert.equal(h.pendingDays, 6);
   assert.equal(h.paidDays, 2);
@@ -87,7 +88,7 @@ test('stock = cumulative overflow; each paid day uses the level reached by that 
 });
 
 test('a lastCollectDay in the future (clock skew) pays nothing', () => {
-  const s = computeSeasonXp({ platform: { [MON]: { daily: 20, games: 30 } } });
+  const s = computeSeasonXp({ rows: [row(MON, 500)], platform: { [MON]: { daily: 20, games: 30 } } }); // 50 casino + 50 platform = 100 XP
   const h = hustleState({ season: s, hustle: { lastCollectDay: addDays(MON, 3) }, today: MON });
   assert.equal(h.ready, 0);
 });
