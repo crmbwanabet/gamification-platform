@@ -17,17 +17,17 @@ const at = (day, lusakaHour = 12) => Date.parse(`${day}T00:00:00Z`) - 2 * H + lu
 // ---- league fixture -------------------------------------------------------
 const W1 = '2026-09-07'; // Monday
 const row = (day, casino_stake = 4000) => ({ day, casino_stake }); // 4000 -> 400 XP (the daily cap)
-/** weeks 1-2: 2,000 each (stage 6 on Wed of week 2); week 3 lost with 400; `friendlyDays` rows from Mon of week 4. */
-function leagueSeason(week4 = []) {
+/** weeks 1-3: 2,000 each (stage 12, 5,000 XP, on Wed of week 3; week 3 won); week 4 lost with 400; `friendlyDays` rows from Mon of week 5. */
+function leagueSeason(week5 = []) {
   const rows = [];
-  for (let w = 0; w < 2; w++) for (let i = 0; i < 5; i++) rows.push(row(addDays(W1, w * 7 + i)));
-  rows.push(row(addDays(W1, 14)));
-  week4.forEach((stake, i) => { if (stake) rows.push(row(addDays(W1, 21 + i), stake)); });
+  for (let w = 0; w < 3; w++) for (let i = 0; i < 5; i++) rows.push(row(addDays(W1, w * 7 + i)));
+  rows.push(row(addDays(W1, 21)));
+  week5.forEach((stake, i) => { if (stake) rows.push(row(addDays(W1, 28 + i), stake)); });
   return computeSeasonXp({ rows });
 }
-const WK3 = addDays(W1, 14);
-const MON4 = addDays(W1, 21);
-const lost = (L) => L.matches.find(m => m.id === WK3);
+const WK4 = addDays(W1, 21);
+const MON5 = addDays(W1, 28);
+const lost = (L) => L.matches.find(m => m.id === WK4);
 
 test('numbers: half the target rounded up to 10, costs, the Final excluded', () => {
   assert.deepEqual([1200, 1400, 1600, 1700, 1800, 1900, 1205].map(t => friendlyTarget(t)), [600, 700, 700, 700, 700, 700, 610]);
@@ -60,39 +60,39 @@ test('opponents: weaker local sides, synonym parodies, deterministic', () => {
 test('league: the offer opens at full-time for 24 hours, then expires', () => {
   const s = leagueSeason();
   // still Sunday: the week is live, no offer
-  let L = leagueState({ season: s, today: addDays(W1, 20), now: at(addDays(W1, 20), 23) });
+  let L = leagueState({ season: s, today: addDays(W1, 27), now: at(addDays(W1, 27), 23) });
   assert.equal(lost(L).status, 'live');
   assert.equal(lost(L).friendly, null);
   // Monday 10:00 Lusaka
-  const now = at(MON4, 10);
-  L = leagueState({ season: s, today: MON4, now });
+  const now = at(MON5, 10);
+  L = leagueState({ season: s, today: MON5, now });
   const m = lost(L);
   assert.equal(m.status, 'lost');
   const f = m.friendly;
   assert.equal(f.status, 'offer');
-  assert.equal(f.key, `league:${WK3}`);
+  assert.equal(f.key, `league:${WK4}`);
   assert.equal(f.cost, 75);
   assert.equal(f.target, 600);
   assert.equal(f.winBonus, 150);
   assert.equal(f.winPoints, 3);
-  assert.equal(f.fullTimeAt, fullTimeMs(addDays(W1, 20)));
+  assert.equal(f.fullTimeAt, fullTimeMs(addDays(W1, 27)));
   assert.equal(f.msLeft, 14 * H, 'OFFER ENDS IN: until Monday 24:00 Lusaka');
   assert.deepEqual(L.friendlies.map(x => x.key), [f.key]);
   // Tuesday 00:00 Lusaka: gone
-  L = leagueState({ season: s, today: addDays(MON4, 1), now: at(addDays(MON4, 1), 0) });
+  L = leagueState({ season: s, today: addDays(MON5, 1), now: at(addDays(MON5, 1), 0) });
   assert.equal(lost(L).friendly.status, 'expired');
   assert.deepEqual(L.friendlies, []);
-  assert.equal(acceptFriendly({}, lost(L).friendly, at(addDays(MON4, 1), 0)), null, 'an expired offer cannot be accepted');
+  assert.equal(acceptFriendly({}, lost(L).friendly, at(addDays(MON5, 1), 0)), null, 'an expired offer cannot be accepted');
 });
 
 test('league: accept -> live 24h from the accept time, counted over the Lusaka days it touches', () => {
-  const now = at(MON4, 10);
-  let L = leagueState({ season: leagueSeason(), today: MON4, now });
+  const now = at(MON5, 10);
+  let L = leagueState({ season: leagueSeason(), today: MON5, now });
   const fr = acceptFriendly({}, lost(L).friendly, now);
-  assert.deepEqual(fr, { [`league:${WK3}`]: { acceptedAt: new Date(now).toISOString(), paid: 75 } });
-  assert.deepEqual(friendlyDays(now), { from: MON4, to: addDays(MON4, 1), deadline: now + 24 * H });
+  assert.deepEqual(fr, { [`league:${WK4}`]: { acceptedAt: new Date(now).toISOString(), paid: 75 } });
+  assert.deepEqual(friendlyDays(now), { from: MON5, to: addDays(MON5, 1), deadline: now + 24 * H });
   // one day of play: 400 / 600, live
-  L = leagueState({ season: leagueSeason([4000]), today: MON4, now: now + 2 * H, friendlies: fr });
+  L = leagueState({ season: leagueSeason([4000]), today: MON5, now: now + 2 * H, friendlies: fr });
   let f = lost(L).friendly;
   assert.equal(f.status, 'live');
   assert.equal(f.xp, 400);
@@ -100,10 +100,10 @@ test('league: accept -> live 24h from the accept time, counted over the Lusaka d
   assert.equal(f.msLeft, 22 * H);
   assert.equal(lost(L).status, 'lost', 'the loss stands while the friendly is live');
   assert.equal(acceptFriendly(fr, f, now + 3 * H), null, 'no second accept');
-  // the same XP counts toward the week-4 match too
+  // the same XP counts toward the week-5 match too
   assert.equal(L.current.xp, 400);
   // won on Tuesday: the loss is reversed (bonus + 3 points)
-  L = leagueState({ season: leagueSeason([4000, 4000]), today: addDays(MON4, 1), now: now + 20 * H, friendlies: fr });
+  L = leagueState({ season: leagueSeason([4000, 4000]), today: addDays(MON5, 1), now: now + 20 * H, friendlies: fr });
   f = lost(L).friendly;
   assert.equal(f.status, 'won');
   assert.equal(lost(L).status, 'won');
@@ -114,9 +114,9 @@ test('league: accept -> live 24h from the accept time, counted over the Lusaka d
 });
 
 test('league: lose the friendly = the loss stands, no refund; days after the window do not count', () => {
-  const now = at(MON4, 10);
-  const fr = { [`league:${WK3}`]: { acceptedAt: new Date(now).toISOString(), paid: 75 } };
-  const L = leagueState({ season: leagueSeason([4000, 1000, 4000]), today: addDays(MON4, 2), now: now + 25 * H, friendlies: fr });
+  const now = at(MON5, 10);
+  const fr = { [`league:${WK4}`]: { acceptedAt: new Date(now).toISOString(), paid: 75 } };
+  const L = leagueState({ season: leagueSeason([4000, 1000, 4000]), today: addDays(MON5, 2), now: now + 25 * H, friendlies: fr });
   const f = lost(L).friendly;
   assert.equal(f.xp, 500, 'Mon 400 + Tue 100; Wednesday is outside');
   assert.equal(f.status, 'lost');
@@ -127,18 +127,18 @@ test('league: lose the friendly = the loss stands, no refund; days after the win
 });
 
 test('league: an accept time outside the offer window is ignored; decline', () => {
-  const now = at(addDays(MON4, 1), 10);
-  const early = { [`league:${WK3}`]: { acceptedAt: new Date(at(addDays(W1, 20), 20)).toISOString(), paid: 75 } }; // before full-time
-  const late = { [`league:${WK3}`]: { acceptedAt: new Date(at(addDays(MON4, 1), 1)).toISOString(), paid: 75 } }; // offer over
+  const now = at(addDays(MON5, 1), 10);
+  const early = { [`league:${WK4}`]: { acceptedAt: new Date(at(addDays(W1, 27), 20)).toISOString(), paid: 75 } }; // before full-time
+  const late = { [`league:${WK4}`]: { acceptedAt: new Date(at(addDays(MON5, 1), 1)).toISOString(), paid: 75 } }; // offer over
   for (const fr of [early, late]) {
-    const f = lost(leagueState({ season: leagueSeason([4000, 4000]), today: addDays(MON4, 1), now, friendlies: fr })).friendly;
+    const f = lost(leagueState({ season: leagueSeason([4000, 4000]), today: addDays(MON5, 1), now, friendlies: fr })).friendly;
     assert.equal(f.status, 'expired');
   }
-  const t = at(MON4, 9);
-  const open = lost(leagueState({ season: leagueSeason(), today: MON4, now: t })).friendly;
+  const t = at(MON5, 9);
+  const open = lost(leagueState({ season: leagueSeason(), today: MON5, now: t })).friendly;
   const d = declineFriendly({}, open, t);
   assert.ok(d[open.key].declinedAt);
-  const f = lost(leagueState({ season: leagueSeason(), today: MON4, now: t + H, friendlies: d })).friendly;
+  const f = lost(leagueState({ season: leagueSeason(), today: MON5, now: t + H, friendlies: d })).friendly;
   assert.equal(f.status, 'declined');
   assert.equal(acceptFriendly(d, f, t + H), null);
 });
@@ -153,8 +153,8 @@ test('cleanFriendlies: hydration of old / junk state', () => {
 // ---- World Cup fixture (as tests/season-worldcup.test.mjs) ------------------
 const D0 = '2026-01-05';
 const CFG = cleanSeasonConfig({ weeklyCap: 700000 });
-const U = addDays(D0, 97); // stage 18 day
-const grind = () => Array.from({ length: 98 }, (_, i) => row(addDays(D0, i)));
+const U = addDays(D0, 79); // stage 22 day (80 days x 400 = 32,000 XP)
+const grind = () => Array.from({ length: 80 }, (_, i) => row(addDays(D0, i)));
 /** windows: 'W' (2,000) / 'L' (400) / '-' per window; extra = additional rows. */
 function cupRows(windows, extra = [], shiftAfter = null) {
   const rows = grind();

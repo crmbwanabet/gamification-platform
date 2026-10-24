@@ -37,3 +37,14 @@ test('a cleaner can be passed (cleanReward in the app)', () => {
   const r = stageUpRewards(1, 2, { 2: { kwacha: 50, gems: 9 } }, (x) => ({ kwacha: x.kwacha }));
   assert.deepEqual(r.total, { kwacha: 50, emeralds: 0, rubies: 0, diamonds: 0 });
 });
+
+test('saved stage numbers move to the 23-stage list once (old s >= 2 = new s + 4)', async () => {
+  const { migrateSavedStages } = await import('../lib/xp/stageReward.mjs');
+  const { migrateStageNumber } = await import('../lib/vuma/stages.mjs');
+  assert.deepEqual(migrateSavedStages({ stageRewarded: 3, nameSetAtStage: 2, levelReset: { base: 640, from: 3, story: 'seen' } }, migrateStageNumber),
+    { stageList: 23, stageRewarded: 7, nameSetAtStage: 6, levelReset: { base: 640, from: 7, story: 'seen' } });
+  assert.deepEqual(migrateSavedStages({ stageRewarded: 1 }, migrateStageNumber), { stageList: 23, stageRewarded: 1 });
+  assert.deepEqual(migrateSavedStages({ stageList: 23, stageRewarded: 3 }, migrateStageNumber), { stageList: 23 });
+  assert.deepEqual(migrateSavedStages(null, migrateStageNumber), { stageList: 23 });
+  assert.equal(migrateStageNumber(19), 23);
+});

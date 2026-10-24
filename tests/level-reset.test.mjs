@@ -11,21 +11,23 @@ test('everyone lands on level 1 and keeps the total XP', () => {
   for (const xp of [0, 30, 50, 640, 1399, 3000, 52000]) {
     const r = makeLevelReset({ xp, today: LEVEL_RESET_DAY, fromStage: getStage(xp).stage });
     assert.equal(r.base, xp);
+    assert.equal(r.shown, 1);
     assert.equal(levelXpOf(xp, r), 0);
     assert.equal(getStage(levelXpOf(xp, r)).stage, 1);
   }
 });
 
-test('the called-back story is due only for players who had left the village', () => {
+test('the called-back story is due only for players who had left the village (stage 6, the academy)', () => {
   assert.equal(makeLevelReset({ xp: 30, today: LEVEL_RESET_DAY, fromStage: 1 }).story, 'none');
-  assert.equal(makeLevelReset({ xp: 50, today: LEVEL_RESET_DAY, fromStage: 2 }).story, 'due');
-  assert.equal(makeLevelReset({ xp: 3000, today: LEVEL_RESET_DAY, fromStage: 8 }).story, 'due');
+  assert.equal(makeLevelReset({ xp: 300, today: LEVEL_RESET_DAY, fromStage: 3 }).story, 'none'); // still in the village
+  assert.equal(makeLevelReset({ xp: 50, today: LEVEL_RESET_DAY, fromStage: 6 }).story, 'due');   // old stage 2 paid = new 6
+  assert.equal(makeLevelReset({ xp: 5000, today: LEVEL_RESET_DAY, fromStage: 12 }).story, 'due');
 });
 
 test('XP earned after the restart counts as level XP', () => {
-  const r = makeLevelReset({ xp: 640, today: LEVEL_RESET_DAY, fromStage: 3 });
-  assert.equal(levelXpOf(640 + 49, r), 49);
-  assert.equal(getStage(levelXpOf(640 + 50, r)).stage, 2);
+  const r = makeLevelReset({ xp: 640, today: LEVEL_RESET_DAY, fromStage: 8 });
+  assert.equal(levelXpOf(640 + 99, r), 99);
+  assert.equal(getStage(levelXpOf(640 + 100, r)).stage, 2);
   assert.equal(levelXpOf(600, r), 0); // a CRM correction below the base reads 0, never negative
 });
 
@@ -41,10 +43,10 @@ test('the levels season counts stage reach days from level XP', () => {
   const rows = [row('2026-10-20', 4000), row('2026-10-25', 500), row('2026-10-26', 2000)];
   const season = computeSeasonXp({ rows, today: '2026-10-26' });
   assert.equal(stageReachDay(season, 2), '2026-10-20');
-  const r = makeLevelReset({ xp: 400, today: LEVEL_RESET_DAY, fromStage: 3 });
+  const r = makeLevelReset({ xp: 400, today: LEVEL_RESET_DAY, fromStage: 8 });
   const lv = levelSeason(season, r);
   assert.equal(lv.xp, season.xp - 400);
-  assert.equal(stageReachDay(lv, 2), '2026-10-25'); // 50 level XP on 25 Oct
+  assert.equal(stageReachDay(lv, 2), '2026-10-26'); // 50 level XP on 25 Oct, 100 by 26 Oct
   assert.equal(levelSeason(season, null), season);
 });
 
@@ -58,8 +60,9 @@ test('re-reached levels never pay coins twice (stageRewarded stays the high mark
 test('saved markers are cleaned; junk is ignored', () => {
   assert.equal(cleanLevelReset(null), null);
   assert.equal(cleanLevelReset({ base: 'x' }), null);
-  assert.deepEqual(cleanLevelReset({ base: 640.7, day: '2026-10-24', from: 3, story: 'seen', celebrated: 2 }),
-    { base: 640, day: '2026-10-24', from: 3, story: 'seen', celebrated: 2 });
+  assert.deepEqual(cleanLevelReset({ base: 640.7, day: '2026-10-24', from: 3, story: 'seen', shown: 7 }),
+    { base: 640, day: '2026-10-24', from: 3, story: 'seen', shown: 7 });
+  assert.equal(cleanLevelReset({ base: 640, celebrated: 2 }).shown, null); // the 24 Oct marker: shown is set later
   assert.equal(cleanLevelReset({ base: 5, story: 'weird' }).story, 'none');
   assert.equal(levelXpOf(500, null), 500);
 });

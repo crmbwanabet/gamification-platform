@@ -13,7 +13,7 @@ import { xpSourceLines } from '@/lib/xp/sources.mjs';
 import { heroName, heroText, playerName } from '@/lib/profile/name.mjs';
 import { XP_LEVELS, LEVEL_REWARDS, getLevel } from '@/lib/data/platform';
 import { Check, Lock, LogIn, RefreshCw } from 'lucide-react';
-import { getStage, getNextStage, stageProgress, nextStageLabel } from '@/lib/vuma/stages.mjs';
+import { getStage, getSubLevel, getNextSubLevel, subLevelProgress } from '@/lib/vuma/stages.mjs';
 import { SeasonSection } from './SeasonCards';
 import { Predictions, Leaderboard, Album } from '../extras/ExtrasViews';
 
@@ -218,12 +218,13 @@ function CollectedBar({ s }) {
 function VumaRoad({ xp = 0, levelRewards = null, seasonCfg = null, displayName = null, userId = null, onEditName }) {
   const hero = heroName(displayName, userId);
   const cur = getStage(xp);
-  const next = getNextStage(xp);
+  const sub = getSubLevel(xp);
+  const next = getNextSubLevel(xp);
   const rewards = levelRewards || LEVEL_REWARDS;
   const x = Math.max(0, Math.floor(Number(xp) || 0));
   return (
     <div className="ev-vuma">
-      <SectionTitle right={<TitleNote>Level {cur.stage}</TitleNote>}>{hero}&apos;s road</SectionTitle>
+      <SectionTitle right={<TitleNote>Level {sub.id}</TitleNote>}>{hero}&apos;s road</SectionTitle>
       {!playerName({ displayName }) && onEditName && (
         <button type="button" onClick={onEditName} className="ev-name-invite"
           style={{ all: 'unset', boxSizing: 'border-box', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, width: '100%', minHeight: 44, margin: '-4px 0 12px', padding: '6px 6px 6px 12px', borderRadius: 14, background: C.track, border: `2px solid ${CANDY.violet.dark}` }}>
@@ -239,9 +240,9 @@ function VumaRoad({ xp = 0, levelRewards = null, seasonCfg = null, displayName =
             <>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, fontWeight: 700, flexWrap: 'wrap' }}>
                 <span style={{ background: 'rgba(0,0,0,.25)', padding: '2px 9px', borderRadius: 999, color: C.text, fontVariantNumeric: 'tabular-nums' }}>{x.toLocaleString()} / {next.xp.toLocaleString()} XP</span>
-                <span style={{ color: C.muted, fontWeight: 600 }}>{(next.xp - x).toLocaleString()} XP to {nextStageLabel(cur, next)}</span>
+                <span style={{ color: C.muted, fontWeight: 600 }}>{(next.xp - x).toLocaleString()} XP to level {next.id}</span>
               </div>
-              <Progress value={stageProgress(x)} height={14} color={XP_BAR} />
+              <Progress value={subLevelProgress(x)} height={14} color={XP_BAR} />
             </>
           ) : (
             <div style={{ fontSize: 13, fontWeight: 900, color: CANDY.gold }}>Final level reached</div>
