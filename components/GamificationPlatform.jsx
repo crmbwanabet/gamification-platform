@@ -18,6 +18,7 @@ import { ComebackModal, CashbackModal } from './extras/ExtrasViews';
 import EarnView from './redesign/EarnView';
 import StoreView from './redesign/StoreView';
 import LevelUpModal from './redesign/LevelUpModal';
+import CalledBackModal from './redesign/CalledBackModal';
 import DailyRewardPopup from './redesign/DailyRewardPopup';
 import { XpFxContext, useXpCollect, XpFeedCard } from './redesign/XpCollect';
 import { feedNews, splitBarHustle } from '@/lib/xp/collect.mjs';
@@ -50,6 +51,7 @@ import { STORY_PRIZE, NAME_PRIZE } from '@/lib/extras/rules.mjs';
 import { nextLevelBonuses } from '@/lib/profile/nextBonuses.mjs';
 import { missionStates as buildMissionStates, missionCounts, countClaimable, recordMissionClaim, recordMissionBase, migrateMissionBases } from '@/lib/missions/ladder.mjs';
 import { initialStageRewarded, stageUpRewards } from '@/lib/xp/stageReward.mjs';
+import { levelXpOf, makeLevelReset, levelSeason, cleanLevelReset } from '@/lib/xp/levelReset.mjs';
 import { lusakaDay } from '@/lib/casino/feed.mjs';
 import { DAILY_LOGIN_XP, addGameXp, refundGameXp, casinoXp, addDailyXp, addMissionXp, recordXpDay } from '@/lib/xp/sources.mjs';
 // Season (2026-10-09): XP from real play (CRM feed), side hustle, league, World Cup
@@ -1045,9 +1047,14 @@ export default function GamificationPlatform() {
   const userRef = useRef(user);
   userRef.current = user;
 
-  const level = getLevel(user.xp);
-  const nextLevel = getNextLevel(user.xp);
-  const xpProgress = getXPProgress(user.xp);
+  // Levels count LEVEL XP (lib/xp/levelReset.mjs, owner 2026-10-24: every
+  // player was called back to the village = level 1, keeping all XP):
+  // user.xp stays the total; lvXp = total minus the restart base.
+  const lvOf = (u) => levelXpOf(u.xp, u.levelReset);
+  const lvXp = lvOf(user);
+  const level = getLevel(lvXp);
+  const nextLevel = getNextLevel(lvXp);
+  const xpProgress = getXPProgress(lvXp);
   const vip = getVIP(user.deposits);
 
   // === SSO persistence: load this player's saved progress on session, save on change ===
@@ -1149,10 +1156,10 @@ export default function GamificationPlatform() {
   const savePlayerName = (name) => {
     const v = validateName(name);
     if (!v.ok) return v;
-    const stage = getLevel(userRef.current.xp).level;
+    const stage = getLevel(lvOf(userRef.current)).level;
     if (!setPlayerName(userRef.current, v.name, stage)) return { ok: false, reason: `You can change your name again at Level ${stage + 1}` };
     const firstName = !userRef.current.displayName;
-    setUser(u => setPlayerName(u, v.name, getLevel(u.xp).level) || u);
+    setUser(u => setPlayerName(u, v.name, getLevel(lvOf(u)).level) || u);
     track('name_set', { meta: { stage } });
     // The first name pays NAME_PRIZE XP once, ever (owner 2026-10-22).
     if (firstName && namePrizeDue) creditExtra(NAME_PRIZE, document.querySelector('[data-profile-name]'), '✏️ Name saved!', u => (u.namePrizeClaimed ? null : { namePrizeClaimed: true }));
@@ -1389,7 +1396,10 @@ export default function GamificationPlatform() {
   welcomeBusyRef.current = welcomePending;
   const welcomeAfterRef = useRef([]);
   const [stagePending, setStagePending] = useState(false); // a stage-up modal is still to come
-  const otherModalOpen = !!activeGame || !!selectedMission || showProfile || !!levelUp || !!seasonResult;
+  // the one-time "called back to the village" call (lib/xp/levelReset.mjs)
+  const [calledBack, setCalledBack] = useState(false);
+  const calledBackDue = loggedIn && cleanLevelReset(user.levelReset)?.story === 'due';
+  const otherModalOpen = !!activeGame || !!selectedMission || showProfile || !!levelUp || !!seasonResult || calledBack || calledBackDue;
   const anyModalOpen = otherModalOpen || dailyPopup === 'open' || dailyPopup === 'closing' || welcomeOpen;
   useEffect(() => {
     if (story !== 'hint' || anyModalOpen) return undefined;
@@ -1595,6 +1605,19 @@ export default function GamificationPlatform() {
   useEffect(() => {
     setUser(u => (u.xp === derivedXp ? u : { ...u, xp: derivedXp }));
   }, [derivedXp]);
+  // The village restart lands once per player, with a FRESH feed (the feed
+  // is the truth): base = this total, the story is due for players who had
+  // left the village. Coins already paid stay paid (stageRewarded untouched).
+  useEffect(() => {
+    if (!loggedIn || !hydratedRef.current || !seasonFeed.rows) return;
+    if (cleanLevelReset(userRef.current.levelReset)) return;
+    const xp = seasonCalc.xp;
+    const reset = makeLevelReset({ xp, season: seasonCalc, today, fromStage: getLevel(Math.max(xp, Number(userRef.current.xp) || 0)).level });
+    setUser(u => (cleanLevelReset(u.levelReset) ? u : { ...u, levelReset: reset }));
+    track('level_reset', { meta: { from: reset.from, base: reset.base } });
+  }, [loggedIn, seasonFeed.rows, seasonCalc, today]);
+  // levels see the season through level XP (league + World Cup unlock days)
+  const lvSeason = useMemo(() => levelSeason(seasonCalc, user.levelReset), [seasonCalc, user.levelReset]);
 
   // === XP collect moments (2026-10-13, components/redesign/XpCollect.jsx) ===
   // Stars fly from where XP was earned into the header stage bar. The header
@@ -1604,7 +1627,7 @@ export default function GamificationPlatform() {
     if (over || (d && d.overflow > 0)) return 'daily max reached';
     return `today ${(d ? d.xp : 0).toLocaleString('en-US')} / ${seasonCfg.dailyCap.toLocaleString('en-US')}`;
   };
-  const xpFx = useXpCollect(user.xp, prefersReducedMotion, xpNote);
+  const xpFx = useXpCollect(lvXp, prefersReducedMotion, xpNote);
   const xpFxRef = useRef(xpFx);
   xpFxRef.current = xpFx;
   const [xpCard, setXpCard] = useState(null);
@@ -1652,13 +1675,13 @@ export default function GamificationPlatform() {
   const gameXpBaseRef = useRef(null);
   useEffect(() => {
     if (activeGame) {
-      if (!gameXpBaseRef.current) gameXpBaseRef.current = { id: activeGame, xp: userRef.current.xp };
+      if (!gameXpBaseRef.current) gameXpBaseRef.current = { id: activeGame, xp: lvOf(userRef.current) };
       return;
     }
     const base = gameXpBaseRef.current;
     gameXpBaseRef.current = null;
     if (!base) return;
-    const now = userRef.current.xp;
+    const now = lvOf(userRef.current);
     if (now <= base.xp) return;
     xpFxRef.current.collect({
       fromAt: () => document.querySelector(`[data-game-tile="${base.id}"]`),
@@ -1671,8 +1694,8 @@ export default function GamificationPlatform() {
   // saved state from before the friendly has no `friendlies`: cleanFriendlies -> {}
   const friendlyMap = useMemo(() => cleanFriendlies(userSeason.friendlies), [userSeason.friendlies]);
   const hustle = useMemo(() => hustleState({ season: seasonCalc, hustle: user.hustle, today, cfg: seasonCfg }), [seasonCalc, user.hustle, today, seasonCfg]);
-  const league = useMemo(() => leagueState({ season: seasonCalc, today, cfg: seasonCfg, claims: userSeason.leagueClaims, now: nowTick, friendlies: friendlyMap }), [seasonCalc, today, seasonCfg, userSeason.leagueClaims, nowTick, friendlyMap]);
-  const worldCup = useMemo(() => worldCupState({ season: seasonCalc, today, cfg: seasonCfg, claims: userSeason.wcClaims, now: nowTick, friendlies: friendlyMap }), [seasonCalc, today, seasonCfg, userSeason.wcClaims, nowTick, friendlyMap]);
+  const league = useMemo(() => leagueState({ season: lvSeason, today, cfg: seasonCfg, claims: userSeason.leagueClaims, now: nowTick, friendlies: friendlyMap }), [lvSeason, today, seasonCfg, userSeason.leagueClaims, nowTick, friendlyMap]);
+  const worldCup = useMemo(() => worldCupState({ season: lvSeason, today, cfg: seasonCfg, claims: userSeason.wcClaims, now: nowTick, friendlies: friendlyMap }), [lvSeason, today, seasonCfg, userSeason.wcClaims, nowTick, friendlyMap]);
   // FRIENDLY offers + live friendlies (World Cup first); only with a feed and a session
   const activeFriendlies = loggedIn && seasonFeed.rows ? [...worldCup.friendlies, ...league.friendlies] : [];
   const seasonStatus = !loggedIn
@@ -1745,7 +1768,7 @@ export default function GamificationPlatform() {
       return { ...u, season: { ...s, friendlies: { ...cur, [key]: next[key] } } };
     });
   };
-  const seasonView = { status: seasonStatus, today, xp: seasonCalc.xp, overflow: seasonCalc.overflow, cfg: seasonCfg, league, worldCup, hustle, prize: seasonPrize, loggedIn,
+  const seasonView = { status: seasonStatus, today, xp: lvSeason.xp, overflow: seasonCalc.overflow, cfg: seasonCfg, league, worldCup, hustle, prize: seasonPrize, loggedIn,
     friendlies: activeFriendlies, coins: user.kwacha, onAcceptFriendly, onDeclineFriendly,
     heroName: heroName(user.displayName, playerId) }; // the story hero = the player's name, else their ID
 
@@ -1871,7 +1894,8 @@ export default function GamificationPlatform() {
 
   const extras = useExtras({
     session, loggedIn, hydrated: hydratedRef.current, tab, user, setUser, seasonRows: seasonFeed.rows, today,
-    stage: getLevel(user.xp).level, league, worldCup, hustle, credit: creditExtra, showNotif,
+    // souvenir cards stay earned for every level ever reached (paid marker)
+    stage: Math.max(level.level, Number(user.stageRewarded) || 1), league, worldCup, hustle, credit: creditExtra, showNotif,
     blocked: !popupsOk || anyModalOpen || wheel.isOpen || welcomePending || (dailyPopup !== 'done' && canClaimDaily && !user.dailyClaimed),
   });
 
@@ -1945,7 +1969,7 @@ export default function GamificationPlatform() {
   const seasonEvents = useMemo(() => {
     if (seasonFeed.status !== 'ok' || !seasonFeed.rows || !seasonFeed.rows.length) return [];
     const recent = addDays(today, -14);
-    const club = getLevel(seasonCalc.xp).club || XP_LEVELS[seasonCfg.league.unlockStage - 1].club;
+    const club = getLevel(lvSeason.xp).club || XP_LEVELS[seasonCfg.league.unlockStage - 1].club;
     const ev = [];
     for (const m of league.matches) {
       if (m.weekEnd < recent) continue;
@@ -1969,7 +1993,7 @@ export default function GamificationPlatform() {
     return ev.sort((a, b) => (a.end < b.end ? -1 : a.end > b.end ? 1 : 0));
   }, [seasonFeed.status, seasonFeed.rows, today, seasonCalc.xp, league, worldCup]);
   useEffect(() => {
-    if (!hydratedRef.current || !loggedIn || !popupsOk || seasonResult || activeGame || selectedMission || showProfile || levelUp) return;
+    if (!hydratedRef.current || !loggedIn || !popupsOk || seasonResult || activeGame || selectedMission || showProfile || levelUp || calledBack || calledBackDue) return;
     const seen = new Set(userRef.current.season?.seen || []);
     const unseen = seasonEvents.filter(e => !seen.has(e.id));
     if (!unseen.length) return;
@@ -1979,7 +2003,7 @@ export default function GamificationPlatform() {
       const list = [...(Array.isArray(s.seen) ? s.seen : []), ...unseen.map(e => e.id)].slice(-80);
       return { ...u, season: { ...s, seen: list } };
     });
-  }, [seasonEvents, loggedIn, popupsOk, seasonResult, activeGame, selectedMission, showProfile, levelUp]);
+  }, [seasonEvents, loggedIn, popupsOk, seasonResult, activeGame, selectedMission, showProfile, levelUp, calledBack, calledBackDue]);
 
   // The old progress engine (daily pool / weekly / permanent missions counted
   // from in-app actions) is parked with those missions — see
@@ -2081,8 +2105,10 @@ export default function GamificationPlatform() {
   // player reaches a stage ABOVE the highest one already paid (user.stageRewarded,
   // lib/xp/stageReward.mjs): XP derived from the CRM can drop and climb back,
   // which never pays or celebrates the same stage twice.
+  // Since the village restart (lib/xp/levelReset.mjs) a level re-reached
+  // shows its moment again (levelReset.celebrated) but pays no coins.
   useEffect(() => {
-    const curLevel = getLevel(user.xp).level;
+    const curLevel = getLevel(lvXp).level;
     if (lastLevelRef.current === null) {
       lastLevelRef.current = initialStageRewarded(user.stageRewarded, curLevel);
       const mark = lastLevelRef.current;
@@ -2090,12 +2116,18 @@ export default function GamificationPlatform() {
       return;
     }
     const up = stageUpRewards(lastLevelRef.current, curLevel, cfg.levelRewards, cleanReward);
-    if (up.levels.length) {
+    const reset = cleanLevelReset(user.levelReset);
+    const again = reset && curLevel > reset.celebrated;
+    if (up.levels.length || again) {
       const total = up.total;
       lastLevelRef.current = up.rewarded;
-      setUser(u => ({ ...u, stageRewarded: Math.max(Number(u.stageRewarded) || 0, up.rewarded) }));
-      addCurrencies(total);
-      const lvl = getLevel(user.xp);
+      setUser(u => {
+        const r = cleanLevelReset(u.levelReset);
+        return { ...u, stageRewarded: Math.max(Number(u.stageRewarded) || 0, up.rewarded),
+          ...(r ? { levelReset: { ...r, celebrated: Math.max(r.celebrated, curLevel) } } : null) };
+      });
+      if (up.levels.length) addCurrencies(total);
+      const lvl = getLevel(lvXp);
       track('level_up', { amount: total.kwacha || 0, meta: { level: lvl.level } }); // amount = level-up coins (ops console)
       // The celebration waits until the XP stars have filled the bar (the
       // bar crosses into the new stage first) and the WELCOME BACK pop-up has
@@ -2110,7 +2142,21 @@ export default function GamificationPlatform() {
       });
       if (welcomeBusyRef.current || !popupsOkRef.current) welcomeAfterRef.current.push(celebrate); else celebrate();
     }
-  }, [user.xp]);
+  }, [lvXp]);
+
+  // "Called back to the village" (once): after the wheel, before WELCOME
+  // BACK and the daily pop-up (both wait while it is due: otherModalOpen).
+  useEffect(() => {
+    if (!calledBackDue || calledBack || !popupsOk || !wheel.settled || wheel.isOpen) return undefined;
+    if (activeGame || selectedMission || showProfile || levelUp || seasonResult || story === 'open') return undefined;
+    const t = setTimeout(() => { setCalledBack(true); track('called_back_seen'); }, 600);
+    return () => clearTimeout(t);
+  }, [calledBackDue, calledBack, popupsOk, wheel.settled, wheel.isOpen, activeGame, selectedMission, showProfile, levelUp, seasonResult, story]);
+  const closeCalledBack = () => {
+    setCalledBack(false);
+    setUser(u => { const r = cleanLevelReset(u.levelReset); return r ? { ...u, levelReset: { ...r, story: 'seen' } } : u; });
+    flushTrack();
+  };
 
   // Game + trivia overlays are app-global modals. Extracted so the redesigned
   // (early-returned) tabs can render them too and still launch games.
@@ -2288,6 +2334,7 @@ export default function GamificationPlatform() {
         onClose={() => setSeasonResult(null)}
         onClaim={(el) => { const e = seasonResult; setSeasonResult(null); if (e) claimSeasonBonus(e.matchKind === 'wc' ? 'wc' : 'league', e.matchId, el); }}
         onClaimPrize={() => { setSeasonResult(null); onClaimPrize(); }} />
+      <CalledBackModal open={calledBack} onClose={closeCalledBack} avatar={XP_LEVELS[0].avatar} hero={heroName(user.displayName, playerId)} />
       <LevelUpModal levelUp={levelUp} onClose={() => setLevelUp(null)} hero={heroName(user.displayName, playerId)} named={!!user.displayName}
         onRename={levelUp && canRename(user, levelUp.level) ? () => { setLevelUp(null); openProfile(true); } : undefined} />
       <ProfileModal
@@ -2310,7 +2357,7 @@ export default function GamificationPlatform() {
     wallet: { kwacha: user.kwacha, emeralds: user.emeralds || 0, rubies: user.rubies || 0, diamonds: user.diamonds || 0, economy: cfg.economy, store: cfg.store },
     missionsCount: openMissionsCount,
     badges: user.missionsComplete.length,
-    xp: user.xp,
+    xp: lvXp, // level XP (the total stays user.xp)
     onNavigate: navigateTab,
     onOpenProfile: () => openProfile(false),
     // header = the PLAYER: their name over "ID x" (bwanabet user id once the

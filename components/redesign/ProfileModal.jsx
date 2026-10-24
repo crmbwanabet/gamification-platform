@@ -170,7 +170,7 @@ export default function ProfileModal({ open, onClose, level, nextLevel, xpPct = 
 
           <div style={{ padding: '14px 18px 16px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10, fontSize: 12, color: C.sub, marginBottom: 7 }}>
-              <span style={{ flex: 'none' }}>Level {level?.level}</span>
+              <span style={{ flex: 'none' }}>Level {level?.level}{user?.xp > 0 ? <> · {Math.floor(user.xp).toLocaleString('en-US')} XP in all</> : null}</span>
               {/* what the next level gives (lib/profile/nextBonuses.mjs), never its place or name */}
               <span data-next-bonuses style={{ textAlign: 'right' }}>{nextLevel ? (nextBonuses.length ? <>Next level bonuses: <b style={{ color: CANDY.gold }}>{nextBonuses.join(', ')}</b></> : null) : 'Final level'}</span>
             </div>
