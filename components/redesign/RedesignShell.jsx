@@ -9,7 +9,7 @@ import NavIcon from './NavIcons';
 import StoryBubble, { STORY_CSS } from './StoryBubble';
 import BonusIntro, { BonusCenterTitle } from './BonusIntro';
 import CandyButton, { CANDY_BTN_CSS } from '../games/candy/CandyButton';
-import { getLevel, getNextLevel, getXPProgress } from '@/lib/data/platform';
+import { getLevel, getNextLevel, getXPProgress, getSubLevel } from '@/lib/data/platform';
 import { GEMS, GEM_LABEL, gemCoins, gemKwacha, coinsToKwacha, economyRates, formatKwacha, formatNumber } from '@/lib/economy/currency.mjs';
 import { amountText } from '@/lib/rewardText.mjs';
 import { playerLabel } from '@/lib/profile/name.mjs';
@@ -284,8 +284,8 @@ function NavTabs({ active, onNavigate, navBadges = {}, place, locked = {} }) {
   });
 }
 
-function TopBar({ lvl, nextLvl, xpPct, xpFx, activeTab, onNavigate, onOpenProfile, userId, displayName, onEditName, wallet, onOpenWallet, navBadges, story, onStoryOpen, onStoryClose, onStoryGo, storyPrize }) {
-  const stageTitle = `Level ${lvl.level}: ${lvl.name}${nextLvl ? ` · next: ${nextLvl.name}` : ' · final level'}`;
+function TopBar({ lvl, subId = null, nextLvl, xpPct, xpFx, activeTab, onNavigate, onOpenProfile, userId, displayName, onEditName, wallet, onOpenWallet, navBadges, story, onStoryOpen, onStoryClose, onStoryGo, storyPrize }) {
+  const stageTitle = `Level ${subId || lvl.level}: ${lvl.name}${nextLvl ? '' : ' · final level'}`;
   // The PLAYER's identity (2026-10-09): their name over "ID x", else the ID
   // itself, else "Player". Vuma stays in the avatar art (the story character).
   const who = playerLabel({ displayName }, userId);
@@ -300,7 +300,7 @@ function TopBar({ lvl, nextLvl, xpPct, xpFx, activeTab, onNavigate, onOpenProfil
             <span className="rs-name" data-player-name style={{ fontFamily: CANDY.display, lineHeight: 1.05, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{who.title}</span>
             {who.sub && <span title={`Your bwanabet user ID: ${userId}`} style={{ fontSize: 11.5, color: 'rgba(255,255,255,.62)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{who.sub}</span>}
             <span title={stageTitle} style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
-              <span key={lvl.level} className={xpFx?.shine ? 'xpfx-bump' : undefined} style={{ fontSize: 10.5, fontWeight: 900, color: CANDY.outline, background: CANDY.gold, borderRadius: 999, padding: '2px 8px', whiteSpace: 'nowrap', flex: 'none' }}>LEVEL {lvl.level}</span>
+              <span key={lvl.level} className={xpFx?.shine ? 'xpfx-bump' : undefined} style={{ fontSize: 10.5, fontWeight: 900, color: CANDY.outline, background: CANDY.gold, borderRadius: 999, padding: '2px 8px', whiteSpace: 'nowrap', flex: 'none' }}>LEVEL {subId || lvl.level}</span>
               <span data-xp-bar style={{ flex: 1, minWidth: 36 }}><Progress value={xpPct} height={7} color={XP_BAR} ghost={xpFx?.ghostPct ?? null} shineKey={xpFx?.shine || 0} fast={!!xpFx} /></span>
               <XpChip chip={xpFx?.chip} />
             </span>
@@ -311,7 +311,7 @@ function TopBar({ lvl, nextLvl, xpPct, xpFx, activeTab, onNavigate, onOpenProfil
             <span className="rs-addname-face"><Pencil size={12} strokeWidth={3} aria-hidden /><span className="rs-addname-t">Add name</span></span>
           </button>
         )}
-        <StoryBubble mode={story} onOpen={onStoryOpen} onClose={onStoryClose} onGo={onStoryGo} prize={storyPrize} level={lvl} />
+        <StoryBubble mode={story} onOpen={onStoryOpen} onClose={onStoryClose} onGo={onStoryGo} prize={storyPrize} level={lvl} subId={subId} />
       </div>
       <nav className="rs-topnav" aria-label="Main">
         <NavTabs active={activeTab} onNavigate={onNavigate} navBadges={navBadges} place="top" locked={navLocks(lvl, wallet?.store)} />
@@ -401,11 +401,11 @@ export default function RedesignShell({
   // The header bar follows the XP collect animation when the platform provides it.
   const xpFx = React.useContext(XpFxContext);
   const barXp = xpFx ? xpFx.shown : xp;
-  const lvl = getLevel(barXp), nextLvl = getNextLevel(barXp), xpPct = getXPProgress(barXp);
+  const lvl = getLevel(barXp), nextLvl = getNextLevel(barXp), xpPct = getXPProgress(barXp), subId = getSubLevel(barXp).id;
   return (
     <div className={`rs-shell${isWidget ? ' rs-widget' : ''}`} style={{ display: 'flex', flexDirection: 'column', overflowX: 'hidden', background: APP_BG, color: C.text, fontFamily: CANDY.body, WebkitFontSmoothing: 'antialiased' }}>
       <style dangerouslySetInnerHTML={{ __html: SHELL_CSS + CANDY_BTN_CSS + STORY_CSS }} />
-      <TopBar lvl={lvl} nextLvl={nextLvl} xpPct={xpPct} xpFx={xpFx} activeTab={activeTab} onNavigate={onNavigate} onOpenProfile={onOpenProfile}
+      <TopBar lvl={lvl} subId={subId} nextLvl={nextLvl} xpPct={xpPct} xpFx={xpFx} activeTab={activeTab} onNavigate={onNavigate} onOpenProfile={onOpenProfile}
         userId={userId} displayName={displayName} onEditName={onEditName} wallet={wallet || { kwacha: 0 }} onOpenWallet={() => setWalletOpen(true)} navBadges={navBadges}
         story={walletOpen ? null : story} onStoryOpen={onStoryOpen} onStoryClose={onStoryClose} onStoryGo={onStoryGo} storyPrize={storyPrize} />
       <main className="rs-main"><BonusCenterTitle />{intro && <BonusIntro stage={lvl.level} {...intro} />}{children}</main>

@@ -4,6 +4,7 @@ import { ROUTE_PERMS, can, cleanPermissions, effectivePermissions, editProblem, 
 import { hashPassword, verifyPassword, safeEqual, verifyChain } from '@/lib/ops/crypto.mjs';
 import { sessionAdmin, startSession, tooManyFailures, noteFailure, audit, clientIp } from '@/lib/ops/server';
 import { getStage } from '@/lib/vuma/stages.mjs';
+import { levelXpOf } from '@/lib/xp/levelReset.mjs';
 import { bandForStage, LEAGUE_BANDS } from '@/lib/extras/rules.mjs';
 
 export const runtime = 'nodejs';
@@ -34,14 +35,15 @@ function windowOf(sp) {
   return { from, to, fromTs: `${from}T00:00:00+02:00`, toTs: `${addDay(to, 1)}T00:00:00+02:00`, live: to >= today };
 }
 
-const levelOf = (xp) => { const s = getStage(num(xp)); return { level: s.stage, title: s.title, band: bandForStage(s.stage).id }; };
+// level = LEVEL XP (total minus the village-restart base, lib/xp/levelReset.mjs) when the reset is known
+const levelOf = (xp, reset = null) => { const s = getStage(levelXpOf(num(xp), reset)); return { level: s.stage, title: s.title, band: bandForStage(s.stage).id }; };
 
 async function profilesFor(uids) {
   const ids = [...new Set(uids)].filter(u => /^\d+$/.test(u)).map(Number);
   const out = new Map();
   for (let i = 0; i < ids.length; i += 500) {
-    const { data } = await db.from('profiles').select('bwanabet_user_id, xp, state->>displayName').in('bwanabet_user_id', ids.slice(i, i + 500));
-    for (const p of data || []) out.set(String(p.bwanabet_user_id), { xp: num(p.xp), name: p.displayName || null });
+    const { data } = await db.from('profiles').select('bwanabet_user_id, xp, state->>displayName, levelReset:state->levelReset').in('bwanabet_user_id', ids.slice(i, i + 500));
+    for (const p of data || []) out.set(String(p.bwanabet_user_id), { xp: num(p.xp), name: p.displayName || null, levelReset: p.levelReset || null });
   }
   return out;
 }
@@ -65,7 +67,7 @@ async function report(sp) {
   const prof = await profilesFor((data || []).map(r => r.uid));
   const items = (data || []).map(r => {
     const p = prof.get(r.uid) || { xp: 0, name: null };
-    return { ...r, name: p.name, xp: p.xp, ...levelOf(p.xp), staked: num(r.staked), paid: num(r.paid), coins_out: num(r.coins_out), active_minutes: num(r.active_minutes) };
+    return { ...r, name: p.name, xp: p.xp, ...levelOf(p.xp, p.levelReset), staked: num(r.staked), paid: num(r.paid), coins_out: num(r.coins_out), active_minutes: num(r.active_minutes) };
   }).filter(r => matchesQ(q, r.uid, r.name) && (band === 'all' || r.band === band));
   return { window: w, rows, items };
 }
@@ -140,7 +142,7 @@ async function player(sp) {
     uid,
     exists: !!p,
     profile: p ? {
-      name: s.displayName || null, ...levelOf(p.xp), xp: num(p.xp),
+      name: s.displayName || null, ...levelOf(p.xp, s.levelReset), xp: num(p.xp),
       coins: num(s.kwacha ?? p.kwacha), emeralds: num(s.emeralds ?? p.emeralds), rubies: num(s.rubies ?? p.rubies), diamonds: num(s.diamonds ?? p.diamonds),
       missions: Array.isArray(s.missionClaims) ? s.missionClaims : [], streak: num(s.streak), dailyDay: num(s.dailyDay), lastDailyClaim: s.lastDailyClaim || null,
       gamesPlayed: num(s.gamesPlayed), firstSeen: p.created_at, lastSeen: p.last_seen_at || p.updated_at, firstDaily: p.first_daily_at,

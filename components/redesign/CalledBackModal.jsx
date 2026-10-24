@@ -33,7 +33,7 @@ export default function CalledBackModal({ open, onClose, avatar, hero = 'Player'
       <div style={{ ...goldRim, boxShadow: `${goldRim.boxShadow}, 0 24px 70px rgba(0,0,0,.6)`, position: 'relative', width: 'min(400px, 100%)', boxSizing: 'border-box', padding: 9, borderRadius: 26 }}>
         <span aria-hidden style={{ ...dotRow(false), top: 0.5, left: 22, right: 22, height: 8 }} />
         <span aria-hidden style={{ ...dotRow(false), bottom: 0.5, left: 22, right: 22, height: 8 }} />
-        <div style={{ borderRadius: 18, background: innerGlow, padding: '20px 18px 12px', textAlign: 'center' }}>
+        <div style={{ borderRadius: 18, background: innerGlow, padding: '20px 18px 12px', textAlign: 'center', maxHeight: 'calc(100dvh - 58px)', overflowY: 'auto', boxSizing: 'border-box' }}>
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 14px', borderRadius: 999, background: C.green, color: '#fff', fontWeight: 900, fontSize: 13, letterSpacing: '.08em', textTransform: 'uppercase', boxShadow: '0 3px 0 rgba(0,0,0,.35)' }}>
             <span className="cb-ring" style={{ display: 'inline-flex' }}><PhoneIcon size={16} /></span> Incoming call
           </div>

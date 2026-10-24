@@ -14,7 +14,7 @@
 // and the chip shows.
 
 import React from 'react';
-import { getLevel, getXPProgress } from '@/lib/data/platform';
+import { getSubLevel, getXPProgress } from '@/lib/data/platform';
 import { starCount } from '@/lib/xp/collect.mjs';
 import { CANDY } from './tokens';
 import XpStar, { XP_STAR_SRC, XP_BLUE } from './XpStar';
@@ -208,7 +208,7 @@ export function useXpCollect(xp, reduced, getNote) {
 
   // ghost only while it is ahead of the bar; a stage crossing shows it to the end
   const ghostPct = ghost == null || ghost <= shown ? null
-    : getLevel(ghost).level > getLevel(shown).level ? 100 : getXPProgress(ghost);
+    : getSubLevel(ghost).index > getSubLevel(shown).index ? 100 : getXPProgress(ghost);
 
   return React.useMemo(() => ({ shown, ghostPct, chip, shine, collect, hold, whenIdle, ring, layer }),
     // eslint-disable-next-line react-hooks/exhaustive-deps

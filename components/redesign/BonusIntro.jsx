@@ -10,9 +10,9 @@ import { INTRO_COLLAPSE_STAGE } from '@/lib/vuma/stages.mjs';
 // Top of every tab (2026-10-16, second pass):
 // - BonusCenterTitle: "BWANABET BONUS CENTER", the site's name, huge, always shown.
 // - BonusIntro: the "HOW IT WORKS" panel, separate from the title. It never
-//   disappears: below stage 8 it opens expanded each time the widget opens and
+//   disappears: below stage 12 it opens expanded each time the widget opens and
 //   its X / GOT IT shrink it to a "HOW IT WORKS" header (for this open only;
-//   the flag lives in GamificationPlatform's state, never saved). From stage 8
+//   the flag lives in GamificationPlatform's state, never saved). From stage 12
 //   it starts as that header. The header always expands again.
 
 const LINES = [
@@ -56,7 +56,7 @@ export function BonusCenterTitle() {
 }
 
 /** "HOW IT WORKS". `open` = null until the player toggles it this open (then
- *  the default applies: expanded below stage 8, the header from stage 8). */
+ *  the default applies: expanded below stage 12, the header from stage 12). */
 export default function BonusIntro({ stage = 1, open = null, onToggle }) {
   const isOpen = open ?? stage < INTRO_COLLAPSE_STAGE;
   const toggle = () => onToggle && onToggle(!isOpen);

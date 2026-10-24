@@ -6,9 +6,9 @@ import { getStage } from '../lib/vuma/stages.mjs';
 
 const OPEN = { open: true };
 
-test('the Coin Shop opens at stage 5 (900 XP) once it is switched on', () => {
+test('the Coin Shop opens at level 10 (3,200 XP on the 23-stage list) once it is switched on', () => {
   assert.equal(STORE_UNLOCK_STAGE, 10);
-  assert.equal(STORE_UNLOCK_XP, 7000);
+  assert.equal(STORE_UNLOCK_XP, 3200);
   assert.equal(getStage(STORE_UNLOCK_XP - 1).stage, 9);
   assert.equal(getStage(STORE_UNLOCK_XP).stage, 10);
   assert.equal(storeLocked(1, OPEN), true);

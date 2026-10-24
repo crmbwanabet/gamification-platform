@@ -50,7 +50,9 @@ import { MISSIONS } from '../lib/data/missions';
 import { STORY_PRIZE, NAME_PRIZE } from '@/lib/extras/rules.mjs';
 import { nextLevelBonuses } from '@/lib/profile/nextBonuses.mjs';
 import { missionStates as buildMissionStates, missionCounts, countClaimable, recordMissionClaim, recordMissionBase, migrateMissionBases } from '@/lib/missions/ladder.mjs';
-import { initialStageRewarded, stageUpRewards } from '@/lib/xp/stageReward.mjs';
+import { initialStageRewarded, stageUpRewards, migrateSavedStages } from '@/lib/xp/stageReward.mjs';
+import { getSubLevel, getNextSubLevel, migrateStageNumber } from '@/lib/vuma/stages.mjs';
+import { storyFor } from '@/lib/vuma/stories.mjs';
 import { levelXpOf, makeLevelReset, levelSeason, cleanLevelReset } from '@/lib/xp/levelReset.mjs';
 import { lusakaDay } from '@/lib/casino/feed.mjs';
 import { DAILY_LOGIN_XP, addGameXp, refundGameXp, casinoXp, addDailyXp, addMissionXp, recordXpDay } from '@/lib/xp/sources.mjs';
@@ -1043,6 +1045,7 @@ export default function GamificationPlatform() {
     // header/profile over the bwanabet ID; renamable once per stage-up.
     displayName: null,
     nameSetAtStage: null,
+    stageList: 23, // stage numbers in this state are on the 23-stage list (2026-10-24)
   });
   const userRef = useRef(user);
   userRef.current = user;
@@ -1168,8 +1171,10 @@ export default function GamificationPlatform() {
   useEffect(() => {
     if (hydratedRef.current) return;
     if (session.status === 'ready' && session.profile) {
-      const saved = session.profile.state;
-      if (saved && typeof saved === 'object' && Object.keys(saved).length) {
+      const raw = session.profile.state;
+      if (raw && typeof raw === 'object' && Object.keys(raw).length) {
+        // stage numbers saved on the old 19-stage list move to the 23-stage list
+        const saved = { ...raw, ...migrateSavedStages(raw, migrateStageNumber) };
         // Saved blobs from before the gem economy reset gems/diamonds to 0.
         // highest stage already paid: the saved marker, else (older saves) the saved XP's stage
         const rewardedStage = initialStageRewarded(saved.stageRewarded, getLevel(saved.xp || 0).level);
@@ -1407,7 +1412,7 @@ export default function GamificationPlatform() {
     return () => clearTimeout(t);
   }, [story, anyModalOpen]);
   // "HOW IT WORKS" panel (components/redesign/BonusIntro.jsx): null = its
-  // default (expanded below stage 8, the header from stage 8); X / GOT IT /
+  // default (expanded below stage 12, the header from stage 12); X / GOT IT /
   // the header set it for this widget open only, never saved.
   const [introOpen, setIntroOpen] = useState(null);
   const openStory = useCallback(() => { track('story_open'); setStory('open'); }, []);
@@ -1612,7 +1617,9 @@ export default function GamificationPlatform() {
     if (!loggedIn || !hydratedRef.current || !seasonFeed.rows) return;
     if (cleanLevelReset(userRef.current.levelReset)) return;
     const xp = seasonCalc.xp;
-    const reset = makeLevelReset({ xp, season: seasonCalc, today, fromStage: getLevel(Math.max(xp, Number(userRef.current.xp) || 0)).level });
+    // the highest stage reached: this XP's, or the highest one paid (23-stage list)
+    const reached = Math.max(getLevel(Math.max(xp, Number(userRef.current.xp) || 0)).level, Number(userRef.current.stageRewarded) || 1);
+    const reset = makeLevelReset({ xp, season: seasonCalc, today, fromStage: reached });
     setUser(u => (cleanLevelReset(u.levelReset) ? u : { ...u, levelReset: reset }));
     track('level_reset', { meta: { from: reset.from, base: reset.base } });
   }, [loggedIn, seasonFeed.rows, seasonCalc, today]);
@@ -1685,7 +1692,7 @@ export default function GamificationPlatform() {
     if (now <= base.xp) return;
     xpFxRef.current.collect({
       fromAt: () => document.querySelector(`[data-game-tile="${base.id}"]`),
-      startXp: Math.max(base.xp, getLevel(now).xp), // a stage-up already played in-game
+      startXp: Math.max(base.xp, getSubLevel(now).xp), // a level-up already played in-game
       amount: now - base.xp, delay: 350,
     });
   }, [activeGame]);
@@ -2101,48 +2108,58 @@ export default function GamificationPlatform() {
     setTab(target);
   };
 
-  // Stage-up (levels = Vuma stages): award cfg.levelRewards + celebrate when the
-  // player reaches a stage ABOVE the highest one already paid (user.stageRewarded,
+  // Level-ups (2026-10-24): every new SUB-LEVEL ("Level 1.3", 5 per stage)
+  // shows its story (lib/vuma/stories.mjs) once since the village restart
+  // (levelReset.shown = the highest sub-level index shown). Coins come only
+  // with a new STAGE above the highest one already paid (user.stageRewarded,
   // lib/xp/stageReward.mjs): XP derived from the CRM can drop and climb back,
-  // which never pays or celebrates the same stage twice.
-  // Since the village restart (lib/xp/levelReset.mjs) a level re-reached
-  // shows its moment again (levelReset.celebrated) but pays no coins.
+  // and re-reached levels never pay twice. A logged-in player waits for the
+  // restart marker (before it the level XP is still the old total).
+  const lastSubRef = useRef(null);
   useEffect(() => {
-    const curLevel = getLevel(lvXp).level;
+    const sl = getSubLevel(lvXp);
+    const curLevel = sl.stage;
+    const reset = cleanLevelReset(user.levelReset);
+    if (loggedIn && !reset) return;
     if (lastLevelRef.current === null) {
       lastLevelRef.current = initialStageRewarded(user.stageRewarded, curLevel);
       const mark = lastLevelRef.current;
       setUser(u => (u.stageRewarded === mark ? u : { ...u, stageRewarded: mark }));
+    }
+    if (lastSubRef.current === null) {
+      // first look: the current sub-level counts as shown (silently)
+      lastSubRef.current = Math.max(reset?.shown || 0, sl.index);
+      if (reset && reset.shown == null) setUser(u => { const r = cleanLevelReset(u.levelReset); return r && r.shown == null ? { ...u, levelReset: { ...r, shown: sl.index } } : u; });
       return;
     }
     const up = stageUpRewards(lastLevelRef.current, curLevel, cfg.levelRewards, cleanReward);
-    const reset = cleanLevelReset(user.levelReset);
-    const again = reset && curLevel > reset.celebrated;
-    if (up.levels.length || again) {
-      const total = up.total;
-      lastLevelRef.current = up.rewarded;
-      setUser(u => {
-        const r = cleanLevelReset(u.levelReset);
-        return { ...u, stageRewarded: Math.max(Number(u.stageRewarded) || 0, up.rewarded),
-          ...(r ? { levelReset: { ...r, celebrated: Math.max(r.celebrated, curLevel) } } : null) };
-      });
-      if (up.levels.length) addCurrencies(total);
-      const lvl = getLevel(lvXp);
-      track('level_up', { amount: total.kwacha || 0, meta: { level: lvl.level } }); // amount = level-up coins (ops console)
-      // The celebration waits until the XP stars have filled the bar (the
-      // bar crosses into the new stage first) and the WELCOME BACK pop-up has
-      // closed, then: ring, modal, coins.
-      setStagePending(true); // the daily reward pop-up waits for this celebration
-      const celebrate = () => xpFxRef.current.whenIdle(() => {
-        setStagePending(false);
-        xpFxRef.current.ring();
-        setLevelUp({ level: lvl.level, name: lvl.name, title: lvl.title, place: lvl.place, avatar: lvl.avatar, icon: lvl.icon, reward: total });
-        showNotif(`🎉 New level — ${lvl.name}!`);
-        triggerReward('big', null, { coins: total.kwacha || undefined, emeralds: total.emeralds || undefined, rubies: total.rubies || undefined, diamonds: total.diamonds || undefined });
-      });
-      if (welcomeBusyRef.current || !popupsOkRef.current) welcomeAfterRef.current.push(celebrate); else celebrate();
-    }
-  }, [lvXp]);
+    const newSub = sl.index > lastSubRef.current;
+    if (!up.levels.length && !newSub) return;
+    const total = up.total;
+    lastLevelRef.current = up.rewarded;
+    lastSubRef.current = Math.max(lastSubRef.current, sl.index);
+    setUser(u => {
+      const r = cleanLevelReset(u.levelReset);
+      return { ...u, stageRewarded: Math.max(Number(u.stageRewarded) || 0, up.rewarded),
+        ...(r ? { levelReset: { ...r, shown: Math.max(r.shown || 0, sl.index) } } : null) };
+    });
+    if (up.levels.length) addCurrencies(total);
+    const lvl = getLevel(lvXp);
+    const st = storyFor(sl.stage, sl.sub);
+    track('level_up', { amount: total.kwacha || 0, meta: { level: lvl.level, sub: sl.id } }); // amount = level-up coins (ops console)
+    // The celebration waits until the XP stars have filled the bar (the
+    // bar crosses into the new level first) and the WELCOME BACK pop-up has
+    // closed, then: ring, modal, coins.
+    setStagePending(true); // the daily reward pop-up waits for this celebration
+    const celebrate = () => xpFxRef.current.whenIdle(() => {
+      setStagePending(false);
+      xpFxRef.current.ring();
+      setLevelUp({ level: lvl.level, sub: sl.id, newPlace: sl.sub === 1, name: lvl.name, title: lvl.title, place: lvl.place, avatar: lvl.avatar, icon: lvl.icon, reward: total, story: st });
+      showNotif(`🎉 Level ${sl.id}${st ? ` — ${st.title}` : ''}!`);
+      if (up.levels.length) triggerReward('big', null, { coins: total.kwacha || undefined, emeralds: total.emeralds || undefined, rubies: total.rubies || undefined, diamonds: total.diamonds || undefined });
+    });
+    if (welcomeBusyRef.current || !popupsOkRef.current) welcomeAfterRef.current.push(celebrate); else celebrate();
+  }, [lvXp, user.levelReset, loggedIn]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // "Called back to the village" (once): after the wheel, before WELCOME
   // BACK and the daily pop-up (both wait while it is due: otherModalOpen).
@@ -2340,10 +2357,10 @@ export default function GamificationPlatform() {
       <ProfileModal
         open={showProfile} onClose={() => { setShowProfile(false); setProfileEdit(false); }}
         startEditing={profileEdit} userId={playerId} onSaveName={savePlayerName} namePrizeXp={namePrizeDue ? NAME_PRIZE.xp : 0}
-        nextBonuses={nextLevelBonuses({ next: nextLevel?.level ?? null, levelRewards: cfg.levelRewards, season: seasonCfg, storeStage: STORE_UNLOCK_STAGE, named: !!user.displayName })}
+        nextBonuses={nextLevelBonuses({ next: getNextSubLevel(lvXp)?.sub === 1 ? getNextSubLevel(lvXp).stage : null, levelRewards: cfg.levelRewards, season: seasonCfg, storeStage: STORE_UNLOCK_STAGE, named: !!user.displayName })}
         onWearItem={onWearAvatarItem} shopItemCount={avatarShopItems.length}
         onOpenShop={() => { setShowProfile(false); setProfileEdit(false); navigateTab('store'); }}
-        level={level} nextLevel={nextLevel} xpPct={xpProgress} vip={vip} user={user}
+        level={level} subId={getSubLevel(lvXp).id} nextLevel={nextLevel} xpPct={xpProgress} vip={vip} user={user}
       />
     </>
   );

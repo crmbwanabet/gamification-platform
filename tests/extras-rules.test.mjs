@@ -5,12 +5,13 @@ import {
   comebackOffer, inactivePlayers, isActiveRow, pickOpen, settlePick, PICK_CLOSE_MS, weekSlip, SLIP_SIZE, PREDICTION_COINS, STORY_PRIZE, NAME_PRIZE,
 } from '../lib/extras/rules.mjs';
 
-test('bands cover stages 1..19 without gaps', () => {
-  for (let s = 1; s <= 19; s++) assert.ok(LEAGUE_BANDS.some(b => s >= b.from && s <= b.to), `stage ${s}`);
-  assert.equal(bandForStage(4).id, 'street');
-  assert.equal(bandForStage(8).id, 'pro');
+test('bands cover stages 1..23 without gaps', () => {
+  for (let s = 1; s <= 23; s++) assert.ok(LEAGUE_BANDS.some(b => s >= b.from && s <= b.to), `stage ${s}`);
+  assert.equal(bandForStage(8).id, 'street');
+  assert.equal(bandForStage(12).id, 'pro');
+  assert.equal(bandForStage(23).id, 'intl');
   assert.equal(bandForXp(0).id, 'street');
-  assert.equal(bandForXp(3000).id, 'pro', '3,000 XP = stage 8');
+  assert.equal(bandForXp(5000).id, 'pro', '5,000 XP = stage 12');
 });
 
 test('maskId hides the middle', () => {
