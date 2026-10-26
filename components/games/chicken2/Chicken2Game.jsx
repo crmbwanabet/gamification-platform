@@ -334,7 +334,7 @@ export default function Chicken2Game({ onClose, closing, balance = 0, rtp, onSpe
   return (
     <CandyScreen title={TITLE} balance={shownBalance} pillRef={pillRef} closing={closing} onClose={onClose} onHelp={() => setShowTutorial(true)}
       overlay={showTutorial && <TutorialModal tutorialKey="chicken2" onClose={() => setShowTutorial(false)} />}>
-      <style>{STATIC_CSS}</style>
+      <style dangerouslySetInnerHTML={{ __html: STATIC_CSS }} />
 
       <div ref={sceneRef} style={{
         position: 'relative', flex: 1, minHeight: 0, margin: '7px 0 3px', borderRadius: 18, overflow: 'hidden', background: '#2a0a4f',
@@ -381,13 +381,13 @@ export default function Chicken2Game({ onClose, closing, balance = 0, rtp, onSpe
           <span ref={numRef} className="c2-num" data-state="idle" style={{ display: 'block', fontSize: 44, lineHeight: 1.02, letterSpacing: 1, textShadow: NUM_SHADOW, fontVariantNumeric: 'tabular-nums' }}>1.00×</span>
           <span ref={ghostRef} style={{ fontSize: 14, color: '#fff', opacity: .55, textShadow: outlineShadow(1.5, CANDY.outline, 1.5), minHeight: 16 }} />
         </div>
-        <style>{`
+        <style dangerouslySetInnerHTML={{ __html: `
           .c2-num[data-state="idle"] { color: #fff; opacity: .85 }
           .c2-num[data-state="run"] { color: ${CANDY.gold} }
           .c2-num[data-state="cashed"] { color: ${CANDY.gold} }
           .c2-num[data-state="fell"] { color: #FF5A4E }
           .c2-lbl[data-state="fell"] { color: #FF8A80; font-size: 15px !important; letter-spacing: 1.5px !important; opacity: 1 !important }
-        `}</style>
+        ` }} />
       </div>
 
       <div aria-live="polite" style={{ flex: 'none', height: 30, position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: CANDY.display, letterSpacing: .5, whiteSpace: 'nowrap' }}>

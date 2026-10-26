@@ -211,12 +211,12 @@ export function WalletSheet({ open, onClose, wallet, onNavigate }) {
   const total = rows.reduce((s, r) => s + r.worth, 0);
   return (
     <div onClick={onClose} role="dialog" aria-modal="true" aria-label="Your wallet" className="rs-wallet-sheet" style={{ position: 'fixed', inset: 0, zIndex: 130, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', background: 'rgba(8,4,20,.7)', backdropFilter: 'blur(5px)', WebkitBackdropFilter: 'blur(5px)', fontFamily: CANDY.body, color: '#fff', animation: 'rs-ws-fade .16s ease-out' }}>
-      <style>{`
+      <style dangerouslySetInnerHTML={{ __html: `
         @keyframes rs-ws-fade { from { opacity: 0 } to { opacity: 1 } }
         @keyframes rs-ws-up { from { transform: translateY(24px); opacity: 0 } to { transform: none; opacity: 1 } }
         @media (min-width: 640px) { .rs-wallet-sheet { align-items: center !important; } .rs-wallet-panel { border-radius: 24px !important; } }
         @media (prefers-reduced-motion: reduce) { .rs-wallet-sheet, .rs-wallet-panel { animation: none !important; } }
-      `}</style>
+      ` }} />
       <div onClick={(e) => e.stopPropagation()} className="rs-wallet-panel" style={{ ...goldRim, position: 'relative', width: '100%', maxWidth: 440, maxHeight: '88vh', overflowY: 'auto', boxSizing: 'border-box', borderRadius: '24px 24px 0 0', padding: '12px 16px calc(18px + env(safe-area-inset-bottom))', animation: 'rs-ws-up .22s cubic-bezier(.2,.8,.3,1)' }}>
         <span aria-hidden style={{ ...dotRow(false), top: 1, left: 22, right: 22, height: 8 }} />
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '6px 0 12px' }}>

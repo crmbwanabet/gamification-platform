@@ -252,7 +252,7 @@ export default function MinibusGame({ onClose, closing, balance = 0, rtp, onSpen
   return (
     <CandyScreen title={TITLE} balance={shownBalance} pillRef={pillRef} closing={closing} onClose={onClose} onHelp={() => setShowTutorial(true)}
       overlay={showTutorial && <TutorialModal tutorialKey="minibus" onClose={() => setShowTutorial(false)} />}>
-      <style>{STREET_CSS}</style>
+      <style dangerouslySetInnerHTML={{ __html: STREET_CSS }} />
 
       {/* the bus stop — fills the height that is left */}
       <div ref={sceneRef} style={{

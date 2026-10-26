@@ -332,7 +332,7 @@ export default function NumbersGame({ onClose, closing, balance = 0, rtp, onSpen
   return (
     <CandyScreen title={TITLE} balance={shownBalance} pillRef={pillRef} closing={closing} onClose={onClose} onHelp={() => setShowTutorial(true)}
       overlay={showTutorial && <TutorialModal tutorialKey="numbers" onClose={() => setShowTutorial(false)} />}>
-      <style>{MACHINE_CSS + GRID_CSS + STAGE_CSS}</style>
+      <style dangerouslySetInnerHTML={{ __html: MACHINE_CSS + GRID_CSS + STAGE_CSS }} />
 
       {/* the draw stage: machine, tray, paytable */}
       <div ref={stageRef} style={{

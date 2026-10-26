@@ -110,7 +110,7 @@ export default function CraftedOverview({
         minWidth: 0,
       }}
     >
-      <style>{`
+      <style dangerouslySetInnerHTML={{ __html: `
         .co-frame, .co-frame * { box-sizing: border-box; }
         @media (max-width: 820px) {
           .co-frame { aspect-ratio: auto !important; padding: 18px 14px 18px !important; gap: 14px !important; min-width: 0 !important; }
@@ -126,7 +126,7 @@ export default function CraftedOverview({
         @media (max-width: 440px) {
           .co-rail > * { flex: 1 1 44% !important; }
         }
-      `}</style>
+      ` }} />
       <div
         className="co-frame"
         style={{

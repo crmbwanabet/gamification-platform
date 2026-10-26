@@ -51,7 +51,7 @@ export default function CalledBackModal({ open, onClose, avatar, hero = 'Player'
           <GreenBtn full size={22} onClick={onClose} style={{ minHeight: 56, borderRadius: 18 }}>Back to the village</GreenBtn>
         </div>
       </div>
-      <style>{`@keyframes cbRing{0%,60%,100%{transform:rotate(0)}10%,30%,50%{transform:rotate(-14deg)}20%,40%{transform:rotate(14deg)}}.cb-ring{animation:cbRing 1.6s ease-in-out infinite}@media (prefers-reduced-motion: reduce){.cb-ring{animation:none}}`}</style>
+      <style dangerouslySetInnerHTML={{ __html: `@keyframes cbRing{0%,60%,100%{transform:rotate(0)}10%,30%,50%{transform:rotate(-14deg)}20%,40%{transform:rotate(14deg)}}.cb-ring{animation:cbRing 1.6s ease-in-out infinite}@media (prefers-reduced-motion: reduce){.cb-ring{animation:none}}` }} />
     </div>
   );
 }

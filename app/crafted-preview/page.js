@@ -15,7 +15,7 @@ export default function CraftedPreviewPage() {
         padding: '50px 20px',
       }}
     >
-      <style>{`*{box-sizing:border-box}`}</style>
+      <style dangerouslySetInnerHTML={{ __html: `*{box-sizing:border-box}` }} />
       <CraftedOverview />
     </div>
   );

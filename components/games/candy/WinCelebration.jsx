@@ -181,7 +181,7 @@ export default function WinCelebration({ payout, reduced = false, delay = 0, pil
   return (
     <div ref={rootRef} onClick={(e) => { e.stopPropagation(); if (stage === 'shown') collect(); }}
       style={{ position: 'absolute', inset: 0, zIndex: 5, borderRadius: 14 }}>
-      <style>{CSS}</style>
+      <style dangerouslySetInnerHTML={{ __html: CSS }} />
       {visible && (
         <>
           {/* dim layer over the game */}

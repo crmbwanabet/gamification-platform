@@ -236,7 +236,7 @@ export default function ChickenGame({ onClose, closing, balance = 0, rtp, onSpen
   return (
     <CandyScreen title={TITLE} balance={shownBalance} pillRef={pillRef} closing={closing} onClose={onClose} onHelp={() => setShowTutorial(true)}
       overlay={showTutorial && <TutorialModal tutorialKey="chicken" onClose={() => setShowTutorial(false)} />}>
-      <style>{STATIC_CSS}</style>
+      <style dangerouslySetInnerHTML={{ __html: STATIC_CSS }} />
 
       {/* the yard — fills the height that is left */}
       <div ref={sceneRef} style={{

@@ -147,7 +147,7 @@ export default function Coin({ state = 'idle', face = null, onLanded, reduced = 
 
   return (
     <div style={{ position: 'relative', width: size, height: size, fontSize: size, margin: '0 auto', transform: 'translateY(5cqh)' }}>
-      <style>{COIN_CSS}</style>
+      <style dangerouslySetInnerHTML={{ __html: COIN_CSS }} />
       {/* soft glow behind the coin; pulses gold on a win */}
       <div aria-hidden style={{
         position: 'absolute', inset: '-22%', borderRadius: '50%', pointerEvents: 'none',

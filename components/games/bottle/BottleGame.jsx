@@ -220,7 +220,7 @@ export default function BottleGame({ onClose, closing, balance = 0, rtp, onSpend
   return (
     <CandyScreen title={TITLE} balance={shownBalance} pillRef={pillRef} closing={closing} onClose={onClose} onHelp={() => setShowTutorial(true)}
       overlay={showTutorial && <TutorialModal tutorialKey="bottle" onClose={() => setShowTutorial(false)} />}>
-      <style>{SCENE_CSS}</style>
+      <style dangerouslySetInnerHTML={{ __html: SCENE_CSS }} />
 
       {/* the table — fills the height that is left */}
       <div ref={sceneRef} style={{

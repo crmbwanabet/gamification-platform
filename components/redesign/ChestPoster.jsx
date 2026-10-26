@@ -15,7 +15,7 @@ export default function ChestPoster({ mode = 'idle', style }) {
       aria-hidden="true"
       draggable={false}
       decoding="async"
-      fetchpriority="high"
+      fetchPriority="high"
       style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'contain', pointerEvents: 'none', userSelect: 'none', ...style }}
     />
   );

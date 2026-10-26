@@ -65,7 +65,7 @@ export default function CandyScreen({ title, balance, pillRef, onClose, onHelp, 
           background: 'rgba(8,10,16,.74)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)',
           color: CANDY.text, fontFamily: CANDY.body,
         }}>
-        <style>{CANDY_BTN_CSS}</style>
+        <style dangerouslySetInnerHTML={{ __html: CANDY_BTN_CSS }} />
         <div onClick={(e) => e.stopPropagation()} className={closing ? 'anim-modal-close' : 'anim-scale-in'}
           style={{
             position: 'relative', width: '100%', maxWidth: 400, height: 'min(600px, calc(100dvh - 40px))',

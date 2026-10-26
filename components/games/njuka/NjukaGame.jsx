@@ -503,7 +503,7 @@ export default function NjukaGame({ onClose, closing, onWin, onSpend, onRefund, 
   // ---- everything lives ON the one table scene ----
   return (
     <GameShell title="🃏 Njuka Boss" onClose={onClose} closing={closing} onHelp={() => setShowTutorial(true)} maxWidth={680} fullBleed>
-      <style>{`
+      <style dangerouslySetInnerHTML={{ __html: `
         .njk-root { position: relative; display: flex; flex-direction: column; }
         .njk-scene { position: relative; height: 560px; flex: none; border-radius: 18px; overflow: hidden; border: 1px solid rgba(255,255,255,.09); }
         .njk-bg { position: absolute; inset: 0; background: #1e1a36 url(/images/njuka-table.jpg) center top / cover no-repeat; transition: filter .7s ease; }
@@ -513,7 +513,7 @@ export default function NjukaGame({ onClose, closing, onWin, onSpend, onRefund, 
           .njk-scene { flex: 1 1 auto; height: auto; min-height: 340px; }
           .njk-hand > div { width: 68px !important; height: 99px !important; }
         }
-      `}</style>
+      ` }} />
 
       <div className="njk-root">
         {screen === 'table' && (

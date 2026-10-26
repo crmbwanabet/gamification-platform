@@ -278,7 +278,7 @@ export default function EarnView({ wallet = null, xp = 0, onNavigate, onOpenProf
     <RedesignShell wallet={wallet} xp={xp} userId={userId} displayName={displayName} onEditName={onEditName} navBadges={navBadges} activeTab="missions" onNavigate={onNavigate} onOpenProfile={onOpenProfile}
       isWidget={isWidget} story={story} onStoryOpen={onStoryOpen} onStoryClose={onStoryClose} onStoryGo={onStoryGo} storyPrize={storyPrize} intro={intro}>
       {/* Quests parked — see parked/components/redesign/EarnView.QuestCard.parked.jsx */}
-      <style>{EV_CSS}</style>
+      <style dangerouslySetInnerHTML={{ __html: EV_CSS }} />
       <div className="ev-cols">
         <section style={{ maxWidth: 720, minWidth: 0 }}>
           <SectionTitle right={<TitleNote>{board.done} / {board.total}</TitleNote>}>BwanaBet missions</SectionTitle>

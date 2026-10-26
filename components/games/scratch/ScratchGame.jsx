@@ -193,7 +193,7 @@ export default function ScratchGame({ onClose, closing, balance = 0, rtp, onSpen
   return (
     <CandyScreen title={TITLE} balance={shownBalance} pillRef={pillRef} closing={closing} onClose={onClose} onHelp={() => setShowTutorial(true)}
       overlay={showTutorial && <TutorialModal tutorialKey="scratch" onClose={() => setShowTutorial(false)} />}>
-      <style>{TICKET_CSS}</style>
+      <style dangerouslySetInnerHTML={{ __html: TICKET_CSS }} />
       <SymbolDefs />
 
       <div className="sc-stage">

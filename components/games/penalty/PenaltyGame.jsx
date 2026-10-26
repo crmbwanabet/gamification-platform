@@ -193,8 +193,8 @@ export default function PenaltyGame({ onClose, closing, balance = 0, rtp, onSpen
   return (
     <CandyScreen title={TITLE} balance={shownBalance} pillRef={pillRef} closing={closing} onClose={onClose} onHelp={() => setShowTutorial(true)}
       overlay={showTutorial && <TutorialModal tutorialKey="penalty" onClose={() => setShowTutorial(false)} />}>
-      <style>{STATIC_CSS}</style>
-      <style>{sceneCss}</style>
+      <style dangerouslySetInnerHTML={{ __html: STATIC_CSS }} />
+      <style dangerouslySetInnerHTML={{ __html: sceneCss }} />
 
       {/* the pitch — fills the height that is left */}
       <div ref={sceneRef} style={{

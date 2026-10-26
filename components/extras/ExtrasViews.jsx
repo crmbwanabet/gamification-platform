@@ -177,7 +177,7 @@ export function Predictions({ predictions: p, compact = false, onSeeAll }) {
   const titleId = compact ? 'pred-title-home' : 'pred-title';
   return (
     <section aria-labelledby={titleId} className="pr-wrap" style={compact ? null : { marginTop: 26 }}>
-      <style>{PRED_CSS}</style>
+      <style dangerouslySetInnerHTML={{ __html: PRED_CSS }} />
       <SectionTitle id={titleId} right={p.loggedIn ? <TitleNote>{size - left} of {size} picked this week</TitleNote> : null}>Weekly predictions</SectionTitle>
       <div className="pr-grid">
         <div className="pr-side">
