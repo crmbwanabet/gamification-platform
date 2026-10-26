@@ -8,7 +8,7 @@ import { STORE_ITEMS } from '@/lib/data/platform';
 import { amountText } from '@/lib/rewardText.mjs';
 import { canAfford, cleanReward, coinsToKwacha, economyRates, formatKwacha, formatNumber } from '@/lib/economy/currency.mjs';
 import { splitCatalog, nextPackGoal, storeLockReason, itemBuyable } from '@/lib/store/catalog.mjs';
-import { PRIZE_TIERS } from '@/lib/store/prizes.mjs';
+import { PRIZE_TIERS, PRIZES_LIVE } from '@/lib/store/prizes.mjs';
 import { getLevel } from '@/lib/data/platform';
 import { BB_CSS, STORE_ART, packArtSrc, CoinMeter, PackLock, goalText, ShopLockPlate, ShopLockWrap } from './storeKit';
 import { ShineImg, Sparkles } from './Shine';
@@ -290,6 +290,7 @@ export default function StoreView({ wallet = null, xp = 0, onNavigate, onOpenPro
                 </div>
               </section>
             )}
+            {PRIZES_LIVE && (
             <section aria-labelledby="st-prizes-title" id="prizes">
               <div className="st-head">
                 <h2 id="st-prizes-title" className="bb-display st-h2">Real prizes</h2>
@@ -302,6 +303,7 @@ export default function StoreView({ wallet = null, xp = 0, onNavigate, onOpenPro
                 </div>
               ))}
             </section>
+            )}
             {items.length > 0 && (
               <section aria-labelledby="st-more-title">
                 <div className="st-head"><h2 id="st-more-title" className="bb-display st-h2">More rewards</h2></div>
