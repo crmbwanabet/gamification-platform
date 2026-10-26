@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { PRIZE_IDS, PRIZE_COUNT, cleanPrizesConfig, prizesOpenFor, prizesTester, convertCoins, prizeOptions, CONVERT_RATE } from '../lib/store/prizes.mjs';
+import { PRIZE_IDS, PRIZE_COUNT, cleanPrizesConfig, prizesOpenFor, convertOpenFor, prizesTester, convertCoins, prizeOptions, shopPrizes, priceKwacha, CONVERT_RATE } from '../lib/store/prizes.mjs';
 import { buildStoreCatalog, splitCatalog } from '../lib/store/catalog.mjs';
 import { mergeConfig } from '../lib/config/merge.mjs';
 import { purchaseMessage } from '../lib/telegram/format.mjs';
@@ -11,9 +11,9 @@ test('13 real prizes, unique ids', () => {
 });
 
 test('prizes config: closed by default, testers are digit ids, rate in (0, 1]', () => {
-  assert.deepEqual(cleanPrizesConfig(null), { open: false, testers: [], convertRate: 0.75 });
-  assert.deepEqual(cleanPrizesConfig({ open: 'yes', testers: ['53', 7, 'abc', ''], convertRate: 2 }), { open: false, testers: ['53', '7'], convertRate: 0.75 });
-  assert.deepEqual(cleanPrizesConfig({ open: true, convertRate: 0.5 }), { open: true, testers: [], convertRate: 0.5 });
+  assert.deepEqual(cleanPrizesConfig(null), { open: false, convert: false, testers: [], convertRate: 0.75 });
+  assert.deepEqual(cleanPrizesConfig({ open: 'yes', convert: 1, testers: ['53', 7, 'abc', ''], convertRate: 2 }), { open: false, convert: false, testers: ['53', '7'], convertRate: 0.75 });
+  assert.deepEqual(cleanPrizesConfig({ open: true, convert: true, convertRate: 0.5 }), { open: true, convert: true, testers: [], convertRate: 0.5 });
   assert.equal(mergeConfig({ prizes: { open: false, testers: [], convertRate: 0.75 } }, [{ key: 'prizes', value: { open: true } }]).prizes.open, true);
 });
 
@@ -64,4 +64,31 @@ test('Telegram: a real prize asks for delivery', () => {
   assert.match(m, /Prize: Power Bank/);
   assert.match(m, /Paid: 5 Emeralds/);
   assert.match(m, /arrange delivery/);
+});
+
+test('conversion has its own switch: prizes open for all, convert for testers only', () => {
+  const cfg = { open: true, convert: false, testers: ['53'] };
+  assert.equal(prizesOpenFor(cfg, '54'), true);
+  assert.equal(convertOpenFor(cfg, '54'), false);
+  assert.equal(convertOpenFor(cfg, '53'), true);
+  assert.equal(convertOpenFor({ convert: true }, '54'), true);
+});
+
+test('shop prizes: only prizes with live options, cheapest option first', () => {
+  const eco = { coinsPerKwacha: 10000, gemValues: { emerald: 200000, ruby: 500000, diamond: 1000000 } };
+  assert.equal(priceKwacha({ kwacha: 700000 }, eco), 70);
+  assert.equal(priceKwacha({ kwacha: 0, emeralds: 5 }, eco), 100);
+  assert.equal(priceKwacha({ diamonds: 40 }, eco), 4000);
+  const items = [
+    { id: 'c1', prizeId: 'car', price: { kwacha: 0, diamonds: 500 } },
+    { id: 'x1', prizeId: 'iphonex', price: { kwacha: 0, rubies: 100 } },
+    { id: 'x2', prizeId: 'iphonex', price: { kwacha: 0, diamonds: 40 } },
+    { id: 'f1', prizeId: 'football', price: { kwacha: 700000 } },
+    { id: 's1', prizeId: 'scooter', price: { kwacha: 0, emeralds: 300 } },
+  ];
+  const cards = shopPrizes(items, eco);
+  assert.deepEqual(cards.map(c => c.prize.id), ['football', 'iphonex', 'scooter', 'car']);
+  assert.equal(cards[1].prize.name, 'iPhone X');
+  assert.deepEqual(cards[1].options.map(o => o.id), ['x1', 'x2']);
+  assert.equal(cards[0].prize.art, '/ui/prizes/football.webp');
 });

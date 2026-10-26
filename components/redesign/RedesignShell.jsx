@@ -12,7 +12,7 @@ import CandyButton, { CANDY_BTN_CSS } from '../games/candy/CandyButton';
 import { getLevel, getNextLevel, getXPProgress, getSubLevel } from '@/lib/data/platform';
 import { GEMS, GEM_LABEL, gemCoins, gemKwacha, coinsToKwacha, economyRates, formatKwacha, formatNumber } from '@/lib/economy/currency.mjs';
 import { amountText } from '@/lib/rewardText.mjs';
-import { prizesOpenFor, convertCoins, cleanPrizesConfig } from '@/lib/store/prizes.mjs';
+import { convertOpenFor, convertCoins, cleanPrizesConfig } from '@/lib/store/prizes.mjs';
 import { playerLabel } from '@/lib/profile/name.mjs';
 import { XpFxContext, XpChip } from './XpCollect';
 import { XP_BAR } from './XpStar';
@@ -222,8 +222,8 @@ export function WalletSheet({ open, onClose, wallet, onNavigate }) {
   const eco = w.economy;
   const coins = w.kwacha || 0;
   const { coinsPerKwacha } = economyRates(eco);
-  // gems -> coins, once the prizes open (testers before that)
-  const canConvert = !!w.onConvertGem && prizesOpenFor(w.prizes, w.uid);
+  // gems -> coins, once the `prizes` row turns `convert` on (testers before that)
+  const canConvert = !!w.onConvertGem && convertOpenFor(w.prizes, w.uid);
   const rate = cleanPrizesConfig(w.prizes).convertRate;
   const rows = [
     { key: 'coins', icon: <RewardIcon kind="coins" size={34} />, title: amountText(coins, 'coins'), sub: `${amountText(coinsPerKwacha, 'coins')} = ${formatKwacha(1)}`, worth: coinsToKwacha(coins, eco), color: C.gold },

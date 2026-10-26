@@ -8,7 +8,7 @@ import { STORE_ITEMS } from '@/lib/data/platform';
 import { amountText } from '@/lib/rewardText.mjs';
 import { canAfford, cleanReward, coinsToKwacha, economyRates, formatKwacha, formatNumber } from '@/lib/economy/currency.mjs';
 import { splitCatalog, nextPackGoal, storeLockReason, itemBuyable } from '@/lib/store/catalog.mjs';
-import { PRIZE_TIERS, prizesOpenFor, prizesTester, prizeOptions } from '@/lib/store/prizes.mjs';
+import { prizesOpenFor, prizesTester, shopPrizes } from '@/lib/store/prizes.mjs';
 import { getLevel } from '@/lib/data/platform';
 import { BB_CSS, STORE_ART, packArtSrc, CoinMeter, PackLock, goalText, ShopLockPlate, ShopLockWrap } from './storeKit';
 import { ShineImg, Sparkles } from './Shine';
@@ -136,51 +136,63 @@ function AvatarItemCard({ item, stage, coins, owned, worn, onBuy, onWear }) {
   );
 }
 
-/** "500,000 coins" / "5 emeralds" for a one-currency price. */
-const priceLabel = (price) => {
-  const [k, v] = Object.entries(cleanReward(price))[0] || ['kwacha', 0];
-  return amountText(v, k === 'kwacha' ? 'coins' : k);
-};
+const UNIT = { kwacha: 'coins', emeralds: 'emeralds', rubies: 'rubies', diamonds: 'diamonds' };
+const BUTTON = { kwacha: 'Use coins', emeralds: 'Use emeralds', rubies: 'Use rubies', diamonds: 'Use diamonds' };
+/** A one-currency price -> [key, amount] ('kwacha' = coins). */
+const onePrice = (price) => Object.entries(cleanReward(price))[0] || ['kwacha', 0];
 
-/** One price option of a real prize: two taps (the first arms "Confirm?"), like the kwacha packs. */
-function PrizeBuyButton({ item, canBuy, busy, onBuy }) {
+/** One price option of a prize: two taps ("Convert" / "Use emeralds", then "Confirm?"), or "N more emeralds" when short. */
+function PrizeBuyButton({ item, label, balances, busy, onBuy }) {
   const [armed, setArmed] = React.useState(false);
   React.useEffect(() => {
     if (!armed) return undefined;
     const t = setTimeout(() => setArmed(false), 4000);
     return () => clearTimeout(t);
   }, [armed]);
-  const off = !canBuy || busy;
-  const label = priceLabel(item.price);
+  const [k, v] = onePrice(item.price);
+  const short = Math.max(0, v - (balances[k] || 0));
+  if (short > 0 && !busy) {
+    return <div className="bb-lock st-pack-act st-pack-lock" aria-label={`${amountText(short, k === 'kwacha' ? 'coins' : k)} more needed`}>{formatNumber(short)} more {UNIT[k]}</div>;
+  }
+  const onClick = (e) => {
+    if (busy) return;
+    if (!armed) { setArmed(true); return; }
+    setArmed(false);
+    if (onBuy) onBuy(item, e?.currentTarget);
+  };
   return (
-    <button type="button" disabled={off} className={`bb-buy st-prize-buy${armed ? ' bb-armed' : ''}`}
-      aria-label={armed ? `Confirm: buy ${item.name} for ${label}` : `Buy ${item.name} for ${label}`}
-      onClick={(e) => { if (off) return; if (!armed) { setArmed(true); return; } setArmed(false); onBuy && onBuy(item, e?.currentTarget); }}>
-      {busy ? '…' : armed ? 'Confirm?' : label}
+    <button type="button" onClick={onClick} disabled={busy} className={`bb-buy st-pack-act${armed ? ' bb-armed' : ''}`}
+      aria-label={armed ? `Confirm: buy the ${item.name} for ${formatNumber(v)} ${UNIT[k]}` : `Buy the ${item.name} for ${formatNumber(v)} ${UNIT[k]}`}>
+      {busy ? 'Sending…' : armed ? 'Confirm?' : label}
     </button>
   );
 }
 
 /**
- * Real prize (lib/store/prizes.mjs): art, name and one buy button per price
- * option ("1,000,000 coins" or "5 emeralds"); no options yet = Coming soon.
+ * A real prize in the pack look (owner 2026-10-26: one list, the prizes right
+ * after the kwacha packs): art, each price on top ("1,000,000 coins OR
+ * 5 emeralds"), "BUYS" + the prize name, then one button per price.
  */
-function PrizeCard({ prize, options = [], balances, onBuy, busyId }) {
-  const live = options.length > 0;
+function StorePrizeCard({ prize, options, balances, onBuy, busyId }) {
+  const ready = options.some(o => canAfford(o.price, balances));
+  const many = options.length > 1;
   return (
-    <div className={`bb-tile st-prize${live ? ' st-prize-live' : ''}`} data-prize={prize.id}>
-      <div className="bb-well st-prize-art"><img src={prize.art} alt={prize.name} width={128} height={128} loading="lazy" /></div>
-      <div className="st-prize-name">{prize.name}</div>
-      {live ? (
-        <div className="st-prize-opts">
-          {options.map((it, i) => (
-            <React.Fragment key={it.id}>
-              {i > 0 && <span className="st-prize-or">or</span>}
-              <PrizeBuyButton item={it} canBuy={canAfford(it.price, balances)} busy={busyId === it.id} onBuy={onBuy} />
-            </React.Fragment>
-          ))}
-        </div>
-      ) : <SoonLock className="st-pack-act st-prize-lock" />}
+    <div className={`bb-tile st-pack${ready ? ' bb-ready' : ''}`} data-prize={prize.id}>
+      <img src={prize.art} alt={prize.name} width={140} height={140} loading="lazy" className="st-pack-art st-prize-img" />
+      {options.map((o, i) => {
+        const [k, v] = onePrice(o.price);
+        return (
+          <React.Fragment key={o.id}>
+            {i > 0 && <div className="st-pack-buys st-prize-or">or</div>}
+            <div className="st-pack-cost"><RewardIcon kind={k === 'kwacha' ? 'coins' : k} size={20} />{formatNumber(v)} {UNIT[k]}</div>
+          </React.Fragment>
+        );
+      })}
+      <div className="st-pack-buys">buys</div>
+      <div className="bb-title st-prize-name">{prize.name}</div>
+      <div className="st-prize-acts">
+        {options.map(o => <PrizeBuyButton key={o.id} item={o} label={many ? BUTTON[onePrice(o.price)[0]] : 'Convert'} balances={balances} busy={busyId === o.id} onBuy={onBuy} />)}
+      </div>
     </div>
   );
 }
@@ -227,6 +239,11 @@ const ST_CSS = `
   .st-pack-art > img { width: 100%; height: 100%; display: block; }
   .st-pack-k { font-size: 36px; }
   .st-pack-cost { display: inline-flex; align-items: center; gap: 6px; font-family: ${CANDY.display}; font-size: 19px; line-height: 1; color: #fff; text-transform: uppercase; text-shadow: 0 2px 0 #2A0A4F; white-space: nowrap; }
+  .st-prize-img { object-fit: contain; }
+  .st-prize-or { opacity: .8; }
+  .st-prize-name { font-family: ${CANDY.display}; font-size: 20px; line-height: 1.1; color: #FFD21F; text-shadow: 0 2px 0 #2A0A4F; text-align: center; min-height: 2.2em; display: flex; align-items: center; }
+  .st-prize-acts { width: 100%; margin-top: auto; display: flex; flex-direction: column; gap: 6px; }
+  .st-prize-acts .st-pack-act { margin-top: 0; }
   .st-pack-buys { font-family: ${CANDY.display}; font-size: 12px; letter-spacing: .14em; line-height: 1; color: #FFD21F; text-transform: uppercase; }
   .st-pack-act { width: 100%; min-height: 44px; margin-top: 6px; border-radius: 13px; font-size: 15px; padding: 0 6px; }
   .st-pack-lock { font-size: 12.5px; }
@@ -236,19 +253,6 @@ const ST_CSS = `
   .st-av-art { position: relative; width: 100%; border-radius: 16px; overflow: hidden; margin-bottom: 4px; }
   .st-av-name { font-size: 26px; line-height: 1.05; text-align: center; }
   .st-items { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 16px; }
-  .st-tier { display: flex; align-items: center; gap: 10px; margin: 6px 0 12px; }
-  .st-tier h3 { margin: 0; font-family: ${CANDY.display}; font-weight: 400; font-size: 20px; color: #fff; text-transform: uppercase; text-shadow: 0 2px 0 #2A0A4F; }
-  .st-tier span { font-size: 11px; font-weight: 900; padding: 4px 10px; border-radius: 999px; text-transform: uppercase; background: rgba(255,210,31,.16); color: #FFD21F; border: 1px solid rgba(255,210,31,.45); }
-  .st-prizes { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 14px; margin-bottom: 18px; }
-  .st-prize { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 12px; border-radius: 20px; min-width: 0; }
-  .st-prize-art { width: 100%; aspect-ratio: 1; border-radius: 16px; display: flex; align-items: center; justify-content: center; overflow: hidden; }
-  .st-prize-art img { width: 86%; height: 86%; object-fit: contain; display: block; filter: saturate(.75) brightness(.8); opacity: .8; }
-  .st-prize-name { font-family: ${CANDY.display}; font-size: 17px; line-height: 1.1; color: #fff; text-align: center; min-height: 2.2em; display: flex; align-items: center; }
-  .st-prize-lock { font-size: 13px; color: #FFD21F; }
-  .st-prize-live .st-prize-art img { filter: none; opacity: 1; }
-  .st-prize-opts { width: 100%; margin-top: auto; display: flex; flex-direction: column; align-items: stretch; gap: 4px; }
-  .st-prize-or { font-size: 11px; font-weight: 900; color: rgba(255,255,255,.6); text-align: center; text-transform: uppercase; }
-  .st-prize-buy { min-height: 40px; padding: 0 10px; border-radius: 12px; font-size: 14px; white-space: nowrap; }
   .st-item { display: flex; flex-direction: column; gap: 10px; padding: 12px; border-radius: 22px; min-width: 0; }
   .st-item-art { position: relative; height: 120px; border-radius: 16px; overflow: hidden; display: flex; align-items: center; justify-content: center; }
   .st-item-art img { width: 100%; height: 100%; object-fit: cover; display: block; }
@@ -272,9 +276,7 @@ const ST_CSS = `
     .st-pack { padding: 12px 10px; border-radius: 18px; }
     .st-pack-k { font-size: 30px; }
     .st-items { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
-    .st-prizes { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-    .st-prize-name { font-size: 15px; }
-  }
+      }
 `;
 
 export default function StoreView({ wallet = null, xp = 0, onNavigate, onOpenProfile, onBuy, userId = null, displayName = null, onEditName, navBadges = {}, storeItems = null, busyId = null, isWidget = false, story = null, onStoryOpen, onStoryClose, onStoryGo, storyPrize = null, intro = null, avatarShop = null }) {
@@ -286,11 +288,11 @@ export default function StoreView({ wallet = null, xp = 0, onNavigate, onOpenPro
   // to its testers only, who also skip the level lock to preview them.
   const uid = wallet?.uid ?? userId;
   const showPrizes = prizesOpenFor(wallet?.prizes, uid);
-  const prizeOpts = prizeOptions(prizes);
+  const prizeCards = showPrizes ? shopPrizes(prizes, wallet?.economy) : [];
   const lockWhy = prizesTester(wallet?.prizes, uid) ? null : storeLockReason(getLevel(xp).level, wallet?.store);
   const locked = !!lockWhy;
   const avItems = avatarShop?.items || [];
-  const empty = coinPacks.length + items.length + avItems.length === 0 && !showPrizes;
+  const empty = coinPacks.length + prizeCards.length + items.length + avItems.length === 0;
   const topId = coinPacks.length > 1 ? coinPacks[coinPacks.length - 1].id : null;
   return (
     <RedesignShell wallet={wallet} xp={xp} userId={userId} displayName={displayName} onEditName={onEditName} navBadges={navBadges} activeTab="store" onNavigate={onNavigate} onOpenProfile={onOpenProfile}
@@ -311,14 +313,11 @@ export default function StoreView({ wallet = null, xp = 0, onNavigate, onOpenPro
           </Card>
         ) : (
           <>
-            {coinPacks.length > 0 && (
-              <section aria-labelledby="st-packs-title">
-                <div className="st-head">
-                  <h2 id="st-packs-title" className="bb-display st-h2">Kwacha packs</h2>
-                  <span className="st-note">Credited to your bwanabet account · tap Convert twice · one pack a week</span>
-                </div>
+            {coinPacks.length + prizeCards.length > 0 && (
+              <section aria-label="Coin Shop">
                 <div className="st-packs">
-                  {coinPacks.map((it, i) => <StorePackCard key={it.id} i={i} item={it} balances={balances} onBuy={onBuy} busy={busyId === it.id} top={it.id === topId} />)}
+                  {coinPacks.map((it, i) => <StorePackCard key={it.id} i={i} item={it} balances={balances} onBuy={onBuy} busy={busyId === it.id} top={prizeCards.length === 0 && it.id === topId} />)}
+                  {prizeCards.map(c => <StorePrizeCard key={c.prize.id} prize={c.prize} options={c.options} balances={balances} onBuy={onBuy} busyId={busyId} />)}
                 </div>
               </section>
             )}
@@ -336,20 +335,6 @@ export default function StoreView({ wallet = null, xp = 0, onNavigate, onOpenPro
                   ))}
                 </div>
               </section>
-            )}
-            {showPrizes && (
-            <section aria-labelledby="st-prizes-title" id="prizes">
-              <div className="st-head">
-                <h2 id="st-prizes-title" className="bb-display st-h2">Real prizes</h2>
-                <span className="st-note">Pay with coins or gems · tap twice to buy · our team contacts you to deliver</span>
-              </div>
-              {PRIZE_TIERS.map(t => (
-                <div key={t.id}>
-                  <div className="st-tier"><h3>{t.title}</h3><span>{t.pay}</span></div>
-                  <div className="st-prizes">{t.items.map(p => <PrizeCard key={p.id} prize={p} options={prizeOpts[p.id]} balances={balances} onBuy={onBuy} busyId={busyId} />)}</div>
-                </div>
-              ))}
-            </section>
             )}
             {items.length > 0 && (
               <section aria-labelledby="st-more-title">

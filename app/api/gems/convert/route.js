@@ -3,7 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase/admin';
 import { rateLimit } from '@/lib/rateLimit';
 import { authedUid, bearer } from '@/lib/auth/ssoUid';
 import { GEMS } from '@/lib/economy/currency.mjs';
-import { prizesOpenFor } from '@/lib/store/prizes.mjs';
+import { convertOpenFor } from '@/lib/store/prizes.mjs';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -12,7 +12,7 @@ export const dynamic = 'force-dynamic';
 // (`prizes.convertRate`). The convert_gems RPC checks + moves the SERVER-HELD
 // balance atomically and logs gem_conversions; the client then mirrors the
 // returned change so its next absolute state save agrees (like /api/purchase).
-// Gated with the real prizes: the `prizes` row open, else its testers only.
+// Gated by the `prizes` row: `convert` true, else its testers only.
 
 const json = (body, status = 200) => NextResponse.json(body, { status, headers: { 'Cache-Control': 'no-store' } });
 
@@ -29,7 +29,7 @@ export async function POST(req) {
   if (!GEMS.includes(gem) || !Number.isInteger(count) || count < 1 || count > 10000) return json({ error: 'bad_request' }, 400);
 
   const { data: cfg } = await supabaseAdmin.from('platform_config').select('value').eq('key', 'prizes').maybeSingle();
-  if (!prizesOpenFor(cfg?.value, uid)) return json({ error: 'convert_locked' }, 403);
+  if (!convertOpenFor(cfg?.value, uid)) return json({ error: 'convert_locked' }, 403);
 
   const { data, error } = await supabaseAdmin.rpc('convert_gems', { p_uid: uid, p_gem: gem, p_count: count });
   if (error) { console.error('[gems/convert] rpc failed:', error.message); return json({ error: 'unavailable' }, 503); }
