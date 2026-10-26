@@ -6,6 +6,7 @@ import { C, CANDY, goldRim, dotRow, goldTitle, innerGlow } from './tokens';
 import { GreenBtn, CurrencyAmounts } from './RedesignShell';
 import { cleanReward } from '@/lib/economy/currency.mjs';
 import { HERO_DEFAULT } from '@/lib/profile/name.mjs';
+import { JOURNEY_END } from '@/lib/vuma/stories.mjs';
 
 // Celebratory stage-up modal (levels = Vuma Katongo story stages), in the
 // candy look: gold-rimmed panel with marquee dots, Vuma in a gold ring.
@@ -43,6 +44,12 @@ export default function LevelUpModal({ levelUp, onClose, onRename, hero = HERO_D
               <p style={{ margin: 0, fontWeight: 600 }}>{st.story}</p>
               <p style={{ margin: '8px 0 0' }}><b style={{ color: CANDY.gold, textTransform: 'uppercase', fontSize: 11.5, letterSpacing: '.06em' }}>Working towards</b><br />{st.quest}</p>
               {st.skill && <p style={{ margin: '8px 0 0' }}><b style={{ color: CANDY.gold, textTransform: 'uppercase', fontSize: 11.5, letterSpacing: '.06em' }}>Skill unlocked</b><br />{st.skill}</p>}
+            </div>
+          )}
+          {levelUp.sub === '23.5' && (
+            <div data-journey-end style={{ ...goldRim, borderRadius: 14, padding: '10px 13px', marginBottom: 12, fontSize: 13.5, lineHeight: 1.45 }}>
+              <div style={{ ...goldTitle(18), marginBottom: 4 }}>The journey is complete</div>
+              <p style={{ margin: 0, fontWeight: 600 }}>{JOURNEY_END}</p>
             </div>
           )}
           {hasReward ? (
