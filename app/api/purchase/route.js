@@ -6,6 +6,7 @@ import { parsePurchaseBody, STORE_UNLOCK_XP, BUYABLE_REDEEM, cleanStoreConfig } 
 import { levelXpOf } from '@/lib/xp/levelReset.mjs';
 import { sendPurchase } from '@/lib/telegram/client';
 import { rateLimit } from '@/lib/rateLimit';
+import { prizesOpenFor, prizesTester } from '@/lib/store/prizes.mjs';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -46,13 +47,21 @@ export async function POST(req) {
 
   // Coin Shop opens at level 10: LEVEL XP = the saved profile XP minus the
   // village-restart base in the saved state (lib/xp/levelReset.mjs).
-  const { data: prof } = await supabaseAdmin.from('profiles').select('xp, state').eq('bwanabet_user_id', uid).maybeSingle();
+  const [{ data: prof }, { data: row }, { data: prizesRow }] = await Promise.all([
+    supabaseAdmin.from('profiles').select('xp, state').eq('bwanabet_user_id', uid).maybeSingle(),
+    supabaseAdmin.from('store_items').select('redeem_currency, prize_id').eq('id', itemId).maybeSingle(),
+    supabaseAdmin.from('platform_config').select('value').eq('key', 'prizes').maybeSingle(),
+  ]);
   if (!prof) return NextResponse.json({ error: 'profile_required' }, { status: 403 });
-  if (!(levelXpOf(prof.xp, prof.state?.levelReset) >= STORE_UNLOCK_XP)) return NextResponse.json({ error: 'store_locked' }, { status: 403 });
+  // Real prizes (2026-10-26): sold to everyone once the `prizes` row is open,
+  // before that to its testers only (who also skip the level lock to preview).
+  const isPrize = !!row?.prize_id;
+  if (isPrize && !prizesOpenFor(prizesRow?.value, uid)) return NextResponse.json({ error: 'item_locked' }, { status: 403 });
+  const tester = isPrize && prizesTester(prizesRow?.value, uid);
+  if (!tester && !(levelXpOf(prof.xp, prof.state?.levelReset) >= STORE_UNLOCK_XP)) return NextResponse.json({ error: 'store_locked' }, { status: 403 });
 
-  // Only the kwacha packs are on sale; every other item stays locked.
-  const { data: row } = await supabaseAdmin.from('store_items').select('redeem_currency').eq('id', itemId).maybeSingle();
-  if (row?.redeem_currency !== BUYABLE_REDEEM) return NextResponse.json({ error: 'item_locked' }, { status: 403 });
+  // Kwacha packs + real prizes are on sale; every other item stays locked.
+  if (!isPrize && row?.redeem_currency !== BUYABLE_REDEEM) return NextResponse.json({ error: 'item_locked' }, { status: 403 });
 
   const { data, error } = await supabaseAdmin.rpc('purchase_item', { p_uid: uid, p_item_id: itemId });
   if (error) {
@@ -65,7 +74,7 @@ export async function POST(req) {
   }
 
   const p = data.purchase;
-  const messageId = await sendPurchase(purchaseMessage(p), p.id);
+  const messageId = await sendPurchase(purchaseMessage(p, { prize: isPrize }), p.id);
   await supabaseAdmin.from('purchases')
     .update(messageId ? { telegram_message_id: messageId } : { telegram_error: true })
     .eq('id', p.id);

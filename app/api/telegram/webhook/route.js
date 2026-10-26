@@ -30,7 +30,9 @@ export async function POST(req) {
 
   if (data && data.length) {
     const p = data[0];
-    await editPurchaseMessage(p.telegram_message_id || cq.message?.message_id, purchaseMessage(p) + handledSuffix('credited', by));
+    // real prizes keep their 🎁 layout after the tap (store_items.prize_id)
+    const { data: item } = p.item_id ? await supabaseAdmin.from('store_items').select('prize_id').eq('id', p.item_id).maybeSingle() : { data: null };
+    await editPurchaseMessage(p.telegram_message_id || cq.message?.message_id, purchaseMessage(p, { prize: !!item?.prize_id }) + handledSuffix('credited', by));
     await answerCallback(cq.id, 'Marked credited ✅');
   } else {
     await answerCallback(cq.id, 'Already handled');

@@ -12,6 +12,7 @@ import CandyButton, { CANDY_BTN_CSS } from '../games/candy/CandyButton';
 import { getLevel, getNextLevel, getXPProgress, getSubLevel } from '@/lib/data/platform';
 import { GEMS, GEM_LABEL, gemCoins, gemKwacha, coinsToKwacha, economyRates, formatKwacha, formatNumber } from '@/lib/economy/currency.mjs';
 import { amountText } from '@/lib/rewardText.mjs';
+import { prizesOpenFor, convertCoins, cleanPrizesConfig } from '@/lib/store/prizes.mjs';
 import { playerLabel } from '@/lib/profile/name.mjs';
 import { XpFxContext, XpChip } from './XpCollect';
 import { XP_BAR } from './XpStar';
@@ -194,6 +195,26 @@ function WalletButton({ wallet, onOpen }) {
   );
 }
 
+/**
+ * "Convert" on a gem row (2026-10-26): one gem -> coins at the convert rate,
+ * two taps (the first arms it: "1 Emerald → 150,000 coins?").
+ */
+function ConvertGemButton({ gem, coins, busy, disabled, onConvert }) {
+  const [armed, setArmed] = React.useState(false);
+  React.useEffect(() => {
+    if (!armed) return undefined;
+    const t = setTimeout(() => setArmed(false), 4000);
+    return () => clearTimeout(t);
+  }, [armed]);
+  const off = disabled || busy;
+  return (
+    <GreenBtn color={armed ? 'violet' : 'green'} size={14} disabled={off} style={{ minHeight: 38, padding: '0 12px', flex: 'none' }}
+      onClick={() => { if (off) return; if (!armed) { setArmed(true); return; } setArmed(false); onConvert(gem); }}>
+      {busy ? '…' : armed ? `Get ${formatNumber(coins)}?` : 'Convert'}
+    </GreenBtn>
+  );
+}
+
 /** Wallet sheet: each balance and what it is worth in kwacha ("1 Emerald · worth K5"). */
 export function WalletSheet({ open, onClose, wallet, onNavigate }) {
   if (!open) return null;
@@ -201,11 +222,18 @@ export function WalletSheet({ open, onClose, wallet, onNavigate }) {
   const eco = w.economy;
   const coins = w.kwacha || 0;
   const { coinsPerKwacha } = economyRates(eco);
+  // gems -> coins, once the prizes open (testers before that)
+  const canConvert = !!w.onConvertGem && prizesOpenFor(w.prizes, w.uid);
+  const rate = cleanPrizesConfig(w.prizes).convertRate;
   const rows = [
     { key: 'coins', icon: <RewardIcon kind="coins" size={34} />, title: amountText(coins, 'coins'), sub: `${amountText(coinsPerKwacha, 'coins')} = ${formatKwacha(1)}`, worth: coinsToKwacha(coins, eco), color: C.gold },
     ...GEMS.map(g => {
       const n = w[g] || 0;
-      return { key: g, icon: <RewardIcon kind={g} size={34} />, title: `${formatNumber(n)} ${n === 1 ? GEM_LABEL[g] : GEM_PLURAL[g]}`, sub: `1 ${GEM_LABEL[g]} = ${amountText(gemCoins(g, eco), 'coins')} · won as prizes`, worth: gemKwacha(g, eco, n), color: CURRENCY_COLOR[g] };
+      const get = convertCoins(g, 1, eco, rate);
+      return { key: g, icon: <RewardIcon kind={g} size={34} />, title: `${formatNumber(n)} ${n === 1 ? GEM_LABEL[g] : GEM_PLURAL[g]}`,
+        sub: canConvert ? `Convert 1 ${GEM_LABEL[g]} → ${amountText(get, 'coins')}` : `1 ${GEM_LABEL[g]} = ${amountText(gemCoins(g, eco), 'coins')} · won as prizes`,
+        worth: gemKwacha(g, eco, n), color: CURRENCY_COLOR[g],
+        action: canConvert ? <ConvertGemButton gem={g} coins={get} busy={w.gemBusy === g} disabled={n < 1 || !!w.gemBusy} onConvert={w.onConvertGem} /> : null };
     }),
   ];
   const total = rows.reduce((s, r) => s + r.worth, 0);
@@ -231,13 +259,16 @@ export function WalletSheet({ open, onClose, wallet, onNavigate }) {
                 <div style={{ fontSize: 15, fontWeight: 900, color: r.color }}>{r.title} <span style={{ color: C.sub, fontWeight: 800 }}>· worth {formatKwacha(r.worth)}</span></div>
                 <div style={{ fontSize: 11.5, color: C.muted, marginTop: 2 }}>{r.sub}</div>
               </div>
+              {r.action}
             </div>
           ))}
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '14px 2px 4px', fontSize: 13, color: C.sub }}>
           <span>Total value</span><span style={{ fontFamily: CANDY.display, fontSize: 22, color: C.gold }}>{formatKwacha(total)}</span>
         </div>
-        <p style={{ margin: '6px 2px 14px', fontSize: 12, lineHeight: 1.45, color: C.muted }}>Gems are won as prizes only. Redeem coins and gems for kwacha in the Coin Shop, and our team credits it to your bwanabet account.</p>
+        <p style={{ margin: '6px 2px 14px', fontSize: 12, lineHeight: 1.45, color: C.muted }}>{canConvert
+          ? `Gems are won as cashback. Spend them on real prizes in the Coin Shop, or convert them to coins at ${Math.round(rate * 100)}% of their value.`
+          : 'Gems are won as prizes only. Redeem coins and gems for kwacha in the Coin Shop, and our team credits it to your bwanabet account.'}</p>
         {onNavigate && <GreenBtn full size={20} onClick={() => { if (onClose) onClose(); onNavigate('store'); }}>Go to the Coin Shop</GreenBtn>}
       </div>
     </div>

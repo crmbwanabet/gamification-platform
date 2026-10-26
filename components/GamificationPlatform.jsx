@@ -151,6 +151,7 @@ export default function GamificationPlatform() {
   }, []);
   const [notif, setNotif] = useState(null);
   const [storeBusy, setStoreBusy] = useState(null); // store item id while its purchase is in flight
+  const [gemBusy, setGemBusy] = useState(null); // gem being converted to coins (wallet sheet)
   const [notifLeaving, setNotifLeaving] = useState(false);
   const [showAvatarSelector, setShowAvatarSelector] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
@@ -2368,10 +2369,37 @@ export default function GamificationPlatform() {
   // Missions not yet claimed today (header stat); the nav badge counts the
   // ones ready to claim right now.
   const openMissionsCount = missionStates.filter(s => !s.claimed).length;
+  // Gems -> coins, one gem per tap (wallet sheet; 75% of its coin value,
+  // owner 2026-10-26). The server moves its own balance first (convert_gems),
+  // then the client mirrors the returned change, like a store purchase.
+  const convertGem = async (gem) => {
+    if (session.status !== 'ready') { showNotif('Log in on bwanabet.com to convert gems', 'error'); return; }
+    if (gemBusy || !((user[gem] || 0) >= 1)) return;
+    setGemBusy(gem);
+    try {
+      const { data: d } = await session.api('/api/gems/convert', { gem, count: 1 });
+      if (!d || !d.ok) {
+        showNotif(d && d.error === 'insufficient_funds' ? 'Balance not synced yet — try again in a moment.'
+          : d && d.error === 'slow_down' ? 'Too many attempts — wait a minute.'
+          : d && d.error === 'convert_locked' ? 'Converting gems is coming soon.'
+          : 'Could not convert — try again.', 'error');
+        return;
+      }
+      addCurrencies({ [gem]: d.count }, -1);
+      addCurrencies({ kwacha: d.coins });
+      track('gem_converted', { amount: d.coins, meta: { gem, count: d.count } });
+      showNotif(`+${amountText(d.coins, 'coins')} added to your wallet`);
+    } catch (e) {
+      showNotif('Could not convert — try again.', 'error');
+    } finally {
+      setGemBusy(null);
+    }
+  };
   const v2Stats = {
     points: user.kwacha,
     // header wallet pill + wallet sheet + Store affordability
-    wallet: { kwacha: user.kwacha, emeralds: user.emeralds || 0, rubies: user.rubies || 0, diamonds: user.diamonds || 0, economy: cfg.economy, store: cfg.store },
+    wallet: { kwacha: user.kwacha, emeralds: user.emeralds || 0, rubies: user.rubies || 0, diamonds: user.diamonds || 0, economy: cfg.economy, store: cfg.store,
+      prizes: cfg.prizes, uid: playerId, onConvertGem: convertGem, gemBusy },
     missionsCount: openMissionsCount,
     badges: user.missionsComplete.length,
     xp: lvXp, // level XP (the total stays user.xp)
@@ -2654,7 +2682,7 @@ export default function GamificationPlatform() {
           : d && d.error === 'invalid_token' ? 'Session expired — reload the page.'
           : d && d.error === 'store_closed' ? 'The Coin Shop is coming soon.'
           : d && d.error === 'store_locked' ? `The Coin Shop opens at level ${STORE_UNLOCK_STAGE}. If you just reached it, try again in a moment.`
-          : d && d.error === 'item_locked' ? 'This prize is coming soon. Kwacha packs are open now.'
+          : d && d.error === 'item_locked' ? (item.prizeId ? 'Real prizes are coming soon.' : 'This prize is coming soon. Kwacha packs are open now.')
           // Server-held balance was short: recent winnings may not have
           // synced yet (saves are debounced ~1.5s) — a retry usually works.
           : d && d.error === 'insufficient_funds' ? 'Balance not synced yet — try again in a moment.'
@@ -2671,6 +2699,7 @@ export default function GamificationPlatform() {
       const payout = Number(d.purchase?.payout_kwacha ?? item.payoutKwacha);
       showNotif(item.redeem && payout > 0
         ? `💵 ${formatKwacha(payout)} on its way — our team will credit your bwanabet account shortly!`
+        : item.prizeId ? `🎁 ${item.name} is yours! Our team will contact you to arrange delivery.`
         : `🛒 ${item.name} purchased — our team will credit it shortly!`);
       triggerReward('medium', el || null, { coins: 0 });
     } catch (e) {

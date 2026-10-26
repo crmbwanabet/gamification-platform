@@ -8,7 +8,7 @@ import { STORE_ITEMS } from '@/lib/data/platform';
 import { amountText } from '@/lib/rewardText.mjs';
 import { canAfford, cleanReward, coinsToKwacha, economyRates, formatKwacha, formatNumber } from '@/lib/economy/currency.mjs';
 import { splitCatalog, nextPackGoal, storeLockReason, itemBuyable } from '@/lib/store/catalog.mjs';
-import { PRIZE_TIERS, PRIZES_LIVE } from '@/lib/store/prizes.mjs';
+import { PRIZE_TIERS, prizesOpenFor, prizesTester, prizeOptions } from '@/lib/store/prizes.mjs';
 import { getLevel } from '@/lib/data/platform';
 import { BB_CSS, STORE_ART, packArtSrc, CoinMeter, PackLock, goalText, ShopLockPlate, ShopLockWrap } from './storeKit';
 import { ShineImg, Sparkles } from './Shine';
@@ -136,13 +136,51 @@ function AvatarItemCard({ item, stage, coins, owned, worn, onBuy, onWear }) {
   );
 }
 
-/** Locked real prize: greyed art, name, Coming soon (lib/store/prizes.mjs). */
-function PrizeCard({ prize }) {
+/** "500,000 coins" / "5 emeralds" for a one-currency price. */
+const priceLabel = (price) => {
+  const [k, v] = Object.entries(cleanReward(price))[0] || ['kwacha', 0];
+  return amountText(v, k === 'kwacha' ? 'coins' : k);
+};
+
+/** One price option of a real prize: two taps (the first arms "Confirm?"), like the kwacha packs. */
+function PrizeBuyButton({ item, canBuy, busy, onBuy }) {
+  const [armed, setArmed] = React.useState(false);
+  React.useEffect(() => {
+    if (!armed) return undefined;
+    const t = setTimeout(() => setArmed(false), 4000);
+    return () => clearTimeout(t);
+  }, [armed]);
+  const off = !canBuy || busy;
+  const label = priceLabel(item.price);
   return (
-    <div className="bb-tile st-prize" data-prize={prize.id}>
+    <button type="button" disabled={off} className={`bb-buy st-prize-buy${armed ? ' bb-armed' : ''}`}
+      aria-label={armed ? `Confirm: buy ${item.name} for ${label}` : `Buy ${item.name} for ${label}`}
+      onClick={(e) => { if (off) return; if (!armed) { setArmed(true); return; } setArmed(false); onBuy && onBuy(item, e?.currentTarget); }}>
+      {busy ? '…' : armed ? 'Confirm?' : label}
+    </button>
+  );
+}
+
+/**
+ * Real prize (lib/store/prizes.mjs): art, name and one buy button per price
+ * option ("1,000,000 coins" or "5 emeralds"); no options yet = Coming soon.
+ */
+function PrizeCard({ prize, options = [], balances, onBuy, busyId }) {
+  const live = options.length > 0;
+  return (
+    <div className={`bb-tile st-prize${live ? ' st-prize-live' : ''}`} data-prize={prize.id}>
       <div className="bb-well st-prize-art"><img src={prize.art} alt={prize.name} width={128} height={128} loading="lazy" /></div>
       <div className="st-prize-name">{prize.name}</div>
-      <SoonLock className="st-pack-act st-prize-lock" />
+      {live ? (
+        <div className="st-prize-opts">
+          {options.map((it, i) => (
+            <React.Fragment key={it.id}>
+              {i > 0 && <span className="st-prize-or">or</span>}
+              <PrizeBuyButton item={it} canBuy={canAfford(it.price, balances)} busy={busyId === it.id} onBuy={onBuy} />
+            </React.Fragment>
+          ))}
+        </div>
+      ) : <SoonLock className="st-pack-act st-prize-lock" />}
     </div>
   );
 }
@@ -207,6 +245,10 @@ const ST_CSS = `
   .st-prize-art img { width: 86%; height: 86%; object-fit: contain; display: block; filter: saturate(.75) brightness(.8); opacity: .8; }
   .st-prize-name { font-family: ${CANDY.display}; font-size: 17px; line-height: 1.1; color: #fff; text-align: center; min-height: 2.2em; display: flex; align-items: center; }
   .st-prize-lock { font-size: 13px; color: #FFD21F; }
+  .st-prize-live .st-prize-art img { filter: none; opacity: 1; }
+  .st-prize-opts { width: 100%; margin-top: auto; display: flex; flex-direction: column; align-items: stretch; gap: 4px; }
+  .st-prize-or { font-size: 11px; font-weight: 900; color: rgba(255,255,255,.6); text-align: center; text-transform: uppercase; }
+  .st-prize-buy { min-height: 40px; padding: 0 10px; border-radius: 12px; font-size: 14px; white-space: nowrap; }
   .st-item { display: flex; flex-direction: column; gap: 10px; padding: 12px; border-radius: 22px; min-width: 0; }
   .st-item-art { position: relative; height: 120px; border-radius: 16px; overflow: hidden; display: flex; align-items: center; justify-content: center; }
   .st-item-art img { width: 100%; height: 100%; object-fit: cover; display: block; }
@@ -238,12 +280,17 @@ const ST_CSS = `
 export default function StoreView({ wallet = null, xp = 0, onNavigate, onOpenProfile, onBuy, userId = null, displayName = null, onEditName, navBadges = {}, storeItems = null, busyId = null, isWidget = false, story = null, onStoryOpen, onStoryClose, onStoryGo, storyPrize = null, intro = null, avatarShop = null }) {
   // Coins -> kwacha only through the kwacha packs (gem redemptions were
   // removed 2026-10-12; any still served are ignored).
-  const { coinPacks, items } = splitCatalog(storeItems || STORE_ITEMS);
+  const { coinPacks, items, prizes } = splitCatalog(storeItems || STORE_ITEMS);
   const balances = balancesOf(wallet);
-  const lockWhy = storeLockReason(getLevel(xp).level, wallet?.store);
+  // Real prizes (2026-10-26): shown once the `prizes` row is open, before that
+  // to its testers only, who also skip the level lock to preview them.
+  const uid = wallet?.uid ?? userId;
+  const showPrizes = prizesOpenFor(wallet?.prizes, uid);
+  const prizeOpts = prizeOptions(prizes);
+  const lockWhy = prizesTester(wallet?.prizes, uid) ? null : storeLockReason(getLevel(xp).level, wallet?.store);
   const locked = !!lockWhy;
   const avItems = avatarShop?.items || [];
-  const empty = coinPacks.length + items.length + avItems.length === 0;
+  const empty = coinPacks.length + items.length + avItems.length === 0 && !showPrizes;
   const topId = coinPacks.length > 1 ? coinPacks[coinPacks.length - 1].id : null;
   return (
     <RedesignShell wallet={wallet} xp={xp} userId={userId} displayName={displayName} onEditName={onEditName} navBadges={navBadges} activeTab="store" onNavigate={onNavigate} onOpenProfile={onOpenProfile}
@@ -290,16 +337,16 @@ export default function StoreView({ wallet = null, xp = 0, onNavigate, onOpenPro
                 </div>
               </section>
             )}
-            {PRIZES_LIVE && (
+            {showPrizes && (
             <section aria-labelledby="st-prizes-title" id="prizes">
               <div className="st-head">
                 <h2 id="st-prizes-title" className="bb-display st-h2">Real prizes</h2>
-                <span className="st-note">Coming soon · keep collecting coins and gems</span>
+                <span className="st-note">Pay with coins or gems · tap twice to buy · our team contacts you to deliver</span>
               </div>
               {PRIZE_TIERS.map(t => (
                 <div key={t.id}>
                   <div className="st-tier"><h3>{t.title}</h3><span>{t.pay}</span></div>
-                  <div className="st-prizes">{t.items.map(p => <PrizeCard key={p.id} prize={p} />)}</div>
+                  <div className="st-prizes">{t.items.map(p => <PrizeCard key={p.id} prize={p} options={prizeOpts[p.id]} balances={balances} onBuy={onBuy} busyId={busyId} />)}</div>
                 </div>
               ))}
             </section>

@@ -16,7 +16,7 @@ export async function GET() {
     try {
       const [cfgRes, itemRes] = await Promise.all([
         supabaseAdmin.from('platform_config').select('key,value'),
-        supabaseAdmin.from('store_items').select('id,name,descr,price_kwacha,price_gems,price_emeralds,price_rubies,price_diamonds,is_money,redeem_currency,redeem_amount,image_url,stock,featured,is_new,sort')
+        supabaseAdmin.from('store_items').select('id,name,descr,price_kwacha,price_gems,price_emeralds,price_rubies,price_diamonds,is_money,redeem_currency,redeem_amount,prize_id,image_url,stock,featured,is_new,sort')
           .eq('active', true).order('sort', { ascending: true }),
       ]);
       rows = cfgRes.data || [];
