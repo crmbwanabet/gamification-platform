@@ -48,5 +48,5 @@ Response:
 1. From 06:00 Lusaka (04:00 UTC) after a window, finds the oldest unpaid window whose pay time has come. On the very first run it pays only the latest one, with no back pay.
 2. Pages through the CRM rows once `complete` is true.
 3. Keeps only players whose **reward anchor** (first daily-reward claim in the Bonus Center, its Lusaka day) is on or before the window day. A player who never opened the Bonus Center gets no cashback.
-4. Writes ONE `cashback_awards` row per player per window (primary key). Re-runs never pay twice, and a later CRM correction does not change a window that is already paid.
+4. Records EVERY reported player's day in the `cashback_daily` ledger (owner 2026-10-26: each player's cashback for every day is stored): the four amounts, net loss, 5% cashback, gems paid and a status (`awarded` / `below_minimum` / `not_eligible` / `no_loss`). Then writes ONE `cashback_awards` row per player per window (primary key). Re-runs never pay twice, and a later CRM correction does not change a window that is already paid.
 5. The player sees a "Your cashback" pop-up on their next Bonus Center open; Collect credits the gems (`POST /api/cashback` marks the row collected once).

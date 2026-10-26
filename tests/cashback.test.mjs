@@ -68,11 +68,12 @@ test('CRM row: net loss = stakes - winnings (casino + sports), never below 0; ju
 function fakes({ pages, anchors = {}, state = null }) {
   const calls = [];
   const db = {
-    state, awards: new Map(), saves: [],
+    state, awards: new Map(), daily: new Map(), saves: [],
     async readState() { return this.state; },
     async saveState(s, run) { this.state = { since: s.paid, after_day: s.window, after_user: s.afterUser }; this.saves.push(run.status); },
     async loadEconomy() { return ECO; },
     async loadAnchors() { return anchors; },
+    async insertDaily(rows) { for (const r of rows) { const k = `${r.user_id}|${r.window_day}`; if (!this.daily.has(k)) this.daily.set(k, r); } },
     async insertAwards(rows) {
       let n = 0;
       for (const r of rows) { const k = `${r.user_id}|${r.window_day}`; if (!this.awards.has(k)) { this.awards.set(k, r); n++; } }
@@ -113,6 +114,11 @@ test('job: first run pays the last finished window only, by anchor, pages throug
   assert.deepEqual(['rubies', 'emeralds'].map(k => db.awards.get('1|2026-10-23')[k]), [1, 0]); // K50 = 1 ruby
   assert.equal(db.awards.get('2|2026-10-23').emeralds, 2);                                     // K30 -> 2 emeralds
   assert.equal(db.state.since, '2026-10-23');
+  // the ledger holds EVERY reported player's day, with the reason when it pays nothing
+  assert.equal(out.recorded, 5);
+  assert.deepEqual([...db.daily.values()].map(r => [r.user_id, r.status, r.cashback_kwacha]),
+    [['1', 'awarded', 50], ['2', 'awarded', 30], ['3', 'not_eligible', 250], ['4', 'not_eligible', 450], ['5', 'not_eligible', 5]]);
+  assert.equal(db.daily.get('3|2026-10-23').rubies, 0); // no gems on a day that does not pay
   // a second run the same morning: nothing to do, nothing paid twice
   const again = await runCashback({ env: { GAMIFICATION_API_KEY: 'k' }, fetch, db, now: NOW });
   assert.equal(again.status, 'up_to_date');
@@ -152,4 +158,15 @@ test('job: a page for the wrong window is rejected as a bad body', async () => {
 test('cleanState: junk -> nothing saved', () => {
   assert.deepEqual(cleanState(null), { paid: null, window: null, afterUser: null });
   assert.deepEqual(cleanState({ since: 'x', after_day: '2026-10-23', after_user: '7' }), { paid: null, window: '2026-10-23', afterUser: '7' });
+});
+
+test('job: the ledger records small losses and wins too', async () => {
+  const { db, fetch } = fakes({
+    anchors: { 1: '2026-10-01', 2: '2026-10-01' },
+    pages: (w) => ({ window: w, complete: true, rows: [row(1, 100), row(2, 50, 80)], next_after_user: null }),
+  });
+  const out = await runCashback({ env: { GAMIFICATION_API_KEY: 'k' }, fetch, db, now: NOW });
+  assert.equal(out.awarded, 0);
+  assert.deepEqual([...db.daily.values()].map(r => [r.user_id, r.status, r.net_loss, r.cashback_kwacha]),
+    [['1', 'below_minimum', 100, 5], ['2', 'no_loss', 0, 0]]);
 });

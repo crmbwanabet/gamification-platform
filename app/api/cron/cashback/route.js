@@ -11,7 +11,8 @@ export const maxDuration = 300;
 // Daily gem CASHBACK (2026-10-23): every 10 minutes, pay each UTC-day window
 // (02:00 → 02:00 Lusaka) from 06:00 Lusaka the next morning, once the CRM says its data is complete
 // (`GET {CRM_URL}/api/player-cashback`, x-api-key: GAMIFICATION_API_KEY).
-// Awards land in cashback_awards (one per player per window); the player
+// Every reported player's day lands in the cashback_daily ledger; gem awards
+// land in cashback_awards (one per player per window); the player
 // collects them in the Bonus Center. Logic: lib/cashback/crmCashback.mjs.
 // Doc: docs/integrations/crm-cashback-feed.md
 //
@@ -43,6 +44,11 @@ const db = {
     return data?.value || null;
   },
   loadAnchors,
+  async insertDaily(rows) {
+    const { error } = await supabaseAdmin.from('cashback_daily')
+      .upsert(rows, { onConflict: 'user_id,window_day', ignoreDuplicates: true });
+    if (error) { console.error('[cashback] ledger insert failed:', error.message); throw dbFail(error); }
+  },
   async insertAwards(rows) {
     const { data, error } = await supabaseAdmin.from('cashback_awards')
       .upsert(rows, { onConflict: 'user_id,window_day', ignoreDuplicates: true }).select('user_id');
