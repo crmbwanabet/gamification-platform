@@ -217,7 +217,7 @@ function StoreHero({ economy }) {
 }
 
 const ST_CSS = `
-  .st-wrap { max-width: 1060px; margin: 0 auto; display: flex; flex-direction: column; gap: 28px; }
+  .st-wrap { width: 100%; max-width: 1060px; margin: 0 auto; display: flex; flex-direction: column; gap: 28px; }
   .st-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   .st-hero { position: relative; min-height: 270px; border-radius: 26px; overflow: hidden; border: 2px solid #5B2BB0; display: flex; align-items: center;
     background: #2B1061 url(${STORE_ART.banner}) right center / cover no-repeat; }
