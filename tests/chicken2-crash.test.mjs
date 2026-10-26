@@ -132,20 +132,21 @@ test('drawCrash uses crypto when no rng is given; rejects unknown stakes', () =>
   assert.throws(() => drawCrash(100, 0.98));
 });
 
-test('payouts: stake × x rounded DOWN to whole coins, never above 100,000', () => {
+test('payouts: stake × x rounded UP to whole coins, never above 100,000', () => {
   for (const s of STAKES) {
     for (let m = 100; m <= 500_000; m += (m < 10_000 ? 1 : 97)) {
       const p = payoutFor(s, m / 100);
-      assert.equal(p, Math.floor((s * m) / 100), `${s} x ${m / 100} -> ${p}`);
+      assert.equal(p, Math.ceil((s * m) / 100), `${s} x ${m / 100} -> ${p}`);
       assert.ok(p <= 100_000 && p >= s, `${s} x ${m / 100} -> ${p}`);
     }
   }
   assert.equal(payoutFor(20, 1.15), 23); // no float drift
-  assert.equal(payoutFor(1, 1.49), 1);
-  assert.equal(payoutFor(1, 1.99), 1);   // stake 1: only whole multipliers add a coin
-  assert.equal(payoutFor(1, 2), 2);
-  assert.equal(payoutFor(5, 1.1), 5);    // 5.5 → 5, never up
-  assert.equal(payoutFor(5, 2.37), 11);
+  assert.equal(payoutFor(1, 1.01), 2);  // owner's rule: any fraction rounds up
+  assert.equal(payoutFor(1, 1.49), 2);
+  assert.equal(payoutFor(1, 1.99), 2);
+  assert.equal(payoutFor(1, 2), 2);      // whole stays whole
+  assert.equal(payoutFor(5, 1.1), 6);    // 5.5 → 6
+  assert.equal(payoutFor(5, 2.37), 12);  // 11.85 → 12
   assert.equal(payoutFor(10, 9999), 50_000); // the multiplier is capped at 5,000x
   assert.throws(() => payoutFor(7, 2));
 });

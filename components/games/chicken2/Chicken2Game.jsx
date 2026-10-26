@@ -29,7 +29,7 @@ import { makeRig2, render2, eggsCollected, setGone2, HEN, AFTER_CASH_S, AFTER_FA
 // games.chicken2.rtp, clamped 97–99%, default 98%; P(C ≥ x) = RTP / x at every
 // stake, never the previous round's crash point). The farmer chases the golden hen;
 // the multiplier climbs e^(K·t) from 1.00× (each golden egg he runs through
-// pulses it). CASH OUT banks stake × shown multiplier, rounded down to whole coins — he dives and
+// pulses it). CASH OUT banks stake × shown multiplier, rounded UP to whole coins — he dives and
 // catches her, WinCelebration plays, and a faded ghost counter runs on to where
 // he would have fallen. If the counter would pass C he trips and the hen flies
 // off: LOSE, "CRASHED @ C×". At 5,000× he catches her automatically (MAX WIN!).

@@ -137,3 +137,9 @@ Dashboard UI for the RTP field, server-authoritative crash points (the same clie
 - **Stakes 1 / 5 / 10 / 20** (default 5), **cap 5,000x**, so the max win is **20 × 5,000 = 100,000 coins** (stake 1 tops out at 5,000). 5,000x is reached after ~71 s (P = RTP / 5,000).
 - **Crash curve P(C ≥ x) = RTP / x at every stake**, so C spreads over every 2-decimal point as in the 23 Oct version (no 1.49x pile-up), and the no-repeat base table is unchanged (now one table per RTP, 499,901 points, ~60 ms to build on the first RUN).
 - **Payouts round DOWN** to whole coins. Rounding up with this curve would pay more than the RTP (stake 1 at 1.50x: 2 coins at a 65% chance = 131%). A cash-out returns exactly the RTP when stake × x is a whole number and a little less in between: stake 1 only gains a coin at whole multipliers (1.01–1.99x pays the stake back), stake 5 every 0.2x, 10 every 0.1x, 20 every 0.05x. The CASH OUT button always shows the coins you get.
+
+## Update 2026-10-26 (owner): every win rounds UP, odds unchanged
+
+- **Payouts round UP** to whole coins (`roundUp` in `lib/rtp.mjs`): 1 × 1.01 = 2, 5 × 1.1 = 6, 5 × 2.37 = 12; whole products stay whole.
+- **The crash curve is NOT adjusted** (owner chose this over keeping 98%: the Bonus Center is meant to feel winning, not to profit). A cash-out returns `rtp × payout / (stake × x)`: exactly the RTP when stake × x is whole, more in between, at most ~194% (196% at a 99% RTP) for stake 1 cashing out at 1.01x; stake 5 ≤ 116%, 10 ≤ 107%, 20 ≤ 102%.
+

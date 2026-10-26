@@ -31,14 +31,15 @@ test('stakes, symbols and the approved multiplier ladder', () => {
   assert.ok(SYMBOLS.reduce((a, s) => a + s.p, 0) < 1, 'some cards must lose');
 });
 
-test('base ladder: sum p × mult = 0.95; rescaled per stake so the EV is exactly the RTP', () => {
+test('base ladder: sum p × mult = 0.95; rescaled per stake from the old half-up prizes (EV = RTP, above it at stake 1)', () => {
   assert.ok(Math.abs(SYMBOLS.reduce((a, s) => a + s.p * s.mult, 0) - 0.95) < 1e-12);
   for (const rtp of [0.97, 0.98, 0.99]) {
     for (const stake of STAKES) {
       const p = winProbs(stake, rtp);
       const ev = SYMBOLS.reduce((a, s, i) => a + p[i] * payoutFor(stake, s.mult), 0) / stake;
-      assert.ok(Math.abs(ev - rtp) < 1e-12, `stake ${stake}: ev ${ev}`);
-      assert.ok(Math.abs(rtpFor(stake, rtp) - rtp) < 1e-12);
+      assert.ok(Math.abs(rtpFor(stake, rtp) - ev) < 1e-12);
+      if (stake === 1) assert.ok(ev > rtp, `stake 1: ev ${ev}`);
+      else assert.ok(Math.abs(ev - rtp) < 1e-12, `stake ${stake}: ev ${ev}`);
       // the ladder keeps its shape: rarer the bigger the prize
       for (let i = 1; i < p.length; i++) assert.ok(p[i] < p[i - 1]);
     }
@@ -47,9 +48,9 @@ test('base ladder: sum p × mult = 0.95; rescaled per stake so the EV is exactly
   winProbs(10).forEach((x, i) => assert.ok(Math.abs(x - SYMBOLS[i].p * 0.98 / 0.95) < 1e-12));
 });
 
-test('payouts are half-up whole numbers and never exceed the 200 cap; top prize is 50 × 4 = 200', () => {
+test('payouts are rounded-UP whole numbers and never exceed the 200 cap; top prize is 50 × 4 = 200', () => {
   assert.deepEqual(STAKES.map(st => SYMBOLS.map(s => payoutFor(st, s.mult))), [
-    [1, 2, 2, 3, 3, 4], [12, 15, 20, 25, 30, 40], [30, 38, 50, 63, 75, 100], [60, 75, 100, 125, 150, 200],
+    [2, 2, 2, 3, 3, 4], [12, 15, 20, 25, 30, 40], [30, 38, 50, 63, 75, 100], [60, 75, 100, 125, 150, 200],
   ]);
   for (const stake of STAKES) {
     for (const s of SYMBOLS) {

@@ -20,8 +20,8 @@ test('game shape: pick 6 of 1–20, stakes 1/5/10/20 (default 5)', () => {
   assert.equal(TOP_MULT, 10);
 });
 
-test('paytable per stake (98% default): 2 → 1.2x, 3 → 1.6x (half up), 4 solved, 5+ = 10x where the band allows', () => {
-  assert.deepEqual(paytableFor(1).pays, [0, 0, 1, 2, 6, 7, 7]);
+test('paytable per stake (98% default): 2 → 1.2x, 3 → 1.6x (rounded up), 4 solved, 5+ = 10x where the band allows', () => {
+  assert.deepEqual(paytableFor(1).pays, [0, 0, 2, 2, 6, 7, 7]); // 1.2 and 1.6 both round up to 2
   assert.deepEqual(paytableFor(5).pays, [0, 0, 6, 8, 27, 50, 50]);
   assert.deepEqual(paytableFor(10).pays, [0, 0, 12, 16, 55, 100, 100]);
   assert.deepEqual(paytableFor(20).pays, [0, 0, 24, 32, 109, 200, 200]);
@@ -52,13 +52,14 @@ test('hypergeometric probabilities are exact and sum to 1', () => {
   assert.ok(Math.abs(p.reduce((a, b) => a + b, 0) - 1) < 1e-12);
 });
 
-test('RTP at every stake is inside [0.97, 0.99] and matches the exact sum', () => {
+test('RTP matches the exact sum; inside [0.97, 0.99] except stake 1 (solved in band, paid rounded up)', () => {
   const p = probabilities();
   for (const s of STAKES) {
     const { pays, rtp } = paytableFor(s);
     const ev = p.reduce((a, x, k) => a + x * pays[k], 0) / s;
     assert.ok(Math.abs(ev - rtp) < 1e-12 && Math.abs(rtpOf(s, pays) - rtp) < 1e-12);
-    assert.ok(rtp >= 0.97 && rtp <= 0.99, `stake ${s}: ${rtp}`);
+    if (s === 1) assert.ok(rtp > 0.99 && paytableFor(s).solvedRtp >= 0.97 && paytableFor(s).solvedRtp <= 0.99, `stake 1: ${rtp}`);
+    else assert.ok(rtp >= 0.97 && rtp <= 0.99, `stake ${s}: ${rtp}`);
   }
 });
 
@@ -103,7 +104,7 @@ test('resolveDraw counts matches and pays the table', () => {
   assert.equal(r.matches, 3);
   assert.equal(r.payout, 32);
   assert.equal(r.win, true);
-  assert.equal(resolveDraw(1, [1, 2, 13, 14, 15, 16], () => 0).payout, 1); // 2 matches at stake 1: the stake back
+  assert.equal(resolveDraw(1, [1, 2, 13, 14, 15, 16], () => 0).payout, 2); // 2 matches at stake 1: 1.2 rounds up to 2
   assert.equal(resolveDraw(20, [1, 2, 3, 4, 15, 16], () => 0, 0.99).payout, 115);
   const lose = resolveDraw(5, [20, 19, 18, 17, 16, 7], () => 0);
   assert.deepEqual(lose, { drawn: [1, 2, 3, 4, 5, 6], matches: 0, win: false, payout: 0 });

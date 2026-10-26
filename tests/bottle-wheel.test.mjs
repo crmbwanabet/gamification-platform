@@ -27,10 +27,11 @@ test('bigger prizes come up less often (at every stake)', () => {
   }
 });
 
-test('TRY AGAIN weight is solved per stake so the EV is exactly the RTP', () => {
+test('TRY AGAIN weight is solved per stake from the old half-up prizes: EV = RTP, above it at stake 1 (1.2x pays 2)', () => {
   for (const rtp of [0.97, 0.98, 0.99]) {
     for (const st of STAKES) {
-      assert.ok(Math.abs(rtpFor(st, rtp) - rtp) < 1e-12, `stake ${st} @ ${rtp}`);
+      if (st === 1) assert.ok(rtpFor(st, rtp) > rtp, `stake 1 @ ${rtp}: ${rtpFor(st, rtp)}`);
+      else assert.ok(Math.abs(rtpFor(st, rtp) - rtp) < 1e-12, `stake ${st} @ ${rtp}`);
       const w = weightsFor(st, rtp);
       assert.ok(w[1] > 0 && w[1] === w[5] && w[5] === w[7], 'TRY AGAIN segments share the losing weight');
     }
@@ -41,9 +42,9 @@ test('TRY AGAIN weight is solved per stake so the EV is exactly the RTP', () => 
   assert.deepEqual(weightsFor(10, 0.5), weightsFor(10, 0.97));
 });
 
-test('payouts: half up, whole numbers, never above the 200 cap', () => {
+test('payouts: rounded UP, whole numbers, never above the 200 cap', () => {
   assert.deepEqual(STAKES.map(s => payoutFor(s, 1.5)), [2, 15, 38, 75]);
-  assert.deepEqual(STAKES.map(s => payoutFor(s, 1.2)), [1, 12, 30, 60]);
+  assert.deepEqual(STAKES.map(s => payoutFor(s, 1.2)), [2, 12, 30, 60]);
   for (const stake of STAKES) {
     for (const s of SEGMENTS) {
       const p = payoutFor(stake, s.mult);

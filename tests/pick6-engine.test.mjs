@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { roundHalfUp } from '../lib/rtp.mjs';
 import { STAKES, DEFAULT_STAKE, winChance, payoutFor, resolvePick } from '../lib/pick6/engine.mjs';
 import { SPOTS } from '../lib/penalty/spots.mjs';
 
@@ -18,9 +19,9 @@ test('penalty spots: 6 spots, 2x3 grid, the approved multipliers', () => {
   for (const s of SPOTS) assert.ok(typeof s.label === 'string' && s.label.length > 0);
 });
 
-test('payoutFor: stake × mult rounded half up for every stake × spot', () => {
+test('payoutFor: stake × mult rounded UP for every stake × spot (1.2 → 2)', () => {
   const expected = {
-    1.2: [1, 12, 30, 60], 1.5: [2, 15, 38, 75], 2: [2, 20, 50, 100],
+    1.2: [2, 12, 30, 60], 1.5: [2, 15, 38, 75], 2: [2, 20, 50, 100],
     2.5: [3, 25, 63, 125], 3: [3, 30, 75, 150], 4: [4, 40, 100, 200],
   };
   for (const m of MULTS) {
@@ -28,15 +29,17 @@ test('payoutFor: stake × mult rounded half up for every stake × spot', () => {
   }
 });
 
-test('winChance = rtp × stake / actual payout (RTP 98% default)', () => {
+test('winChance = rtp × stake / the OLD half-up payout: players win as often as before 2026-10-26', () => {
   assert.ok(Math.abs(winChance(10, 2) - 0.49) < 1e-12);
   assert.ok(Math.abs(winChance(1, 1.5) - 0.49) < 1e-12);       // pays 2, not 1.5
-  assert.ok(Math.abs(winChance(1, 1.2) - 0.98) < 1e-12);       // pays 1: a refund
+  assert.ok(Math.abs(winChance(1, 1.2) - 0.98) < 1e-12);       // still wins 98%, now pays 2
   assert.ok(Math.abs(winChance(25, 2.5) - 0.98 * 25 / 63) < 1e-12);
   assert.ok(Math.abs(winChance(50, 4, 0.97) - 0.2425) < 1e-12);
   assert.ok(Math.abs(winChance(50, 4, 0.5) - 0.2425) < 1e-12);  // clamped to 0.97
   for (const m of MULTS) for (const s of STAKES) {
-    assert.ok(Math.abs(winChance(s, m) * payoutFor(s, m) / s - 0.98) < 1e-12, `${s} × ${m}`);
+    const r = winChance(s, m) * payoutFor(s, m) / s;
+    assert.ok(Math.abs(r - 0.98 * payoutFor(s, m) / roundHalfUp(s, m)) < 1e-12, `${s} × ${m}`);
+    if (s > 1) assert.ok(Math.abs(r - 0.98) < 1e-12, `${s} × ${m}`);
   }
 });
 
