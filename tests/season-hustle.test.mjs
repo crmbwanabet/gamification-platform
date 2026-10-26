@@ -1,6 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { computeSeasonXp, addDays } from '../lib/season/xp.mjs';
+import { existsSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { hustleLevelFor, hustleState, collectHustle, hustleImage } from '../lib/season/hustle.mjs';
 import { SEASON_DEFAULTS } from '../lib/season/config.mjs';
 
@@ -26,8 +28,10 @@ test('levels: names, stock thresholds, pay', () => {
   assert.equal(hustleLevelFor(19999).level, 9);
   assert.equal(hustleLevelFor(20000).level, 10);
   assert.equal(hustleLevelFor(1e9).level, 10);
-  assert.equal(hustleImage(2), '/vuma/hustle-1.jpg'); // car washing (temporary art map)
-  for (let l = 1; l <= 10; l++) assert.match(hustleImage(l), /^\/vuma\/hustle-[1-5]\.jpg$/);
+  assert.equal(hustleImage(2), '/vuma/quest-02.jpg'); // car washing
+  assert.equal(hustleImage(10), '/vuma/quest-10.jpg');
+  assert.equal(hustleImage(99), '/vuma/quest-01.jpg'); // unknown level -> quest 1
+  for (let l = 1; l <= 10; l++) assert.ok(existsSync(fileURLToPath(new URL(`../public${hustleImage(l)}`, import.meta.url))), `quest art for level ${l}`);
 });
 
 test('locked until stage 2 (50 XP)', () => {
