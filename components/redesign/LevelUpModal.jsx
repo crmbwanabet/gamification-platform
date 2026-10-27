@@ -1,6 +1,6 @@
 'use client';
 
-import { RoundAvatar } from './AvatarPicture';
+import { RoundAvatar, HeroPicture } from './AvatarPicture';
 import React from 'react';
 import { CANDY, COIN_ICON } from './tokens';
 import { cleanReward } from '@/lib/economy/currency.mjs';
@@ -29,6 +29,13 @@ const REASON_ART = {
   deposit: '/ui/levelup/deposit.png',
 };
 
+// What still gives XP once the Bonus Center's daily XP is full (lib/season/config.mjs crm rates)
+const BET_XP = [
+  { kind: 'sports', label: 'Sports bets, odds 1.5+', rate: 'K4 = 1 XP' },
+  { kind: 'casino', label: 'Casino and Aviator', rate: 'K10 = 1 XP' },
+  { kind: 'deposit', label: 'A deposit today', rate: '30 XP' },
+];
+
 function XpChip({ n, big }) {
   return (
     <span className="lu-xp" style={big ? { fontSize: 20 } : null}>
@@ -53,10 +60,10 @@ function Reasons({ rows, title = 'Why you levelled up' }) {
   );
 }
 
-function Story({ st }) {
+function Story({ st, open = false }) {
   if (!st) return null;
   return (
-    <details className="lu-tale">
+    <details className="lu-tale" open={open || undefined}>
       <summary>
         <span className="lu-st"><b>Your story</b><span>{st.teaser}</span></span>
         <span className="lu-chev" aria-hidden><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round" /></svg></span>
@@ -88,12 +95,14 @@ function NextMission({ next, onGo }) {
 }
 
 const WIDE_QUERY = '(min-width: 861px)'; // the desktop layout in LU_CSS
+const TALL_QUERY = '(min-width: 861px) and (min-height: 1000px)'; // room to show the story open
 
 export default function LevelUpModal({ levelUp, onClose, onGo, onRename, hero = HERO_DEFAULT, named = true }) {
   const [wide, setWide] = React.useState(false);
+  const [tall, setTall] = React.useState(false);
   React.useEffect(() => {
     const mq = window.matchMedia(WIDE_QUERY);
-    const on = () => setWide(mq.matches);
+    const on = () => { setWide(mq.matches); setTall(window.matchMedia(TALL_QUERY).matches); };
     on();
     mq.addEventListener('change', on);
     return () => mq.removeEventListener('change', on);
@@ -106,15 +115,19 @@ export default function LevelUpModal({ levelUp, onClose, onGo, onRename, hero = 
       <style dangerouslySetInnerHTML={{ __html: LU_CSS }} />
       <div onClick={(e) => e.stopPropagation()} className="lu-frame">
         <div className="lu-in">
+          <div className="lu-side">
+          {wide && <div className="lu-hero" aria-hidden><HeroPicture stage={levelUp.level} style={{ height: '100%', aspectRatio: 'auto' }} imgStyle={{ objectPosition: '50% 70%' }} /></div>}
           <div className="lu-top">
-            {levelUp.avatar && (
-              <span className="lu-av"><RoundAvatar stage={levelUp.level} avatar={levelUp.avatar} alt={hero} size={wide ? 116 : 78} /></span>
+            {levelUp.avatar && !wide && (
+              <span className="lu-av"><RoundAvatar stage={levelUp.level} avatar={levelUp.avatar} alt={hero} size={78} /></span>
             )}
             {full ? <div className="lu-big blue">No more game XP today</div> : <div className="lu-big">Level {levelUp.sub || levelUp.level}!</div>}
             {!full && levelUp.levelsUp > 1 && <div className="lu-place">You went up {levelUp.levelsUp} levels</div>}
             {!full && levelUp.newPlace && levelUp.place && <div className="lu-place">New place: {levelUp.place}</div>}
             {r.kwacha > 0 && <span className="lu-prize"><img src={COIN_ICON} alt="" width={28} height={28} />+{amountText(r.kwacha, 'coins')}</span>}
           </div>
+          </div>
+          <div className="lu-main">
           {full ? (
             <div className="lu-box lu-full">
               <div className="lu-hd">Today</div>
@@ -123,12 +136,25 @@ export default function LevelUpModal({ levelUp, onClose, onGo, onRename, hero = 
               <div className="lu-note">Mini-games still pay coins. They give XP again tomorrow.</div>
             </div>
           ) : <Reasons rows={levelUp.reasons} />}
-          {!full && <Story st={levelUp.story} />}
+          {full && (
+            <div className="lu-box lu-why">
+              <div className="lu-hd">Bets still give XP today</div>
+              {BET_XP.map((b) => (
+                <div className="lu-row" key={b.kind}>
+                  <span className="lu-ic"><img src={REASON_ART[b.kind]} alt="" /></span>
+                  <span className="lu-t">{b.label}</span>
+                  <span className="lu-xp">{b.rate}</span>
+                </div>
+              ))}
+            </div>
+          )}
+          {!full && <Story st={levelUp.story} open={tall || (wide && (levelUp.reasons || []).length <= 2)} />}
           <NextMission next={levelUp.next} onGo={onGo} />
           {onRename && (
             <button type="button" className="lu-rename" onClick={onRename}>{named ? 'You can change your name now' : 'Give your player a name'} ›</button>
           )}
           <button type="button" className="lu-close" onClick={onClose}>Close</button>
+          </div>
         </div>
       </div>
     </div>
@@ -201,24 +227,27 @@ const LU_CSS = `
 .lu-close:active { transform: translateY(4px); box-shadow: 0 1px 0 #2e1a63, inset 0 2px 0 rgba(255,255,255,.35); }
 .lu-close:focus-visible, .lu-rename:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
 @media (prefers-reduced-motion: reduce) { .lu-next, .lu-chev, .lu-close { transition: none; } .lu-next:hover { transform: none; } }
-/* desktop (owner 2026-10-27: "too small for desktop"): wider, two columns, bigger type */
+/* phones: the side + main wrappers vanish into the single column */
+.lu-side, .lu-main { display: contents; }
+/* desktop (owner 2026-10-27: "too small", then "empty spaces, top to bottom"):
+   full screen height like the games; LEFT = the hero's own picture with the
+   level on it; RIGHT = everything else top to bottom, the mission button
+   taking whatever height is left, so nothing stands empty. */
 @media (min-width: 861px) {
-  .lu-frame { width: min(780px, 100%); padding: 9px; border-radius: 30px; }
-  .lu-in { border-radius: 22px; padding: 26px 26px 18px; gap: 16px 22px; grid-template-columns: 1fr 1fr; align-items: start;
-    grid-template-areas: "top top" "why story" "why next" "rename rename" "close close"; grid-template-rows: auto auto 1fr; }
-  .lu-top { grid-area: top; grid-template-columns: auto auto; justify-content: center; align-items: center; column-gap: 24px; row-gap: 8px; }
-  .lu-top > * { justify-self: start; }
-  .lu-top > .lu-av { grid-row: span 3; justify-self: end; }
-  .lu-why, .lu-full { grid-area: why; }
-  .lu-tale { grid-area: story; }
-  .lu-next { grid-area: next; align-content: center; padding: 22px 18px; gap: 8px; }
-  .lu-rename { grid-area: rename; }
-  .lu-close { grid-area: close; width: min(360px, 100%); justify-self: center; min-height: 58px; font-size: 24px; }
-  .lu-av { width: 124px; height: 124px; padding: 4px; }
-  .lu-big { font-size: 68px; }
-  .lu-big.blue { font-size: 44px; }
-  .lu-place { font-size: 18px; }
-  .lu-prize { font-size: 22px; padding: 6px 18px 6px 8px; }
+  .lu-frame { width: min(1040px, 100%); height: min(calc(100dvh - 32px), 920px); padding: 9px; border-radius: 30px; }
+  .lu-in { height: 100%; max-height: none; padding: 0; gap: 0; border-radius: 22px; overflow: hidden; grid-template-columns: 5fr 6fr; text-align: left; }
+  .lu-side { display: flex; flex-direction: column; justify-content: flex-end; position: relative; overflow: hidden; min-height: 0; }
+  .lu-hero { position: absolute; inset: 0; }
+  .lu-side::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(180deg, rgba(20,8,48,0) 35%, rgba(20,8,48,.75) 62%, #1a0d38 92%); }
+  .lu-top { position: relative; z-index: 1; justify-items: start; gap: 10px; padding: 0 28px 30px; }
+  .lu-big { font-size: 76px; text-shadow: 0 4px 0 #6b3d00, 0 8px 24px rgba(0,0,0,.55); }
+  .lu-big.blue { font-size: 50px; }
+  .lu-place { font-size: 20px; color: #fff; text-shadow: 0 2px 6px rgba(0,0,0,.7); }
+  .lu-prize { font-size: 24px; padding: 6px 18px 6px 8px; background: rgba(26,13,56,.85); }
+  .lu-main { display: flex; flex-direction: column; gap: 14px; padding: 24px 24px 18px; min-height: 0; overflow-y: auto; border-left: 2px solid rgba(255,200,61,.25); }
+  .lu-main > * { flex: none; }
+  .lu-next { flex: 1 0 auto; min-height: 150px; align-content: center; padding: 22px 18px; gap: 10px; }
+  .lu-close { width: 100%; min-height: 58px; font-size: 24px; }
   .lu-hd { font-size: 14px; }
   .lu-row { grid-template-columns: 52px 1fr auto; font-size: 16.5px; }
   .lu-t small { font-size: 14px; }
@@ -229,8 +258,8 @@ const LU_CSS = `
   .lu-part p { font-size: 17px; }
   .lu-facts span { font-size: 14px; }
   .lu-next-label { font-size: 15px; }
-  .lu-next-text { font-size: 32px; }
-  .lu-next-reward { font-size: 24px; }
+  .lu-next-text { font-size: 34px; text-align: center; }
+  .lu-next-reward { font-size: 26px; }
   .lu-meter, .lu-note { font-size: 16.5px; }
 }
 `;
