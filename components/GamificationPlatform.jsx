@@ -1987,7 +1987,7 @@ export default function GamificationPlatform() {
       else if (m.status === 'lost' && (today > addDays(m.weekEnd, 1) || f?.status === 'offer')) ev.push({ ...base, id: `L:${m.id}:lost`, kind: 'loss', friendlyKey: f?.status === 'offer' ? f.key : null });
       if (f && (f.status === 'won' || f.status === 'lost')) ev.push({ ...base, end: f.to, id: `F:${f.key}:${f.status}`, kind: f.status === 'won' ? 'friendlyWon' : 'friendlyLost', away: f.opponent, lostTo: m.opponent, xp: f.xp, target: f.target });
     }
-    for (const r of WORLD_CUP_OPEN ? worldCup.rounds : []) { // World Cup locked for now: no result pop-ups
+    for (const r of WORLD_CUP_OPEN ? worldCup.rounds : []) { // result pop-ups only while the World Cup is open (lib/season/config.mjs)
       if (!r.end || r.end < recent) continue;
       const base = { end: r.end, matchKind: 'wc', matchId: r.id, label: r.label, round: r.round, home: 'Zambia', away: r.opponent, xp: r.xp, target: r.target, bonus: r.bonus, claimable: r.claimable };
       const f = r.friendly;

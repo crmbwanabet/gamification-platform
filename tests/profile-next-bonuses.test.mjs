@@ -12,7 +12,8 @@ test('next level bonuses = the real level-up prize + what opens there', () => {
   assert.deepEqual(at(5), ['200 coins']);
   assert.ok(at(10).includes('Coin Shop opens'));
   assert.deepEqual(at(12, true).slice(1), ['league matches', 'name change']);
-  assert.ok(!at(22).includes('World Cup'), 'the World Cup is locked for now, never promised');
+  assert.deepEqual(at(22), ['2,000 coins', 'World Cup with Zambia'], 'the World Cup opens at stage 22 (WORLD_CUP_OPEN)');
+  assert.ok(!at(21).includes('World Cup with Zambia'));
   assert.deepEqual(at(3, true), ['100 coins', 'name change']);
 });
 

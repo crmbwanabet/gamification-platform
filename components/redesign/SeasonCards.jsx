@@ -5,6 +5,7 @@ import { C, CANDY, COIN_ICON, goldRim, dotRow, goldTitle, innerGlow, VIOLET_BASE
 import { Card, GreenBtn, Progress, Badge, SectionTitle, TitleNote, CurrencyAmounts } from './RedesignShell';
 import { VUMA_STAGES, getStage } from '@/lib/vuma/stages.mjs';
 import { opponentArt, vumaArt } from '@/lib/season/league.mjs';
+import { WORLD_CUP_OPEN } from '@/lib/season/config.mjs';
 import { RefreshCw, Lock, Trophy, Check } from 'lucide-react';
 import { HERO_DEFAULT, heroText } from '@/lib/profile/name.mjs';
 
@@ -163,10 +164,9 @@ const STATUS_CHIP = {
 };
 const Chip = ({ status }) => { const s = STATUS_CHIP[status] || STATUS_CHIP.upcoming; return <Badge bg={s.bg} color={s.color}>{s.label}</Badge>; };
 
-// The World Cup is LOCKED for every player for now (owner 2026-10-22): the
-// Missions tab shows it as a greyed "FIFA World Cup Mission" card and no
-// World Cup match takes the match slot. Flip to true when it opens.
-export const WORLD_CUP_OPEN = false;
+// The ONE World Cup switch lives in lib/season/config.mjs (client + server
+// read it; open since 2026-10-27). Re-exported for GamificationPlatform / useExtras.
+export { WORLD_CUP_OPEN };
 
 /** The match to show now: a live World Cup round first (once the World Cup is open), else this week's league match. */
 export function currentMatch(season) {
@@ -762,9 +762,8 @@ export function HustleCard({ hustle, onCollect, busy = false, hero = HERO_DEFAUL
 
 /**
  * A mission section that is not open yet (owner 2026-10-22): greyed out with a
- * lock, only its name showing. The World Cup is locked this way for every
- * player for now (WorldCupPath stays for when it opens), and the England
- * Premier League mission is coming.
+ * lock, only its name showing. The World Cup was locked this way until
+ * 2026-10-27 (WORLD_CUP_OPEN); the England Premier League mission is coming.
  */
 export function LockedMission({ title }) {
   return (
@@ -777,7 +776,7 @@ export function LockedMission({ title }) {
   );
 }
 
-/** Missions tab section: match card, league record, locked World Cup + Premier League missions. */
+/** Missions tab section: match card, league record, the World Cup path (teaser / 8 rounds + prize claim; a locked card while WORLD_CUP_OPEN is false) + the locked Premier League mission. */
 export function SeasonSection({ season, onClaimLeague, onClaimWc, onClaimPrize, prizeBusy }) {
   if (!season) return null;
   const L = season.league;
@@ -786,7 +785,9 @@ export function SeasonSection({ season, onClaimLeague, onClaimWc, onClaimPrize, 
       <SectionTitle id="season-title" right={L?.unlocked ? <TitleNote>{L.record.points} pts</TitleNote> : null}>Season</SectionTitle>
       <MatchCard season={season} onClaimLeague={onClaimLeague} />
       <LeagueRecord league={L} onClaim={onClaimLeague} />
-      <LockedMission title="FIFA World Cup Mission" />
+      {WORLD_CUP_OPEN
+        ? <WorldCupPath worldCup={season.worldCup} cfg={season.cfg} prize={season.prize} onClaim={onClaimWc} onClaimPrize={onClaimPrize} prizeBusy={prizeBusy} />
+        : <LockedMission title="FIFA World Cup Mission" />}
       <LockedMission title="England Premier League Mission" />
     </section>
   );

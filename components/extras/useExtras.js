@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { albumCards, albumSets, earnedCount } from '@/lib/album/cards.mjs';
-import { WORLD_CUP_OPEN } from '../redesign/SeasonCards';
+import { WORLD_CUP_OPEN } from '@/lib/season/config.mjs';
 import { track, flushTrack } from '@/lib/track';
 
 // The 2026-10-19 extras in one place, so GamificationPlatform only wires it:
@@ -22,7 +22,7 @@ export function useExtras({ session, loggedIn, hydrated, tab, user, setUser, sea
   // lib/missions/ladder.mjs, 2026-10-20)
 
   // --- souvenir album (derived cards; set bonuses once) ---
-  // the World Cup set is hidden while the World Cup is locked (owner 2026-10-22)
+  // the World Cup set shows only while the World Cup is open (lib/season/config.mjs; open since 2026-10-27)
   const cards = useMemo(() => albumCards({ stage, league, worldCup, hustle }).filter(c => WORLD_CUP_OPEN || c.set !== 'worldcup'), [stage, league, worldCup, hustle]);
   const sets = useMemo(() => albumSets(cards, user.albumClaims).filter(s => WORLD_CUP_OPEN || s.id !== 'worldcup'), [cards, user.albumClaims]);
   const have = earnedCount(cards);

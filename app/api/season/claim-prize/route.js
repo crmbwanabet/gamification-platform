@@ -4,6 +4,7 @@ import { rateLimit } from '@/lib/rateLimit';
 import { authedUid, bearer } from '@/lib/auth/ssoUid';
 import { lusakaDay } from '@/lib/casino/feed.mjs';
 import { loadSeasonConfig, prizeKey } from '@/lib/season/serverConfig';
+import { WORLD_CUP_OPEN } from '@/lib/season/config.mjs';
 import { verifyWorldCupPrize } from '@/lib/season/verify.mjs';
 import { loadAnchor } from '@/lib/season/anchorServer';
 import { purchaseMessage } from '@/lib/telegram/format.mjs';
@@ -23,8 +24,13 @@ const json = (body, status = 200) => NextResponse.json(body, { status, headers: 
 // row in `purchases` (prize_key unique per player per season) and posts it to
 // the Telegram admin group, where the existing ✅ flow credits it.
 // Idempotent: a repeat claim returns the existing row's status.
+// LEVEL XP (2026-10-27): the player's saved `state.levelReset.base` (village
+// restart) is taken off before the World Cup is recomputed, so the server
+// judges the same unlock day and windows the player saw (verify.mjs).
+// Shut while WORLD_CUP_OPEN (lib/season/config.mjs) is false.
 export async function POST(req) {
   if (!supabaseAdmin) return json({ error: 'not_configured' }, 503);
+  if (!WORLD_CUP_OPEN) return json({ error: 'world_cup_closed' }, 403);
   let body = {};
   try { body = (await req.json()) || {}; } catch { /* empty body is fine */ }
   const uid = authedUid(bearer(req) || body.token);
@@ -50,11 +56,14 @@ export async function POST(req) {
     console.error('[claim-prize] anchor failed:', e.message);
     return json({ error: 'unavailable' }, 503);
   }
-  const { data: rows, error } = await supabaseAdmin
-    .from('player_activity').select('day,deposits_amount,deposits_count,withdrawals_amount,casino_stake,casino_rounds,sports_stake,sports_slips')
-    .eq('user_id', uid).order('day', { ascending: false }).limit(1000);
-  if (error) {
-    console.error('[claim-prize] select failed:', error.message);
+  const [{ data: rows, error }, { data: prof, error: profErr }] = await Promise.all([
+    supabaseAdmin
+      .from('player_activity').select('day,deposits_amount,deposits_count,withdrawals_amount,casino_stake,casino_rounds,sports_stake,sports_slips')
+      .eq('user_id', uid).order('day', { ascending: false }).limit(1000),
+    supabaseAdmin.from('profiles').select('state').eq('bwanabet_user_id', uid).maybeSingle(),
+  ]);
+  if (error || profErr) {
+    console.error('[claim-prize] select failed:', (error || profErr).message);
     return json({ error: 'unavailable' }, 503);
   }
 
@@ -62,7 +71,7 @@ export async function POST(req) {
   // friendly counts only when accepted inside its 24h offer window, and its
   // result is recomputed from the rows (lib/season/verify.mjs).
   const now = Date.now();
-  const v = verifyWorldCupPrize({ rows: rows || [], clientPlatform: body.platformXp, friendlies: body.friendlies, cfg, today: lusakaDay(now), now, anchor });
+  const v = verifyWorldCupPrize({ rows: rows || [], clientPlatform: body.platformXp, friendlies: body.friendlies, cfg, today: lusakaDay(now), now, anchor, levelReset: prof?.state?.levelReset ?? null });
   if (!v.won) return json({ error: 'not_verified', reason: v.reason }, 403);
 
   const { data: ins, error: insErr } = await supabaseAdmin.from('purchases').insert({
