@@ -14,6 +14,10 @@ const GG_CSS = `
     -webkit-tap-highlight-color: transparent; }
   .rs-game:hover { transform: translateY(-2px); }
   .rs-game:active { transform: translateY(4px); box-shadow: 0 1px 0 ${VIOLET_BASE}, 0 4px 10px rgba(0,0,0,.35); }
+  .rs-game.is-soon { cursor: default; filter: grayscale(.85) brightness(.75); }
+  .rs-game.is-soon:hover, .rs-game.is-soon:active { transform: none; box-shadow: 0 5px 0 ${VIOLET_BASE}, 0 10px 18px rgba(0,0,0,.35); }
+  .rs-game-soon { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 6px; background: rgba(10,6,24,.45);
+    font-family: ${CANDY.display}; font-size: 15px; letter-spacing: .04em; text-transform: uppercase; color: #fff; text-shadow: 0 2px 0 rgba(0,0,0,.5); }
   .rs-game:focus-visible { outline: 3px solid ${CANDY.gold}; outline-offset: 3px; }
   .rs-game-img { height: 92px; }
   .rs-game-name { font-size: 15px; }
@@ -30,18 +34,21 @@ function GameCard({ g, free, onPlay }) {
   // Out of free plays ≠ locked: the card stays playable as a PAID extra play
   // (playGame charges the cost or shows the not-enough-coins toast).
   const out = !g.stakeOnly && free <= 0;
+  const soon = !!g.comingSoon;
   const note = g.stakeOnly ? (g.stakeRange ?? '1–50') : free > 0 ? `${free} free` : g.cost;
   return (
-    <button type="button" className="rs-game" data-game-tile={g.id} onClick={() => onPlay && onPlay(g.id)}
-      aria-label={`Play ${g.name}${g.stakeOnly ? `, stakes ${g.stakeRange ?? '1–50'} coins` : out ? `, paid play ${g.cost} coins` : ''}`}>
+    <button type="button" className={`rs-game${soon ? ' is-soon' : ''}`} data-game-tile={g.id} aria-disabled={soon || undefined}
+      onClick={() => !soon && onPlay && onPlay(g.id)}
+      aria-label={soon ? `${g.name}, coming soon` : `Play ${g.name}${g.stakeOnly ? `, stakes ${g.stakeRange ?? '1–50'} coins` : out ? `, paid play ${g.cost} coins` : ''}`}>
       <span className="rs-thumb rs-game-img" style={{ position: 'relative', display: 'block', overflow: 'hidden' }}>
         <img src={IMAGES[g.image]} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
         {g.isNew && <span style={{ position: 'absolute', top: 6, left: 6 }}><Badge bg={CANDY.red.fill} color="#fff">New</Badge></span>}
+        {soon && <span className="rs-game-soon"><img src="/ui/reward/lock.png" alt="" width={18} height={18} />Coming soon</span>}
       </span>
       <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, padding: '8px 10px 9px', background: `linear-gradient(180deg, ${C.panelHi}, ${C.panelLo})` }}>
         <span className="rs-game-name" style={{ fontFamily: CANDY.display, textTransform: 'uppercase', lineHeight: 1.1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{g.name}</span>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, flex: 'none', fontSize: 11, fontWeight: 900, color: CANDY.gold }}>
-          {(g.stakeOnly || out) && <RewardIcon kind="coins" size={13} />}{note}
+          {!soon && (g.stakeOnly || out) && <RewardIcon kind="coins" size={13} />}{soon ? 'Soon' : note}
         </span>
       </span>
     </button>
@@ -58,7 +65,7 @@ export default function GamesGrid({ gamePlays, onPlay, games, title = 'Bonus gam
   return (
     <section id="home-games" aria-labelledby="home-games-title" style={{ scrollMarginTop: 12 }}>
       <style dangerouslySetInnerHTML={{ __html: GG_CSS }} />
-      <SectionTitle id="home-games-title" right={<TitleNote>{list.length} to play</TitleNote>}>{title}</SectionTitle>
+      <SectionTitle id="home-games-title" right={<TitleNote>{list.filter(g => !g.comingSoon).length} to play</TitleNote>}>{title}</SectionTitle>
       <div className="rs-games">
         {list.map((g) => <GameCard key={g.id} g={g} free={gamePlays?.[g.id] ?? 0} onPlay={onPlay} />)}
       </div>

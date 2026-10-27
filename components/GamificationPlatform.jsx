@@ -2035,6 +2035,7 @@ export default function GamificationPlatform() {
     track('game_open', { gameId });
     // Disabled games can still be reached via mission modals — block them.
     if (!activeGames.some(g => g.id === gameId)) { showNotif('This game is unavailable right now', 'error'); return; }
+    if (activeGames.find(g => g.id === gameId)?.comingSoon) { showNotif('This game is coming soon', 'error'); return; }
     // Stake-per-round games (njuka, coinflip, penalty, chicken, chicken2, minibus, bottle, scratch, numbers, tower, speedtrap, crossing, parking, conductor): entry is free — no daily play consumed,
     // no extra-play charge. Every round is paid inside the game via onSpend.
     if (activeGames.find(g => g.id === gameId)?.stakeOnly) { setActiveGame(gameId); return; }
