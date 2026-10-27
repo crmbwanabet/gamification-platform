@@ -4,6 +4,7 @@ import React from 'react';
 import { X } from 'lucide-react';
 import { CANDY, COIN_ICON, textStroke } from './tokens';
 import { CANDY_BTN_CSS } from './CandyButton';
+import useDesktopScale from './useDesktopScale';
 
 // Candy game pop-up: the same pattern as gameKit's GameShell (dimmed, blurred
 // backdrop — click it to close — and a centred card with the anim-* open/close
@@ -16,6 +17,8 @@ import { CANDY_BTN_CSS } from './CandyButton';
 // OUTSIDE the backdrop: the card keeps a transform from its open animation,
 // which would otherwise trap position:fixed children, and a click inside the
 // overlay would bubble to the backdrop and close the game.
+// On desktop the card is scaled up as a whole (useDesktopScale, 2026-10-27)
+// by a plain wrapper, so the open/close animation keeps its own transform.
 // `pillRef` exposes the balance pill (WinCelebration flies coins into it and
 // bumps it); the children column is positioned so a WinCelebration child can
 // cover it.
@@ -57,6 +60,8 @@ function MarqueeDots() {
 }
 
 export default function CandyScreen({ title, balance, pillRef, onClose, onHelp, closing, overlay, children }) {
+  // desktop: the 400 x 600 card scales up to fill the screen height (phones: 1)
+  const scale = useDesktopScale(400, 600);
   return (
     <>
       <div onClick={onClose} className={closing ? 'anim-backdrop-close' : 'anim-fade-in'}
@@ -66,6 +71,7 @@ export default function CandyScreen({ title, balance, pillRef, onClose, onHelp, 
           color: CANDY.text, fontFamily: CANDY.body,
         }}>
         <style dangerouslySetInnerHTML={{ __html: CANDY_BTN_CSS }} />
+        <div style={{ width: 'min(400px, 100%)', transform: scale > 1 ? `scale(${scale})` : undefined }}>
         <div onClick={(e) => e.stopPropagation()} className={closing ? 'anim-modal-close' : 'anim-scale-in'}
           style={{
             position: 'relative', width: '100%', maxWidth: 400, height: 'min(600px, calc(100dvh - 40px))',
@@ -99,6 +105,7 @@ export default function CandyScreen({ title, balance, pillRef, onClose, onHelp, 
               {children}
             </div>
           </div>
+        </div>
         </div>
       </div>
       {overlay}

@@ -27,7 +27,7 @@ test('the called-back story is due only for players who had left the village (st
 test('XP earned after the restart counts as level XP', () => {
   const r = makeLevelReset({ xp: 640, today: LEVEL_RESET_DAY, fromStage: 8 });
   assert.equal(levelXpOf(640 + 99, r), 99);
-  assert.equal(getStage(levelXpOf(640 + 100, r)).stage, 2);
+  assert.equal(getStage(levelXpOf(640 + 200, r)).stage, 2);
   assert.equal(levelXpOf(600, r), 0); // a CRM correction below the base reads 0, never negative
 });
 

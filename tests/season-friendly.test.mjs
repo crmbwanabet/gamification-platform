@@ -17,9 +17,21 @@ const at = (day, lusakaHour = 12) => Date.parse(`${day}T00:00:00Z`) - 2 * H + lu
 // ---- league fixture -------------------------------------------------------
 const W1 = '2026-09-07'; // Monday
 const row = (day, casino_stake = 4000) => ({ day, casino_stake }); // 4000 -> 400 XP (the daily cap)
-/** weeks 1-3: 2,000 each (stage 12, 5,000 XP, on Wed of week 3; week 3 won); week 4 lost with 400; `friendlyDays` rows from Mon of week 5. */
-function leagueSeason(week5 = []) {
+// Lead-in grind BEFORE W1 (400 XP a weekday, filled backwards from the Friday before W1) so the doubled thresholds are reached at the same weeks.
+function lead(xp) {
   const rows = [];
+  let left = xp;
+  for (let d = -1; left > 0; d--) {
+    if (((d % 7) + 7) % 7 >= 5) continue;
+    const x = Math.min(left, 400);
+    rows.push(row(addDays(W1, d), x * 10));
+    left -= x;
+  }
+  return rows;
+}
+/** 5,600 XP lead-in, then weeks 1-3: 2,000 each (stage 12, 10,000 XP, on Mon of week 3; week 3 won); week 4 lost with 400; `friendlyDays` rows from Mon of week 5. */
+function leagueSeason(week5 = []) {
+  const rows = lead(5600);
   for (let w = 0; w < 3; w++) for (let i = 0; i < 5; i++) rows.push(row(addDays(W1, w * 7 + i)));
   rows.push(row(addDays(W1, 21)));
   week5.forEach((stake, i) => { if (stake) rows.push(row(addDays(W1, 28 + i), stake)); });
@@ -153,8 +165,8 @@ test('cleanFriendlies: hydration of old / junk state', () => {
 // ---- World Cup fixture (as tests/season-worldcup.test.mjs) ------------------
 const D0 = '2026-01-05';
 const CFG = cleanSeasonConfig({ weeklyCap: 700000 });
-const U = addDays(D0, 79); // stage 22 day (80 days x 400 = 32,000 XP)
-const grind = () => Array.from({ length: 80 }, (_, i) => row(addDays(D0, i)));
+const U = addDays(D0, 159); // stage 22 day (160 days x 400 = 64,000 XP)
+const grind = () => Array.from({ length: 160 }, (_, i) => row(addDays(D0, i)));
 /** windows: 'W' (2,000) / 'L' (400) / '-' per window; extra = additional rows. */
 function cupRows(windows, extra = [], shiftAfter = null) {
   const rows = grind();

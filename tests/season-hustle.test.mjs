@@ -34,9 +34,9 @@ test('levels: names, stock thresholds, pay', () => {
   for (let l = 1; l <= 10; l++) assert.ok(existsSync(fileURLToPath(new URL(`../public${hustleImage(l)}`, import.meta.url))), `quest art for level ${l}`);
 });
 
-test('locked until stage 2 (100 XP)', () => {
-  // 49 platform XP + 50 casino XP (K500 stake) = 99: one short
-  const s = computeSeasonXp({ rows: [row(MON, 500)], platform: { [MON]: { daily: 20, games: 29 } } });
+test('locked until stage 2 (200 XP)', () => {
+  // 49 platform XP + 150 casino XP (K1,500 stake) = 199: one short
+  const s = computeSeasonXp({ rows: [row(MON, 1500)], platform: { [MON]: { daily: 20, games: 29 } } });
   const h = hustleState({ season: s, hustle: null, today: MON });
   assert.equal(h.unlocked, false);
   assert.equal(h.ready, 0);
@@ -44,7 +44,7 @@ test('locked until stage 2 (100 XP)', () => {
 });
 
 test('first visit unlocks: 20 coins today, collect once a day', () => {
-  const s = computeSeasonXp({ rows: [row(MON, 500)], platform: { [MON]: { daily: 20, games: 30 } } }); // 50 casino + 50 platform = 100 XP
+  const s = computeSeasonXp({ rows: [row(MON, 1400)], platform: { [MON]: { daily: 20, games: 40 } } }); // 140 casino + 60 platform = 200 XP
   const h = hustleState({ season: s, hustle: null, today: MON });
   assert.equal(h.unlocked, true);
   assert.equal(h.unlockDay, MON);
@@ -63,7 +63,7 @@ test('first visit unlocks: 20 coins today, collect once a day', () => {
 });
 
 test('uncollected pay accrues for at most 2 days ("the shop was closed")', () => {
-  const s = computeSeasonXp({ rows: [row(MON, 500)], platform: { [MON]: { daily: 20, games: 30 } } }); // 50 casino + 50 platform = 100 XP
+  const s = computeSeasonXp({ rows: [row(MON, 1400)], platform: { [MON]: { daily: 20, games: 40 } } }); // 140 casino + 60 platform = 200 XP
   const h = hustleState({ season: s, hustle: { lastCollectDay: MON, collected: 20 }, today: addDays(MON, 6) });
   assert.equal(h.pendingDays, 6);
   assert.equal(h.paidDays, 2);
@@ -92,7 +92,7 @@ test('stock = cumulative overflow; each paid day uses the level reached by that 
 });
 
 test('a lastCollectDay in the future (clock skew) pays nothing', () => {
-  const s = computeSeasonXp({ rows: [row(MON, 500)], platform: { [MON]: { daily: 20, games: 30 } } }); // 50 casino + 50 platform = 100 XP
+  const s = computeSeasonXp({ rows: [row(MON, 1400)], platform: { [MON]: { daily: 20, games: 40 } } }); // 140 casino + 60 platform = 200 XP
   const h = hustleState({ season: s, hustle: { lastCollectDay: addDays(MON, 3) }, today: MON });
   assert.equal(h.ready, 0);
 });

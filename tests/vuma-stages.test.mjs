@@ -17,11 +17,11 @@ test('23 stages numbered 1..23, thresholds strictly increasing from 0', () => {
     assert.equal(s.stage, i + 1);
     if (i > 0) assert.ok(s.xp > VUMA_STAGES[i - 1].xp, `stage ${s.stage} threshold must rise`);
   });
-  assert.equal(VUMA_STAGES[22].xp, 39000);
+  assert.equal(VUMA_STAGES[22].xp, 78000);
 });
 
-test('thresholds (23 stages, 2026-10-24): the village 1-5, the academy at 1,000, league 12, World Cup 22', () => {
-  assert.deepEqual(VUMA_STAGES.map(s => s.xp), [0, 100, 250, 450, 700, 1000, 1400, 1900, 2500, 3200, 4000, 5000, 6200, 7600, 9200, 11000, 13000, 15500, 18500, 22000, 26500, 32000, 39000]);
+test('thresholds (23 stages, doubled 2026-10-27): the village 1-5, the academy at 2,000, league 12, World Cup 22', () => {
+  assert.deepEqual(VUMA_STAGES.map(s => s.xp), [0, 200, 500, 900, 1400, 2000, 2800, 3800, 5000, 6400, 8000, 10000, 12400, 15200, 18400, 22000, 26000, 31000, 37000, 44000, 53000, 64000, 78000]);
   assert.equal(VUMA_STAGES[5].name, 'Copperbelt Football Academy');
   assert.equal(VUMA_STAGES[11].name, 'Kafue Gaels FC', 'stage 12 = first pro club, league matches');
   assert.equal(VUMA_STAGES[21].name, 'Manchester Metropolis', 'stage 22 unlocks the World Cup');
@@ -59,15 +59,15 @@ test('level-up coins: one row per stage 2..23; stages 6..23 keep the old 17,400'
 
 test('getStage at boundaries', () => {
   assert.equal(getStage(0).stage, 1);
-  assert.equal(getStage(99).stage, 1);
-  assert.equal(getStage(100).stage, 2);
-  assert.equal(getStage(999).stage, 5);
-  assert.equal(getStage(1000).stage, 6);
-  assert.equal(getStage(4999).stage, 11);
-  assert.equal(getStage(5000).stage, 12);
-  assert.equal(getStage(31999).stage, 21);
-  assert.equal(getStage(32000).stage, 22);
-  assert.equal(getStage(39000).stage, 23);
+  assert.equal(getStage(199).stage, 1);
+  assert.equal(getStage(200).stage, 2);
+  assert.equal(getStage(1999).stage, 5);
+  assert.equal(getStage(2000).stage, 6);
+  assert.equal(getStage(9999).stage, 11);
+  assert.equal(getStage(10000).stage, 12);
+  assert.equal(getStage(63999).stage, 21);
+  assert.equal(getStage(64000).stage, 22);
+  assert.equal(getStage(78000).stage, 23);
   assert.equal(getStage(999999).stage, 23);
 });
 
@@ -80,17 +80,17 @@ test('sub-levels: 5 per stage, 115 in all, "Level 1.3", rising thresholds', asyn
     if (i > 0) assert.ok(l.xp > SUB_LEVELS[i - 1].xp, `${l.id} must rise`);
     if (l.sub === 1) assert.equal(l.xp, VUMA_STAGES[l.stage - 1].xp, `${l.id} opens the stage`);
   });
-  assert.deepEqual(SUB_LEVELS.slice(0, 6).map(l => l.xp), [0, 20, 40, 60, 80, 100]);
+  assert.deepEqual(SUB_LEVELS.slice(0, 6).map(l => l.xp), [0, 40, 80, 120, 160, 200]);
   assert.equal(SUB_LEVELS[114].id, '23.5');
-  assert.equal(SUB_LEVELS[114].xp, 49800);
-  assert.equal(getSubLevel(39).id, '1.2');
-  assert.equal(getSubLevel(40).id, '1.3');
+  assert.equal(SUB_LEVELS[114].xp, 99600);
+  assert.equal(getSubLevel(79).id, '1.2');
+  assert.equal(getSubLevel(80).id, '1.3');
   assert.equal(getSubLevel(1e9).id, '23.5');
   assert.equal(getNextSubLevel(0).id, '1.2');
-  assert.equal(getNextSubLevel(49800), null);
-  assert.equal(subLevelProgress(10), 50);
+  assert.equal(getNextSubLevel(99600), null);
+  assert.equal(subLevelProgress(20), 50);
   assert.equal(subLevelProgress(1e9), 100);
-  for (let xp = 0; xp <= 60000; xp += 37) { const p = subLevelProgress(xp); assert.ok(p >= 0 && p <= 100); }
+  for (let xp = 0; xp <= 120000; xp += 37) { const p = subLevelProgress(xp); assert.ok(p >= 0 && p <= 100); }
   assert.equal(migrateStageNumber(1), 1);
   assert.equal(migrateStageNumber(2), 6);
   assert.equal(migrateStageNumber(8), 12);
@@ -106,18 +106,18 @@ test('bad xp counts as 0', () => {
 
 test('getNextStage: following stage, null at the top', () => {
   assert.equal(getNextStage(0).stage, 2);
-  assert.equal(getNextStage(100).stage, 3);
-  assert.equal(getNextStage(38999).stage, 23);
-  assert.equal(getNextStage(39000), null);
+  assert.equal(getNextStage(200).stage, 3);
+  assert.equal(getNextStage(77999).stage, 23);
+  assert.equal(getNextStage(78000), null);
   assert.equal(getNextStage(1e9), null);
 });
 
 test('stageProgress stays within 0..100', () => {
   assert.equal(stageProgress(0), 0);
-  assert.equal(stageProgress(50), 50);
-  assert.equal(stageProgress(100), 0);
-  assert.equal(stageProgress(175), 50);
-  assert.equal(stageProgress(39000), 100);
+  assert.equal(stageProgress(100), 50);
+  assert.equal(stageProgress(200), 0);
+  assert.equal(stageProgress(350), 50);
+  assert.equal(stageProgress(78000), 100);
   assert.equal(stageProgress(999999), 100);
   for (let xp = 0; xp <= 60000; xp += 37) {
     const p = stageProgress(xp);
@@ -125,17 +125,18 @@ test('stageProgress stays within 0..100', () => {
   }
 });
 
-test('every sub-level has a story, a quest and a skill; Ambuya, never Mbuya or Vuma', () => {
+test('every sub-level has a simple story (title, teaser, won, next, when); Ambuya, never Mbuya or Vuma', () => {
   assert.equal(STORIES.length, 115);
   for (const s of VUMA_STAGES) for (let k = 1; k <= 5; k++) {
     const st = storyFor(s.stage, k);
-    assert.ok(st && st.title && st.story && st.quest && st.skill, `${s.stage}.${k}`);
-    assert.ok(!/\bMbuya|\bVuma\b/.test(st.title + st.story + st.quest + st.skill), `${s.stage}.${k}`);
+    assert.ok(st && st.title && st.teaser && st.won && st.next && st.when, `${s.stage}.${k}`);
+    assert.ok(!/\bMbuya|\bVuma\b/.test(st.title + st.teaser + st.won + st.next), `${s.stage}.${k}`);
+    assert.ok(st.teaser.length <= 40 && st.when.length <= 24, `${s.stage}.${k} fits its bar`);
   }
   assert.equal(storyFor(1, 1).title, 'The Bottle Ball');
   assert.equal(storyFor(23, 5).title, 'A Legacy Begins');
   assert.equal(storyFor(24, 1), null);
-  assert.ok(STORIES.some(s => /Ambuya/.test(s.story)));
+  assert.ok(STORIES.some(s => /Ambuya/.test(s.won + s.next)));
 });
 
 test('every banner and avatar file exists under public/', () => {

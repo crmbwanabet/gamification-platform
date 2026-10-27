@@ -49,9 +49,10 @@ import {
 import { MISSIONS } from '../lib/data/missions';
 import { STORY_PRIZE, NAME_PRIZE } from '@/lib/extras/rules.mjs';
 import { nextLevelBonuses } from '@/lib/profile/nextBonuses.mjs';
-import { missionStates as buildMissionStates, missionCounts, countClaimable, recordMissionClaim, recordMissionBase, migrateMissionBases } from '@/lib/missions/ladder.mjs';
+import { missionStates as buildMissionStates, missionCounts, countClaimable, recordMissionClaim, recordMissionBase, migrateMissionBases, missionTerms } from '@/lib/missions/ladder.mjs';
+import { xpSnapshot, levelUpReasons, pickNextMission, platformXpToday, BWANABET_PAGES } from '@/lib/xp/levelUpInfo.mjs';
 import { initialStageRewarded, stageUpRewards, migrateSavedStages } from '@/lib/xp/stageReward.mjs';
-import { getSubLevel, getNextSubLevel, migrateStageNumber } from '@/lib/vuma/stages.mjs';
+import { getSubLevel, getNextSubLevel, migrateStageNumber, LEVEL_SCALE, SUB_LEVELS, VUMA_STAGES } from '@/lib/vuma/stages.mjs';
 import { storyFor } from '@/lib/vuma/stories.mjs';
 import { levelXpOf, makeLevelReset, levelSeason, cleanLevelReset } from '@/lib/xp/levelReset.mjs';
 import { lusakaDay } from '@/lib/casino/feed.mjs';
@@ -1581,6 +1582,30 @@ export default function GamificationPlatform() {
     });
   }, [loggedIn, casino.status, seasonFeed.status, missionCountsNow, activeMissions, user.missionClaims]);
   const claimableCount = loggedIn ? countClaimable(missionStates) : 0;
+  // Level-up pop-up (lib/xp/levelUpInfo.mjs, owner 2026-10-27): running XP
+  // totals per source; "Why you levelled up" = the change since the previous
+  // pop-up (user.levelSnap). The first snapshot is taken silently once the
+  // feed is fresh, so history never shows up as a reason.
+  const xpSnap = useMemo(
+    () => xpSnapshot({ rows: seasonFeed.rows || [], xpDays: user.xpDays, xpToday: user.xpToday, claims: user.missionClaims }),
+    [seasonFeed.rows, user.xpDays, user.xpToday, user.missionClaims]
+  );
+  const xpSnapRef = useRef(xpSnap);
+  xpSnapRef.current = xpSnap;
+  const missionStatesRef = useRef(missionStates);
+  missionStatesRef.current = missionStates;
+  useEffect(() => {
+    if (user.levelSnap || (loggedIn && (!hydratedRef.current || seasonFeed.status !== 'ok'))) return;
+    setUser(u => (u.levelSnap ? u : { ...u, levelSnap: xpSnap }));
+  }, [user.levelSnap, loggedIn, seasonFeed.status, xpSnap]);
+  /** The pop-up's ONE next mission: { terms, coins, xp, dest, here, ready, step } | null. */
+  const nextMissionCard = (opts) => {
+    if (!loggedIn) return null;
+    const n = pickNextMission(missionStatesRef.current, opts);
+    if (!n) return null;
+    const m = n.state.mission;
+    return { terms: missionTerms(m), coins: cleanReward(m.reward).kwacha || 0, xp: m.xp || 0, dest: n.dest, here: n.here, ready: n.dest === 'missions', step: '1 of 3' };
+  };
   const seasonRowsRef = useRef(null);
   seasonRowsRef.current = seasonFeed.rows;
   const getSeasonFeed = session.getSeason;
@@ -2134,20 +2159,36 @@ export default function GamificationPlatform() {
       setUser(u => (u.stageRewarded === mark ? u : { ...u, stageRewarded: mark }));
     }
     if (lastSubRef.current === null) {
-      // first look: the current sub-level counts as shown (silently)
-      lastSubRef.current = Math.max(reset?.shown || 0, sl.index);
-      if (reset && reset.shown == null) setUser(u => { const r = cleanLevelReset(u.levelReset); return r && r.shown == null ? { ...u, levelReset: { ...r, shown: sl.index } } : u; });
+      // first look: the current sub-level counts as shown (silently). A state
+      // saved on the old XP amounts (no LEVEL_SCALE marker) restarts its
+      // marker at today's level: the amounts doubled 2026-10-27, so its old
+      // "highest shown" would hold every pop-up back for a long time.
+      const rescale = user.levelScale !== LEVEL_SCALE;
+      lastSubRef.current = rescale ? sl.index : Math.max(reset?.shown || 0, sl.index);
+      setUser(u => {
+        const r = cleanLevelReset(u.levelReset);
+        const fixShown = r && (rescale || r.shown == null);
+        if (!fixShown && u.levelScale === LEVEL_SCALE) return u;
+        return { ...u, levelScale: LEVEL_SCALE, ...(fixShown ? { levelReset: { ...r, shown: sl.index } } : null) };
+      });
       return;
     }
     const up = stageUpRewards(lastLevelRef.current, curLevel, cfg.levelRewards, cleanReward);
-    const newSub = sl.index > lastSubRef.current;
+    const prevIndex = lastSubRef.current;
+    const newSub = sl.index > prevIndex;
     if (!up.levels.length && !newSub) return;
     const total = up.total;
     lastLevelRef.current = up.rewarded;
     lastSubRef.current = Math.max(lastSubRef.current, sl.index);
+    // "Why you levelled up": what each source gave since the previous pop-up
+    const snap = xpSnapRef.current;
+    const reasons = userRef.current.levelSnap ? levelUpReasons(userRef.current.levelSnap, snap) : [];
+    const prevStage = SUB_LEVELS[Math.max(0, prevIndex - 1)]?.stage || sl.stage;
+    const newPlace = prevStage !== sl.stage && VUMA_STAGES[prevStage - 1]?.place !== VUMA_STAGES[sl.stage - 1]?.place;
+    const levelsUp = newSub ? sl.index - prevIndex : 1;
     setUser(u => {
       const r = cleanLevelReset(u.levelReset);
-      return { ...u, stageRewarded: Math.max(Number(u.stageRewarded) || 0, up.rewarded),
+      return { ...u, stageRewarded: Math.max(Number(u.stageRewarded) || 0, up.rewarded), levelSnap: snap,
         ...(r ? { levelReset: { ...r, shown: Math.max(r.shown || 0, sl.index) } } : null) };
     });
     if (up.levels.length) addCurrencies(total);
@@ -2161,12 +2202,49 @@ export default function GamificationPlatform() {
     const celebrate = () => xpFxRef.current.whenIdle(() => {
       setStagePending(false);
       xpFxRef.current.ring();
-      setLevelUp({ level: lvl.level, sub: sl.id, newPlace: sl.sub === 1, name: lvl.name, title: lvl.title, place: lvl.place, avatar: lvl.avatar, icon: lvl.icon, reward: total, story: st });
+      setLevelUp({ level: lvl.level, sub: sl.id, levelsUp, newPlace, place: lvl.name, avatar: lvl.avatar, reward: total, story: st, reasons, next: nextMissionCard() });
       showNotif(`🎉 Level ${sl.id}${st ? ` — ${st.title}` : ''}!`);
       if (up.levels.length) triggerReward('big', null, { coins: total.kwacha || undefined, emeralds: total.emeralds || undefined, rubies: total.rubies || undefined, diamonds: total.diamonds || undefined });
     });
     if (welcomeBusyRef.current || !popupsOkRef.current) welcomeAfterRef.current.push(celebrate); else celebrate();
   }, [lvXp, user.levelReset, loggedIn]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // "No more game XP today" (once a day): today's Bonus Center XP (daily
+  // reward + mini-games + missions) just reached the platform cap. Same
+  // pop-up, pointing at a bwanabet mission (bets still give XP).
+  const platformToday = platformXpToday(user.xpToday, today);
+  const platformPrevRef = useRef(null);
+  useEffect(() => {
+    const cap = seasonCfg.platformDailyCap;
+    const prev = platformPrevRef.current;
+    platformPrevRef.current = platformToday;
+    if (prev === null || !loggedIn || !hydratedRef.current) return;
+    if (!(prev < cap && platformToday >= cap) || userRef.current.xpFullSeen === today) return;
+    setUser(u => ({ ...u, xpFullSeen: today }));
+    const show = () => {
+      setLevelUp(cur => cur || { kind: 'xpFull', cap, level: level.level, avatar: level.avatar, next: nextMissionCard({ bwanabetOnly: true }) });
+      track('xp_full_seen');
+    };
+    if (welcomeBusyRef.current || !popupsOkRef.current) welcomeAfterRef.current.push(show); else show();
+  }, [platformToday]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // The pop-up's mission button: in the Bonus Center (Missions tab, Home for
+  // the daily reward) or on bwanabet (widget.js closes the Bonus Center and
+  // opens that page; a standalone page opens bwanabet in a new tab).
+  const goMission = (dest) => {
+    setLevelUp(null);
+    track('levelup_go', { meta: { dest } });
+    if (dest === 'missions') return navigateTab('missions');
+    if (dest === 'daily') return navigateTab('home');
+    const path = BWANABET_PAGES[dest];
+    if (!path) return undefined;
+    if (isWidget && window.parent !== window) {
+      try { window.parent.postMessage({ type: '100x-widget:goto', page: dest }, '*'); } catch (e) { /* ignore */ }
+      return undefined;
+    }
+    window.open(`https://bwanabet.co.zm/en${path}`, '_blank', 'noopener');
+    return undefined;
+  };
 
   // "Called back to the village" (once): after the wheel, before WELCOME
   // BACK and the daily pop-up (both wait while it is due: otherModalOpen).
@@ -2409,8 +2487,8 @@ export default function GamificationPlatform() {
         onClaim={(el) => { const e = seasonResult; setSeasonResult(null); if (e) claimSeasonBonus(e.matchKind === 'wc' ? 'wc' : 'league', e.matchId, el); }}
         onClaimPrize={() => { setSeasonResult(null); onClaimPrize(); }} />
       <CalledBackModal open={calledBack} onClose={closeCalledBack} avatar={XP_LEVELS[0].avatar} hero={heroName(user.displayName, playerId)} />
-      <LevelUpModal levelUp={levelUp} onClose={() => setLevelUp(null)} hero={heroName(user.displayName, playerId)} named={!!user.displayName}
-        onRename={levelUp && canRename(user, levelUp.level) ? () => { setLevelUp(null); openProfile(true); } : undefined} />
+      <LevelUpModal levelUp={levelUp} onClose={() => setLevelUp(null)} onGo={goMission} hero={heroName(user.displayName, playerId)} named={!!user.displayName}
+        onRename={levelUp && levelUp.kind !== 'xpFull' && canRename(user, levelUp.level) ? () => { setLevelUp(null); openProfile(true); } : undefined} />
       <ProfileModal
         open={showProfile} onClose={() => { setShowProfile(false); setProfileEdit(false); }}
         startEditing={profileEdit} userId={playerId} onSaveName={savePlayerName} namePrizeXp={namePrizeDue ? NAME_PRIZE.xp : 0}

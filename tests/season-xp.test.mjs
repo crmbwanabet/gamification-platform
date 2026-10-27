@@ -117,9 +117,9 @@ test('cumAt / xpBetween / reachDay / stageReachDay', () => {
   assert.equal(xpBetween(s, addDays(MON, 2), addDays(MON, 4)), 300);
   assert.equal(reachDay(s, 300), addDays(MON, 2));
   assert.equal(reachDay(s, 5000), null);
-  assert.equal(stageReachDay(s, 2), MON, 'stage 2 at 100 XP');
-  assert.equal(stageReachDay(s, 3), addDays(MON, 2), 'stage 3 at 250 XP');
-  assert.equal(stageReachDay(s, 4), addDays(MON, 4), 'stage 4 at 450 XP');
+  assert.equal(stageReachDay(s, 2), addDays(MON, 1), 'stage 2 at 200 XP');
+  assert.equal(stageReachDay(s, 3), addDays(MON, 4), 'stage 3 at 500 XP');
+  assert.equal(stageReachDay(s, 4), addDays(MON, 8), 'stage 4 at 900 XP');
 });
 
 test('maxPlatformDays: the cap for every day in range', () => {

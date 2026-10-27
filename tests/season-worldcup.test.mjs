@@ -8,10 +8,10 @@ const D0 = '2026-01-05';
 // Weekly cap out of the way so the windows are easy to reason about; the
 // daily cap (400) still applies. One test below runs on the real defaults.
 const CFG = cleanSeasonConfig({ weeklyCap: 700000 });
-const U = addDays(D0, 79); // 80 days x 400 = 32,000 (stage 22)
+const U = addDays(D0, 159); // 160 days x 400 = 64,000 (stage 22)
 
 function grind() {
-  return Array.from({ length: 80 }, (_, i) => ({ day: addDays(D0, i), casino_stake: 4000 }));
+  return Array.from({ length: 160 }, (_, i) => ({ day: addDays(D0, i), casino_stake: 4000 }));
 }
 /** windows: per World Cup window, 'W' (2,000 XP: beats any target) or 'L' (400 XP) or '-' (nothing). */
 function season(windows, cfg = CFG) {
@@ -35,7 +35,7 @@ test('the bracket: Zambia vs real national teams, targets and bonuses', () => {
 });
 
 test('locked before stage 22', () => {
-  const s = computeSeasonXp({ rows: grind().slice(0, 72), cfg: CFG }); // 28,800 XP
+  const s = computeSeasonXp({ rows: grind().slice(0, 144), cfg: CFG }); // 57,600 XP
   const w = worldCupState({ season: s, today: addDays(D0, 100), cfg: CFG });
   assert.equal(w.unlocked, false);
   assert.ok(w.rounds.every(r => r.status === 'locked'));
@@ -129,18 +129,18 @@ test('bonus claims: once per round', () => {
 
 test('real defaults: the weekly cap applies inside a window that straddles two weeks', () => {
   // Week 1: Wed-Fri only (1,200); then 400 Mon-Sat (2,400 raw, capped to
-  // 2,000 a week: Saturday overflows) until stage 22; then the World Cup.
+  // 2,000 a week: Saturday overflows) until stage 22 (64,000); then the World Cup.
   const rows = [];
-  for (let d = 0; d < 7 * 16 + 6; d++) {
+  for (let d = 0; d < 7 * 32 + 6; d++) {
     if (d < 7 ? d >= 2 && d <= 4 : d % 7 < 6) rows.push({ day: addDays(D0, d), casino_stake: 4000 });
   }
   const s = computeSeasonXp({ rows });
-  const w = worldCupState({ season: s, today: addDays(D0, 7 * 17), cfg: SEASON_DEFAULTS });
+  const w = worldCupState({ season: s, today: addDays(D0, 7 * 33), cfg: SEASON_DEFAULTS });
   assert.equal(w.unlocked, true);
-  // stage 22 (32,000) on the Tuesday of week 17 (1,200 + 15 x 2,000 + 400 + 400)
-  assert.equal(w.unlockDay, addDays(D0, 7 * 16 + 1));
+  // stage 22 (64,000) on the Tuesday of week 33 (1,200 + 31 x 2,000 + 400 + 400)
+  assert.equal(w.unlockDay, addDays(D0, 7 * 32 + 1));
   const g1 = w.rounds[0]; // Wed..Mon; rows Wed-Sat so far
-  assert.equal(g1.start, addDays(D0, 7 * 16 + 2));
-  assert.equal(g1.xp, 1200, "Wed-Fri fill week 17's 2,000 cap: Saturday's 400 is overflow");
+  assert.equal(g1.start, addDays(D0, 7 * 32 + 2));
+  assert.equal(g1.xp, 1200, "Wed-Fri fill week 33's 2,000 cap: Saturday's 400 is overflow");
   assert.equal(g1.status, 'live', 'Monday of the next week, the window ends that day');
 });

@@ -11,7 +11,7 @@ test('bands cover stages 1..23 without gaps', () => {
   assert.equal(bandForStage(12).id, 'pro');
   assert.equal(bandForStage(23).id, 'intl');
   assert.equal(bandForXp(0).id, 'street');
-  assert.equal(bandForXp(5000).id, 'pro', '5,000 XP = stage 12');
+  assert.equal(bandForXp(10000).id, 'pro', '10,000 XP = stage 12');
 });
 
 test('maskId hides the middle', () => {
@@ -36,7 +36,7 @@ test('rankBoard: per band, highest XP first, zero XP left out, ties keep order',
     { userId: 'b', xp: 80, totalXp: 200 },
     { userId: 'c', xp: 80, totalXp: 300 },
     { userId: 'd', xp: 0, totalXp: 100 },
-    { userId: 'e', xp: 999, totalXp: 5000 },
+    { userId: 'e', xp: 999, totalXp: 10000 },
   ]);
   assert.deepEqual(b.street.map(r => [r.rank, r.userId]), [[1, 'b'], [2, 'c'], [3, 'a']]);
   assert.deepEqual(b.pro.map(r => r.userId), ['e']);

@@ -30,7 +30,7 @@ export default function CalledBackModal({ open, onClose, avatar, hero = 'Player'
   if (!open) return null;
   return (
     <div role="dialog" aria-modal="true" aria-label="Incoming call from Ambuya" style={{ position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(8,4,20,.82)', backdropFilter: 'blur(4px)', display: 'grid', placeItems: 'center', padding: 20, fontFamily: CANDY.body, color: '#fff', overflowY: 'auto' }}>
-      <div style={{ ...goldRim, boxShadow: `${goldRim.boxShadow}, 0 24px 70px rgba(0,0,0,.6)`, position: 'relative', width: 'min(400px, 100%)', boxSizing: 'border-box', padding: 9, borderRadius: 26 }}>
+      <div className="cb-card" style={{ ...goldRim, boxShadow: `${goldRim.boxShadow}, 0 24px 70px rgba(0,0,0,.6)`, position: 'relative', width: 'min(400px, 100%)', boxSizing: 'border-box', padding: 9, borderRadius: 26 }}>
         <span aria-hidden style={{ ...dotRow(false), top: 0.5, left: 22, right: 22, height: 8 }} />
         <span aria-hidden style={{ ...dotRow(false), bottom: 0.5, left: 22, right: 22, height: 8 }} />
         <div style={{ borderRadius: 18, background: innerGlow, padding: '20px 18px 12px', textAlign: 'center', maxHeight: 'calc(100dvh - 58px)', overflowY: 'auto', boxSizing: 'border-box' }}>
@@ -51,7 +51,7 @@ export default function CalledBackModal({ open, onClose, avatar, hero = 'Player'
           <GreenBtn full size={22} onClick={onClose} style={{ minHeight: 56, borderRadius: 18 }}>Back to the village</GreenBtn>
         </div>
       </div>
-      <style dangerouslySetInnerHTML={{ __html: `@keyframes cbRing{0%,60%,100%{transform:rotate(0)}10%,30%,50%{transform:rotate(-14deg)}20%,40%{transform:rotate(14deg)}}.cb-ring{animation:cbRing 1.6s ease-in-out infinite}@media (prefers-reduced-motion: reduce){.cb-ring{animation:none}}` }} />
+      <style dangerouslySetInnerHTML={{ __html: `@keyframes cbRing{0%,60%,100%{transform:rotate(0)}10%,30%,50%{transform:rotate(-14deg)}20%,40%{transform:rotate(14deg)}}.cb-ring{animation:cbRing 1.6s ease-in-out infinite}@media (min-width: 861px){.cb-card{scale:1.25}.cb-card>div{max-height:calc((100dvh - 58px) / 1.25) !important}}@media (prefers-reduced-motion: reduce){.cb-ring{animation:none}}` }} />
     </div>
   );
 }

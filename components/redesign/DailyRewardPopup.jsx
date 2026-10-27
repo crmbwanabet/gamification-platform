@@ -19,6 +19,8 @@ const DP_CSS = `
   @keyframes dpFadeOut { to { opacity: 0; } }
   @keyframes dpIn { from { opacity: 0; transform: scale(.82) translateY(24px); } to { opacity: 1; transform: none; } }
   @keyframes dpOut { to { opacity: 0; transform: scale(.9) translateY(-30px); } }
+  /* desktop (owner 2026-10-27: pop-ups too small): the whole card larger; the scale property keeps the in/out transform animations */
+  @media (min-width: 861px) and (min-height: 700px) { .dp-box { scale: 1.35; } }
   @media (prefers-reduced-motion: reduce) {
     .dp-back, .dp-box, .dp-back.closing, .dp-back.closing .dp-box { animation-duration: .01s !important; }
   }

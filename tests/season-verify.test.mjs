@@ -10,10 +10,10 @@ import { purchaseMessage } from '../lib/telegram/format.mjs';
 
 const D0 = '2026-01-05';
 const CFG = cleanSeasonConfig({ weeklyCap: 700000 });
-const U = addDays(D0, 79); // 80 days x 400 = 32,000 (stage 22)
+const U = addDays(D0, 159); // 160 days x 400 = 64,000 (stage 22)
 
 function rowsFor(windows) {
-  const rows = Array.from({ length: 80 }, (_, i) => ({ day: addDays(D0, i), casino_stake: 4000 }));
+  const rows = Array.from({ length: 160 }, (_, i) => ({ day: addDays(D0, i), casino_stake: 4000 }));
   windows.split('').forEach((w, i) => {
     const n = w === 'W' ? 5 : w === 'L' ? 1 : 0;
     for (let k = 0; k < n; k++) rows.push({ day: addDays(U, 1 + i * 6 + k), casino_stake: 4000 });
@@ -48,7 +48,7 @@ test('a modified client cannot fake it: its platform XP is clamped to 60 a day',
   // Final short by far more than 6 x 60
   const rows = rowsFor('WWWWWWWL');
   const fake = {};
-  for (let i = 0; i < 160; i++) fake[addDays(D0, i)] = 99999;
+  for (let i = 0; i < 240; i++) fake[addDays(D0, i)] = 99999;
   const v = verifyWorldCupPrize({ rows, clientPlatform: fake, cfg: CFG, today: addDays(U, 50) });
   assert.equal(v.won, false);
   const c = clampClientPlatform({ [D0]: 99999, [addDays(D0, 1)]: { daily: 20, games: 500 }, junk: 5, [addDays(D0, 2)]: -3 }, CFG);
@@ -59,27 +59,27 @@ test('a modified client cannot fake it: its platform XP is clamped to 60 a day',
 
 test("the client path: the client's own platform map gives the server the SAME windows the player saw", () => {
   // platform cap 20 to make the shift visible. The client earned 20 platform
-  // XP a day from D0, so its stage 2 (100 XP) came on D4 and its windows
-  // start D5; a 100 XP feed row on D10 would otherwise make them start D11.
+  // XP a day from D0, so its stage 2 (200 XP) came on D9 and its windows
+  // start D10; a 200 XP feed row on D15 would otherwise make them start D16.
   const cfg = cleanSeasonConfig({ platformDailyCap: 20, dailyCap: 100000, weeklyCap: 700000, worldCup: { unlockStage: 2 } });
   const D = '2026-03-02';
-  const rows = [{ day: D, casino_rounds: 5 }, { day: addDays(D, 10), casino_stake: 1000 }];
-  cfg.worldCup.rounds.forEach((r, i) => rows.push({ day: addDays(D, 10 + 6 * i), casino_stake: r.target * 10 }));
+  const rows = [{ day: D, casino_rounds: 5 }, { day: addDays(D, 15), casino_stake: 2000 }];
+  cfg.worldCup.rounds.forEach((r, i) => rows.push({ day: addDays(D, 15 + 6 * i), casino_stake: r.target * 10 }));
   const today = addDays(D, 60);
   const platform = {};
   for (let i = 0; i < 61; i++) platform[addDays(D, i)] = 20;
   const v = verifyWorldCupPrize({ rows, clientPlatform: platform, cfg, today });
   assert.equal(v.won, true);
   assert.equal(v.method, 'client');
-  assert.equal(v.summary.unlockDay, addDays(D, 4));
-  // no map: platform 0, the windows start D11 and every row lands a window late -> not the same cup
+  assert.equal(v.summary.unlockDay, addDays(D, 9));
+  // no map: platform 0, the windows start D16 and every row lands a window late -> not the same cup
   const strict = verifyWorldCupPrize({ rows, cfg, today });
   assert.equal(strict.method === 'client', false);
-  assert.equal(strict.summary.unlockDay, addDays(D, 10));
+  assert.equal(strict.summary.unlockDay, addDays(D, 15));
   // a modified client cannot shift the windows EARLIER than 20/day allows
   const fake = {};
   for (let i = 0; i < 61; i++) fake[addDays(D, i)] = 99999;
-  assert.equal(verifyWorldCupPrize({ rows, clientPlatform: fake, cfg, today }).summary.unlockDay, addDays(D, 4));
+  assert.equal(verifyWorldCupPrize({ rows, clientPlatform: fake, cfg, today }).summary.unlockDay, addDays(D, 9));
 });
 
 test('Telegram: the prize message (also rebuilt from the purchases row)', () => {

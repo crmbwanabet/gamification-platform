@@ -405,7 +405,30 @@
     }
     // the app says it is mounted and listening: hand it the session token
     if (e.data && e.data.type === 'gamification-ready' && loggedIn()) sendToken();
+    // a level-up pop-up's mission button: close the Bonus Center, open that bwanabet page
+    if (e.data && e.data.type === '100x-widget:goto' && frame && e.source === frame.contentWindow) goTo(e.data.page);
   });
+
+  // Mission buttons in the level-up pop-up (2026-10-27). bwanabet is an
+  // Angular app with its routes under /<lang>/ (read from its bundle): on its
+  // own domains the page changes in place (pushState + popstate, which the
+  // Angular router follows, no reload); anywhere else bwanabet opens in a new tab.
+  var GOTO_PAGES = { casino: '/casino', sports: '/prematch', deposit: '/banking/deposit' };
+  function goTo(page) {
+    var path = Object.prototype.hasOwnProperty.call(GOTO_PAGES, page) ? GOTO_PAGES[page] : null;
+    if (!path) return;
+    closeWidget();
+    var lang = (location.pathname.match(/^\/([a-z]{2})(\/|$)/) || [])[1] || 'en';
+    var url = '/' + lang + path;
+    if (/(^|\.)bwanabet\.(co\.zm|com)$/.test(location.hostname)) {
+      try {
+        history.pushState(null, '', url);
+        window.dispatchEvent(new PopStateEvent('popstate', { state: null }));
+        return;
+      } catch (err) { location.assign(url); return; }
+    }
+    window.open('https://bwanabet.co.zm' + url, '_blank', 'noopener');
+  }
 
   // LOGGED-IN PLAYERS ONLY (owner 2026-10-22): no launcher, bubble or popup
   // for a visitor without a live bwanabet `token` cookie (the preview page

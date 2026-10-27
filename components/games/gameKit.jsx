@@ -3,6 +3,7 @@
 import React from 'react';
 import { HelpCircle, X } from 'lucide-react';
 import { C } from '@/components/redesign/tokens';
+import useDesktopScale from './candy/useDesktopScale';
 
 // Shared v2 look for all game modals: slate glass card, sea-green primary,
 // gold accents. Reuses the anim-* keyframes injected by GamificationPlatform.
@@ -14,6 +15,8 @@ const closeBtn = { ...iconBtn, background: 'linear-gradient(180deg, #f0684f, #d4
 // fullBleed: below 640px the shell becomes a full-viewport takeover (poker-table
 // style) instead of a margined dialog; desktop keeps the centered modal.
 export function GameShell({ title, onClose, closing, onHelp, children, maxWidth = 440, fullBleed = false }) {
+  // desktop: the card scales up as a whole, at most 1.3x (lib/ui/desktopScale.mjs); phones: 1
+  const scale = useDesktopScale(maxWidth, 720, 1.3);
   return (
     <div onClick={onClose} className={(closing ? 'anim-backdrop-close' : 'anim-fade-in') + (fullBleed ? ' gs-bleed-bd' : '')}
       style={{ position: 'fixed', inset: 0, zIndex: 70, display: 'grid', placeItems: 'center', padding: 16, background: 'rgba(8,10,16,.74)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)', fontFamily: "var(--font-body, 'Onest', system-ui, sans-serif)" }}>
@@ -23,14 +26,16 @@ export function GameShell({ title, onClose, closing, onHelp, children, maxWidth 
           .gs-bleed-card { max-width: none !important; height: 100dvh; max-height: none !important; border-radius: 0 !important; padding: 14px 12px calc(12px + env(safe-area-inset-bottom)) !important; display: flex; flex-direction: column; }
         }
       ` }} />}
+      <div style={{ width: `min(${maxWidth}px, 100%)`, transform: scale > 1 ? `scale(${scale})` : undefined }}>
       <div onClick={(e) => e.stopPropagation()} className={(closing ? 'anim-modal-close' : 'anim-scale-in') + (fullBleed ? ' gs-bleed-card' : '')}
-        style={{ width: '100%', maxWidth, maxHeight: '92vh', overflowY: 'auto', borderRadius: 20, background: `linear-gradient(180deg, ${C.panelHi}, ${C.panelLo})`, border: '1px solid rgba(255,255,255,.09)', boxShadow: '0 24px 60px rgba(0,0,0,.55)', color: C.text, position: 'relative', padding: 22 }}>
+        style={{ width: '100%', maxWidth, maxHeight: scale > 1 ? `calc(92vh / ${scale})` : '92vh', overflowY: 'auto', borderRadius: 20, background: `linear-gradient(180deg, ${C.panelHi}, ${C.panelLo})`, border: '1px solid rgba(255,255,255,.09)', boxShadow: '0 24px 60px rgba(0,0,0,.55)', color: C.text, position: 'relative', padding: 22 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, gap: 8 }}>
           {onHelp ? <button type="button" onClick={onHelp} title="How to play" style={iconBtn}><HelpCircle size={18} /></button> : <span style={{ width: 34 }} />}
           <h2 style={{ margin: 0, fontSize: 19, fontWeight: 800, color: C.text, fontFamily: "var(--font-display, 'Bricolage Grotesque', sans-serif)", textAlign: 'center', flex: 1 }}>{title}</h2>
           <button type="button" onClick={onClose} title="Close" style={closeBtn}><X size={18} strokeWidth={2.75} /></button>
         </div>
         {children}
+      </div>
       </div>
     </div>
   );

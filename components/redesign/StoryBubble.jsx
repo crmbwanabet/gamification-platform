@@ -16,8 +16,8 @@ import { storyFor } from '@/lib/vuma/stories.mjs';
 // The title is a plain "YOUR STORY:" (2026-10-18; the League level / Status
 // header was dropped, those live on the profile-modal chip). Since
 // 2026-10-24 the middle part is the CURRENT sub-level's story
-// (lib/vuma/stories.mjs: "Level 1.3 · Last Goal Wins", the story and what
-// the player is working towards).
+// (lib/vuma/stories.mjs: "Level 1.3 · Last Goal Wins", "You did it" and
+// "What comes next", 2026-10-27).
 
 const B = ({ children }) => <b style={{ fontWeight: 900, color: INK_TEXT }}>{children}</b>;
 const INK_TEXT = '#2A1446';
@@ -31,8 +31,8 @@ function StoryBody({ level, subId }) {
       <p>You dream of representing Zambia at the <B>WORLD CUP</B> and earning <B>MILLIONS</B> while crowds cheer your name.</p>
       {st && (<>
         <h3 style={H3}>Level {stage}.{sub}: {st.title}</h3>
-        <p>{st.story}</p>
-        <p><B>Working towards:</B> {st.quest}</p>
+        <p>{st.won}</p>
+        <p><B>What comes next:</B> {st.next}</p>
       </>)}
       <h3 style={H3}>To progress</h3>
       <p>Earn <B>XP points</B> from <B>EVERY</B> casino or sport bet.</p>

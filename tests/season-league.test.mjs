@@ -5,9 +5,22 @@ import { leagueState, claimLeagueBonus, tierForStage, LEAGUE_TIERS, teamSlug, op
 
 const W1 = '2026-09-07'; // Monday
 const row = (day, casino_stake) => ({ day, casino_stake });
+// Lead-in grind BEFORE W1 so a season reaches the (doubled) stage thresholds at the same weeks as before:
+// `xp` capped XP at 400 a day on weekdays, filled backwards from the Friday before W1.
+function lead(xp) {
+  const rows = [];
+  let left = xp;
+  for (let d = -1; left > 0; d--) {
+    if (((d % 7) + 7) % 7 >= 5) continue;
+    const x = Math.min(left, 400);
+    rows.push(row(addDays(W1, d), x * 10));
+    left -= x;
+  }
+  return rows;
+}
 
 function sampleSeason() {
-  const rows = [];
+  const rows = lead(5600);
   for (let w = 0; w < 2; w++) for (let i = 0; i < 5; i++) rows.push(row(addDays(W1, w * 7 + i), 4000)); // weeks 1-2: 2,000 each
   for (let i = 0; i < 3; i++) rows.push(row(addDays(W1, 14 + i), 4000)); // week 3: exactly 1,200 (unlock week)
   rows.push(row(addDays(W1, 21), 4000)); // week 4: 400 only
@@ -16,7 +29,7 @@ function sampleSeason() {
   return computeSeasonXp({ rows, today: addDays(W1, 37) });
 }
 
-test('no league before stage 12 (5,000 XP)', () => {
+test('no league before stage 12 (10,000 XP)', () => {
   const s = computeSeasonXp({ rows: [row(W1, 4000)] });
   const L = leagueState({ season: s, today: W1 });
   assert.equal(L.unlocked, false);
@@ -30,7 +43,7 @@ test('weekly matches from the unlock week: won / lost / live, record and points'
   const now = Date.parse(`${today}T12:00:00Z`);
   const L = leagueState({ season: s, today, now });
   assert.equal(L.unlocked, true);
-  assert.equal(L.unlockDay, addDays(W1, 16), 'stage 12 (first pro club, 5,000 XP) reached on Wednesday of week 3 (5,200 XP)');
+  assert.equal(L.unlockDay, addDays(W1, 14), 'stage 12 (first pro club, 10,000 XP) reached on Monday of week 3 (5,600 lead-in + 4,000 + 400)');
   assert.deepEqual(L.matches.map(m => [m.weekStart, m.xp, m.status, m.bonus]), [
     [addDays(W1, 14), 1200, 'won', 150],
     [addDays(W1, 21), 400, 'lost', 0],
@@ -38,7 +51,7 @@ test('weekly matches from the unlock week: won / lost / live, record and points'
     [addDays(W1, 35), 300, 'live', 0],
   ]);
   assert.deepEqual(L.matches.map(m => m.opponent), ['Lusaka Dynamics', 'Emerald Buffaloes', 'Fish Eagles FC', 'Lusaka Dynamics'],
-    'week 6 would be Crimson Arrows FC, but Vuma plays FOR Crimson Arrows by then (stage 13, 6,800 XP): next name instead');
+    'week 6 would be Crimson Arrows FC, but Vuma plays FOR Crimson Arrows by then (stage 13, 12,400 XP): next name instead');
   assert.deepEqual(L.matches.map(m => [m.homeStage, m.home]), [[12, 'Kafue Gaels FC'], [12, 'Kafue Gaels FC'], [12, 'Kafue Gaels FC'], [13, 'Crimson Arrows FC']]);
   assert.deepEqual(L.matches.map(m => m.slug), ['lusaka-dynamics', 'emerald-buffaloes', 'fish-eagles-fc', 'lusaka-dynamics']);
   assert.ok(L.matches.every(m => m.tier === 'zambia' && m.target === 1200));
@@ -54,10 +67,11 @@ test('the week boundary: a short week stays live until Sunday ends, then it is l
   const s = computeSeasonXp({ rows: [...Array.from({ length: 8 }, (_, i) => row(addDays(W1, i < 5 ? i : i + 2), 4000))] });
   const sunday = addDays(W1, 20);
   const sh = computeSeasonXp({ rows: [
+    ...lead(5600),
     ...Array.from({ length: 10 }, (_, i) => row(addDays(W1, i < 5 ? i : i + 2), 4000)), // W1 + W2 Mon-Fri: 4,000
     row(addDays(W1, 14), 4000), row(addDays(W1, 15), 4000), row(addDays(W1, 16), 2500),
   ] });
-  // W3 = 400 + 400 + 250 = 1,050 (< 1,200); stage 12 at 5,050 on Wed of W3
+  // W3 = 400 + 400 + 250 = 1,050 (< 1,200); stage 12 at 10,050 on Wed of W3 (10,000 on Mon)
   let L = leagueState({ season: sh, today: sunday });
   assert.equal(L.current.status, 'live', 'still live on Sunday');
   assert.equal(L.current.gap, 150);
@@ -96,13 +110,13 @@ test('tiers follow the story chapters; bonus per tier', () => {
   assert.equal(tierForStage(1), 'zambia');
   assert.equal(tierForStage(5), 'zambia', 'the village chapter falls back to the Zambian tier');
   // a long season: the week starting at stage 16+ plays a South African side for 250
-  const rows = [];
+  const rows = lead(10800);
   for (let d = 0; d < 7 * 9; d++) if (d % 7 < 5) rows.push(row(addDays(W1, d), 4000)); // 2,000 a week for 9 weeks
   const s = computeSeasonXp({ rows });
   const L = leagueState({ season: s, today: addDays(W1, 7 * 9 - 1) });
   const sa = L.matches.find(m => m.tier === 'southAfrica');
-  assert.ok(sa, 'reached stage 16 (11,000 XP) on Wednesday of week 6 (11,200 XP)');
-  assert.equal(sa.weekStart, addDays(W1, 42), 'week 7 starts at 12,000 XP');
+  assert.ok(sa, 'reached stage 16 (22,000 XP) on Wednesday of week 6 (10,800 lead-in + 11,200)');
+  assert.equal(sa.weekStart, addDays(W1, 42), 'week 7 starts at 22,800 XP');
   assert.equal(sa.bonus, 250);
   assert.ok(LEAGUE_TIERS.southAfrica.opponents.includes(sa.opponent));
 });
