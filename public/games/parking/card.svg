@@ -1,0 +1,86 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 164" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <radialGradient id="bg" cx=".5" cy=".38" r=".75"><stop offset="0" stop-color="#5B2BB0"/><stop offset=".55" stop-color="#2B0F5E"/><stop offset="1" stop-color="#1A0838"/></radialGradient>
+    <pattern id="tin" width="5" height="30" patternUnits="userSpaceOnUse"><rect width="5" height="30" fill="#9A9AA6"/><rect width="1.6" height="30" fill="#B8B8C4"/></pattern>
+    <pattern id="tiles" width="12" height="12" patternUnits="userSpaceOnUse"><rect width="12" height="12" fill="#C9C2B2"/><path d="M0 0H12M0 0V12" stroke="#B0A898" stroke-width="1"/></pattern>
+    <pattern id="tar" width="10" height="10" patternUnits="userSpaceOnUse"><rect width="10" height="10" fill="#4A4A54"/><circle cx="2" cy="3" r=".7" fill="#5A5A66"/><circle cx="7" cy="7" r=".6" fill="#3E3E48"/></pattern>
+    <clipPath id="lot"><rect x="34" y="6" width="252" height="152" rx="14"/></clipPath>
+    <!-- top-down car, nose up, centred on 0,0 (40 x 74) -->
+    <g id="car">
+      <rect x="-15" y="-31" width="36" height="70" rx="11" fill="rgba(0,0,0,.32)"/>
+      <rect x="-21.5" y="-26" width="5" height="13" rx="2" fill="#1A1A1A"/><rect x="16.5" y="-26" width="5" height="13" rx="2" fill="#1A1A1A"/>
+      <rect x="-21.5" y="13" width="5" height="13" rx="2" fill="#1A1A1A"/><rect x="16.5" y="13" width="5" height="13" rx="2" fill="#1A1A1A"/>
+      <path d="M-11 -35.5Q0 -37.5 11 -35.5Q18 -33.5 18 -24V25Q18 34.5 10 35.5H-10Q-18 34.5 -18 25V-24Q-18 -33.5 -11 -35.5Z" fill="currentColor" stroke="#2A0A4F" stroke-width="2.4"/>
+      <path d="M-13 -20Q0 -24.5 13 -20L11 -11Q0 -13 -11 -11Z" fill="#2E4A6E" stroke="#2A0A4F" stroke-width="1.6"/>
+      <path d="M-9.5 -18.5L-3 -20.6L-7.5 -13Z" fill="#9FD3F2" opacity=".85"/>
+      <rect x="-11" y="-10" width="22" height="22" rx="4" fill="rgba(255,255,255,.16)" stroke="rgba(42,10,79,.45)" stroke-width="1.2"/>
+      <path d="M-11 13H11L13 21Q0 24 -13 21Z" fill="#2E4A6E" stroke="#2A0A4F" stroke-width="1.5"/>
+      <path d="M-15.5 -32.5Q-14 -34.5 -10.5 -34.5V-30.5Q-14 -30.2 -15.8 -29Z" fill="#FFF4C8" stroke="#2A0A4F" stroke-width="1.1"/>
+      <path d="M15.5 -32.5Q14 -34.5 10.5 -34.5V-30.5Q14 -30.2 15.8 -29Z" fill="#FFF4C8" stroke="#2A0A4F" stroke-width="1.1"/>
+    </g>
+  </defs>
+  <rect width="320" height="164" fill="url(#bg)"/>
+  <g fill="#FFD21F" opacity=".5"><circle cx="16" cy="30" r="1.6"/><circle cx="304" cy="26" r="1.4"/><circle cx="20" cy="120" r="1.3"/><circle cx="302" cy="132" r="1.6"/></g>
+
+  <g clip-path="url(#lot)">
+    <rect x="34" y="6" width="252" height="152" fill="url(#tar)"/>
+    <!-- shops + pavement -->
+    <rect x="34" y="0" width="252" height="34" fill="url(#tiles)"/>
+    <rect x="30" y="-4" width="60" height="22" fill="url(#tin)" stroke="#2A0A4F" stroke-width="2"/>
+    <rect x="90" y="-4" width="70" height="20" fill="#C8342C" stroke="#2A0A4F" stroke-width="2"/>
+    <rect x="160" y="-4" width="60" height="21" fill="#E8C547" stroke="#2A0A4F" stroke-width="2"/>
+    <rect x="220" y="-4" width="70" height="20" fill="url(#tin)" stroke="#2A0A4F" stroke-width="2"/>
+    <path d="M34 18H88" stroke="#E3261E" stroke-width="4"/><path d="M34 18H88" stroke="#F4F1E8" stroke-width="4" stroke-dasharray="5 5"/>
+    <path d="M92 16H158" stroke="#1E63E6" stroke-width="4"/><path d="M92 16H158" stroke="#F4F1E8" stroke-width="4" stroke-dasharray="5 5"/>
+    <path d="M162 17H218" stroke="#43C21A" stroke-width="4"/><path d="M162 17H218" stroke="#FFD21F" stroke-width="4" stroke-dasharray="5 5"/>
+    <path d="M222 16H286" stroke="#FF8A1F" stroke-width="4"/><path d="M222 16H286" stroke="#F4F1E8" stroke-width="4" stroke-dasharray="5 5"/>
+    <circle cx="52" cy="26" r="8" fill="#2F6A3A" stroke="#2A0A4F" stroke-width="1.8"/><circle cx="49.5" cy="23.5" r="4.5" fill="#3A8044"/>
+    <rect x="236" y="20" width="12" height="12" rx="2.5" fill="#1E63E6" stroke="#F4F1E8" stroke-width="1.4"/>
+    <text x="242" y="29.6" text-anchor="middle" fill="#fff" font-family="Lilita One, Arial Black, sans-serif" font-size="9.5">P</text>
+    <rect x="34" y="33" width="252" height="3" fill="#E6E0D2"/>
+
+    <!-- top bays with odds -->
+    <path d="M46 92V40H114V92M114 40H182V92M182 40H250V92" fill="none" stroke="#F2F2F2" stroke-width="2.2"/>
+    <rect x="48" y="42" width="64" height="50" fill="rgba(255,210,31,.14)"/>
+    <rect x="50" y="44" width="60" height="46" rx="3" fill="none" stroke="#FFD21F" stroke-width="3"/>
+    <g font-family="Lilita One, Arial Black, sans-serif" text-anchor="middle">
+      <rect x="57" y="53" width="46" height="25" rx="8" fill="#B0103A"/><rect x="57" y="50" width="46" height="25" rx="8" fill="#FF2E63" stroke="#FF8FA8" stroke-width="2"/>
+      <text x="80" y="69.5" fill="#fff" font-size="18">×4</text>
+      <rect x="125" y="53" width="46" height="25" rx="8" fill="#3A6A08"/><rect x="125" y="50" width="46" height="25" rx="8" fill="#5FA81A" stroke="#A5DE1E" stroke-width="2"/>
+      <text x="148" y="69.5" fill="#fff" font-size="17">×1.5</text>
+    </g>
+    <!-- the taxi parked in the ×3 bay -->
+    <g transform="translate(216 66) scale(.66)" color="#F4F4F2"><use href="#car"/>
+      <path d="M-17.5 -3H17.5" stroke="#3A8EDB" stroke-width="5"/>
+      <rect x="-8" y="-5" width="16" height="9" rx="2" fill="#FFD21F" stroke="#2A0A4F" stroke-width="1.4"/>
+    </g>
+
+    <!-- lane -->
+    <path d="M34 98H286M34 136H286" stroke="#F2F2F2" stroke-width="2"/>
+    <path d="M180 118H206M226 118H252" stroke="#F2F2F2" stroke-width="2"/>
+    <path d="M203 114L208 118L203 122M249 114L254 118L249 122" stroke="#F2F2F2" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <!-- your red car turning into the ×4 bay -->
+    <g transform="translate(96 114) rotate(-35) scale(.66)" color="#E3261E"><use href="#car"/>
+      <path d="M-3.5 -36V35.5M3.5 -36V35.5" stroke="#FFD21F" stroke-width="3.2"/>
+      <rect x="-16" y="31.5" width="32" height="3.5" rx="1.5" fill="#1A1A1A"/>
+    </g>
+    <path d="M128 120h22M124 127h18M132 113h14" stroke="#fff" stroke-opacity=".55" stroke-width="2" stroke-linecap="round"/>
+
+    <!-- bottom bays peeking in -->
+    <path d="M46 139V158M114 139V158M182 139V158M250 139V158" stroke="#F2F2F2" stroke-width="2.2"/>
+    <g font-family="Lilita One, Arial Black, sans-serif" text-anchor="middle" font-size="14">
+      <rect x="63" y="140" width="34" height="18" rx="6" fill="#FF8A1A" stroke="#FFC078" stroke-width="1.6"/><text x="80" y="153.4" fill="#fff">×2.5</text>
+      <rect x="131" y="140" width="34" height="18" rx="6" fill="#3CC21A" stroke="#8BEA5C" stroke-width="1.6"/><text x="148" y="153.4" fill="#fff">×1.2</text>
+      <rect x="199" y="140" width="34" height="18" rx="6" fill="#E0A300" stroke="#FFE27A" stroke-width="1.6"/><text x="216" y="153.4" fill="#fff">×2</text>
+    </g>
+  </g>
+  <rect x="34" y="6" width="252" height="152" rx="14" fill="none" stroke="#2A0A4F" stroke-width="5"/>
+  <rect x="34" y="6" width="252" height="152" rx="14" fill="none" stroke="#FFD21F" stroke-width="2.5"/>
+
+  <!-- sparkles -->
+  <g fill="#FFF3B0" stroke="#FFD21F" stroke-width=".8">
+    <path d="M300 60 Q301.6 66.4 308 68 Q301.6 69.6 300 76 Q298.4 69.6 292 68 Q298.4 66.4 300 60Z"/>
+    <path d="M18 74 Q19 78 23 79 Q19 80 18 84 Q17 80 13 79 Q17 78 18 74Z"/>
+    <path d="M106 32 Q107 36 111 37 Q107 38 106 42 Q105 38 101 37 Q105 36 106 32Z"/>
+  </g>
+</svg>

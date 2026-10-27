@@ -16,6 +16,11 @@ import * as crash from '../lib/chicken2/crash.mjs';
 import { SPOTS } from '../lib/penalty/spots.mjs';
 import { BIRDS } from '../lib/chicken/birds.mjs';
 import { PASSENGERS } from '../lib/minibus/passengers.mjs';
+import { BAYS } from '../lib/parking/bays.mjs';
+import * as tower from '../lib/tower/engine.mjs';
+import * as crossing from '../lib/crossing/engine.mjs';
+import * as conductor from '../lib/conductor/engine.mjs';
+import * as speedtrap from '../lib/speedtrap/index.mjs';
 
 const RTPS = [RTP_MIN, RTP_DEFAULT, RTP_MAX, 0.975, 0.985];
 const EPS = 1e-12;
@@ -83,7 +88,7 @@ test('stakes: 1/10/25/50 for the 4x games, 1/5/10/20 for Lucky Numbers, 1/5/10/2
   assert.equal(crash.DEFAULT_STAKE, 5);
 });
 
-const PICK6_GAMES = { penalty: SPOTS, chicken: BIRDS, minibus: PASSENGERS };
+const PICK6_GAMES = { penalty: SPOTS, chicken: BIRDS, minibus: PASSENGERS, parking: BAYS };
 
 test('pick6 (Penalty / Chicken / Minibus): odds unchanged, RTP = configured × rounded-up / half-up payout', () => {
   for (const [game, tiles] of Object.entries(PICK6_GAMES)) {
@@ -207,5 +212,90 @@ test('Chicken Catch 2: with the no-repeat redraw, the run of rounds lands exactl
       for (let i = 0; i < p.length; i++) T += p[i] / (1 - b[i]);
       for (let j = 0; j < p.length; j++) near(b[j] * (T - p[j] / (1 - b[j])), p[j], `stake ${s} rtp ${rtp} crash ${(100 + j) / 100}`);
     }
+  }
+});
+
+test('Street Parking: the bays are the Penalty Crash spots (same multipliers, same pick6 odds)', () => {
+  assert.deepEqual(BAYS.map(b => b.mult), SPOTS.map(x => x.mult));
+  assert.equal(Math.max(...BAYS.map(b => b.mult)), 4);
+});
+
+test('Tower Build: a cash-out returns at least the RTP, exactly the RTP when stake × multiplier is whole, never above the roof payout', () => {
+  assert.deepEqual(tower.STAKES, [1, 10, 25, 50]);
+  for (const rtp of RTPS) {
+    const tbl = tower.multTable(rtp);
+    assert.equal(tbl.length, 15);
+    for (let k = 1; k <= tower.MAX_FLOORS; k++) {
+      assert.ok(tower.reachChance(k, rtp) > 0 && tower.reachChance(k, rtp) < 1, `reach ${k}`);
+      if (k > 1) assert.ok(tbl[k - 1] > tbl[k - 2], `multipliers rise at floor ${k}`);
+    }
+    for (const s of tower.STAKES) {
+      const cap = tower.payoutFor(s, tower.MAX_FLOORS, rtp);
+      for (let k = 1; k <= tower.MAX_FLOORS; k++) {
+        const m100 = Math.round(tbl[k - 1] * 100);
+        const pay = tower.payoutFor(s, k, rtp);
+        assert.equal(pay, Math.ceil((s * m100) / 100), `stake ${s} floor ${k}`);
+        const r = tower.expectedReturn(s, k, rtp) / s;
+        assert.ok(r >= clampRtp(rtp) - EPS, `stake ${s} floor ${k}: ${r}`);
+        if ((s * m100) % 100 === 0) near(r, clampRtp(rtp), `stake ${s} floor ${k}`);
+        assert.ok(pay <= cap, `stake ${s} floor ${k} pays ${pay} > roof ${cap}`);
+        // the per-floor hold chances multiply back to the reach chance
+        let reach = 1;
+        for (let j = 1; j <= k; j++) reach *= tower.holdChance(j, rtp);
+        near(reach, tower.reachChance(k, rtp), `reach ${k}`);
+      }
+    }
+  }
+  assert.equal(tower.multAt(15), 12.18);
+});
+
+test('Road Crossing: a cash-out returns at least the RTP at every difficulty × stake × lane, exactly the RTP when stake × multiplier is whole, never above the 8-lane payout', () => {
+  assert.deepEqual(crossing.STAKES, [1, 10, 25, 50]);
+  for (const rtp of RTPS) {
+    for (const diff of crossing.DIFFS) {
+      for (const s of crossing.STAKES) {
+        const cap = crossing.payoutFor(s, diff, crossing.LANES, rtp);
+        for (let k = 1; k <= crossing.LANES; k++) {
+          const m100 = Math.round(crossing.multiplier(diff, k, rtp) * 100);
+          const pay = crossing.payoutFor(s, diff, k, rtp);
+          assert.equal(pay, Math.ceil((s * m100) / 100), `${diff} stake ${s} lane ${k}`);
+          const surv = crossing.survival(s, diff, k, rtp);
+          assert.ok(surv > 0 && surv <= 1, `${diff} stake ${s} lane ${k}: survival ${surv}`);
+          const r = (surv * pay) / s;
+          assert.ok(r >= clampRtp(rtp) - EPS, `${diff} stake ${s} lane ${k}: ${r}`);
+          if ((s * m100) % 100 === 0) near(r, clampRtp(rtp), `${diff} stake ${s} lane ${k}`);
+          assert.ok(pay <= cap, `${diff} stake ${s} lane ${k} pays ${pay} > ${cap}`);
+        }
+      }
+    }
+  }
+  assert.equal(crossing.multiplier('hard', 8), 58.35);
+});
+
+test('Bus Conductor 2: exact fraction maths — a cash-out returns at least the RTP, exactly the RTP when the payout is whole, never above the stop-5 payout', () => {
+  assert.deepEqual(conductor.STAKES, [1, 10, 25, 50]);
+  for (const rtp of RTPS) {
+    const units = Math.round(clampRtp(rtp) * 10000);
+    for (const s of conductor.STAKES) {
+      const cap = conductor.payoutFor(s, conductor.STOPS, rtp);
+      assert.equal(conductor.maxWin(s, rtp), cap);
+      for (let k = 1; k <= conductor.STOPS; k++) {
+        const { num, den } = conductor.reachChance(k);
+        const pay = conductor.payoutFor(s, k, rtp);
+        // integer test of  num/den × pay ≥ rtp × stake  (units are 0.01%)
+        assert.ok(num * pay * 10000 >= units * den * s, `stake ${s} stop ${k}`);
+        if ((s * units * den) % (10000 * num) === 0) assert.equal(num * pay * 10000, units * den * s, `stake ${s} stop ${k}: exact`);
+        else assert.ok(num * pay * 10000 > units * den * s, `stake ${s} stop ${k}: rounded up`);
+        assert.ok(pay <= cap && pay >= s, `stake ${s} stop ${k} pays ${pay}`);
+        assert.ok(pay < Math.ceil((s * units * den) / (10000 * num)) + 1);
+      }
+    }
+  }
+  assert.equal(conductor.shownMult(5), 63.5);
+});
+
+test('Speed Trap: same maths as Chicken Catch 2 (lib/speedtrap re-exports the crash engine)', () => {
+  for (const name of ['STAKES', 'DEFAULT_STAKE', 'MAX_MULT', 'drawCrash', 'payoutFor', 'survival', 'cashOutWins', 'multAt', 'timeFor', 'shownAt', 'endTime', 'settleOnClose']) {
+    assert.equal(speedtrap[name], crash[name], name);
   }
 });

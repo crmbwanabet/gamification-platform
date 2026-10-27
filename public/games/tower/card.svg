@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 164" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2B0F5E"/><stop offset=".55" stop-color="#5B2BB0"/><stop offset=".85" stop-color="#C8607A"/><stop offset="1" stop-color="#FF9A5A"/></linearGradient>
+    <radialGradient id="glow"><stop offset="0" stop-color="#8A4BE0" stop-opacity=".85"/><stop offset="1" stop-color="#5B2BB0" stop-opacity="0"/></radialGradient>
+    <linearGradient id="boz" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#6FC2C8"/><stop offset=".55" stop-color="#3E8E9C"/><stop offset="1" stop-color="#2A6474"/></linearGradient>
+    <linearGradient id="badge" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFE27A"/><stop offset=".5" stop-color="#FFC21F"/><stop offset="1" stop-color="#E08A00"/></linearGradient>
+    <pattern id="lit" width="9" height="11" patternUnits="userSpaceOnUse"><rect width="9" height="11" fill="#7A6AAE"/><rect x="1.5" y="1.5" width="2.5" height="3.5" fill="#FFCF7A"/><rect x="5.5" y="1.5" width="2.5" height="3.5" fill="#3A2A5E"/><rect x="1.5" y="7" width="2.5" height="3.5" fill="#3A2A5E"/><rect x="5.5" y="7" width="2.5" height="3.5" fill="#FFE3A0"/></pattern>
+    <pattern id="fins" width="4" height="6" patternUnits="userSpaceOnUse"><rect width="4" height="6" fill="#B9B0D6"/><rect width="1.6" height="6" fill="#F0ECF8"/></pattern>
+    <pattern id="mast" x="22" y="34" width="14" height="14" patternUnits="userSpaceOnUse"><path d="M0 0L14 14M0 14L14 0M0 0H14" stroke="#2A0A4F" stroke-width="3.4" fill="none"/><path d="M0 0L14 14M0 14L14 0" stroke="#FFD21F" stroke-width="1.5" fill="none"/></pattern>
+    <pattern id="jib" x="0" y="14" width="12" height="8" patternUnits="userSpaceOnUse"><path d="M0 8L6 0L12 8" stroke="#2A0A4F" stroke-width="3" fill="none"/><path d="M0 8L6 0L12 8" stroke="#FFD21F" stroke-width="1.4" fill="none"/></pattern>
+    <path id="st" d="M0 -5 Q.9 -.9 5 0 Q.9 .9 0 5 Q-.9 .9 -5 0 Q-.9 -.9 0 -5Z"/>
+  </defs>
+  <rect width="320" height="164" fill="url(#sky)"/>
+  <circle cx="160" cy="110" r="95" fill="url(#glow)"/>
+  <!-- Lusaka skyline -->
+  <g fill="#4E3E86" opacity=".75"><rect x="0" y="96" width="18" height="60"/><rect x="88" y="100" width="16" height="56"/><rect x="236" y="92" width="18" height="64"/><rect x="292" y="104" width="28" height="52"/></g>
+  <rect x="2" y="86" width="22" height="70" fill="url(#lit)" stroke="#2A0A4F" stroke-width="2"/>
+  <rect x="58" y="80" width="28" height="76" fill="url(#lit)" stroke="#2A0A4F" stroke-width="2"/>
+  <rect x="200" y="74" width="26" height="82" fill="url(#boz)" stroke="#2A0A4F" stroke-width="2"/>
+  <rect x="204" y="68" width="18" height="7" fill="#C8873E" stroke="#2A0A4F" stroke-width="1.8"/>
+  <rect x="238" y="52" width="26" height="104" fill="url(#fins)" stroke="#2A0A4F" stroke-width="2"/>
+  <rect x="242" y="45" width="18" height="8" fill="#D8D2E8" stroke="#2A0A4F" stroke-width="1.8"/>
+  <path d="M251 45V34" stroke="#2A0A4F" stroke-width="2"/><circle cx="251" cy="33" r="2.2" fill="#FF4040" stroke="#2A0A4F" stroke-width="1"/>
+  <rect x="268" y="84" width="26" height="72" fill="url(#lit)" stroke="#2A0A4F" stroke-width="2"/>
+  <!-- ground -->
+  <rect x="0" y="150" width="320" height="14" fill="#A8673A"/><rect x="0" y="148" width="320" height="3" fill="#C98450"/>
+  <!-- the house: door floor + curtains floor; the red tin roof swings in on the hook -->
+  <g stroke="#2A0A4F" stroke-width="2.4">
+    <rect x="104" y="124" width="84" height="25" fill="#2F9C95"/>
+    <rect x="139" y="132" width="16" height="17" fill="#1E63E6"/>
+    <rect x="111" y="130" width="20" height="11" fill="#CFEAF8"/>
+    <rect x="163" y="130" width="18" height="11" fill="#CFEAF8"/>
+    <rect x="101" y="119" width="90" height="6" rx="1.5" fill="#E6E0D2"/>
+    <rect x="108" y="96" width="84" height="23" fill="#E8C547"/>
+    <rect x="114" y="101" width="22" height="12" fill="#FFE7A6"/>
+    <rect x="164" y="101" width="22" height="12" fill="#FFE7A6"/>
+    <rect x="142" y="102" width="14" height="8" fill="#F2F2F2"/>
+    <rect x="105" y="91" width="90" height="6" rx="1.5" fill="#E6E0D2"/>
+  </g>
+  <g fill="#E3261E"><rect x="116" y="103" width="6" height="9"/><rect x="128" y="103" width="6" height="9"/><rect x="166" y="103" width="6" height="9"/><rect x="178" y="103" width="6" height="9"/></g>
+  <!-- the roof swinging on the hook -->
+  <g transform="rotate(-9 160 22)">
+    <path d="M157 22V38M163 22V38" stroke="rgba(255,255,255,.6)" stroke-width="3.4"/>
+    <path d="M157 22V38M163 22V38" stroke="#000" stroke-width="1.8"/>
+    <rect x="152" y="37" width="16" height="11" rx="3" fill="#FFD21F" stroke="#2A0A4F" stroke-width="2"/>
+    <path d="M160 48V52Q155 52 155.5 56Q157 59 160 58.5" stroke="#2A0A4F" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+    <path d="M160 55L124 62M160 55L196 62" stroke="rgba(255,255,255,.6)" stroke-width="3.4"/>
+    <path d="M160 55L124 62M160 55L196 62" stroke="#000" stroke-width="1.8"/>
+    <path d="M114 84L160 61L206 84Z" fill="#2A0A4F"/>
+    <path d="M119 82L160 64L201 82Z" fill="#D8423A"/>
+    <path d="M131 77L160 64L189 77" stroke="#A82820" stroke-width="2" fill="none"/>
+    <rect x="112" y="82" width="96" height="4" fill="#8A8A92" stroke="#2A0A4F" stroke-width="1.6"/>
+  </g>
+  <!-- tower crane -->
+  <rect x="22" y="34" width="14" height="116" fill="url(#mast)"/>
+  <path d="M22 32V150M36 32V150" stroke="#2A0A4F" stroke-width="4.6"/><path d="M22 32V150M36 32V150" stroke="#FFD21F" stroke-width="2.2"/>
+  <path d="M29 2L210 14M29 2L2 14" stroke="#2A0A4F" stroke-width="1.4" fill="none"/>
+  <path d="M22 14L29 1L36 14" stroke="#2A0A4F" stroke-width="4.6" fill="none" stroke-linejoin="round"/><path d="M22 14L29 1L36 14" stroke="#FFD21F" stroke-width="2.2" fill="none" stroke-linejoin="round"/>
+  <rect x="0" y="14" width="212" height="8" fill="url(#jib)"/>
+  <path d="M0 14H212M0 22H212" stroke="#2A0A4F" stroke-width="4.6"/><path d="M0 14H212M0 22H212" stroke="#FFD21F" stroke-width="2.2"/>
+  <rect x="2" y="23" width="13" height="8" rx="1.5" fill="#B8B4AC" stroke="#2A0A4F" stroke-width="1.8"/>
+  <rect x="38" y="23" width="18" height="13" rx="2.5" fill="#F4F1E8" stroke="#2A0A4F" stroke-width="2"/>
+  <rect x="41" y="25.5" width="12" height="6.5" rx="1.5" fill="#7FC3EA" stroke="#2A0A4F" stroke-width="1.3"/>
+  <rect x="151" y="20" width="18" height="6" rx="1.5" fill="#3A3A44" stroke="#2A0A4F" stroke-width="1.8"/>
+  <!-- the multiplier badge -->
+  <g transform="translate(268 30) rotate(8)">
+    <rect x="-40" y="-20" width="80" height="40" rx="14" fill="url(#badge)" stroke="#2A0A4F" stroke-width="3"/>
+    <path d="M-32 -12 Q-26 -16 -16 -15" stroke="#fff" stroke-width="2.4" stroke-linecap="round" fill="none" opacity=".8"/>
+    <text x="0" y="11" text-anchor="middle" font-family="Lilita One, Arial Black, sans-serif" font-size="28" fill="#fff" stroke="#2A0A4F" stroke-width="5" stroke-linejoin="round" paint-order="stroke">12<tspan font-size="19">×</tspan></text>
+  </g>
+  <use href="#st" transform="translate(222 14) scale(1.1)" fill="#FFF3B0"/>
+  <use href="#st" transform="translate(306 64) scale(.8)" fill="#FFF3B0"/>
+  <use href="#st" transform="translate(80 50) scale(.7)" fill="#FFF3B0"/>
+</svg>

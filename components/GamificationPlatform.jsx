@@ -76,6 +76,11 @@ import MinibusGame from './games/minibus/MinibusGame';
 import BottleGame from './games/bottle/BottleGame';
 import ScratchGame from './games/scratch/ScratchGame';
 import NumbersGame from './games/numbers/NumbersGame';
+import TowerGame from './games/tower/TowerGame';
+import SpeedTrapGame from './games/speedtrap/SpeedTrapGame';
+import CrossingGame from './games/crossing/CrossingGame';
+import ParkingGame from './games/parking/ParkingGame';
+import ConductorGame from './games/conductor/ConductorGame';
 import { amountText, rewardParts } from '@/lib/rewardText.mjs';
 import { XP_STAR_SRC, XP_BLUE } from './redesign/XpStar';
 
@@ -2030,7 +2035,7 @@ export default function GamificationPlatform() {
     track('game_open', { gameId });
     // Disabled games can still be reached via mission modals — block them.
     if (!activeGames.some(g => g.id === gameId)) { showNotif('This game is unavailable right now', 'error'); return; }
-    // Stake-per-round games (njuka, coinflip, penalty, chicken, chicken2, minibus, bottle, scratch, numbers): entry is free — no daily play consumed,
+    // Stake-per-round games (njuka, coinflip, penalty, chicken, chicken2, minibus, bottle, scratch, numbers, tower, speedtrap, crossing, parking, conductor): entry is free — no daily play consumed,
     // no extra-play charge. Every round is paid inside the game via onSpend.
     if (activeGames.find(g => g.id === gameId)?.stakeOnly) { setActiveGame(gameId); return; }
     if (user.gamePlays[gameId] > 0) {
@@ -2255,6 +2260,56 @@ export default function GamificationPlatform() {
             setUser(u => ({ ...u, gamesPlayed: u.gamesPlayed + 1, dailyTasksDone: [...new Set([...u.dailyTasksDone, 'game'])] }));
             setGamesPlayedToday(prev => new Set([...prev, 'chicken2']));
             trackMission('gamePlayed', { gameId: 'chicken2', coinsWon: win ? payout - stake : 0, stake, payout: win ? payout : 0, gamesSet: gamesPlayedToday });
+          }} />
+      )}
+      {activeGame === 'tower' && (
+        <TowerGame onClose={() => animateClose(() => setActiveGame(null))} closing={closingModal}
+          balance={user.kwacha} rtp={cfg.games.tower?.rtp} onSpend={spendStake}
+          onRound={({ stake, win, payout }) => {
+            if (win) addCoins(payout); // the game's own WinCelebration shows the win — no toast / float
+            setUser(u => ({ ...u, gamesPlayed: u.gamesPlayed + 1, dailyTasksDone: [...new Set([...u.dailyTasksDone, 'game'])] }));
+            setGamesPlayedToday(prev => new Set([...prev, 'tower']));
+            trackMission('gamePlayed', { gameId: 'tower', coinsWon: win ? payout - stake : 0, stake, payout: win ? payout : 0, gamesSet: gamesPlayedToday });
+          }} />
+      )}
+      {activeGame === 'speedtrap' && (
+        <SpeedTrapGame onClose={() => animateClose(() => setActiveGame(null))} closing={closingModal}
+          balance={user.kwacha} rtp={cfg.games.speedtrap?.rtp} onSpend={spendStake}
+          onRound={({ stake, win, payout }) => {
+            if (win) addCoins(payout); // the game's own WinCelebration shows the win — no toast / float
+            setUser(u => ({ ...u, gamesPlayed: u.gamesPlayed + 1, dailyTasksDone: [...new Set([...u.dailyTasksDone, 'game'])] }));
+            setGamesPlayedToday(prev => new Set([...prev, 'speedtrap']));
+            trackMission('gamePlayed', { gameId: 'speedtrap', coinsWon: win ? payout - stake : 0, stake, payout: win ? payout : 0, gamesSet: gamesPlayedToday });
+          }} />
+      )}
+      {activeGame === 'crossing' && (
+        <CrossingGame onClose={() => animateClose(() => setActiveGame(null))} closing={closingModal}
+          balance={user.kwacha} rtp={cfg.games.crossing?.rtp} onSpend={spendStake}
+          onRound={({ stake, win, payout }) => {
+            if (win) addCoins(payout); // the game's own WinCelebration shows the win — no toast / float
+            setUser(u => ({ ...u, gamesPlayed: u.gamesPlayed + 1, dailyTasksDone: [...new Set([...u.dailyTasksDone, 'game'])] }));
+            setGamesPlayedToday(prev => new Set([...prev, 'crossing']));
+            trackMission('gamePlayed', { gameId: 'crossing', coinsWon: win ? payout - stake : 0, stake, payout: win ? payout : 0, gamesSet: gamesPlayedToday });
+          }} />
+      )}
+      {activeGame === 'parking' && (
+        <ParkingGame onClose={() => animateClose(() => setActiveGame(null))} closing={closingModal}
+          balance={user.kwacha} rtp={cfg.games.parking?.rtp} onSpend={spendStake}
+          onRound={({ stake, win, payout }) => {
+            if (win) addCoins(payout); // the game's own WinCelebration shows the win — no toast / float
+            setUser(u => ({ ...u, gamesPlayed: u.gamesPlayed + 1, dailyTasksDone: [...new Set([...u.dailyTasksDone, 'game'])] }));
+            setGamesPlayedToday(prev => new Set([...prev, 'parking']));
+            trackMission('gamePlayed', { gameId: 'parking', coinsWon: win ? payout - stake : 0, stake, payout: win ? payout : 0, gamesSet: gamesPlayedToday });
+          }} />
+      )}
+      {activeGame === 'conductor' && (
+        <ConductorGame onClose={() => animateClose(() => setActiveGame(null))} closing={closingModal}
+          balance={user.kwacha} rtp={cfg.games.conductor?.rtp} onSpend={spendStake}
+          onRound={({ stake, win, payout }) => {
+            if (win) addCoins(payout); // the game's own WinCelebration shows the win — no toast / float
+            setUser(u => ({ ...u, gamesPlayed: u.gamesPlayed + 1, dailyTasksDone: [...new Set([...u.dailyTasksDone, 'game'])] }));
+            setGamesPlayedToday(prev => new Set([...prev, 'conductor']));
+            trackMission('gamePlayed', { gameId: 'conductor', coinsWon: win ? payout - stake : 0, stake, payout: win ? payout : 0, gamesSet: gamesPlayedToday });
           }} />
       )}
       {activeGame === 'minibus' && (

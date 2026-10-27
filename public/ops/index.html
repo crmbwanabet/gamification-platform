@@ -456,7 +456,7 @@ dialog.small { max-width: 420px; }
   var PERM_TAB = {}; TABS.forEach(function (x) { PERM_TAB[x.perm] = x.id; });
   function permLabel(p, fallback) { return PERM_TAB[p.id] ? tabLabel(PERM_TAB[p.id]) : tOr('perm.' + p.id, fallback || p.label || p.id); }
   function eventLabel(type) { return tOr('ev.' + type, String(type || '').replace(/_/g, ' ')); }
-  var GAME_LABEL = { njuka: 'Njuka Boss', coinflip: 'Coin Flip', penalty: 'Penalty Crash', chicken: 'Chicken Catch', chicken2: 'Chicken Catch 2', minibus: 'Lucky Minibus', bottle: 'Bottle Spin', scratch: 'Scratch Card', numbers: 'Lucky Numbers' };
+  var GAME_LABEL = { njuka: 'Njuka Boss', coinflip: 'Coin Flip', penalty: 'Penalty Crash', chicken: 'Chicken Catch', chicken2: 'Chicken Catch 2', minibus: 'Lucky Minibus', bottle: 'Bottle Spin', scratch: 'Scratch Card', numbers: 'Lucky Numbers', tower: 'Tower Build', speedtrap: 'Speed Trap', crossing: 'Road Crossing', parking: 'Street Parking', conductor: 'Bus Conductor 2' };
   function bandLabel(b) { return tOr('band.' + b, b); }
   // server reasons for weak passwords / blocked login edits, by their English text
   var SERVER_REASON = {
