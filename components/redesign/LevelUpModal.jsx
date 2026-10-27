@@ -119,7 +119,7 @@ export default function LevelUpModal({ levelUp, onClose, onGo, onRename, hero = 
           {wide && <div className="lu-hero" aria-hidden><HeroPicture stage={levelUp.level} style={{ height: '100%', aspectRatio: 'auto' }} imgStyle={{ objectPosition: '50% 70%' }} /></div>}
           <div className="lu-top">
             {levelUp.avatar && !wide && (
-              <span className="lu-av"><RoundAvatar stage={levelUp.level} avatar={levelUp.avatar} alt={hero} size={78} /></span>
+              <span className="lu-av"><RoundAvatar stage={levelUp.level} avatar={levelUp.avatar} alt={hero} size={60} /></span>
             )}
             {full ? <div className="lu-big blue">No more game XP today</div> : <div className="lu-big">Level {levelUp.sub || levelUp.level}!</div>}
             {!full && levelUp.levelsUp > 1 && <div className="lu-place">You went up {levelUp.levelsUp} levels</div>}
@@ -229,6 +229,53 @@ const LU_CSS = `
 @media (prefers-reduced-motion: reduce) { .lu-next, .lu-chev, .lu-close { transition: none; } .lu-next:hover { transform: none; } }
 /* phones: the side + main wrappers vanish into the single column */
 .lu-side, .lu-main { display: contents; }
+/* phones (owner 2026-10-27: keep the small one, it must fit the screen): the
+   picture and the level side by side, slim rows, a shorter mission button.
+   Checked at 360 x 580 (a small Android inside the widget, under bwanabet's
+   60 px strip) up to 412 x 855. */
+@media (max-width: 860px) {
+  .lu-back { padding: 10px; }
+  .lu-frame { padding: 6px; border-radius: 22px; }
+  .lu-in { padding: 12px 12px 8px; gap: 9px; max-height: calc(100dvh - 32px); }
+  .lu-top { grid-template-columns: auto 1fr; justify-items: start; align-items: center; column-gap: 12px; row-gap: 3px; text-align: left; }
+  .lu-top > .lu-av { grid-row: span 3; width: 64px; height: 64px; }
+  .lu-top > :not(.lu-av) { grid-column: 2; }
+  .lu-big { font-size: 36px; }
+  .lu-big.blue { font-size: 24px; }
+  .lu-place { font-size: 13.5px; }
+  .lu-prize { font-size: 15px; padding: 2px 10px 2px 4px; gap: 5px; }
+  .lu-prize img { width: 22px; height: 22px; }
+  .lu-box { padding: 8px 10px; gap: 5px; }
+  .lu-hd { font-size: 11.5px; }
+  .lu-row { grid-template-columns: 32px 1fr auto; gap: 8px; font-size: 13.5px; }
+  .lu-ic { width: 32px; height: 32px; border-radius: 9px; border-width: 1.5px; box-shadow: 0 2px 0 rgba(0,0,0,.35); }
+  .lu-t small { font-size: 12px; }
+  .lu-xp { font-size: 13.5px; }
+  .lu-xp img { width: 15px; height: 15px; }
+  .lu-tale summary { min-height: 44px; padding: 6px 10px; }
+  .lu-st b { font-size: 14px; }
+  .lu-st span { font-size: 12.5px; }
+  .lu-chev { width: 28px; height: 28px; }
+  .lu-part p { font-size: 14px; }
+  .lu-next { padding: 10px 10px 12px; gap: 3px; border-radius: 15px; }
+  .lu-next-label { font-size: 11.5px; }
+  .lu-next-text { font-size: 19px; }
+  .lu-next-reward { font-size: 17px; margin-top: 2px; gap: 10px; }
+  .lu-next-reward img { width: 20px; height: 20px; }
+  .lu-meter { font-size: 13px; }
+  .lu-note { font-size: 13px; }
+  .lu-close { min-height: 46px; font-size: 18px; margin-bottom: 4px; padding: 8px; }
+}
+/* short phone screens: the detail lines go (the XP numbers stay) */
+@media (max-width: 860px) and (max-height: 700px) {
+  .lu-top > .lu-av { width: 52px; height: 52px; }
+  .lu-big { font-size: 30px; }
+  .lu-row small, .lu-st span { display: none; }
+  .lu-row { font-size: 13px; }
+  .lu-ic { width: 28px; height: 28px; }
+  .lu-row { grid-template-columns: 28px 1fr auto; }
+  .lu-next-text { font-size: 17px; }
+}
 /* desktop (owner 2026-10-27: "too small", then "empty spaces, top to bottom"):
    full screen height like the games; LEFT = the hero's own picture with the
    level on it; RIGHT = everything else top to bottom, the mission button
