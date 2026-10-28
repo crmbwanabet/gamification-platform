@@ -2148,6 +2148,7 @@ export default function GamificationPlatform() {
   // and re-reached levels never pay twice. A logged-in player waits for the
   // restart marker (before it the level XP is still the old total).
   const lastSubRef = useRef(null);
+  const pendingLevelRef = useRef(null); // the level-up pop-up waiting to show (merges later ones)
   useEffect(() => {
     const sl = getSubLevel(lvXp);
     const curLevel = sl.stage;
@@ -2177,34 +2178,49 @@ export default function GamificationPlatform() {
     const prevIndex = lastSubRef.current;
     const newSub = sl.index > prevIndex;
     if (!up.levels.length && !newSub) return;
-    const total = up.total;
     lastLevelRef.current = up.rewarded;
     lastSubRef.current = Math.max(lastSubRef.current, sl.index);
-    // "Why you levelled up": what each source gave since the previous pop-up
+    // ONE pop-up per wait: level-ups that pile up before the player can see
+    // them (inside a mini-game, Bonus Center closed, stars still flying) merge
+    // into the pending one: the highest level, levels and coins added up, the
+    // reasons since the snapshot before the first of them.
     const snap = xpSnapRef.current;
-    const reasons = userRef.current.levelSnap ? levelUpReasons(userRef.current.levelSnap, snap) : [];
-    const prevStage = SUB_LEVELS[Math.max(0, prevIndex - 1)]?.stage || sl.stage;
-    const newPlace = prevStage !== sl.stage && VUMA_STAGES[prevStage - 1]?.place !== VUMA_STAGES[sl.stage - 1]?.place;
-    const levelsUp = newSub ? sl.index - prevIndex : 1;
+    const pend = pendingLevelRef.current;
+    const first = pend || { prevIndex, prevSnap: userRef.current.levelSnap, total: {}, coinLevels: 0 };
+    const total = { ...first.total };
+    for (const [k, v] of Object.entries(up.total || {})) total[k] = (total[k] || 0) + v;
+    const prevStage = SUB_LEVELS[Math.max(0, first.prevIndex - 1)]?.stage || sl.stage;
+    const lvl = getLevel(lvXp);
+    const st = storyFor(sl.stage, sl.sub);
+    pendingLevelRef.current = {
+      ...first, total, coinLevels: first.coinLevels + up.levels.length,
+      level: lvl, sl, st, snap,
+      levelsUp: Math.max(1, sl.index - first.prevIndex),
+      newPlace: prevStage !== sl.stage && VUMA_STAGES[prevStage - 1]?.place !== VUMA_STAGES[sl.stage - 1]?.place,
+    };
     setUser(u => {
       const r = cleanLevelReset(u.levelReset);
       return { ...u, stageRewarded: Math.max(Number(u.stageRewarded) || 0, up.rewarded), levelSnap: snap,
         ...(r ? { levelReset: { ...r, shown: Math.max(r.shown || 0, sl.index) } } : null) };
     });
-    if (up.levels.length) addCurrencies(total);
-    const lvl = getLevel(lvXp);
-    const st = storyFor(sl.stage, sl.sub);
-    track('level_up', { amount: total.kwacha || 0, meta: { level: lvl.level, sub: sl.id } }); // amount = level-up coins (ops console)
+    if (up.levels.length) addCurrencies(up.total);
+    track('level_up', { amount: up.total.kwacha || 0, meta: { level: lvl.level, sub: sl.id } }); // amount = level-up coins (ops console)
+    if (pend) return; // its celebration is already queued and will show this level
     // The celebration waits until the XP stars have filled the bar (the
     // bar crosses into the new level first) and the WELCOME BACK pop-up has
     // closed, then: ring, modal, coins.
     setStagePending(true); // the daily reward pop-up waits for this celebration
     const celebrate = () => xpFxRef.current.whenIdle(() => {
+      const p = pendingLevelRef.current;
+      pendingLevelRef.current = null;
+      if (!p) return;
+      const sum = p.total;
+      const reasons = p.prevSnap ? levelUpReasons(p.prevSnap, p.snap) : [];
       setStagePending(false);
       xpFxRef.current.ring();
-      setLevelUp({ level: lvl.level, sub: sl.id, levelsUp, newPlace, place: lvl.name, avatar: lvl.avatar, reward: total, story: st, reasons, next: nextMissionCard() });
-      showNotif(`🎉 Level ${sl.id}${st ? ` — ${st.title}` : ''}!`);
-      if (up.levels.length) triggerReward('big', null, { coins: total.kwacha || undefined, emeralds: total.emeralds || undefined, rubies: total.rubies || undefined, diamonds: total.diamonds || undefined });
+      setLevelUp({ level: p.level.level, sub: p.sl.id, levelsUp: p.levelsUp, newPlace: p.newPlace, place: p.level.name, avatar: p.level.avatar, reward: sum, story: p.st, reasons, next: nextMissionCard() });
+      showNotif(`🎉 Level ${p.sl.id}${p.st ? ` — ${p.st.title}` : ''}!`);
+      if (p.coinLevels) triggerReward('big', null, { coins: sum.kwacha || undefined, emeralds: sum.emeralds || undefined, rubies: sum.rubies || undefined, diamonds: sum.diamonds || undefined });
     });
     if (welcomeBusyRef.current || !popupsOkRef.current) welcomeAfterRef.current.push(celebrate); else celebrate();
   }, [lvXp, user.levelReset, loggedIn]); // eslint-disable-line react-hooks/exhaustive-deps
