@@ -3,12 +3,13 @@
 import React from 'react';
 import { C, CANDY } from './tokens';
 import { RewardIcon, CurrencyAmounts } from './RedesignShell';
-import { PackBuyButton, balancesOf, SoonLock } from './StoreView';
+import { PackBuyButton, PrizeBuyButton, balancesOf, SoonLock, UNIT, BUTTON, onePrice } from './StoreView';
 import { BB_CSS, STORE_ART, packArtSrc, CoinMeter, PackLock, goalText, ShopLockPlate, ShopLockWrap } from './storeKit';
 import { ShineImg, Sparkles } from './Shine';
 import { IMAGES } from '@/lib/data/images';
 import { canAfford, cleanReward, coinsToKwacha, formatKwacha, formatNumber } from '@/lib/economy/currency.mjs';
 import { splitCatalog, nextPackGoal, itemBuyable } from '@/lib/store/catalog.mjs';
+import { prizesOpenFor, shopPrizes } from '@/lib/store/prizes.mjs';
 
 // Home store panel ("COIN SHOP", was "Cash out coins"; a rate plate on the
 // banner art says "10,000 COINS / BUYS / K1.00" from economy.coinsPerKwacha; Coins & Store redesign 2026-10-14): a
@@ -55,6 +56,14 @@ const HS_CSS = `
   .hs-k { grid-area: k; align-self: end; font-size: 23px; text-shadow: 0 2px 0 #2A0A4F; }
   .hs-cost { grid-area: k; align-self: end; font-family: ${CANDY.display}; font-size: 17px; line-height: 1.05; color: #fff; text-transform: uppercase; text-shadow: 0 2px 0 #2A0A4F; white-space: nowrap; }
   .hs-cost--item { font-family: inherit; text-transform: none; }
+  .hs-cost--prize { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 6px; font-size: 14px; white-space: normal; }
+  .hs-cost--prize span { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+  .hs-cost--prize i { font-style: normal; font-size: 11px; letter-spacing: .12em; color: #FFD21F; }
+  .hs-name--prize { color: #FFD21F; text-shadow: 0 2px 0 #2A0A4F; }
+  .hs-acts { grid-area: act; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  .hs-tile--prize { grid-template-columns: 64px minmax(0, 1fr); grid-template-areas: "well k" "well price" "act act"; row-gap: 6px; padding: 8px 10px 10px 8px; }
+  .hs-tile--prize .hs-act { width: 100%; }
+  .hs-well img.hs-prize { width: 60px; height: 60px; object-fit: contain; }
   .hs-buys { grid-area: price; align-self: start; display: flex; align-items: baseline; gap: 6px; font-family: ${CANDY.display}; font-size: 12px; letter-spacing: .12em; color: #FFD21F; text-transform: uppercase; }
   .hs-buys b { font-weight: 400; font-size: 23px; letter-spacing: 0; text-shadow: 0 2px 0 #2A0A4F; }
   .hs-name { grid-area: price; align-self: start; font-family: ${CANDY.display}; font-size: 16px; line-height: 1.1; color: #fff;
@@ -90,9 +99,11 @@ const HS_CSS = `
     .hs-m { display: none; }
 
     .hs-grid { padding: 16px; display: grid; grid-template-columns: repeat(auto-fill, minmax(216px, 1fr)); gap: 12px; align-items: start; }
-    .hs-tile { grid-template-columns: 84px minmax(0, 1fr); grid-template-areas: "well k" "well price" "well act"; row-gap: 4px; padding: 10px; border-radius: 16px; }
+    .hs-tile, .hs-tile--prize { grid-template-columns: 84px minmax(0, 1fr); grid-template-areas: "well k" "well price" "well act"; row-gap: 4px; padding: 10px; border-radius: 16px; }
+    .hs-cost.hs-cost--prize { font-size: 14px; }
     .hs-well { width: 84px; height: 84px; border-radius: 14px; }
     .hs-well img { width: 80px; height: 80px; }
+    .hs-well img.hs-prize { width: 80px; height: 80px; }
     .hs-buys b { font-size: 26px; }
     .hs-cost { font-size: 18px; }
     .hs-act { min-width: 0; min-height: 36px; border-radius: 11px; }
@@ -145,13 +156,40 @@ function HomeItemTile({ item, balances, onBuy }) {
   );
 }
 
-/** Store selection for Home: kwacha packs first, then ordinary items, up to 5. Renders nothing when the store is empty. */
-export default function HomeStore({ storeItems, wallet, onBuy, busyId = null, onSeeAll, className = '', locked = false, xp = 0 }) {
-  const { coinPacks, items } = splitCatalog(storeItems);
-  if (!(coinPacks.length + items.length)) return null;
+/** A real prize (owner 2026-10-28: the prizes show on Home too, after the packs): art, its price(s), the name, a button per price. */
+function HomePrizeTile({ prize, options, balances, onBuy, busyId }) {
+  const ready = options.some(o => canAfford(o.price, balances));
+  const many = options.length > 1;
+  return (
+    <div className={`bb-tile hs-tile hs-tile--prize${ready ? ' bb-ready' : ''}`} data-prize={prize.id}>
+      <div className="bb-well hs-well"><img src={prize.art} alt={prize.name} width={80} height={80} loading="lazy" className="hs-prize" /></div>
+      <div className="hs-cost hs-cost--prize">
+        {options.map((o, i) => {
+          const [k, v] = onePrice(o.price);
+          return (
+            <React.Fragment key={o.id}>
+              {i > 0 && <i>or</i>}
+              <span><RewardIcon kind={k === 'kwacha' ? 'coins' : k} size={16} />{formatNumber(v)} {UNIT[k]}</span>
+            </React.Fragment>
+          );
+        })}
+      </div>
+      <div className="hs-name hs-name--prize">{prize.name}</div>
+      <div className="hs-acts">
+        {options.map(o => <PrizeBuyButton key={o.id} item={o} label={many ? BUTTON[onePrice(o.price)[0]] : 'Convert'} balances={balances} busy={busyId === o.id} onBuy={onBuy} className="hs-act" />)}
+      </div>
+    </div>
+  );
+}
+
+/** Store selection for Home: kwacha packs first, then every real prize (once the `prizes` row shows them), then ordinary items up to 5. Renders nothing when the store is empty. */
+export default function HomeStore({ storeItems, wallet, onBuy, busyId = null, onSeeAll, className = '', locked = false, xp = 0, uid = null }) {
+  const { coinPacks, items, prizes } = splitCatalog(storeItems);
+  const prizeCards = prizesOpenFor(wallet?.prizes, wallet?.uid ?? uid) ? shopPrizes(prizes, wallet?.economy) : [];
+  if (!(coinPacks.length + items.length + prizeCards.length)) return null;
   const packs = coinPacks.slice(0, MAX_ON_HOME);
   const extras = items.slice(0, MAX_ON_HOME - packs.length);
-  const topId = packs.length > 1 ? packs[packs.length - 1].id : null;
+  const topId = packs.length > 1 && !prizeCards.length ? packs[packs.length - 1].id : null;
   const balances = balancesOf(wallet);
   const rate = Number(wallet?.economy?.coinsPerKwacha) || 10000;
   return (
@@ -176,6 +214,7 @@ export default function HomeStore({ storeItems, wallet, onBuy, busyId = null, on
       </div>
       <div className="hs-grid">
         {packs.map((it, i) => <HomePackTile key={it.id} i={i} item={it} balances={balances} onBuy={onBuy} busy={busyId === it.id} top={it.id === topId} />)}
+        {prizeCards.map(c => <HomePrizeTile key={c.prize.id} prize={c.prize} options={c.options} balances={balances} onBuy={onBuy} busyId={busyId} />)}
         {extras.map(it => <HomeItemTile key={it.id} item={it} balances={balances} onBuy={onBuy} />)}
         <button type="button" className="hs-more" onClick={onSeeAll}>
           <img src={STORE_ART.chest} alt="" />

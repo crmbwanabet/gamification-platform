@@ -136,13 +136,13 @@ function AvatarItemCard({ item, stage, coins, owned, worn, onBuy, onWear }) {
   );
 }
 
-const UNIT = { kwacha: 'coins', emeralds: 'emeralds', rubies: 'rubies', diamonds: 'diamonds' };
-const BUTTON = { kwacha: 'Use coins', emeralds: 'Use emeralds', rubies: 'Use rubies', diamonds: 'Use diamonds' };
+export const UNIT = { kwacha: 'coins', emeralds: 'emeralds', rubies: 'rubies', diamonds: 'diamonds' };
+export const BUTTON = { kwacha: 'Use coins', emeralds: 'Use emeralds', rubies: 'Use rubies', diamonds: 'Use diamonds' };
 /** A one-currency price -> [key, amount] ('kwacha' = coins). */
-const onePrice = (price) => Object.entries(cleanReward(price))[0] || ['kwacha', 0];
+export const onePrice = (price) => Object.entries(cleanReward(price))[0] || ['kwacha', 0];
 
 /** One price option of a prize: two taps ("Convert" / "Use emeralds", then "Confirm?"), or "N more emeralds" when short. */
-function PrizeBuyButton({ item, label, balances, busy, onBuy }) {
+export function PrizeBuyButton({ item, label, balances, busy, onBuy, className = 'st-pack-act' }) {
   const [armed, setArmed] = React.useState(false);
   React.useEffect(() => {
     if (!armed) return undefined;
@@ -152,7 +152,7 @@ function PrizeBuyButton({ item, label, balances, busy, onBuy }) {
   const [k, v] = onePrice(item.price);
   const short = Math.max(0, v - (balances[k] || 0));
   if (short > 0 && !busy) {
-    return <div className="bb-lock st-pack-act st-pack-lock" aria-label={`${amountText(short, k === 'kwacha' ? 'coins' : k)} more needed`}>{formatNumber(short)} more {UNIT[k]}</div>;
+    return <div className={`bb-lock ${className} st-pack-lock`} aria-label={`${amountText(short, k === 'kwacha' ? 'coins' : k)} more needed`}>{formatNumber(short)} more {UNIT[k]}</div>;
   }
   const onClick = (e) => {
     if (busy) return;
@@ -161,7 +161,7 @@ function PrizeBuyButton({ item, label, balances, busy, onBuy }) {
     if (onBuy) onBuy(item, e?.currentTarget);
   };
   return (
-    <button type="button" onClick={onClick} disabled={busy} className={`bb-buy st-pack-act${armed ? ' bb-armed' : ''}`}
+    <button type="button" onClick={onClick} disabled={busy} className={`bb-buy ${className}${armed ? ' bb-armed' : ''}`}
       aria-label={armed ? `Confirm: buy the ${item.name} for ${formatNumber(v)} ${UNIT[k]}` : `Buy the ${item.name} for ${formatNumber(v)} ${UNIT[k]}`}>
       {busy ? 'Sending…' : armed ? 'Confirm?' : label}
     </button>

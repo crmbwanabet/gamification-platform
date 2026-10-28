@@ -89,7 +89,7 @@ export default function Overview({ wallet = null, xp = 1200, activeTab = 'home',
   const gameList = games || MINIGAMES;
   // Gem redemptions are ignored (as in the Store tab), so they don't count
   const catalog = splitCatalog(items);
-  const hasStore = catalog.coinPacks.length + catalog.items.length > 0;
+  const hasStore = catalog.coinPacks.length + catalog.items.length + catalog.prizes.length > 0;
   React.useEffect(() => {
     if (!focusGames) return;
     const el = typeof document !== 'undefined' && document.getElementById('home-games');
@@ -105,7 +105,7 @@ export default function Overview({ wallet = null, xp = 1200, activeTab = 'home',
         </div>
 
         {hasStore && (
-          <HomeStore className="ov-store" storeItems={items} wallet={wallet} onBuy={onBuy} busyId={busyId} onSeeAll={() => go('store')} locked={storeLockReason(getLevel(xp).level, wallet?.store)} xp={xp} />
+          <HomeStore className="ov-store" storeItems={items} wallet={wallet} onBuy={onBuy} busyId={busyId} onSeeAll={() => go('store')} locked={storeLockReason(getLevel(xp).level, wallet?.store)} xp={xp} uid={userId} />
         )}
 
         {season && (
