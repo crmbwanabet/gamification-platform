@@ -25,6 +25,10 @@
     {
       "path": "/api/cron/cashback",
       "schedule": "2-52/10 * * * *"
+    },
+    {
+      "path": "/api/cron/ops-rollup",
+      "schedule": "4-54/10 * * * *"
     }
   ]
 }
