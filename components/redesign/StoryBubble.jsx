@@ -8,6 +8,7 @@ import { COIN_ICON } from '../games/candy/tokens';
 import { amountText } from '@/lib/rewardText.mjs';
 import XpStar from './XpStar';
 import { storyFor } from '@/lib/vuma/stories.mjs';
+import { howToNext } from '@/lib/xp/levelUpInfo.mjs';
 
 // "My story" comic speech bubbles anchored under the header avatar.
 // mode 'hint' = the small "My story" bubble (tap to open); 'open' = the big
@@ -17,7 +18,7 @@ import { storyFor } from '@/lib/vuma/stories.mjs';
 // header was dropped, those live on the profile-modal chip). Since
 // 2026-10-24 the middle part is the CURRENT sub-level's story
 // (lib/vuma/stories.mjs: "Level 1.3 · Last Goal Wins", "You did it" and
-// "What comes next", 2026-10-27).
+// "What comes next", 2026-10-27; "How" + "Earn XP by", 2026-10-28).
 
 const B = ({ children }) => <b style={{ fontWeight: 900, color: INK_TEXT }}>{children}</b>;
 const INK_TEXT = '#2A1446';
@@ -25,6 +26,7 @@ const INK_TEXT = '#2A1446';
 function StoryBody({ level, subId }) {
   const [stage, sub] = String(subId || `${level?.level || 1}.1`).split('.').map(Number);
   const st = storyFor(stage, sub);
+  const how = st && howToNext(st.id);
   return (
     <>
       <p>The game of football is your passion.</p>
@@ -33,6 +35,8 @@ function StoryBody({ level, subId }) {
         <h3 style={H3}>Level {stage}.{sub}: {st.title}</h3>
         <p>{st.won}</p>
         <p><B>What comes next:</B> {st.next}</p>
+        {how && <p><B>How:</B> {how.how}</p>}
+        {how && <p><B>Earn XP by:</B> {how.earn}</p>}
       </>)}
       <h3 style={H3}>To progress</h3>
       <p>Earn <B>XP points</B> from <B>EVERY</B> casino or sport bet.</p>

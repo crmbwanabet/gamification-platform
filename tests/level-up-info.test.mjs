@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { xpSnapshot, levelUpReasons, missionsSince, pickNextMission, platformXpToday, cleanSnap } from '../lib/xp/levelUpInfo.mjs';
+import { xpSnapshot, levelUpReasons, missionsSince, pickNextMission, platformXpToday, cleanSnap, howToNext } from '../lib/xp/levelUpInfo.mjs';
+import { STORIES } from '../lib/vuma/stories.mjs';
 
 const row = (day, o) => ({ day, deposits_amount: 0, deposits_count: 0, withdrawals_amount: 0, casino_stake: 0, casino_rounds: 0, sports_stake: 0, sports_slips: 0, ...o });
 
@@ -67,4 +68,16 @@ test('next mission when Bonus Center XP is full: only bwanabet missions', () => 
 test('platform XP today', () => {
   assert.equal(platformXpToday({ day: 'd', daily: 20, games: 30, missions: 10, casino: 5 }, 'd'), 65);
   assert.equal(platformXpToday({ day: 'old', games: 30 }, 'd'), 0);
+});
+
+test('every story has a "How" line with one {xp}; howToNext fills the XP to the next level', () => {
+  for (const st of STORIES) assert.equal((st.how || '').split('{xp}').length, 2, st.id);
+  const h = howToNext('1.1');
+  assert.deepEqual([h.xp, h.slotK, h.sportsK], [40, 400, 160]); // 1.2 opens at 40 XP; K10 / K4 per XP
+  assert.match(h.how, /gaining 40 XP/);
+  assert.equal(h.earn, 'Complete missions, collect your daily reward, play 400 slot rounds (K400 in all), or bet K160 on sports.');
+  assert.equal(howToNext('2.1').xp, 60);
+  assert.match(howToNext('23.4').how, /5,400 XP/);
+  assert.equal(howToNext('23.5'), null); // the last level
+  assert.equal(howToNext('nope'), null);
 });

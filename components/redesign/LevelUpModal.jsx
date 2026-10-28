@@ -7,6 +7,7 @@ import { cleanReward } from '@/lib/economy/currency.mjs';
 import { amountText } from '@/lib/rewardText.mjs';
 import { XP_STAR_SRC } from './XpStar';
 import { HERO_DEFAULT } from '@/lib/profile/name.mjs';
+import { howToNext } from '@/lib/xp/levelUpInfo.mjs';
 
 // Level-up pop-up (owner 2026-10-27, design artifact Q6mu2Y4F1YZXdgCRmPsdhg
 // v5): every new SUB-LEVEL opens it. Top to bottom:
@@ -62,6 +63,7 @@ function Reasons({ rows, title = 'Why you levelled up' }) {
 
 function Story({ st, open = false }) {
   if (!st) return null;
+  const how = howToNext(st.id);
   return (
     <details className="lu-tale" open={open || undefined}>
       <summary>
@@ -74,6 +76,10 @@ function Story({ st, open = false }) {
           <div className="k">What comes next</div><p>{st.next}</p>
           <div className="lu-facts">{st.when ? <span className="time">{st.when}</span> : null}<span>Finish 3 missions</span></div>
         </div>
+        {how && (<>
+          <div className="lu-part how"><div className="k">How</div><p>{how.how}</p></div>
+          <div className="lu-part earn"><div className="k">Earn XP by</div><p>{how.earn}</p></div>
+        </>)}
       </div>
     </details>
   );
@@ -107,6 +113,14 @@ export default function LevelUpModal({ levelUp, onClose, onGo, onRename, hero = 
     mq.addEventListener('change', on);
     return () => mq.removeEventListener('change', on);
   }, []);
+  // The story opens by itself on desktop only when it fits: with "How" and
+  // "Earn XP by" it can push Close below the fold, so it shuts again then.
+  const mainRef = React.useRef(null);
+  React.useLayoutEffect(() => {
+    const m = mainRef.current;
+    const t = m && m.querySelector('details.lu-tale');
+    if (wide && t && t.open && m.scrollHeight > m.clientHeight + 1) t.open = false;
+  }, [levelUp, wide, tall]);
   if (!levelUp) return null;
   const r = cleanReward(levelUp.reward);
   const full = levelUp.kind === 'xpFull';
@@ -127,7 +141,7 @@ export default function LevelUpModal({ levelUp, onClose, onGo, onRename, hero = 
             {r.kwacha > 0 && <span className="lu-prize"><img src={COIN_ICON} alt="" width={28} height={28} />+{amountText(r.kwacha, 'coins')}</span>}
           </div>
           </div>
-          <div className="lu-main">
+          <div className="lu-main" ref={mainRef}>
           {full ? (
             <div className="lu-box lu-full">
               <div className="lu-hd">Today</div>
@@ -198,6 +212,9 @@ const LU_CSS = `
 .lu-part .k { font-size: 12px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; }
 .lu-part.won .k { color: #7ff0a6; }
 .lu-part.why .k { color: #7fd8ff; }
+.lu-part.how .k { color: #c9a8ff; }
+.lu-part.earn .k { color: #ffc83d; }
+.lu-part.earn p { font-size: 14px; color: #e0d5ff; }
 .lu-part p { margin: 0; font-size: 15px; line-height: 1.5; font-weight: 600; }
 .lu-facts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
 .lu-facts span { font-size: 13px; font-weight: 800; border-radius: 999px; padding: 3px 10px; background: rgba(127,216,255,.16); border: 1px solid rgba(127,216,255,.5); color: #7fd8ff; }
