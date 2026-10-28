@@ -42,3 +42,10 @@ object and a soft oval shadow under it. No text, no letters, no logos, no waterm
 | tv | A 50-inch flat-screen TV on two slim feet, the screen showing a green football pitch match from above with a small scoreboard bar on the top-left (no readable text); a red-and-gold award ribbon rosette on the top-right corner with a blank centre. |
 | scooter | A black electric kick scooter with yellow accents, a yellow lightning bolt on the stem, a glowing white headlight beam and small wheels, side view slightly turned. |
 | car | A small red 5-door hatchback city car (compact Japanese hatchback shape), shiny, with a big gold ribbon and bow tied over the roof like a gift. No badges or number plate text. |
+
+## Clothing with the mascot logo (2026-10-28, live)
+
+The owner's logo (mascot + BWANABET wordmark) is `docs/store/bwanabet-mascot-logo.jpg`. Grok draws the clothing
+PLAIN (prompt: "... completely plain black front/chest with nothing on it", no text/logos/prints), then Claude cuts
+the logo from its purple background and composites it onto the fabric, shaded by the fabric's lighting (hoodie:
+the print sits over the drawstrings so they never cross the mascot's face).
