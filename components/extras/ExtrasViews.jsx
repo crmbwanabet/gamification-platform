@@ -355,7 +355,7 @@ export function CashbackModal({ cashback }) {
             {cashback.awards.map(a => (
               <div key={a.window} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: 13, fontWeight: 800, background: 'rgba(255,255,255,.07)', borderRadius: 10, padding: '7px 10px' }}>
                 <span style={{ color: C.sub }}>{windowLabel(a.window)}</span>
-                <span>Lost {kw(a.loss)} · <span style={{ color: CANDY.gold }}>{kw(a.cashbackKwacha)} back</span></span>
+                <span style={{ color: CANDY.gold }}>{kw(a.cashbackKwacha)} back</span>
               </div>
             ))}
           </div>

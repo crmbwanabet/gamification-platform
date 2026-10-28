@@ -16,13 +16,13 @@ export const dynamic = 'force-dynamic';
 // at economy.gemValues, worked out here and stored as coins_paid.
 
 const json = (body, status = 200) => NextResponse.json(body, { status, headers: { 'Cache-Control': 'no-store' } });
-const COLS = 'window_day,net_loss,cashback_kwacha,value_coins,emeralds,rubies,diamonds';
+const COLS = 'window_day,cashback_kwacha,value_coins,emeralds,rubies,diamonds';
 const view = (r) => ({
-  window: r.window_day, loss: Number(r.net_loss), cashbackKwacha: Number(r.cashback_kwacha), valueCoins: Number(r.value_coins),
+  window: r.window_day, cashbackKwacha: Number(r.cashback_kwacha), valueCoins: Number(r.value_coins),
   emeralds: r.emeralds, rubies: r.rubies, diamonds: r.diamonds,
 });
 
-// GET /api/cashback -> { awards: [{ window, loss, cashbackKwacha, valueCoins, emeralds, rubies, diamonds }] } (oldest first)
+// GET /api/cashback -> { awards: [{ window, cashbackKwacha, valueCoins, emeralds, rubies, diamonds }] } (oldest first)
 export async function GET(req) {
   const uid = authedUid(bearer(req));
   if (!uid) return json({ error: 'not_logged_in' }, 401);

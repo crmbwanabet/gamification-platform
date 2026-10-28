@@ -144,7 +144,7 @@ export function useExtras({ session, loggedIn, hydrated, tab, user, setUser, sea
   // net loss on bwanabet, awarded by the cron; collected here, one pop-up per
   // open listing every uncollected window. The server flips collected_at once,
   // and only then are the gems credited.
-  const [cashback, setCashback] = useState(null); // [{ window, loss, cashbackKwacha, emeralds, rubies, diamonds }]
+  const [cashback, setCashback] = useState(null); // [{ window, cashbackKwacha, valueCoins, emeralds, rubies, diamonds }] (never the loss: owner 2026-10-28)
   const cbCheckedRef = useRef(false);
   useEffect(() => {
     if (!loggedIn || !hydrated || cbCheckedRef.current) return;
