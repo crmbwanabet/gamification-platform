@@ -116,6 +116,14 @@
     '.x100w-close:active{transform:scale(.94);}',
     '.x100w-close:focus-visible{outline:3px solid #FEF200;outline-offset:2px;}',
     '.x100w-frame{position:absolute;top:var(--x100w-bar);left:0;width:100%;height:calc(100% - var(--x100w-bar));border:0;background:#191b27;}',
+    // shop terminals (2026-10-28): the terminal app pins a Back pill top-left
+    // and a Log out pill top-right above everything, and the Log out pill
+    // covered the red X (a tap on X logged the player out). Leave a gap on
+    // both sides, 8% of the screen, so the pills sit outside the popup.
+    // 110px is the least that clears both pills.
+    '.x100w-overlay.x100w-kiosk{--x100w-side:clamp(110px,8vw,260px);}',
+    '.x100w-kiosk .x100w-bar{left:var(--x100w-side);right:var(--x100w-side);}',
+    '.x100w-kiosk .x100w-frame{left:var(--x100w-side);width:calc(100% - 2 * var(--x100w-side));}',
     // wheel icon (today's spin is open): the wheel's own gift box + its gold pulse
     '.x100w-launcher.x100w-wheel{background:rgba(250,204,21,.15);border:2px solid rgba(250,204,21,.55);',
     '-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);animation:x100w-pulse 2s ease-in-out infinite;}',
@@ -301,6 +309,8 @@
   /* ---------- full-screen popup ---------- */
   var overlay = document.createElement('div');
   overlay.className = 'x100w-overlay';
+  // only the BwanaBet shop-terminal app sends BwanaBetDesktop in its user agent
+  if (/BwanaBetDesktop\//.test(navigator.userAgent || '')) overlay.className += ' x100w-kiosk';
   overlay.setAttribute('role', 'dialog');
   overlay.setAttribute('aria-label', 'BwanaBet Bonus Center');
   var bar = document.createElement('div');
