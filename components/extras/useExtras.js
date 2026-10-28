@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { albumCards, albumSets, earnedCount } from '@/lib/album/cards.mjs';
 import { WORLD_CUP_OPEN } from '@/lib/season/config.mjs';
 import { track, flushTrack } from '@/lib/track';
+import { awardCoins } from '@/lib/cashback/rules.mjs';
 
 // The 2026-10-19 extras in one place, so GamificationPlatform only wires it:
 // bet-slip missions, souvenir album, match-day predictions, the weekly
@@ -14,7 +15,7 @@ import { track, flushTrack } from '@/lib/track';
 // Server-checked claims (predictions, leaderboard, comeback, cashback) call the API
 // first and credit only after an ok; the client-side ones (album sets) are checked against the CRM rows / derived cards here.
 
-export function useExtras({ session, loggedIn, hydrated, tab, user, setUser, seasonRows, today, stage, league, worldCup, hustle, credit, showNotif, blocked }) {
+export function useExtras({ session, loggedIn, hydrated, tab, user, setUser, seasonRows, today, stage, league, worldCup, hustle, credit, showNotif, blocked, economy }) {
   const api = session.api;
 
   const busy = useRef(new Set());
@@ -157,26 +158,29 @@ export function useExtras({ session, loggedIn, hydrated, tab, user, setUser, sea
       }
     })();
   }, [loggedIn, hydrated, api]);
-  const collectCashback = async (el) => {
+  // take = 'gems' | 'coins' (owner 2026-10-28): coins = what the gems are worth,
+  // worked out by the server (the client credits what it returns).
+  const collectCashback = async (el, take = 'gems') => {
     if (busy.current.has('cashback') || !cashback) return;
     busy.current.add('cashback');
-    const total = { emeralds: 0, rubies: 0, diamonds: 0 };
+    const total = { coins: 0, emeralds: 0, rubies: 0, diamonds: 0 };
     let failed = false;
     for (const a of cashback) {
-      const { status, data } = await api('/api/cashback', { window: a.window });
+      const { status, data } = await api('/api/cashback', { window: a.window, take });
       if (status === 200 && data?.ok) {
-        for (const k of Object.keys(total)) total[k] += data.award[k] || 0;
-        track('cashback_collected', { meta: { window: a.window, emeralds: data.award.emeralds, rubies: data.award.rubies, diamonds: data.award.diamonds, valueCoins: data.award.valueCoins } });
+        if (data.take === 'coins') total.coins += Number(data.coins) || 0;
+        else for (const k of ['emeralds', 'rubies', 'diamonds']) total[k] += data.award[k] || 0;
+        track('cashback_collected', { meta: { window: a.window, take: data.take || 'gems', coins: data.coins || 0, emeralds: data.award.emeralds, rubies: data.award.rubies, diamonds: data.award.diamonds, valueCoins: data.award.valueCoins } });
       } else if (data?.error !== 'already_collected') failed = true;
     }
     setCashback(null);
     busy.current.delete('cashback');
-    if (total.emeralds + total.rubies + total.diamonds > 0) { flushTrack(); credit(total, el, '💎 Cashback collected!'); }
+    if (total.coins + total.emeralds + total.rubies + total.diamonds > 0) { flushTrack(); credit(total, el, take === 'coins' ? '🪙 Cashback collected!' : '💎 Cashback collected!'); }
     if (failed) showNotif('Some cashback could not be collected — it will wait for your next visit', 'error');
   };
 
   return {
-    cashback: cashback && !blocked ? { awards: cashback, onCollect: collectCashback, onClose: () => setCashback(null) } : null, // Later = next open
+    cashback: cashback && !blocked ? { awards: cashback, coins: cashback.reduce((s, a) => s + awardCoins(a, economy), 0), onCollect: collectCashback, onClose: () => setCashback(null) } : null, // Later = next open
     cashbackPending: !!cashback,
     album: { cards, sets, have, total: cards.length, onClaimSet: claimSet },
     predictions: { ...pred, busyId: pickBusy, onPick: makePick, onClaim: claimPrediction, loggedIn },

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { CASHBACK_RATE, windowAt, windowFor, lastFinishedWindow, nextWindowDay, cashbackAward, paysGems } from '../lib/cashback/rules.mjs';
+import { CASHBACK_RATE, windowAt, windowFor, lastFinishedWindow, nextWindowDay, cashbackAward, paysGems, awardCoins, CASHBACK_TAKES } from '../lib/cashback/rules.mjs';
 import { mapCashbackRow, runCashback, cleanState } from '../lib/cashback/crmCashback.mjs';
 
 const ECO = { coinsPerKwacha: 10000, gemValues: { emerald: 200000, ruby: 500000, diamond: 1000000 } };
@@ -169,4 +169,13 @@ test('job: the ledger records small losses and wins too', async () => {
   assert.equal(out.awarded, 0);
   assert.deepEqual([...db.daily.values()].map(r => [r.user_id, r.status, r.net_loss, r.cashback_kwacha]),
     [['1', 'below_minimum', 100, 5], ['2', 'no_loss', 0, 0]]);
+});
+
+test('cashback taken as coins = what the gems are worth', () => {
+  assert.deepEqual(CASHBACK_TAKES, ['gems', 'coins']);
+  assert.equal(awardCoins({ diamonds: 1, rubies: 1, emeralds: 2 }, ECO), 1900000);
+  assert.equal(awardCoins(cashbackAward(200, ECO), ECO), 200000); // K10 back = 1 emerald = 200,000 coins
+  assert.equal(awardCoins({ emeralds: 1 }, { gemValues: { emerald: 50000 } }), 50000);
+  assert.equal(awardCoins({ emeralds: -3, rubies: 1.5 }, ECO), 0);
+  assert.equal(awardCoins(null, ECO), 0);
 });

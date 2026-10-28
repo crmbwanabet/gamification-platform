@@ -331,7 +331,8 @@ export function ComebackModal({ comeback }) {
 
 // ---------------------------------------------------------------------------
 // Daily gem cashback pop-up (owner 2026-10-23): 5% of each day's (UTC day) net
-// loss, paid in gems; one pop-up lists every window not collected yet.
+// loss, paid in gems; one pop-up lists every window not collected yet. Since
+// 2026-10-28 the player takes it as the gems OR as coins worth the same.
 // ---------------------------------------------------------------------------
 const kw = (n) => `K${Number(n).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
 const windowLabel = (day) => {
@@ -349,7 +350,7 @@ export function CashbackModal({ cashback }) {
       <div onClick={(e) => e.stopPropagation()} style={{ ...goldRim, width: '100%', maxWidth: 380, padding: 6, borderRadius: 26 }}>
         <div style={{ borderRadius: 20, background: innerGlow, padding: '24px 18px 18px', textAlign: 'center', display: 'grid', gap: 12 }}>
           <h2 style={{ ...goldTitle(30), textAlign: 'center', margin: 0 }}>Your cashback</h2>
-          <div style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.4 }}>5% back on what you lost on bwanabet, paid in gems every morning at 06:00.</div>
+          <div style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.4 }}>5% back on what you lost on bwanabet, every morning at 06:00. Take it as gems or as coins.</div>
           <div style={{ display: 'grid', gap: 6 }}>
             {cashback.awards.map(a => (
               <div key={a.window} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: 13, fontWeight: 800, background: 'rgba(255,255,255,.07)', borderRadius: 10, padding: '7px 10px' }}>
@@ -365,7 +366,15 @@ export function CashbackModal({ cashback }) {
               </span>
             ))}
           </div>
-          <GreenBtn full onClick={(e) => cashback.onCollect(e.currentTarget)}>Collect</GreenBtn>
+          <GreenBtn full onClick={(e) => cashback.onCollect(e.currentTarget, 'gems')}>Take the gems</GreenBtn>
+          {cashback.coins > 0 && (
+            <>
+              <div style={{ fontSize: 12, fontWeight: 800, color: C.sub, textTransform: 'uppercase', letterSpacing: '.06em' }}>or</div>
+              <GreenBtn full color="violet" onClick={(e) => cashback.onCollect(e.currentTarget, 'coins')}>
+                <RewardIcon kind="coins" size={24} />Take {amountText(cashback.coins, 'coins')}
+              </GreenBtn>
+            </>
+          )}
           <button type="button" onClick={cashback.onClose} style={{ all: 'unset', cursor: 'pointer', fontSize: 13, fontWeight: 800, color: C.sub, minHeight: 36 }}>Later</button>
         </div>
       </div>

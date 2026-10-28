@@ -1933,7 +1933,7 @@ export default function GamificationPlatform() {
   const extras = useExtras({
     session, loggedIn, hydrated: hydratedRef.current, tab, user, setUser, seasonRows: seasonFeed.rows, today,
     // souvenir cards stay earned for every level ever reached (paid marker)
-    stage: Math.max(level.level, Number(user.stageRewarded) || 1), league, worldCup, hustle, credit: creditExtra, showNotif,
+    stage: Math.max(level.level, Number(user.stageRewarded) || 1), league, worldCup, hustle, credit: creditExtra, showNotif, economy: cfg.economy,
     blocked: !popupsOk || anyModalOpen || wheel.isOpen || welcomePending || (dailyPopup !== 'done' && canClaimDaily && !user.dailyClaimed),
   });
 
@@ -2545,11 +2545,37 @@ export default function GamificationPlatform() {
       setGemBusy(null);
     }
   };
+  // Coins -> gems, one gem per tap (wallet sheet; 125% of its coin value,
+  // owner 2026-10-28: a diamond worth 1,000,000 coins costs 1,250,000). Same
+  // server-first flow as convertGem (buy_gems moves the server balance).
+  const buyGem = async (gem) => {
+    if (session.status !== 'ready') { showNotif('Log in on bwanabet.com to buy gems', 'error'); return; }
+    if (gemBusy) return;
+    setGemBusy(`buy:${gem}`);
+    try {
+      const { data: d } = await session.api('/api/gems/buy', { gem, count: 1 });
+      if (!d || !d.ok) {
+        showNotif(d && d.error === 'insufficient_funds' ? 'Not enough coins (or your balance is still syncing — try again in a moment).'
+          : d && d.error === 'slow_down' ? 'Too many attempts — wait a minute.'
+          : d && d.error === 'buy_locked' ? 'Buying gems is coming soon.'
+          : 'Could not buy — try again.', 'error');
+        return;
+      }
+      addCurrencies({ kwacha: d.coins }, -1);
+      addCurrencies({ [gem]: d.count });
+      track('gem_bought', { amount: d.coins, meta: { gem, count: d.count } });
+      showNotif(`+${amountText(d.count, gem)} added to your wallet`);
+    } catch (e) {
+      showNotif('Could not buy — try again.', 'error');
+    } finally {
+      setGemBusy(null);
+    }
+  };
   const v2Stats = {
     points: user.kwacha,
     // header wallet pill + wallet sheet + Store affordability
     wallet: { kwacha: user.kwacha, emeralds: user.emeralds || 0, rubies: user.rubies || 0, diamonds: user.diamonds || 0, economy: cfg.economy, store: cfg.store,
-      prizes: cfg.prizes, uid: playerId, onConvertGem: convertGem, gemBusy },
+      prizes: cfg.prizes, uid: playerId, onConvertGem: convertGem, onBuyGem: buyGem, gemBusy },
     missionsCount: openMissionsCount,
     badges: user.missionsComplete.length,
     xp: lvXp, // level XP (the total stays user.xp)
