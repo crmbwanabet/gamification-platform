@@ -30,7 +30,7 @@ export const BB_CSS = `
   .bb-shoplock { position: absolute; z-index: 5; left: 50%; top: 50%; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; gap: 4px;
     padding: 16px 22px; border-radius: 20px; text-align: center; background: rgba(20,6,44,.92); border: 2.5px solid #FFD21F;
     box-shadow: 0 0 0 2px #2A0A4F, 0 14px 34px rgba(0,0,0,.55); color: #fff; white-space: nowrap; }
-  .bb-shoplock img, .bb-shoplock svg.bb-padlock { width: 56px; height: 56px; display: block; }
+  .bb-shoplock img { width: 56px; height: 56px; display: block; }
   .bb-shoplock b { font-family: ${CANDY.display}; font-weight: 400; font-size: 22px; line-height: 1.05; color: #FFD21F; text-transform: uppercase; text-shadow: 0 2px 0 #2A0A4F; }
   .bb-shoplock span { font-size: 13px; font-weight: 800; color: #E4D8F7; }
   .bb-shoplock--high { top: 120px; transform: translateX(-50%); }
@@ -106,35 +106,6 @@ export const goalText = (goal, long = false) => (goal
   ? (long ? `${formatNumber(goal.short)} more for the ${formatKwacha(goal.pack.payoutKwacha)} pack` : `${formatNumber(goal.short)} to ${formatKwacha(goal.pack.payoutKwacha)}`)
   : 'You can buy every pack');
 
-/** Detailed brass padlock (gold body, shaded steel shackle, keyhole). 56x56 like the old PNG. */
-export function PadlockIcon({ size = 56 }) {
-  return (
-    <svg className="bb-padlock" width={size} height={size} viewBox="0 0 56 56" aria-hidden="true" focusable="false">
-      <defs>
-        <linearGradient id="bbpl-body" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#FFF35A" /><stop offset=".45" stopColor="#FEF200" /><stop offset="1" stopColor="#C98A00" />
-        </linearGradient>
-        <linearGradient id="bbpl-shackle" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0" stopColor="#6E7683" /><stop offset=".35" stopColor="#E9EDF3" /><stop offset=".7" stopColor="#A9B1BD" /><stop offset="1" stopColor="#5B6370" />
-        </linearGradient>
-        <radialGradient id="bbpl-shadow" cx=".5" cy=".5" r=".5"><stop offset="0" stopColor="#000" stopOpacity=".45" /><stop offset="1" stopColor="#000" stopOpacity="0" /></radialGradient>
-      </defs>
-      <ellipse cx="28" cy="52" rx="19" ry="3" fill="url(#bbpl-shadow)" />
-      <path d="M16 26V17a12 12 0 0 1 24 0v9" fill="none" stroke="#3B4150" strokeWidth="7.5" strokeLinecap="round" />
-      <path d="M16 26V17a12 12 0 0 1 24 0v9" fill="none" stroke="url(#bbpl-shackle)" strokeWidth="5" strokeLinecap="round" />
-      <path d="M19.5 24v-7a8.5 8.5 0 0 1 4-7" fill="none" stroke="#fff" strokeOpacity=".7" strokeWidth="1.2" strokeLinecap="round" />
-      <rect x="7" y="24" width="42" height="26" rx="6" fill="#8A5A00" />
-      <rect x="7" y="23" width="42" height="26" rx="6" fill="url(#bbpl-body)" stroke="#9A6700" strokeWidth="1.5" />
-      <rect x="9.5" y="25.5" width="37" height="21" rx="4" fill="none" stroke="#fff" strokeOpacity=".55" strokeWidth="1.2" />
-      <path d="M10 27h36" stroke="#fff" strokeOpacity=".5" strokeWidth="2" strokeLinecap="round" />
-      <circle cx="11.5" cy="28" r="1.2" fill="#9A6700" /><circle cx="44.5" cy="28" r="1.2" fill="#9A6700" />
-      <circle cx="28" cy="34.5" r="4.2" fill="#3A2400" />
-      <path d="M26.2 36l-1.4 7.5h6.4L29.8 36z" fill="#3A2400" />
-      <circle cx="26.8" cy="33.4" r="1" fill="#fff" fillOpacity=".25" />
-    </svg>
-  );
-}
-
 /**
  * Coin Shop lock (level 10, lib/store/catalog.mjs): the plate laid over the
  * greyed shop on Home and in the Store tab. `xp` = the player's XP;
@@ -145,7 +116,7 @@ export function ShopLockPlate({ xp = 0, reason = 'stage', className = '' }) {
   if (reason === 'soon') {
     return (
       <div className={`bb-shoplock ${className}`} role="note" data-shop-locked="soon">
-        <PadlockIcon />
+        <img src="/ui/reward/lock.png" alt="" width={56} height={56} />
         <b>Coming soon</b>
         <span>Keep collecting coins</span>
       </div>
@@ -153,7 +124,7 @@ export function ShopLockPlate({ xp = 0, reason = 'stage', className = '' }) {
   }
   return (
     <div className={`bb-shoplock ${className}`} role="note" data-shop-locked>
-      <PadlockIcon />
+      <img src="/ui/reward/lock.png" alt="" width={56} height={56} />
       <b>Opens at level {STORE_UNLOCK_STAGE}</b>
       <span>{left > 0 ? `${formatNumber(left)} XP to go` : 'Almost there'}</span>
     </div>
