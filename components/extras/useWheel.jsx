@@ -3,6 +3,7 @@
 import React from 'react';
 import { CANDY, C } from '../redesign/tokens';
 import { Card } from '../redesign/RedesignShell';
+import { wheelReopenAction } from '../../lib/wheel/reopen.mjs';
 
 // Wheel of Fortune INSIDE the Bonus Center (2026-10-19). The wheel stays its
 // own app (wheel-of-fortune repo: prizes, daily limit, kill switch, Telegram
@@ -49,6 +50,10 @@ export function useWheel({ enabled, getToken, autoOpen = false, preview = false,
   const tokenRef = React.useRef(null);
   const autoDoneRef = React.useRef(false);
   const spunRef = React.useRef(false); // the wheel can report one spin twice
+  // The wheel closed ITSELF (its X / GOT IT / claim) since the frame loaded: it may
+  // now render nothing until woken, see lib/wheel/reopen.mjs.
+  const selfClosedRef = React.useRef(false);
+  const [reloadN, setReloadN] = React.useState(0);
   const evRef = React.useRef(onEvent);
   evRef.current = onEvent;
   const emit = (name) => { try { evRef.current && evRef.current(name); } catch { /* ignore */ } };
@@ -87,7 +92,7 @@ export function useWheel({ enabled, getToken, autoOpen = false, preview = false,
           setOpen(true);
           emit('auto_open');
         }
-      } else if (t === 'bwanabet-wheel-close') setOpen(false);
+      } else if (t === 'bwanabet-wheel-close') { selfClosedRef.current = true; setOpen(false); }
       else if (t === 'bwanabet-wheel-spun') { if (!spunRef.current) { spunRef.current = true; emit('spun'); } setTimeout(() => setAvailable(false), 2000); }
     };
     window.addEventListener('message', onMsg);
@@ -103,14 +108,25 @@ export function useWheel({ enabled, getToken, autoOpen = false, preview = false,
     return () => clearTimeout(t);
   }, [on, checked, frameKey]);
 
+  const onFrameLoad = React.useCallback(() => { selfClosedRef.current = false; sendAuth(); }, [sendAuth]);
+
+  // Every open wakes the wheel first, or the full-screen transparent frame can
+  // sit empty over the page and eat every click (bug 2026-10-29).
+  const reopen = React.useCallback(() => {
+    const action = wheelReopenAction({ hasToken: !!tokenRef.current, closedSinceLoad: selfClosedRef.current });
+    if (action === 'auth') sendAuth();
+    else if (action === 'reload') { selfClosedRef.current = false; setReloadN((n) => n + 1); }
+    setOpen(true);
+  }, [sendAuth, setOpen]);
+
   const layer = on && (token || preview) && WHEEL_ORIGIN ? (
     <div className={`wh-ov${isOpen ? ' open' : ''}`} data-wheel-overlay onClick={(e) => { if (e.target === e.currentTarget) setOpen(false); }}>
       <style dangerouslySetInnerHTML={{ __html: CSS }} />
-      <iframe key={frameKey} ref={frameRef} src={src} title="Wheel of Fortune" allow="autoplay" onLoad={sendAuth} />
+      <iframe key={`${frameKey}:${reloadN}`} ref={frameRef} src={src} title="Wheel of Fortune" allow="autoplay" onLoad={onFrameLoad} />
     </div>
   ) : null;
 
-  return { available: on && available, isOpen, settled: !on || !(token || preview) || !WHEEL_ORIGIN || checked, open: () => setOpen(true), layer };
+  return { available: on && available, isOpen, settled: !on || !(token || preview) || !WHEEL_ORIGIN || checked, open: reopen, layer };
 }
 
 /** Home card: shown only while today's free spin is available. */
