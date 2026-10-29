@@ -56,3 +56,11 @@ test('audit chain: intact, then tampered', () => {
   rows[1] = { ...rows[1], actor: 'someone else' };
   assert.equal(verifyChain(rows).brokenAt, 2);
 });
+
+test('ops console page: dates are dd-mm-yyyy in both languages, no leftover dd.mm / "Oct" strings', async () => {
+  const { readFileSync } = await import('node:fs');
+  const html = readFileSync(new URL('../public/ops/index.html', import.meta.url), 'utf8');
+  assert.ok(!/function dsep/.test(html), 'one shared formatter, no per-language separator');
+  assert.ok(!/\b\d{1,2} (Oct|Nov|Sep)\w* 20\d\d/.test(html), 'no written-out dates in strings');
+  assert.match(html, /placeholder="dd-mm-yyyy"/);
+});
