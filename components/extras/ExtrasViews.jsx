@@ -6,6 +6,7 @@ import { C, CANDY, goldRim, innerGlow, goldTitle } from '../redesign/tokens';
 import { Card, SectionTitle, TitleNote, Progress, GreenBtn, Badge, RewardIcon } from '../redesign/RedesignShell';
 import { EarnPrize } from '../redesign/EarnView';
 import { amountText } from '@/lib/rewardText.mjs';
+import { cashbackSplit } from '@/lib/cashback/rules.mjs';
 
 // UI for the 2026-10-19 extras (state + handlers: components/extras/useExtras.js).
 
@@ -330,53 +331,144 @@ export function ComebackModal({ comeback }) {
 }
 
 // ---------------------------------------------------------------------------
-// Daily gem cashback pop-up (owner 2026-10-23): 5% of each day's (UTC day) net
-// loss, paid in gems; one pop-up lists every window not collected yet. Since
-// 2026-10-28 the player takes it as the gems OR as coins worth the same.
+// Daily cashback pop-up "CHOOSE REWARD" (owner 2026-10-29, artifact
+// 1eQwJgWkJBcsSLmmqTTN5u): 5% of each day's (UTC day) net loss, collected for
+// every waiting window at once. Players never see a kwacha amount or a loss,
+// only "rewards" = what the awarded gems are worth in coins. Step 1: Coins
+// (tap = collect) or Gems (tap = step 2); step 2: emeralds / rubies / diamonds,
+// as many as the value buys + the rest in coins (cashbackSplit, worked out
+// again by the server), then Collect. Later = next open; Back = step 1.
 // ---------------------------------------------------------------------------
-const kw = (n) => `K${Number(n).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
-const windowLabel = (day) => {
-  const d = new Date(`${day}T12:00:00Z`);
-  return d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' });
-};
+const CB_GEMS = ['emeralds', 'rubies', 'diamonds'];
+const CB_COLOR = { emeralds: '#3ee08f', rubies: '#ff5d7a', diamonds: '#8fd8ff' };
+const CB_SPARKS = [[8, 12, 0], [88, 8, .6], [4, 52, 1.2], [94, 44, 1.8], [14, 88, .9], [84, 90, 1.5], [50, 2, 2.1], [70, 70, .3], [28, 30, 1.6]];
+const CB_CSS = `
+.cbx { position: fixed; inset: 0; z-index: 310; background: rgba(8,4,20,.8); display: grid; place-items: center; padding: 20px 16px; overflow-y: auto; overflow-x: hidden; font-family: ${CANDY.body}; color: #fff; }
+.cbx-stage { position: relative; display: grid; place-items: center; width: 100%; max-width: 380px; isolation: isolate; }
+.cbx-rays { position: absolute; z-index: -2; width: 760px; height: 760px; top: 50%; left: 50%; margin: -380px 0 0 -380px; border-radius: 50%; pointer-events: none;
+  background: repeating-conic-gradient(from 0deg, rgba(255,214,70,.2) 0deg 9deg, rgba(255,214,70,0) 9deg 22.5deg);
+  -webkit-mask: radial-gradient(circle, #000 18%, transparent 62%); mask: radial-gradient(circle, #000 18%, transparent 62%); animation: cbx-spin 26s linear infinite; }
+.cbx-glow { position: absolute; z-index: -1; width: 420px; height: 420px; max-width: 110vw; border-radius: 50%; pointer-events: none; background: radial-gradient(circle, rgba(255,200,60,.38), rgba(255,200,60,0) 65%); animation: cbx-breathe 3.2s ease-in-out infinite; }
+.cbx-spark { position: absolute; z-index: 3; width: 14px; height: 14px; border-radius: 50%; pointer-events: none; animation: cbx-twinkle 2.4s ease-in-out infinite;
+  background: radial-gradient(circle, #fff 0 18%, transparent 20%), conic-gradient(from 45deg, transparent 0 20deg, #fff6c2 20deg 25deg, transparent 25deg 110deg, #fff6c2 110deg 115deg, transparent 115deg 200deg, #fff6c2 200deg 205deg, transparent 205deg 290deg, #fff6c2 290deg 295deg, transparent 295deg); }
+.cbx-rim { position: relative; width: 100%; padding: 6px; border-radius: 28px; background: linear-gradient(135deg, #fff2a8, #ffd23c 30%, #e09a00 55%, #ffd23c 80%, #fff2a8); background-size: 300% 300%;
+  box-shadow: 0 0 0 3px #3a0d6e, 0 0 34px rgba(255,200,40,.55), 0 18px 40px rgba(0,0,0,.5); animation: cbx-rimflow 4s linear infinite, cbx-pop .5s cubic-bezier(.2,1.4,.4,1) both; }
+.cbx-pop { position: relative; overflow: hidden; border-radius: 22px; background: radial-gradient(90% 70% at 50% 0%, #6a2cc4, #3a137a 55%, #2b0f5e); padding: 18px 14px 14px; display: grid; gap: 12px; text-align: center; }
+.cbx-pop::before { content: ""; position: absolute; inset: 0; background-image: radial-gradient(rgba(255,255,255,.08) 1px, transparent 1.4px); background-size: 14px 14px; pointer-events: none; }
+.cbx-ribbon { position: relative; justify-self: center; padding: 6px 18px 7px; border-radius: 999px; background: linear-gradient(180deg, #ff5a7a, #d81f4f); box-shadow: 0 3px 0 #8a0f30, inset 0 2px 0 rgba(255,255,255,.35); font-weight: 900; font-size: 12px; letter-spacing: .14em; text-transform: uppercase; }
+.cbx-title { position: relative; margin: 0; font-family: ${CANDY.display}; font-weight: 400; font-size: clamp(34px, 9vw, 42px); line-height: .95; text-transform: uppercase;
+  background: linear-gradient(100deg, #ffd23c 0%, #ffd23c 40%, #fffbe0 50%, #ffd23c 60%, #ffd23c 100%); background-size: 250% 100%; -webkit-background-clip: text; background-clip: text; color: transparent;
+  filter: drop-shadow(0 3px 0 #3a0d6e) drop-shadow(0 0 10px rgba(255,210,60,.45)); animation: cbx-shine 2.8s ease-in-out infinite; }
+.cbx-steps { position: relative; display: flex; justify-content: center; gap: 6px; margin-top: -4px; }
+.cbx-steps i { width: 26px; height: 6px; border-radius: 99px; background: rgba(255,255,255,.18); }
+.cbx-steps i.on { background: #ffd23c; box-shadow: 0 0 8px rgba(255,210,60,.7); }
+.cbx-lead { position: relative; margin: 0; font-size: 15px; font-weight: 800; color: rgba(255,255,255,.74); }
+.cbx-tiles { position: relative; display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+.cbx-tiles.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.cbx-tile { position: relative; font: inherit; color: inherit; cursor: pointer; border-radius: 16px; padding: 12px 4px 10px; display: grid; justify-items: center; align-content: start; gap: 3px; min-width: 0;
+  background: rgba(20,4,48,.66); border: 3px solid #4a1d8c; transition: transform .18s cubic-bezier(.2,1.5,.4,1), border-color .15s, box-shadow .15s; animation: cbx-tile-in .45s cubic-bezier(.2,1.4,.4,1) both; }
+.cbx-tile:nth-child(2) { animation-delay: .07s } .cbx-tile:nth-child(3) { animation-delay: .14s }
+.cbx-tile:hover:not(:disabled) { transform: translateY(-2px); }
+.cbx-tile:focus-visible, .cbx-btn:focus-visible, .cbx-later:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+.cbx-tile[aria-pressed="true"] { background: linear-gradient(180deg, #7a34d8, #4a1a9a); border-color: #ffd23c; box-shadow: 0 0 0 2px rgba(255,210,60,.35), 0 0 22px rgba(255,210,60,.6); transform: scale(1.04); }
+.cbx-tile[aria-pressed="true"] img { animation: cbx-bob 1.4s ease-in-out infinite; }
+.cbx-tile[aria-pressed="true"]::after { content: "✓"; position: absolute; top: -9px; right: -9px; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: #ffd23c; color: #3a0d6e; font-weight: 900; font-size: 15px; box-shadow: 0 2px 0 #8a5a00; }
+.cbx-tile:disabled { opacity: .4; cursor: default; filter: grayscale(.5); }
+.cbx-tile img { width: 44px; height: 44px; filter: drop-shadow(0 3px 4px rgba(0,0,0,.4)); }
+.cbx-n { font-family: ${CANDY.display}; font-size: 25px; line-height: 1; font-variant-numeric: tabular-nums; text-shadow: 0 2px 0 rgba(0,0,0,.35); max-width: 100%; overflow-wrap: anywhere; }
+.cbx-tiles.three .cbx-n { font-size: 23px; }
+.cbx-u { font-size: 12px; font-weight: 900; text-transform: uppercase; letter-spacing: .05em; }
+.cbx-r { font-size: 11px; font-weight: 800; color: rgba(255,255,255,.74); min-height: 15px; }
+.cbx-tiles.two .cbx-tile { padding: 18px 6px 12px; border-color: #ffd23c; box-shadow: 0 0 16px rgba(255,210,60,.35); animation: cbx-tile-in .45s cubic-bezier(.2,1.4,.4,1) both, cbx-glowpulse 2s ease-in-out .5s infinite; }
+.cbx-tiles.two .cbx-tile:nth-child(2) { animation-delay: .07s, 1.5s; }
+.cbx-tiles.two .cbx-tile:active { transform: scale(.96); }
+.cbx-tiles.two .cbx-tile:disabled { opacity: .6; filter: none; }
+.cbx-tiles.two .cbx-tile img { width: 58px; height: 58px; }
+.cbx-trio { display: flex; align-items: flex-end; height: 58px; }
+.cbx-tiles.two .cbx-trio img { width: 40px; height: 40px; margin: 0 -7px; }
+.cbx-tiles.two .cbx-trio img:nth-child(2) { width: 50px; height: 50px; position: relative; z-index: 1; }
+.cbx-tap { margin-top: 6px; padding: 5px 10px; border-radius: 999px; background: linear-gradient(180deg, #7cf04a, #46c21f); box-shadow: 0 3px 0 #2a8a10; font-family: ${CANDY.display}; font-size: 13px; letter-spacing: .03em; text-transform: uppercase; color: #fff; text-shadow: 0 1px 0 rgba(0,0,0,.25); }
+.cbx-btn { position: relative; overflow: hidden; font-family: ${CANDY.display}; font-size: 19px; letter-spacing: .02em; color: #fff; border: 0; cursor: pointer; min-height: 52px; border-radius: 16px; padding: 6px 12px;
+  background: linear-gradient(180deg, #7cf04a, #46c21f); box-shadow: 0 5px 0 #2a8a10, 0 0 18px rgba(110,230,60,.45), inset 0 2px 0 rgba(255,255,255,.4); text-shadow: 0 2px 0 rgba(0,0,0,.28); animation: cbx-pulse 1.6s ease-in-out infinite; }
+.cbx-btn::after { content: ""; position: absolute; top: 0; bottom: 0; width: 40%; left: -60%; background: linear-gradient(100deg, transparent, rgba(255,255,255,.55), transparent); transform: skewX(-20deg); animation: cbx-sweep 2.6s ease-in-out infinite; }
+.cbx-btn:active { transform: translateY(3px); box-shadow: 0 2px 0 #2a8a10; }
+.cbx-btn:disabled { opacity: .6; cursor: default; }
+.cbx-later { position: relative; justify-self: center; font: inherit; font-weight: 900; font-size: 18px; color: #fff; background: none; border: 0; cursor: pointer; padding: 8px 18px; min-height: 44px; text-shadow: 0 2px 0 rgba(0,0,0,.3); }
+@keyframes cbx-spin { to { transform: rotate(360deg); } }
+@keyframes cbx-breathe { 0%,100% { transform: scale(.92); opacity: .75 } 50% { transform: scale(1.06); opacity: 1 } }
+@keyframes cbx-twinkle { 0%,100% { transform: scale(.2) rotate(0); opacity: 0 } 50% { transform: scale(1.2) rotate(45deg); opacity: 1 } }
+@keyframes cbx-rimflow { to { background-position: 300% 0; } }
+@keyframes cbx-pop { from { transform: scale(.7); opacity: 0 } to { transform: none; opacity: 1 } }
+@keyframes cbx-tile-in { from { transform: translateY(14px) scale(.9); opacity: 0 } to { transform: none; opacity: 1 } }
+@keyframes cbx-shine { 0% { background-position: 120% 0 } 60%,100% { background-position: -20% 0 } }
+@keyframes cbx-bob { 0%,100% { transform: translateY(0) rotate(-4deg) } 50% { transform: translateY(-4px) rotate(4deg) } }
+@keyframes cbx-pulse { 0%,100% { transform: scale(1) } 50% { transform: scale(1.025) } }
+@keyframes cbx-sweep { 0%,55% { left: -60% } 100% { left: 130% } }
+@keyframes cbx-glowpulse { 0%,100% { box-shadow: 0 0 10px rgba(255,210,60,.25) } 50% { box-shadow: 0 0 24px rgba(255,210,60,.7) } }
+@media (prefers-reduced-motion: reduce) { .cbx *, .cbx *::before, .cbx *::after { animation: none !important; transition: none !important; } }
+`;
+const gemWord = (n, k) => amountText(n, k).replace(/^[\d,]+\s/, '');
 export function CashbackModal({ cashback }) {
+  const [step, setStep] = React.useState(1);
+  const [gem, setGem] = React.useState('emeralds');
+  const [busy, setBusy] = React.useState(false);
   if (!cashback) return null;
-  const total = { emeralds: 0, rubies: 0, diamonds: 0 };
-  for (const a of cashback.awards) for (const k of Object.keys(total)) total[k] += a[k] || 0;
-  const gems = Object.keys(total).filter(k => total[k]);
+  const pot = cashback.coins;
+  const split = (k) => cashbackSplit(pot, k, cashback.economy);
+  const pick = split(gem)[gem] >= 1 ? gem : 'emeralds';
+  const chosen = split(pick);
+  const collect = (el, take) => { if (busy) return; setBusy(true); cashback.onCollect(el, take); };
   return (
-    <div role="dialog" aria-modal="true" aria-label="Your cashback" onClick={cashback.onClose}
-      style={{ position: 'fixed', inset: 0, zIndex: 310, background: 'rgba(8,4,20,.78)', display: 'grid', placeItems: 'center', padding: 20, fontFamily: CANDY.body, color: '#fff' }}>
-      <div onClick={(e) => e.stopPropagation()} style={{ ...goldRim, width: '100%', maxWidth: 380, padding: 6, borderRadius: 26 }}>
-        <div style={{ borderRadius: 20, background: innerGlow, padding: '24px 18px 18px', textAlign: 'center', display: 'grid', gap: 12 }}>
-          <h2 style={{ ...goldTitle(30), textAlign: 'center', margin: 0 }}>Your cashback</h2>
-          <div style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.4 }}>5% back on what you lost on bwanabet, every morning at 06:00. Take it as gems or as coins.</div>
-          <div style={{ display: 'grid', gap: 6 }}>
-            {cashback.awards.map(a => (
-              <div key={a.window} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: 13, fontWeight: 800, background: 'rgba(255,255,255,.07)', borderRadius: 10, padding: '7px 10px' }}>
-                <span style={{ color: C.sub }}>{windowLabel(a.window)}</span>
-                <span style={{ color: CANDY.gold }}>{kw(a.cashbackKwacha)} back</span>
-              </div>
-            ))}
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: '6px 14px', fontFamily: CANDY.display, fontSize: 28, lineHeight: 1, textTransform: 'uppercase' }}>
-            {gems.map(k => (
-              <span key={k} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: CANDY.gold }}>
-                <RewardIcon kind={k} size={34} />{amountText(total[k], k)}
-              </span>
-            ))}
-          </div>
-          <GreenBtn full onClick={(e) => cashback.onCollect(e.currentTarget, 'gems')}>Take the gems</GreenBtn>
-          {cashback.coins > 0 && (
+    <div className="cbx" role="dialog" aria-modal="true" aria-label="Choose reward" onClick={busy ? undefined : cashback.onClose}>
+      <style>{CB_CSS}</style>
+      <div className="cbx-stage" onClick={(e) => e.stopPropagation()}>
+        <div className="cbx-rays" aria-hidden="true" />
+        <div className="cbx-glow" aria-hidden="true" />
+        {CB_SPARKS.map(([x, y, d], i) => <span key={i} className="cbx-spark" aria-hidden="true" style={{ left: `${x}%`, top: `${y}%`, animationDelay: `${d}s` }} />)}
+        <div className="cbx-rim"><div className="cbx-pop">
+          <span className="cbx-ribbon">Ready to collect</span>
+          <h2 className="cbx-title">Choose reward</h2>
+          <div className="cbx-steps" aria-hidden="true"><i className="on" /><i className={step === 2 ? 'on' : ''} /></div>
+          {step === 1 ? (
+            <div className="cbx-tiles two">
+              <button type="button" className="cbx-tile" disabled={busy} onClick={(e) => collect(e.currentTarget, 'coins')}>
+                <RewardIcon kind="coins" size={58} />
+                <span className="cbx-n" style={{ color: CANDY.gold }}>{fmt(pot)}</span>
+                <span className="cbx-u">coins</span>
+                <span className="cbx-r">spend them now</span>
+                <span className="cbx-tap">{busy ? '…' : 'Tap to collect'}</span>
+              </button>
+              <button type="button" className="cbx-tile" disabled={busy} onClick={() => setStep(2)}>
+                <span className="cbx-trio"><RewardIcon kind="emeralds" size={40} /><RewardIcon kind="diamonds" size={50} /><RewardIcon kind="rubies" size={40} /></span>
+                <span className="cbx-n" style={{ color: CB_COLOR.diamonds }}>Gems</span>
+                <span className="cbx-u">you choose</span>
+                <span className="cbx-r">for real prizes</span>
+                <span className="cbx-tap">Tap to choose</span>
+              </button>
+            </div>
+          ) : (
             <>
-              <div style={{ fontSize: 12, fontWeight: 800, color: C.sub, textTransform: 'uppercase', letterSpacing: '.06em' }}>or</div>
-              <GreenBtn full color="violet" onClick={(e) => cashback.onCollect(e.currentTarget, 'coins')}>
-                <RewardIcon kind="coins" size={24} />Take {amountText(cashback.coins, 'coins')}
-              </GreenBtn>
+              <p className="cbx-lead">Which gems do you want?</p>
+              <div className="cbx-tiles three">
+                {CB_GEMS.map(k => {
+                  const s = split(k), n = s[k], off = n < 1;
+                  return (
+                    <button key={k} type="button" className="cbx-tile" aria-pressed={String(pick === k)} disabled={off || busy} onClick={() => setGem(k)}>
+                      <RewardIcon kind={k} size={44} />
+                      <span className="cbx-n" style={{ color: CB_COLOR[k] }}>{fmt(n)}</span>
+                      <span className="cbx-u">{gemWord(n, k)}</span>
+                      <span className="cbx-r">{off ? 'not enough yet' : s.coins ? `+ ${fmt(s.coins)} coins` : ''}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              <button type="button" className="cbx-btn" disabled={busy} onClick={(e) => collect(e.currentTarget, pick)}>
+                {busy ? '…' : `Collect ${amountText(chosen[pick], pick)}${chosen.coins ? ` + ${fmt(chosen.coins)} coins` : ''}`}
+              </button>
             </>
           )}
-          <button type="button" onClick={cashback.onClose} style={{ all: 'unset', cursor: 'pointer', fontSize: 13, fontWeight: 800, color: C.sub, minHeight: 36 }}>Later</button>
-        </div>
+          <button type="button" className="cbx-later" disabled={busy} onClick={step === 2 ? () => setStep(1) : cashback.onClose}>{step === 2 ? '← Back' : 'Later'}</button>
+        </div></div>
       </div>
     </div>
   );

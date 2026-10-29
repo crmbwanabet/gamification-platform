@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { CASHBACK_RATE, windowAt, windowFor, lastFinishedWindow, nextWindowDay, cashbackAward, paysGems, awardCoins, CASHBACK_TAKES } from '../lib/cashback/rules.mjs';
+import { CASHBACK_RATE, windowAt, windowFor, lastFinishedWindow, nextWindowDay, cashbackAward, paysGems, awardCoins, cashbackSplit, CASHBACK_TAKES } from '../lib/cashback/rules.mjs';
 import { mapCashbackRow, runCashback, cleanState } from '../lib/cashback/crmCashback.mjs';
 
 const ECO = { coinsPerKwacha: 10000, gemValues: { emerald: 200000, ruby: 500000, diamond: 1000000 } };
@@ -172,10 +172,24 @@ test('job: the ledger records small losses and wins too', async () => {
 });
 
 test('cashback taken as coins = what the gems are worth', () => {
-  assert.deepEqual(CASHBACK_TAKES, ['gems', 'coins']);
+  assert.deepEqual(CASHBACK_TAKES, ['gems', 'coins', 'emeralds', 'rubies', 'diamonds']);
   assert.equal(awardCoins({ diamonds: 1, rubies: 1, emeralds: 2 }, ECO), 1900000);
   assert.equal(awardCoins(cashbackAward(200, ECO), ECO), 200000); // K10 back = 1 emerald = 200,000 coins
   assert.equal(awardCoins({ emeralds: 1 }, { gemValues: { emerald: 50000 } }), 50000);
   assert.equal(awardCoins({ emeralds: -3, rubies: 1.5 }, ECO), 0);
   assert.equal(awardCoins(null, ECO), 0);
+});
+
+test('choose reward: the value as coins, or one gem kind + the rest in coins', () => {
+  assert.deepEqual(cashbackSplit(1400000, 'coins', ECO), { coins: 1400000, emeralds: 0, rubies: 0, diamonds: 0 });
+  assert.deepEqual(cashbackSplit(1400000, 'emeralds', ECO), { coins: 0, emeralds: 7, rubies: 0, diamonds: 0 });
+  assert.deepEqual(cashbackSplit(1400000, 'rubies', ECO), { coins: 400000, emeralds: 0, rubies: 2, diamonds: 0 });
+  assert.deepEqual(cashbackSplit(1400000, 'diamonds', ECO), { coins: 400000, emeralds: 0, rubies: 0, diamonds: 1 });
+  assert.deepEqual(cashbackSplit(200000, 'rubies', ECO), { coins: 200000, emeralds: 0, rubies: 0, diamonds: 0 }); // not enough: all coins
+  assert.deepEqual(cashbackSplit(-5, 'emeralds', ECO), { coins: 0, emeralds: 0, rubies: 0, diamonds: 0 });
+  // never pays more than the value
+  for (const pot of [200000, 700000, 1900000]) for (const k of ['coins', 'emeralds', 'rubies', 'diamonds']) {
+    const s = cashbackSplit(pot, k, ECO);
+    assert.equal(s.coins + s.emeralds * 200000 + s.rubies * 500000 + s.diamonds * 1000000, pot);
+  }
 });

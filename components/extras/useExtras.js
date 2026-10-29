@@ -158,29 +158,26 @@ export function useExtras({ session, loggedIn, hydrated, tab, user, setUser, sea
       }
     })();
   }, [loggedIn, hydrated, api]);
-  // take = 'gems' | 'coins' (owner 2026-10-28): coins = what the gems are worth,
-  // worked out by the server (the client credits what it returns).
-  const collectCashback = async (el, take = 'gems') => {
+  // "Choose reward" (owner 2026-10-29): take = 'coins' | 'emeralds' | 'rubies'
+  // | 'diamonds'; every waiting window is collected in ONE call and the server
+  // works out the payout (the picked gem + the rest in coins); the client
+  // credits what it returns.
+  const collectCashback = async (el, take = 'coins') => {
     if (busy.current.has('cashback') || !cashback) return;
     busy.current.add('cashback');
-    const total = { coins: 0, emeralds: 0, rubies: 0, diamonds: 0 };
-    let failed = false;
-    for (const a of cashback) {
-      const { status, data } = await api('/api/cashback', { window: a.window, take });
-      if (status === 200 && data?.ok) {
-        if (data.take === 'coins') total.coins += Number(data.coins) || 0;
-        else for (const k of ['emeralds', 'rubies', 'diamonds']) total[k] += data.award[k] || 0;
-        track('cashback_collected', { meta: { window: a.window, take: data.take || 'gems', coins: data.coins || 0, emeralds: data.award.emeralds, rubies: data.award.rubies, diamonds: data.award.diamonds, valueCoins: data.award.valueCoins } });
-      } else if (data?.error !== 'already_collected') failed = true;
-    }
+    const { status, data } = await api('/api/cashback', { windows: cashback.map(a => a.window), take });
     setCashback(null);
     busy.current.delete('cashback');
-    if (total.coins + total.emeralds + total.rubies + total.diamonds > 0) { flushTrack(); credit(total, el, take === 'coins' ? '🪙 Cashback collected!' : '💎 Cashback collected!'); }
-    if (failed) showNotif('Some cashback could not be collected — it will wait for your next visit', 'error');
+    if (status === 200 && data?.ok && data.paid) {
+      const p = data.paid;
+      const total = { coins: Number(p.coins) || 0, emeralds: p.emeralds || 0, rubies: p.rubies || 0, diamonds: p.diamonds || 0 };
+      track('cashback_collected', { meta: { windows: data.windows, take: data.take, ...total } });
+      if (total.coins + total.emeralds + total.rubies + total.diamonds > 0) { flushTrack(); credit(total, el, take === 'coins' ? '🪙 Rewards collected!' : '💎 Rewards collected!'); }
+    } else if (data?.error !== 'already_collected') showNotif('Your rewards could not be collected — they will wait for your next visit', 'error');
   };
 
   return {
-    cashback: cashback && !blocked ? { awards: cashback, coins: cashback.reduce((s, a) => s + awardCoins(a, economy), 0), onCollect: collectCashback, onClose: () => setCashback(null) } : null, // Later = next open
+    cashback: cashback && !blocked ? { awards: cashback, coins: cashback.reduce((s, a) => s + awardCoins(a, economy), 0), economy, onCollect: collectCashback, onClose: () => setCashback(null) } : null, // Later = next open
     cashbackPending: !!cashback,
     album: { cards, sets, have, total: cards.length, onClaimSet: claimSet },
     predictions: { ...pred, busyId: pickBusy, onPick: makePick, onClaim: claimPrediction, loggedIn },
