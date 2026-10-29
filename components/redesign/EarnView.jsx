@@ -41,18 +41,11 @@ export function useResetText() {
 }
 
 // Desktop (>860px, the shell's own breakpoint): two columns, Vuma panel on the right.
-// Weekly predictions sit directly under the player's road (owner 2026-10-29):
-// desktop = the right column (road, then predictions); phones have no road, so
-// the two columns dissolve (display: contents) and the predictions follow the
-// missions list, above the season.
 const EV_CSS = `
-  .ev-cols { display: flex; flex-direction: column; }
-  .ev-left, .ev-side { display: contents; }
-  .ev-main { order: 1; } .ev-side-predict { order: 2; } .ev-more { order: 3; }
+  .ev-cols { display: block; }
   .ev-vuma { display: none; }
   @media (min-width: 861px) {
     .ev-cols { display: grid; grid-template-columns: 1.25fr 1fr; gap: 28px; align-items: start; }
-    .ev-left, .ev-side { display: block; min-width: 0; }
     .ev-vuma { display: block; }
     .ev-xp-sources { display: none; }
   }
@@ -288,8 +281,7 @@ export default function EarnView({ wallet = null, xp = 0, onNavigate, onOpenProf
       {/* Quests parked — see parked/components/redesign/EarnView.QuestCard.parked.jsx */}
       <style dangerouslySetInnerHTML={{ __html: EV_CSS }} />
       <div className="ev-cols">
-        <div className="ev-left" style={{ maxWidth: 720 }}>
-        <section className="ev-main" style={{ maxWidth: 720, minWidth: 0 }}>
+        <section style={{ maxWidth: 720, minWidth: 0 }}>
           <SectionTitle right={<TitleNote>{board.done} / {board.total}</TitleNote>}>BwanaBet missions</SectionTitle>
           <MissionsSummary status={casinoStatus} done={board.done} total={board.total} />
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -302,8 +294,6 @@ export default function EarnView({ wallet = null, xp = 0, onNavigate, onOpenProf
               {board.collected.map((s) => <CollectedBar key={s.mission.id} s={s} />)}
             </div>
           )}
-        </section>
-        <div className="ev-more" style={{ maxWidth: 720, minWidth: 0 }}>
           {season && (
             <div id="missions-season" style={{ marginTop: 26, scrollMarginTop: 12 }}>
               <SeasonSection season={season} onClaimLeague={onClaimLeague} onClaimWc={onClaimWc} onClaimPrize={onClaimPrize} prizeBusy={prizeBusy} />
@@ -313,14 +303,11 @@ export default function EarnView({ wallet = null, xp = 0, onNavigate, onOpenProf
             <Leaderboard board={extras.board} />
             <Album album={extras.album} />
           </>}
-        </div>
-        </div>
-        <div className="ev-side">
-          <VumaRoad xp={xp} levelRewards={levelRewards} seasonCfg={season?.cfg} displayName={displayName} userId={userId} onEditName={onEditName} />
-          {/* Weekly predictions directly under the road (2026-10-29; the board stacks under the prize card in this column) */}
-          {extras && <div id="missions-predictions" className="ev-side-predict" style={{ scrollMarginTop: 12, minWidth: 0 }}><Predictions predictions={extras.predictions} /></div>}
-        </div>
+        </section>
+        <VumaRoad xp={xp} levelRewards={levelRewards} seasonCfg={season?.cfg} displayName={displayName} userId={userId} onEditName={onEditName} />
       </div>
+      {/* Weekly predictions span the full width (2026-10-22 redesign: tickets left, prize board right on desktop) */}
+      {extras && <div id="missions-predictions" style={{ scrollMarginTop: 12 }}><Predictions predictions={extras.predictions} /></div>}
       <div id="missions-rewards" style={{ marginTop: 26, scrollMarginTop: 12, maxWidth: 720 }}>
         <RewardsSection xp={xp} levelRewards={levelRewards} seasonCfg={season?.cfg} displayName={displayName} userId={userId} />
       </div>

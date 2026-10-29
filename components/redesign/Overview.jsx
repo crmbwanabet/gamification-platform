@@ -19,31 +19,20 @@ import { Predictions } from '../extras/ExtrasViews';
 
 // Home layout (design "A · Full candy"; missions moved to the top 2026-10-18,
 // when the daily reward became a popup on open; daily reward and Coin Shop
-// swapped 2026-10-20; 2026-10-29 owner order): phones stack missions → daily
-// reward → bonus games → weekly predictions → football match + side quest →
-// Coin Shop; desktop (≥861px) opens with missions (400px) left + the daily
-// reward right, then the Coin Shop on the left beside the games grid (3 per
-// row), then weekly predictions full width, then the football match and the
-// side quest side by side (the side quest card stretches to the match card's
-// height). Below level 10 the Coin Shop is greyed with a lock plate.
+// swapped 2026-10-20): phones stack missions → daily reward → Coin Shop → this
+// week → bonus games; desktop (≥861px) opens with missions (400px) left + the
+// daily reward right (full column width, lined up with the games), then the Coin Shop + this week on the left
+// beside the games grid (3 per row). With an empty store the games take the
+// top-right slot. Below level 10 the Coin Shop is greyed with a lock plate.
 const OV_CSS = `
-  .ov-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 26px; grid-template-areas: "missions" "daily" "games" "predict" "season" "store"; }
+  .ov-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 26px; grid-template-areas: "missions" "daily" "games" "predict" "store" "season"; }
   .ov-daily { grid-area: daily; } .ov-store { grid-area: store; } .ov-season { grid-area: season; display: grid; gap: 12px; } .ov-games { grid-area: games; } .ov-missions { grid-area: missions; display: grid; gap: 12px; } .ov-predict { grid-area: predict; }
-  .ov-match { display: grid; gap: 12px; min-width: 0; align-content: start; }
   .ov-grid > * { min-width: 0; align-self: start; }
   .ov-grid--nostore { grid-template-areas: "missions" "daily" "games" "predict" "season"; }
   @media (min-width: 861px) {
-    .ov-grid { grid-template-columns: 400px minmax(0, 1fr); column-gap: 28px; row-gap: 24px;
-      grid-template-areas: "missions daily" "store games" "predict predict" "season season"; }
-    .ov-grid--nostore { grid-template-areas: "missions daily" ". games" "predict predict" "season season"; }
-    .ov-season { grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); column-gap: 24px; align-items: stretch; }
-    .ov-season > :first-child { grid-column: 1 / -1; }
-    /* the match card stretches to the side quest's height: the pitch grows, its
-       plates spread (chip top, centre plate middle, XP bar on the goal line) */
-    .ov-season .ov-match { display: flex; flex-direction: column; }
-    .ov-season .ov-match > :only-child { flex: 1 1 auto; display: flex; flex-direction: column; }
-    .ov-season .ov-match > :only-child > [data-pitch] { flex: 1 1 auto; display: flex; flex-direction: column; }
-    .ov-season .ov-match > :only-child > [data-pitch] > .pitch-body { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: space-between; }
+    .ov-grid { grid-template-columns: 400px minmax(0, 1fr); grid-template-rows: auto auto auto 1fr; column-gap: 28px; row-gap: 24px;
+      grid-template-areas: "missions daily" "store games" "season games" "predict games"; }
+    .ov-grid--nostore { grid-template-rows: auto auto auto 1fr; grid-template-areas: "missions games" "daily games" "season games" "predict games"; }
   }
   /* "See all missions": a full button, not a text link (owner 2026-10-22: make it bigger) */
   .ov-link { all: unset; box-sizing: border-box; cursor: pointer; display: flex; align-items: center; justify-content: center; min-height: 56px; margin-top: 10px; width: 100%;
@@ -111,7 +100,26 @@ export default function Overview({ wallet = null, xp = 1200, activeTab = 'home',
       isWidget={isWidget} story={story} onStoryOpen={onStoryOpen} onStoryClose={onStoryClose} onStoryGo={onStoryGo} storyPrize={storyPrize} intro={intro}>
       <style dangerouslySetInnerHTML={{ __html: OV_CSS }} />
       <div className={`ov-grid${hasStore ? '' : ' ov-grid--nostore'}`} style={{ maxWidth: 1240, margin: '0 auto' }}>
-        {/* DOM order = phone order (missions, daily, games, predictions, football, store) */}
+        <div className="ov-daily">
+          <DailyReward dailyDay={dailyDay} dailyClaimed={dailyClaimed} onClaim={onClaimDaily} rewards={dailyRewards} loggedIn={canClaimDaily} />
+        </div>
+
+        {hasStore && (
+          <HomeStore className="ov-store" storeItems={items} wallet={wallet} onBuy={onBuy} busyId={busyId} onSeeAll={() => go('store')} locked={storeLockReason(getLevel(xp).level, wallet?.store)} xp={xp} uid={userId} />
+        )}
+
+        {season && (
+          <section className="ov-season" aria-labelledby="ov-season-title">
+            <SectionTitle id="ov-season-title" right={season.league?.unlocked ? <TitleNote>W {season.league.record.won} · L {season.league.record.lost}</TitleNote> : null}>Football match</SectionTitle>
+            <MatchCard season={season} compact onClaimLeague={onClaimLeague} onNavigate={onNavigate} />
+            <HustleCard hustle={season.hustle} hero={season.heroName} onCollect={onCollectHustle} />
+          </section>
+        )}
+
+        <div className="ov-games">
+          <GamesGrid gamePlays={gamePlays} onPlay={onPlay} games={gameList} />
+        </div>
+
         {(top || wheel) && (
           <section className="ov-missions" aria-label="BwanaBet missions">
             {wheel && <WheelCard onOpen={wheel.onOpen} />}
@@ -122,34 +130,10 @@ export default function Overview({ wallet = null, xp = 1200, activeTab = 'home',
           </section>
         )}
 
-        <div className="ov-daily">
-          <DailyReward dailyDay={dailyDay} dailyClaimed={dailyClaimed} onClaim={onClaimDaily} rewards={dailyRewards} loggedIn={canClaimDaily} />
-        </div>
-
-        <div className="ov-games">
-          <GamesGrid gamePlays={gamePlays} onPlay={onPlay} games={gameList} />
-        </div>
-
         {extras && (
           <div className="ov-predict">
             <Predictions predictions={extras.predictions} compact onSeeAll={() => go('missions')} />
           </div>
-        )}
-
-        {season && (
-          <section className="ov-season" aria-labelledby="ov-season-title">
-            <SectionTitle id="ov-season-title" right={season.league?.unlocked ? <TitleNote>W {season.league.record.won} · L {season.league.record.lost}</TitleNote> : null}>Football match</SectionTitle>
-            <div className="ov-match">
-              <MatchCard season={season} compact onClaimLeague={onClaimLeague} onNavigate={onNavigate} />
-            </div>
-            <div className="ov-hustle" style={{ minWidth: 0 }}>
-              <HustleCard hustle={season.hustle} hero={season.heroName} onCollect={onCollectHustle} />
-            </div>
-          </section>
-        )}
-
-        {hasStore && (
-          <HomeStore className="ov-store" storeItems={items} wallet={wallet} onBuy={onBuy} busyId={busyId} onSeeAll={() => go('store')} locked={storeLockReason(getLevel(xp).level, wallet?.store)} xp={xp} uid={userId} />
         )}
       </div>
     </RedesignShell>

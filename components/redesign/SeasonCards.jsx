@@ -696,102 +696,66 @@ export function WorldCupPath({ worldCup, cfg, prize, onClaim, onClaimPrize, priz
 }
 
 const HUSTLE_EMOJI = ['🧽', '🏪', '🚿', '🚐', '🛒'];
-// The quest picture fills its box (img cover; an emoji tile when the file is missing).
-function QuestPicture({ hustle, hero, dim = false }) {
+function HustleArt({ hustle, h = 120, hero }) {
   const [failed, setFailed] = React.useState(false);
   React.useEffect(() => setFailed(false), [hustle.image]);
-  const look = dim ? { filter: 'grayscale(.85) brightness(.55)' } : null;
   if (!failed) {
-    return <img src={hustle.image} alt={heroText(hustle.level.name, hero)} onError={() => setFailed(true)}
-      style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center', display: 'block', ...look }} />;
+    return <img src={hustle.image} alt={heroText(hustle.level.name, hero)} onError={() => setFailed(true)} style={{ width: '100%', height: h, objectFit: 'cover', display: 'block', borderRadius: 14 }} />;
   }
   return (
-    <div data-hustle-fallback style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', background: `radial-gradient(circle at 50% 35%, ${CANDY.glow}, ${C.track} 75%)`, ...look }}>
-      <span style={{ fontSize: 56, filter: 'drop-shadow(0 4px 0 rgba(0,0,0,.35))' }}>{HUSTLE_EMOJI[hustle.level.level - 1] || '🧽'}</span>
+    <div data-hustle-fallback style={{ height: h, borderRadius: 14, display: 'grid', placeItems: 'center', position: 'relative', overflow: 'hidden',
+      background: `radial-gradient(circle at 50% 35%, ${CANDY.glow}, ${C.track} 75%)`, border: `2px solid ${CANDY.violet.dark}` }}>
+      <span style={{ fontSize: h * 0.42, filter: 'drop-shadow(0 4px 0 rgba(0,0,0,.35))' }}>{HUSTLE_EMOJI[hustle.level.level - 1] || '🧽'}</span>
+      <span style={{ position: 'absolute', bottom: 6, left: 0, right: 0, textAlign: 'center', fontSize: 10.5, fontWeight: 900, letterSpacing: '.08em', color: C.muted, textTransform: 'uppercase' }}>Level {hustle.level.level}</span>
     </div>
   );
 }
 
-/**
- * The hero's side quest (redesign 2026-10-29, owner: a proper card the height
- * of the match card, not a thin bar): SIDE QUEST title, the quest picture
- * (public/vuma/quest-NN.jpg, the hero doing the trade), the trade name, coins a
- * day, the stock bar to the next trade ([data-hustle-target]: overflow XP stars
- * fly there) and Collect. Locked (below level 2) = the first trade's picture
- * dimmed under an "Opens at level 2" lock plate. The card fills its grid cell
- * (height 100%), so on desktop it matches the match card beside it.
- * `hero` = the player's name (level names say "Vuma" in config; swapped at render).
- */
-// Phones: a 2:1 picture. Desktop Home (beside the match card): the picture
-// keeps at least 150 px and fills the rest of the row; the match card beside it
-// stretches to the same height (Overview .ov-match).
-const HQ_CSS = `
-  .hq-pic { aspect-ratio: 16 / 8; min-height: 150px; }
-  @media (min-width: 861px) { .ov-season .hq-pic { aspect-ratio: auto; min-height: 150px; } .ov-season .hq-hint { display: none; } }
-`;
+/** The hero's side hustle: image, level, coins ready, Collect. `hero` = the
+ *  player's name (level names say "Vuma" in config; swapped at render). */
 export function HustleCard({ hustle, onCollect, busy = false, hero = HERO_DEFAULT }) {
   if (!hustle) return null;
-  const locked = !hustle.unlocked;
+  if (!hustle.unlocked) {
+    return (
+      <Card style={{ padding: 14, display: 'flex', alignItems: 'center', gap: 12 }}>
+        <span style={{ fontSize: 30 }}>🧽</span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontFamily: CANDY.display, fontSize: 17, textTransform: 'uppercase' }}>Side quest</div>
+          <div style={{ fontSize: 12, color: C.sub }}>Opens at level 2. Claim your daily reward to get there.</div>
+        </div>
+      </Card>
+    );
+  }
   const L = hustle.level;
   const next = hustle.next;
-  const stockPct = next ? Math.max(0, Math.min(100, ((hustle.stock - L.stock) / (next.stock - L.stock)) * 100)) : 100;
+  const stockPct = next ? Math.min(100, ((hustle.stock - L.stock) / (next.stock - L.stock)) * 100) : 100;
   return (
-    <Card style={{ padding: 0, overflow: 'hidden', height: '100%', boxSizing: 'border-box' }}>
-      <div data-hustle-card={locked ? 'locked' : 'open'} style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '12px 14px 10px' }}>
-          <h3 style={goldTitle(21)}>Side quest</h3>
-          {locked
-            ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 900, letterSpacing: '.06em', color: C.muted, textTransform: 'uppercase' }}><Lock size={12} aria-hidden /> Locked</span>
-            : <Badge bg={CANDY.gold}>Level {L.level}</Badge>}
-        </div>
-        <style dangerouslySetInnerHTML={{ __html: HQ_CSS }} />
-        <div className="hq-pic" style={{ position: 'relative', flex: '1 1 auto', overflow: 'hidden', background: C.track }}>
-          <QuestPicture hustle={hustle} hero={hero} dim={locked} />
-          {locked && (
-            <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', padding: 12 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left', background: '#1d1530', border: '2px solid rgba(255,255,255,.28)', borderRadius: 16, padding: '12px 16px', boxShadow: '0 6px 18px rgba(0,0,0,.45)', maxWidth: '100%', boxSizing: 'border-box' }}>
-                <span style={{ width: 44, height: 44, borderRadius: 12, display: 'grid', placeItems: 'center', background: 'rgba(255,255,255,.08)', flex: 'none' }}><Lock size={22} aria-hidden /></span>
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontFamily: CANDY.display, fontSize: 18, lineHeight: 1.15, textTransform: 'uppercase' }}>Opens at level 2</div>
-                  <div style={{ fontSize: 12, color: C.sub }}>Claim your daily reward to get there</div>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-        <div style={{ padding: '12px 14px 14px', display: 'grid', gap: 10 }}>
-          <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 10 }}>
-            <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: 10.5, fontWeight: 900, color: C.muted, textTransform: 'uppercase', letterSpacing: '.06em' }}>{locked ? 'First trade' : 'Your trade'}</div>
-              <div style={{ fontFamily: CANDY.display, textTransform: 'uppercase', fontSize: 19, lineHeight: 1.15 }}>{heroText(L.name, hero)}</div>
-            </div>
-            <div style={{ flex: 'none', textAlign: 'right' }}>
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: CANDY.display, fontSize: 20, lineHeight: 1, color: CANDY.gold }}>
-                <img src={COIN_ICON} alt="" width={20} height={20} />{fmt(L.pay)}
-              </div>
-              <div style={{ fontSize: 11, fontWeight: 800, color: C.sub }}>coins a day</div>
-            </div>
+    <Card style={{ padding: 12 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '112px minmax(0,1fr)', gap: 12, alignItems: 'center' }}>
+        <HustleArt hustle={hustle} h={104} hero={hero} />
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: 10.5, fontWeight: 900, color: C.muted, textTransform: 'uppercase', letterSpacing: '.06em' }}>Side quest · Level {L.level}</div>
+          <div style={{ fontFamily: CANDY.display, textTransform: 'uppercase', fontSize: 17, lineHeight: 1.15 }}>{heroText(L.name, hero)}</div>
+          <div style={{ fontSize: 12, color: C.sub, marginTop: 2 }}>Pays {fmt(L.pay)} coins a day</div>
+          <div style={{ marginTop: 8 }}>
+            {hustle.ready > 0
+              ? <GreenBtn full size={16} disabled={busy} onClick={(e) => onCollect && onCollect(e.currentTarget)}>Collect {fmt(hustle.ready)}</GreenBtn>
+              : <div style={{ fontSize: 12.5, fontWeight: 800, color: C.green, display: 'flex', alignItems: 'center', gap: 4 }}><Check size={14} /> Collected today, back tomorrow</div>}
           </div>
-          {next ? (
-            <div data-hustle-target>
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, fontSize: 11, fontWeight: 800, color: C.sub, marginBottom: 4 }}>
-                <span style={{ minWidth: 0 }}>Next: {heroText(next.name, hero)}</span><span style={{ flex: 'none', fontVariantNumeric: 'tabular-nums' }}>{fmt(hustle.toNext)} XP to go</span>
-              </div>
-              <Progress value={stockPct} height={10} color="linear-gradient(180deg, #7BE34F, #43C21A)" />
-              <div className="hq-hint" style={{ fontSize: 10.5, color: C.muted, marginTop: 4 }}>XP over the daily and weekly limits stocks the side quest.</div>
-            </div>
-          ) : (
-            <div data-hustle-target style={{ fontSize: 12, fontWeight: 900, color: CANDY.gold }}>Top trade reached</div>
-          )}
-          {/* Collect under the picture (owner 2026-10-29: on the picture it hid the art) */}
-          {!locked && (hustle.ready > 0
-            ? <GreenBtn full size={16} disabled={busy} onClick={(e) => onCollect && onCollect(e.currentTarget)}>Collect {fmt(hustle.ready)} coins</GreenBtn>
-            : <div style={{ fontSize: 12.5, fontWeight: 800, color: C.green, display: 'flex', alignItems: 'center', gap: 4 }}><Check size={14} /> Collected today, back tomorrow</div>)}
-          {!locked && hustle.closedDays > 0 && hustle.ready > 0 && (
-            <div style={{ fontSize: 11.5, color: '#ffb199', fontWeight: 700 }}>{hustle.closedDays > 7 ? 'The shop was closed while you were away.' : `The shop was closed for ${hustle.closedDays} ${hustle.closedDays === 1 ? 'day' : 'days'}.`} Pay keeps for 2 days, so collect daily.</div>
-          )}
         </div>
       </div>
+      {hustle.closedDays > 0 && hustle.ready > 0 && (
+        <div style={{ fontSize: 11.5, color: '#ffb199', marginTop: 8, fontWeight: 700 }}>{hustle.closedDays > 7 ? 'The shop was closed while you were away.' : `The shop was closed for ${hustle.closedDays} ${hustle.closedDays === 1 ? 'day' : 'days'}.`} Pay keeps for 2 days, so collect daily.</div>
+      )}
+      {next && (
+        <div style={{ marginTop: 10 }} data-hustle-target>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, fontWeight: 800, color: C.sub, marginBottom: 4 }}>
+            <span>Next: {heroText(next.name, hero)}</span><span style={{ fontVariantNumeric: 'tabular-nums' }}>{fmt(hustle.toNext)} XP stock to go</span>
+          </div>
+          <Progress value={stockPct} height={8} color="linear-gradient(180deg, #7BE34F, #43C21A)" />
+          <div style={{ fontSize: 10.5, color: C.muted, marginTop: 4 }}>XP over the daily and weekly limits stocks the side quest.</div>
+        </div>
+      )}
     </Card>
   );
 }
