@@ -101,7 +101,11 @@ export default function CrossingGame({ onClose, closing, balance = 0, rtp, onSpe
   useLayoutEffect(() => {
     const el = sceneRef.current;
     if (!el) return undefined;
-    const measure = () => { const r = el.getBoundingClientRect(); if (r.width > 0 && r.height > 0) setView({ w: r.width, h: r.height }); };
+    // LAYOUT size (offsetWidth/Height), never getBoundingClientRect: the candy
+    // card is scaled up on desktop (and scales in on open) with a CSS transform,
+    // which getBoundingClientRect includes, so the road was scaled twice
+    // (owner 2026-10-29: "it looks zoomed in").
+    const measure = () => { const w = el.offsetWidth, h = el.offsetHeight; if (w > 0 && h > 0) setView({ w, h }); };
     measure();
     if (typeof ResizeObserver === 'undefined') return undefined;
     const ro = new ResizeObserver(measure);
