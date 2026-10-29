@@ -28,8 +28,10 @@ export function useFlyFrom(sourceId, key, { delay = 0, duration = FLIGHT_MS, spi
     const a = src.getBoundingClientRect();
     const b = el.getBoundingClientRect();
     if (!b.width) return;
-    const dx = a.left + a.width / 2 - (b.left + b.width / 2);
-    const dy = a.top + a.height / 2 - (b.top + b.height / 2);
+    // screen px -> the card's own px (the table is scaled up on desktop)
+    const k = (el.offsetWidth && b.width / el.offsetWidth) || 1;
+    const dx = (a.left + a.width / 2 - (b.left + b.width / 2)) / k;
+    const dy = (a.top + a.height / 2 - (b.top + b.height / 2)) / k;
     el.animate(
       [
         { transform: `translate(${dx}px, ${dy}px) rotate(${spin}deg) scale(.85)`, opacity: 0.85 },

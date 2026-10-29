@@ -1,9 +1,13 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { HelpCircle, X } from 'lucide-react';
 import { C } from '@/components/redesign/tokens';
-import useDesktopScale from './candy/useDesktopScale';
+import { useCardFit } from './candy/useDesktopScale';
+
+const useIsoLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect;
+const BASE_H = 720;
+const PAD = 32; // the backdrop's padding, both sides
 
 // Shared v2 look for all game modals: slate glass card, sea-green primary,
 // gold accents. Reuses the anim-* keyframes injected by GamificationPlatform.
@@ -15,8 +19,27 @@ const closeBtn = { ...iconBtn, background: 'linear-gradient(180deg, #f0684f, #d4
 // fullBleed: below 640px the shell becomes a full-viewport takeover (poker-table
 // style) instead of a margined dialog; desktop keeps the centered modal.
 export function GameShell({ title, onClose, closing, onHelp, children, maxWidth = 440, fullBleed = false }) {
-  // desktop: the card scales up as a whole, at most 1.3x (lib/ui/desktopScale.mjs); phones: 1
-  const scale = useDesktopScale(maxWidth, 720, 1.3);
+  // The card scales as a whole (lib/ui/desktopScale.mjs cardFit): up to the screen
+  // height on desktop, DOWN on screens too short for it (landscape phones), so it
+  // never has to scroll; 1 while the full-bleed phone takeover is on (<= 640 px).
+  const fit = useCardFit(maxWidth, BASE_H, undefined, PAD);
+  const bleed = fullBleed && fit.vw > 0 && fit.vw <= 640;
+  const scale = bleed ? 1 : fit.scale;
+  // the scaled card's box needs its layout height (offsetHeight: layout pixels)
+  const cardRef = useRef(null);
+  const [cardH, setCardH] = useState(0);
+  useIsoLayoutEffect(() => {
+    const el = cardRef.current;
+    if (!el) return undefined;
+    const on = () => setCardH(el.offsetHeight);
+    on();
+    if (typeof ResizeObserver === 'undefined') return undefined;
+    const ro = new ResizeObserver(on);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  const scaled = scale !== 1;
+  const maxH = scale > 1 ? `calc(92vh / ${scale})` : scale < 1 ? `${Math.floor((fit.vh - PAD) / scale)}px` : '92vh';
   return (
     <div onClick={onClose} className={(closing ? 'anim-backdrop-close' : 'anim-fade-in') + (fullBleed ? ' gs-bleed-bd' : '')}
       style={{ position: 'fixed', inset: 0, zIndex: 70, display: 'grid', placeItems: 'center', padding: 16, background: 'rgba(8,10,16,.74)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)', fontFamily: "var(--font-body, 'Onest', system-ui, sans-serif)" }}>
@@ -26,15 +49,17 @@ export function GameShell({ title, onClose, closing, onHelp, children, maxWidth 
           .gs-bleed-card { max-width: none !important; height: 100dvh; max-height: none !important; border-radius: 0 !important; padding: 14px 12px calc(12px + env(safe-area-inset-bottom)) !important; display: flex; flex-direction: column; }
         }
       ` }} />}
-      <div style={{ width: `min(${maxWidth}px, 100%)`, transform: scale > 1 ? `scale(${scale})` : undefined }}>
-      <div onClick={(e) => e.stopPropagation()} className={(closing ? 'anim-modal-close' : 'anim-scale-in') + (fullBleed ? ' gs-bleed-card' : '')}
-        style={{ width: '100%', maxWidth, maxHeight: scale > 1 ? `calc(92vh / ${scale})` : '92vh', overflowY: 'auto', borderRadius: 20, background: `linear-gradient(180deg, ${C.panelHi}, ${C.panelLo})`, border: '1px solid rgba(255,255,255,.09)', boxShadow: '0 24px 60px rgba(0,0,0,.55)', color: C.text, position: 'relative', padding: 22 }}>
+      <div style={scaled ? { width: fit.width * scale, height: cardH * scale, flex: 'none', minWidth: 0 } : { width: `min(${maxWidth}px, 100%)`, minWidth: 0 }}>
+      <div style={scaled ? { width: fit.width, transform: `scale(${scale})`, transformOrigin: '0 0' } : undefined}>
+      <div ref={cardRef} onClick={(e) => e.stopPropagation()} className={(closing ? 'anim-modal-close' : 'anim-scale-in') + (fullBleed ? ' gs-bleed-card' : '')}
+        style={{ width: '100%', maxWidth, maxHeight: maxH, overflowY: 'auto', boxSizing: 'border-box', borderRadius: 20, background: `linear-gradient(180deg, ${C.panelHi}, ${C.panelLo})`, border: '1px solid rgba(255,255,255,.09)', boxShadow: '0 24px 60px rgba(0,0,0,.55)', color: C.text, position: 'relative', padding: 22 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, gap: 8 }}>
           {onHelp ? <button type="button" onClick={onHelp} title="How to play" style={iconBtn}><HelpCircle size={18} /></button> : <span style={{ width: 34 }} />}
           <h2 style={{ margin: 0, fontSize: 19, fontWeight: 800, color: C.text, fontFamily: "var(--font-display, 'Bricolage Grotesque', sans-serif)", textAlign: 'center', flex: 1 }}>{title}</h2>
           <button type="button" onClick={onClose} title="Close" style={closeBtn}><X size={18} strokeWidth={2.75} /></button>
         </div>
         {children}
+      </div>
       </div>
       </div>
     </div>

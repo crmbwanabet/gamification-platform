@@ -149,7 +149,12 @@ export default function WinCelebration({ payout, reduced = false, delay = 0, pil
       return;
     }
     setStage('collecting');
-    const rr = root.getBoundingClientRect(), br = btn.getBoundingClientRect(), pr = pill.getBoundingClientRect();
+    // Screen rects include the card's desktop scale-up transform; the coins move
+    // in the card's own (unscaled) pixels, so every screen distance is divided by
+    // k (screen px per layout px; 1 on phones). Otherwise they overshoot the pill.
+    const rr0 = root.getBoundingClientRect(), k = (root.offsetWidth && rr0.width / root.offsetWidth) || 1;
+    const loc = (r) => ({ left: (r.left - rr0.left) / k, top: (r.top - rr0.top) / k, width: r.width / k, height: r.height / k });
+    const rr = { left: 0, top: 0 }, br = loc(btn.getBoundingClientRect()), pr = loc(pill.getBoundingClientRect());
     const SZ = 26;
     const to = { x: pr.left - rr.left + 4, y: pr.top - rr.top + (pr.height - SZ) / 2 }; // onto the pill's coin icon
     let landed = 0;

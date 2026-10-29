@@ -49,7 +49,10 @@ function useSpotRect(targetId, stepIdx) {
       if (!scene || !el) { setRect(null); return; }
       const s = scene.getBoundingClientRect();
       const r = el.getBoundingClientRect();
-      setRect({ left: r.left - s.left, top: r.top - s.top, width: r.width, height: r.height, sceneH: s.height });
+      // the highlight is drawn in the scene's own pixels; the rects include the
+      // desktop scale-up transform, so divide by k (screen px per layout px)
+      const k = (scene.offsetWidth && s.width / scene.offsetWidth) || 1;
+      setRect({ left: (r.left - s.left) / k, top: (r.top - s.top) / k, width: r.width / k, height: r.height / k, sceneH: s.height / k });
     };
     // wait a tick so the step's demo elements have mounted
     const t = setTimeout(compute, 60);
