@@ -21,14 +21,13 @@ test('purchaseMessage: gem prices shown only when nonzero; retired gems never sh
   assert.ok(!purchaseMessage({ ...P, price_gems: 5 }).includes('gems'));
 });
 
-test('purchaseMessage: kwacha redemptions read as the credit instruction', () => {
+test('purchaseMessage: kwacha redemptions carry only the user ID and amount', () => {
   const coin = purchaseMessage({ ...P, uid: '123456', item_name: 'K5 bwanabet bonus', price_kwacha: 5000, payout_kwacha: 5, is_money: true });
-  assert.ok(coin.includes('Credit K5 bwanabet bonus to player 123456 — paid 5,000 coins'), coin);
-  assert.ok(coin.startsWith('💵'));
+  assert.equal(coin, 'User ID: 123456\nAmount: K5');
   const gem = purchaseMessage({ ...P, uid: '123456', price_kwacha: 0, price_emeralds: 1, payout_kwacha: '5.00', is_money: true });
-  assert.ok(gem.includes('Credit K5 bwanabet bonus to player 123456 — paid 1 Emerald'), gem);
+  assert.equal(gem, 'User ID: 123456\nAmount: K5');
   const frac = purchaseMessage({ ...P, price_kwacha: 0, price_rubies: 1, payout_kwacha: 2.5 });
-  assert.ok(frac.includes('Credit K2.50 bwanabet bonus'), frac);
+  assert.equal(frac, 'User ID: 207978\nAmount: K2.50');
 });
 
 test('purchaseMessage: money prizes carry a credit-warning line', () => {
