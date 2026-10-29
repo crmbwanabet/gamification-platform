@@ -231,10 +231,7 @@ export default function NjukaGame({ onClose, closing, onWin, onSpend, onRefund, 
     const S = roundRef.current;
     if (!S || S.winner || S.turn !== 0 || S.phase !== 'discard' || swapSel) return;
     const el = e.currentTarget;
-    // k = screen px per layout px (the table is scaled up on desktop), so the
-    // card's translate stays under the finger instead of running ahead of it
-    const k = (el.offsetWidth && el.getBoundingClientRect().width / el.offsetWidth) || 1;
-    dragRef.current = { el, idx, x0: e.clientX, y0: e.clientY, k, moved: false };
+    dragRef.current = { el, idx, x0: e.clientX, y0: e.clientY, moved: false };
     try { el.setPointerCapture(e.pointerId); } catch (_) {}
   };
   const onCardPointerMove = (e) => {
@@ -242,7 +239,7 @@ export default function NjukaGame({ onClose, closing, onWin, onSpend, onRefund, 
     const dx = e.clientX - d.x0, dy = e.clientY - d.y0;
     if (!d.moved && Math.abs(dx) + Math.abs(dy) > 8) { d.moved = true; d.el.dataset.dragged = '1'; }
     if (d.moved) {
-      d.el.style.transform = `translate(${dx / d.k}px, ${dy / d.k}px) rotate(${dx * 0.04 / d.k}deg)`;
+      d.el.style.transform = `translate(${dx}px, ${dy}px) rotate(${dx * 0.04}deg)`;
       d.el.style.zIndex = 60;
       // steady highlight on the pile while hovering over it
       const pile = document.getElementById('njk-discard');

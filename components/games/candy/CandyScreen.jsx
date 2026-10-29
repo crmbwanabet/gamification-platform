@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import React from 'react';
 import { X } from 'lucide-react';
 import { CANDY, COIN_ICON, textStroke } from './tokens';
 import { CANDY_BTN_CSS } from './CandyButton';
-import { useCardFit } from './useDesktopScale';
+import useDesktopScale from './useDesktopScale';
 
 // Candy game pop-up: the same pattern as gameKit's GameShell (dimmed, blurred
 // backdrop — click it to close — and a centred card with the anim-* open/close
@@ -17,12 +17,8 @@ import { useCardFit } from './useDesktopScale';
 // OUTSIDE the backdrop: the card keeps a transform from its open animation,
 // which would otherwise trap position:fixed children, and a click inside the
 // overlay would bubble to the backdrop and close the game.
-// The card is always LAID OUT 600 tall (BASE_H) and scaled as a whole by a
-// plain wrapper (useCardFit, lib/ui/desktopScale.mjs): UP on desktop
-// (2026-10-27), DOWN on screens too short for it (landscape / short phones,
-// 2026-10-29), so no scene is ever squashed and nothing overflows; the open/close
-// animation keeps its own transform. The panel clips (overflow: clip), so it can
-// never be scrolled by a focused button. The title shrinks to fit (FitTitle).
+// On desktop the card is scaled up as a whole (useDesktopScale, 2026-10-27)
+// by a plain wrapper, so the open/close animation keeps its own transform.
 // `pillRef` exposes the balance pill (WinCelebration flies coins into it and
 // bumps it); the children column is positioned so a WinCelebration child can
 // cover it.
@@ -63,65 +59,30 @@ function MarqueeDots() {
   );
 }
 
-const useIsoLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect;
-const BASE_W = 400, BASE_H = 600;
-const PANEL_CSS = '.candy-panel { overflow: hidden; overflow: clip; }';
-
-// The title never widens the card or gets clipped: it is shrunk (as a whole,
-// transform) to the room between the ? and X buttons. Measured in LAYOUT pixels
-// (clientWidth / offsetWidth), so the card's own scale never counts twice.
-function FitTitle({ children }) {
-  const boxRef = useRef(null);
-  const textRef = useRef(null);
-  const [k, setK] = useState(1);
-  useIsoLayoutEffect(() => {
-    const box = boxRef.current, text = textRef.current;
-    if (!box || !text) return undefined;
-    const fit = () => {
-      const room = box.clientWidth, need = text.offsetWidth;
-      const next = need > room && need > 0 ? Math.max(0.4, Math.floor((room / need) * 1000) / 1000) : 1;
-      setK((p) => (p === next ? p : next));
-    };
-    fit();
-    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(fit) : null;
-    if (ro) { ro.observe(box); ro.observe(text); }
-    if (typeof document !== 'undefined' && document.fonts?.ready) document.fonts.ready.then(fit).catch(() => {});
-    return () => ro?.disconnect();
-  }, []);
-  return (
-    <h2 ref={boxRef} style={{ flex: 1, minWidth: 0, margin: '0 0 4px', display: 'flex', justifyContent: 'center', alignItems: 'center', textAlign: 'center', fontFamily: CANDY.display, fontWeight: 400, fontSize: 38, lineHeight: 1, color: CANDY.gold, letterSpacing: 1, textShadow: TITLE_SHADOW }}>
-      <span ref={textRef} style={{ display: 'inline-block', flex: 'none', whiteSpace: 'nowrap', transform: k < 1 ? `scale(${k})` : undefined, transformOrigin: 'center center' }}>
-        {children}
-      </span>
-    </h2>
-  );
-}
-
 export default function CandyScreen({ title, balance, pillRef, onClose, onHelp, closing, overlay, children }) {
-  // the 400 x 600 card scales up to the screen height on desktop, down on short screens
-  const { scale, width } = useCardFit(BASE_W, BASE_H);
+  // desktop: the 400 x 600 card scales up to fill the screen height (phones: 1)
+  const scale = useDesktopScale(400, 600);
   return (
     <>
       <div onClick={onClose} className={closing ? 'anim-backdrop-close' : 'anim-fade-in'}
         style={{
-          position: 'fixed', inset: 0, zIndex: 70, display: 'grid', placeItems: 'center', alignContent: 'center', padding: '14px 16px',
+          position: 'fixed', inset: 0, zIndex: 70, display: 'grid', placeItems: 'center', padding: '14px 16px',
           background: 'rgba(8,10,16,.74)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)',
           color: CANDY.text, fontFamily: CANDY.body,
         }}>
-        <style dangerouslySetInnerHTML={{ __html: CANDY_BTN_CSS + PANEL_CSS }} />
-        <div style={{ width: width * scale, height: BASE_H * scale, minWidth: 0, flex: 'none' }}>
-        <div style={{ width, height: BASE_H, transform: scale !== 1 ? `scale(${scale})` : undefined, transformOrigin: '0 0' }}>
+        <style dangerouslySetInnerHTML={{ __html: CANDY_BTN_CSS }} />
+        <div style={{ width: 'min(400px, 100%)', transform: scale > 1 ? `scale(${scale})` : undefined }}>
         <div onClick={(e) => e.stopPropagation()} className={closing ? 'anim-modal-close' : 'anim-scale-in'}
           style={{
-            position: 'relative', width: '100%', height: '100%',
+            position: 'relative', width: '100%', maxWidth: 400, height: 'min(600px, calc(100dvh - 40px))',
             boxSizing: 'border-box', padding: FRAME, borderRadius: 26,
             background: 'linear-gradient(180deg, #24094A, #140430)',
             border: `2.5px solid ${CANDY.gold}`,
             boxShadow: `0 0 0 1.5px ${CANDY.goldDeep}, 0 0 22px rgba(255,210,31,.28), 0 24px 60px rgba(0,0,0,.6)`,
           }}>
           <MarqueeDots />
-          <div className="candy-panel" style={{
-            height: '100%', boxSizing: 'border-box', borderRadius: 18,
+          <div style={{
+            height: '100%', boxSizing: 'border-box', overflow: 'hidden', borderRadius: 18,
             display: 'flex', flexDirection: 'column', padding: '4px 10px 10px',
             background: `radial-gradient(ellipse 110% 70% at 50% 42%, ${CANDY.glow} 0%, ${CANDY.bgTop} 50%, ${CANDY.bgBottom} 100%)`,
             boxShadow: `inset 0 0 0 1.5px rgba(255,210,31,.55), inset 0 0 18px rgba(0,0,0,.45)`,
@@ -130,7 +91,9 @@ export default function CandyScreen({ title, balance, pillRef, onClose, onHelp, 
               {onHelp
                 ? <button type="button" onClick={onHelp} title="How to play" aria-label="How to play" style={hit}><span style={helpFace}>?</span></button>
                 : <span style={{ width: 48, flex: 'none' }} />}
-              <FitTitle>{title}</FitTitle>
+              <h2 style={{ flex: 1, minWidth: 0, margin: '0 0 4px', textAlign: 'center', fontFamily: CANDY.display, fontWeight: 400, fontSize: 38, lineHeight: 1, color: CANDY.gold, letterSpacing: 1, whiteSpace: 'nowrap', textShadow: TITLE_SHADOW }}>
+                {title}
+              </h2>
               <button type="button" onClick={onClose} title="Close" aria-label="Close" style={hit}><span style={closeFace}><X size={20} strokeWidth={3.25} /></span></button>
             </div>
             <div ref={pillRef} aria-label={`Balance ${balance} coins`}
@@ -142,7 +105,6 @@ export default function CandyScreen({ title, balance, pillRef, onClose, onHelp, 
               {children}
             </div>
           </div>
-        </div>
         </div>
         </div>
       </div>
