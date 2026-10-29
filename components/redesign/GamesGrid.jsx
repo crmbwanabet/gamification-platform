@@ -21,11 +21,15 @@ const GG_CSS = `
   .rs-game:focus-visible { outline: 3px solid ${CANDY.gold}; outline-offset: 3px; }
   .rs-game-img { height: 92px; }
   .rs-game-name { font-size: 15px; }
+  /* desktop: bigger tiles, 2 per row beside the Coin Shop (owner 2026-10-29; was 3 per row, 170 px art) */
   @media (min-width: 861px) {
-    .rs-games { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
-    .rs-game { border-radius: 20px; box-shadow: 0 6px 0 ${VIOLET_BASE}, 0 12px 22px rgba(0,0,0,.35); }
-    .rs-game-img { height: 170px; }
-    .rs-game-name { font-size: 18px; }
+    .rs-games { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px; }
+    .rs-game { border-radius: 22px; box-shadow: 0 6px 0 ${VIOLET_BASE}, 0 12px 22px rgba(0,0,0,.35); }
+    .rs-game-img { height: 250px; }
+    .rs-game-name { font-size: 22px; }
+    .rs-game-foot { padding: 11px 14px 12px !important; }
+    .rs-game-note { font-size: 14px !important; }
+    .rs-game-soon { font-size: 19px; }
   }
   @media (prefers-reduced-motion: reduce) { .rs-game { transition: none; } .rs-game:hover { transform: none; } }
 `;
@@ -45,9 +49,9 @@ function GameCard({ g, free, onPlay }) {
         {g.isNew && <span style={{ position: 'absolute', top: 6, left: 6 }}><Badge bg={CANDY.red.fill} color="#fff">New</Badge></span>}
         {soon && <span className="rs-game-soon"><img src="/ui/reward/lock.png" alt="" width={18} height={18} />Coming soon</span>}
       </span>
-      <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, padding: '8px 10px 9px', background: `linear-gradient(180deg, ${C.panelHi}, ${C.panelLo})` }}>
+      <span className="rs-game-foot" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, padding: '8px 10px 9px', background: `linear-gradient(180deg, ${C.panelHi}, ${C.panelLo})` }}>
         <span className="rs-game-name" style={{ fontFamily: CANDY.display, textTransform: 'uppercase', lineHeight: 1.1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{g.name}</span>
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, flex: 'none', fontSize: 11, fontWeight: 900, color: CANDY.gold }}>
+        <span className="rs-game-note" style={{ display: 'inline-flex', alignItems: 'center', gap: 3, flex: 'none', fontSize: 11, fontWeight: 900, color: CANDY.gold }}>
           {!soon && (g.stakeOnly || out) && <RewardIcon kind="coins" size={13} />}{soon ? 'Soon' : note}
         </span>
       </span>
