@@ -122,3 +122,10 @@ test('economy.gemValues merge per gem; invalid values keep their default', () =>
   const notObj = mergeConfig(D, [{ key: 'economy', value: { gemValues: [1, 2, 3] } }]);
   assert.deepEqual(notObj.economy.gemValues, D.economy.gemValues);
 });
+
+test('game_order row -> cfg.gameOrder of known ids; junk ignored', () => {
+  const out = mergeConfig(DEFAULTS, [{ key: 'game_order', value: { month: '2026-11', order: ['chicken2', 'bogus', 'wheel', 'chicken2', 7] } }]);
+  assert.deepEqual(out.gameOrder, ['chicken2', 'wheel']);
+  assert.deepEqual(mergeConfig(DEFAULTS, [{ key: 'game_order', value: 'junk' }]).gameOrder, []);
+  assert.deepEqual(mergeConfig({ ...DEFAULTS, gameOrder: [] }, []).gameOrder, []); // no row = default order
+});

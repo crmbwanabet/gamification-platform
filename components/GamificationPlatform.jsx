@@ -89,6 +89,7 @@ import { AvatarLookContext } from './redesign/AvatarPicture';
 import WelcomeBackPopup from './redesign/WelcomeBackPopup';
 import { welcomeSummary, welcomeSubtitle, awayMissionIds } from '@/lib/welcome/summary.mjs';
 import { shopAvatarItems, buyAvatarItem, setWorn, normalizeAvatarItems } from '@/lib/avatar/items.mjs';
+import { applyOrder } from '@/lib/games/order.mjs';
 
 // The XP star as a canvas image for the reward particles (created once, client only).
 let xpStarImg = null;
@@ -136,7 +137,8 @@ export default function GamificationPlatform() {
   const prefersReducedMotion = useReducedMotion();
   const cfg = useRemoteConfig();
   // Games list the UI shows: enabled games only, extra-play cost from config.
-  const activeGames = useMemo(() => MINIGAMES.filter(g => cfg.games[g.id]?.enabled !== false).map(g => ({ ...g, cost: cfg.economy.extraPlayCost })), [cfg]);
+  // Most played last month first (the `game_order` row, changes on the 1st); comingSoon last.
+  const activeGames = useMemo(() => applyOrder(MINIGAMES.filter(g => cfg.games[g.id]?.enabled !== false), cfg.gameOrder).map(g => ({ ...g, cost: cfg.economy.extraPlayCost })), [cfg]);
   const activeMissions = useMemo(
     () => applyMissionOverrides(MISSIONS, cfg.missionOverrides),
     [cfg]
