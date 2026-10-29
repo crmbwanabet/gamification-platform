@@ -19,26 +19,26 @@ import { Predictions } from '../extras/ExtrasViews';
 
 // Home layout (design "A · Full candy"; missions moved to the top 2026-10-18,
 // when the daily reward became a popup on open; daily reward and Coin Shop
-// swapped 2026-10-20; weekly predictions + football match + side quest moved
-// up under the top row 2026-10-29): phones stack missions → daily reward →
-// weekly predictions → football match + side quest → bonus games → Coin Shop;
-// desktop (≥861px) opens with missions (400px) left + the daily reward right,
-// then weekly predictions full width, then the football match and the side
-// quest side by side, then the Coin Shop on the left beside the games grid
-// (2 bigger tiles per row; 3 when there is no store and the games span the
-// width). Below level 10 the Coin Shop is greyed with a lock plate.
+// swapped 2026-10-20; 2026-10-29 owner order): phones stack missions → daily
+// reward → bonus games → weekly predictions → football match + side quest →
+// Coin Shop; desktop (≥861px) opens with missions (400px) left + the daily
+// reward right, then the Coin Shop on the left beside the games grid (2 bigger
+// tiles per row; 3 when there is no store and the games span the width), then
+// weekly predictions full width, then the football match and the side quest
+// side by side (the side quest card stretches to the match card's height).
+// Below level 10 the Coin Shop is greyed with a lock plate.
 const OV_CSS = `
-  .ov-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 26px; grid-template-areas: "missions" "daily" "predict" "season" "games" "store"; }
+  .ov-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 26px; grid-template-areas: "missions" "daily" "games" "predict" "season" "store"; }
   .ov-daily { grid-area: daily; } .ov-store { grid-area: store; } .ov-season { grid-area: season; display: grid; gap: 12px; } .ov-games { grid-area: games; } .ov-missions { grid-area: missions; display: grid; gap: 12px; } .ov-predict { grid-area: predict; }
-  .ov-match { display: grid; gap: 12px; min-width: 0; }
+  .ov-match { display: grid; gap: 12px; min-width: 0; align-content: start; }
   .ov-grid > * { min-width: 0; align-self: start; }
-  .ov-grid--nostore { grid-template-areas: "missions" "daily" "predict" "season" "games"; }
+  .ov-grid--nostore { grid-template-areas: "missions" "daily" "games" "predict" "season"; }
   @media (min-width: 861px) {
     .ov-grid { grid-template-columns: 400px minmax(0, 1fr); column-gap: 28px; row-gap: 24px;
-      grid-template-areas: "missions daily" "predict predict" "season season" "store games"; }
-    .ov-grid--nostore { grid-template-areas: "missions daily" "predict predict" "season season" "games games"; }
+      grid-template-areas: "missions daily" "store games" "predict predict" "season season"; }
+    .ov-grid--nostore { grid-template-areas: "missions daily" "games games" "predict predict" "season season"; }
     .ov-grid--nostore .rs-games { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-    .ov-season { grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); column-gap: 24px; align-items: start; }
+    .ov-season { grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); column-gap: 24px; align-items: stretch; }
     .ov-season > :first-child { grid-column: 1 / -1; }
   }
   /* "See all missions": a full button, not a text link (owner 2026-10-22: make it bigger) */
@@ -107,7 +107,7 @@ export default function Overview({ wallet = null, xp = 1200, activeTab = 'home',
       isWidget={isWidget} story={story} onStoryOpen={onStoryOpen} onStoryClose={onStoryClose} onStoryGo={onStoryGo} storyPrize={storyPrize} intro={intro}>
       <style dangerouslySetInnerHTML={{ __html: OV_CSS }} />
       <div className={`ov-grid${hasStore ? '' : ' ov-grid--nostore'}`} style={{ maxWidth: 1240, margin: '0 auto' }}>
-        {/* DOM order = phone order (missions, daily, predictions, football, games, store) */}
+        {/* DOM order = phone order (missions, daily, games, predictions, football, store) */}
         {(top || wheel) && (
           <section className="ov-missions" aria-label="BwanaBet missions">
             {wheel && <WheelCard onOpen={wheel.onOpen} />}
@@ -120,6 +120,10 @@ export default function Overview({ wallet = null, xp = 1200, activeTab = 'home',
 
         <div className="ov-daily">
           <DailyReward dailyDay={dailyDay} dailyClaimed={dailyClaimed} onClaim={onClaimDaily} rewards={dailyRewards} loggedIn={canClaimDaily} />
+        </div>
+
+        <div className="ov-games">
+          <GamesGrid gamePlays={gamePlays} onPlay={onPlay} games={gameList} />
         </div>
 
         {extras && (
@@ -139,10 +143,6 @@ export default function Overview({ wallet = null, xp = 1200, activeTab = 'home',
             </div>
           </section>
         )}
-
-        <div className="ov-games">
-          <GamesGrid gamePlays={gamePlays} onPlay={onPlay} games={gameList} />
-        </div>
 
         {hasStore && (
           <HomeStore className="ov-store" storeItems={items} wallet={wallet} onBuy={onBuy} busyId={busyId} onSeeAll={() => go('store')} locked={storeLockReason(getLevel(xp).level, wallet?.store)} xp={xp} uid={userId} />
