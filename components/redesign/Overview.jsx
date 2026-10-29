@@ -22,11 +22,10 @@ import { Predictions } from '../extras/ExtrasViews';
 // swapped 2026-10-20; 2026-10-29 owner order): phones stack missions → daily
 // reward → bonus games → weekly predictions → football match + side quest →
 // Coin Shop; desktop (≥861px) opens with missions (400px) left + the daily
-// reward right, then the Coin Shop on the left beside the games grid (2 bigger
-// tiles per row; 3 when there is no store and the games span the width), then
-// weekly predictions full width, then the football match and the side quest
-// side by side (the side quest card stretches to the match card's height).
-// Below level 10 the Coin Shop is greyed with a lock plate.
+// reward right, then the Coin Shop on the left beside the games grid (3 per
+// row), then weekly predictions full width, then the football match and the
+// side quest side by side (the side quest card stretches to the match card's
+// height). Below level 10 the Coin Shop is greyed with a lock plate.
 const OV_CSS = `
   .ov-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 26px; grid-template-areas: "missions" "daily" "games" "predict" "season" "store"; }
   .ov-daily { grid-area: daily; } .ov-store { grid-area: store; } .ov-season { grid-area: season; display: grid; gap: 12px; } .ov-games { grid-area: games; } .ov-missions { grid-area: missions; display: grid; gap: 12px; } .ov-predict { grid-area: predict; }
@@ -36,10 +35,15 @@ const OV_CSS = `
   @media (min-width: 861px) {
     .ov-grid { grid-template-columns: 400px minmax(0, 1fr); column-gap: 28px; row-gap: 24px;
       grid-template-areas: "missions daily" "store games" "predict predict" "season season"; }
-    .ov-grid--nostore { grid-template-areas: "missions daily" "games games" "predict predict" "season season"; }
-    .ov-grid--nostore .rs-games { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .ov-grid--nostore { grid-template-areas: "missions daily" ". games" "predict predict" "season season"; }
     .ov-season { grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); column-gap: 24px; align-items: stretch; }
     .ov-season > :first-child { grid-column: 1 / -1; }
+    /* the match card stretches to the side quest's height: the pitch grows, its
+       plates spread (chip top, centre plate middle, XP bar on the goal line) */
+    .ov-season .ov-match { display: flex; flex-direction: column; }
+    .ov-season .ov-match > :only-child { flex: 1 1 auto; display: flex; flex-direction: column; }
+    .ov-season .ov-match > :only-child > [data-pitch] { flex: 1 1 auto; display: flex; flex-direction: column; }
+    .ov-season .ov-match > :only-child > [data-pitch] > .pitch-body { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: space-between; }
   }
   /* "See all missions": a full button, not a text link (owner 2026-10-22: make it bigger) */
   .ov-link { all: unset; box-sizing: border-box; cursor: pointer; display: flex; align-items: center; justify-content: center; min-height: 56px; margin-top: 10px; width: 100%;

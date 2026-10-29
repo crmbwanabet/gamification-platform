@@ -723,10 +723,11 @@ function QuestPicture({ hustle, hero, dim = false }) {
  * `hero` = the player's name (level names say "Vuma" in config; swapped at render).
  */
 // Phones: a 2:1 picture. Desktop Home (beside the match card): the picture
-// only fills the space left, so the card never grows taller than the match card.
+// keeps at least 150 px and fills the rest of the row; the match card beside it
+// stretches to the same height (Overview .ov-match).
 const HQ_CSS = `
   .hq-pic { aspect-ratio: 16 / 8; min-height: 150px; }
-  @media (min-width: 861px) { .ov-season .hq-pic { aspect-ratio: auto; min-height: 96px; } .ov-season .hq-hint { display: none; } }
+  @media (min-width: 861px) { .ov-season .hq-pic { aspect-ratio: auto; min-height: 150px; } .ov-season .hq-hint { display: none; } }
 `;
 export function HustleCard({ hustle, onCollect, busy = false, hero = HERO_DEFAULT }) {
   if (!hustle) return null;
@@ -757,14 +758,6 @@ export function HustleCard({ hustle, onCollect, busy = false, hero = HERO_DEFAUL
               </div>
             </div>
           )}
-          {/* Collect sits on the picture, so an open quest is no taller than a locked one */}
-          {!locked && (
-            <div style={{ position: 'absolute', left: 12, right: 12, bottom: 10 }}>
-              {hustle.ready > 0
-                ? <GreenBtn full size={16} disabled={busy} onClick={(e) => onCollect && onCollect(e.currentTarget)}>Collect {fmt(hustle.ready)} coins</GreenBtn>
-                : <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, padding: '8px 12px', borderRadius: 12, background: 'rgba(20,6,44,.85)', fontSize: 12.5, fontWeight: 800, color: C.green }}><Check size={14} /> Collected today, back tomorrow</div>}
-            </div>
-          )}
         </div>
         <div style={{ padding: '12px 14px 14px', display: 'grid', gap: 10 }}>
           <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 10 }}>
@@ -790,6 +783,10 @@ export function HustleCard({ hustle, onCollect, busy = false, hero = HERO_DEFAUL
           ) : (
             <div data-hustle-target style={{ fontSize: 12, fontWeight: 900, color: CANDY.gold }}>Top trade reached</div>
           )}
+          {/* Collect under the picture (owner 2026-10-29: on the picture it hid the art) */}
+          {!locked && (hustle.ready > 0
+            ? <GreenBtn full size={16} disabled={busy} onClick={(e) => onCollect && onCollect(e.currentTarget)}>Collect {fmt(hustle.ready)} coins</GreenBtn>
+            : <div style={{ fontSize: 12.5, fontWeight: 800, color: C.green, display: 'flex', alignItems: 'center', gap: 4 }}><Check size={14} /> Collected today, back tomorrow</div>)}
           {!locked && hustle.closedDays > 0 && hustle.ready > 0 && (
             <div style={{ fontSize: 11.5, color: '#ffb199', fontWeight: 700 }}>{hustle.closedDays > 7 ? 'The shop was closed while you were away.' : `The shop was closed for ${hustle.closedDays} ${hustle.closedDays === 1 ? 'day' : 'days'}.`} Pay keeps for 2 days, so collect daily.</div>
           )}
