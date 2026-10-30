@@ -181,9 +181,9 @@ const LU_CSS = `
 .lu-in { border-radius: 18px; background: radial-gradient(120% 70% at 50% 0%, #3a1d78 0%, #24124a 55%, #1a0d38 100%); padding: 18px 14px 12px; display: grid; gap: 12px; text-align: center; max-height: calc(100dvh - 50px); overflow-y: auto; box-sizing: border-box; }
 .lu-top { display: grid; justify-items: center; gap: 8px; }
 .lu-av { display: block; width: 84px; height: 84px; border-radius: 50%; padding: 3px; box-sizing: border-box; background: linear-gradient(180deg, #ffe27a, #e0a300); box-shadow: 0 3px 0 #8a5a00; }
-.lu-big { font-family: ${CANDY.display}; font-size: 48px; line-height: 1; color: ${CANDY.gold}; text-shadow: 0 3px 0 #6b3d00; text-transform: uppercase; letter-spacing: -.5px; }
-.lu-big.blue { color: #7fd8ff; text-shadow: 0 3px 0 #164a66; font-size: 30px; }
-.lu-lvl { font-family: ${CANDY.display}; font-size: 26px; line-height: 1; color: #fff; text-transform: uppercase; }
+.lu-big { font-family: ${CANDY.display}; font-size: 48px; line-height: 1; color: ${CANDY.gold}; text-shadow: 0 3px 0 #6b3d00; text-transform: uppercase; letter-spacing: -.5px; -webkit-text-stroke: .05em currentColor; paint-order: stroke fill; }
+.lu-big.blue { color: #7fd8ff; text-shadow: 0 3px 0 #164a66; font-size: 30px; -webkit-text-stroke: 0; }
+.lu-lvl { font-family: ${CANDY.display}; font-size: 26px; line-height: 1; color: #fff; text-transform: uppercase; letter-spacing: .02em; -webkit-text-stroke: .045em currentColor; paint-order: stroke fill; }
 .lu-place { font-size: 15px; font-weight: 700; color: #e0d5ff; }
 .lu-prize { display: inline-flex; align-items: center; gap: 8px; background: rgba(255,200,61,.14); border: 2px solid rgba(255,200,61,.55); border-radius: 999px; padding: 4px 14px 4px 6px; font-weight: 800; color: ${CANDY.gold}; font-size: 18px; }
 .lu-box { border-radius: 14px; padding: 10px 11px; text-align: left; display: grid; gap: 8px; }
