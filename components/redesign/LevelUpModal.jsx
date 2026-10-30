@@ -11,7 +11,7 @@ import { howToNext } from '@/lib/xp/levelUpInfo.mjs';
 
 // Level-up pop-up (owner 2026-10-27, design artifact Q6mu2Y4F1YZXdgCRmPsdhg
 // v5): every new SUB-LEVEL opens it. Top to bottom:
-//   the new level ("LEVEL 1.3!") + "You went up N levels" / "New place: …" + the coin prize
+//   the "LEVEL UP!" header + the new level ("LEVEL 1.3") + "You went up N levels" / "New place: …" + the coin prize
 //   WHY YOU LEVELLED UP — the XP each source gave since the last pop-up (lib/xp/levelUpInfo.mjs)
 //   YOUR STORY — closed bar, tap to open: "You did it" + "What comes next" (lib/vuma/stories.mjs)
 //   NEXT MISSION — the whole box is a button to where the mission is done
@@ -125,7 +125,7 @@ export default function LevelUpModal({ levelUp, onClose, onGo, onRename, hero = 
   const r = cleanReward(levelUp.reward);
   const full = levelUp.kind === 'xpFull';
   return (
-    <div onClick={onClose} role="dialog" aria-modal="true" aria-label={full ? 'No more game XP today' : `New level: ${levelUp.sub || levelUp.level}`} className="lu-back">
+    <div onClick={onClose} role="dialog" aria-modal="true" aria-label={full ? 'No more game XP today' : `Level up! Level ${levelUp.sub || levelUp.level}`} className="lu-back">
       <style dangerouslySetInnerHTML={{ __html: LU_CSS }} />
       <div onClick={(e) => e.stopPropagation()} className="lu-frame">
         <div className="lu-in">
@@ -135,7 +135,7 @@ export default function LevelUpModal({ levelUp, onClose, onGo, onRename, hero = 
             {levelUp.avatar && !wide && (
               <span className="lu-av"><RoundAvatar stage={levelUp.level} avatar={levelUp.avatar} alt={hero} size={60} /></span>
             )}
-            {full ? <div className="lu-big blue">No more game XP today</div> : <div className="lu-big">Level {levelUp.sub || levelUp.level}!</div>}
+            {full ? <div className="lu-big blue">No more game XP today</div> : <><div className="lu-big">Level up!</div><div className="lu-lvl">Level {levelUp.sub || levelUp.level}</div></>}
             {!full && levelUp.levelsUp > 1 && <div className="lu-place">You went up {levelUp.levelsUp} levels</div>}
             {!full && levelUp.newPlace && levelUp.place && <div className="lu-place">New place: {levelUp.place}</div>}
             {r.kwacha > 0 && <span className="lu-prize"><img src={COIN_ICON} alt="" width={28} height={28} />+{amountText(r.kwacha, 'coins')}</span>}
@@ -183,6 +183,7 @@ const LU_CSS = `
 .lu-av { display: block; width: 84px; height: 84px; border-radius: 50%; padding: 3px; box-sizing: border-box; background: linear-gradient(180deg, #ffe27a, #e0a300); box-shadow: 0 3px 0 #8a5a00; }
 .lu-big { font-family: ${CANDY.display}; font-size: 48px; line-height: 1; color: ${CANDY.gold}; text-shadow: 0 3px 0 #6b3d00; text-transform: uppercase; letter-spacing: -.5px; }
 .lu-big.blue { color: #7fd8ff; text-shadow: 0 3px 0 #164a66; font-size: 30px; }
+.lu-lvl { font-family: ${CANDY.display}; font-size: 26px; line-height: 1; color: #fff; text-transform: uppercase; }
 .lu-place { font-size: 15px; font-weight: 700; color: #e0d5ff; }
 .lu-prize { display: inline-flex; align-items: center; gap: 8px; background: rgba(255,200,61,.14); border: 2px solid rgba(255,200,61,.55); border-radius: 999px; padding: 4px 14px 4px 6px; font-weight: 800; color: ${CANDY.gold}; font-size: 18px; }
 .lu-box { border-radius: 14px; padding: 10px 11px; text-align: left; display: grid; gap: 8px; }
@@ -259,6 +260,7 @@ const LU_CSS = `
   .lu-top > :not(.lu-av) { grid-column: 2; }
   .lu-big { font-size: 36px; }
   .lu-big.blue { font-size: 24px; }
+  .lu-lvl { font-size: 21px; }
   .lu-place { font-size: 13.5px; }
   .lu-prize { font-size: 15px; padding: 2px 10px 2px 4px; gap: 5px; }
   .lu-prize img { width: 22px; height: 22px; }
@@ -287,6 +289,7 @@ const LU_CSS = `
 @media (max-width: 860px) and (max-height: 700px) {
   .lu-top > .lu-av { width: 52px; height: 52px; }
   .lu-big { font-size: 30px; }
+  .lu-lvl { font-size: 18px; }
   .lu-row small, .lu-st span { display: none; }
   .lu-row { font-size: 13px; }
   .lu-ic { width: 28px; height: 28px; }
@@ -306,6 +309,7 @@ const LU_CSS = `
   .lu-top { position: relative; z-index: 1; justify-items: start; gap: 10px; padding: 0 28px 30px; }
   .lu-big { font-size: 76px; text-shadow: 0 4px 0 #6b3d00, 0 8px 24px rgba(0,0,0,.55); }
   .lu-big.blue { font-size: 50px; }
+  .lu-lvl { font-size: 38px; text-shadow: 0 3px 8px rgba(0,0,0,.7); }
   .lu-place { font-size: 20px; color: #fff; text-shadow: 0 2px 6px rgba(0,0,0,.7); }
   .lu-prize { font-size: 24px; padding: 6px 18px 6px 8px; background: rgba(26,13,56,.85); }
   .lu-main { display: flex; flex-direction: column; gap: 14px; padding: 24px 24px 18px; min-height: 0; overflow-y: auto; border-left: 2px solid rgba(255,200,61,.25); }
